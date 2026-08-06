@@ -1,0 +1,19 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "minecraft:redstone"
+    }
+  ],
+  "results": [
+    {
+      "id": "minecraft:glowstone_dust",
+      "count": 1
+    },
+    {
+      "id": "minecraft:glowstone_dust",
+      "count": 1,
+      "chance": 0.25
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "type": "createaddition:rolling",
+  "ingredients": [
+    {
+      "tag": "c:sheets/jade"
+    }
+  ],
+  "results": [
+    {
+      "count": 2,
+      "id": "createoreexpansion:jade_wire"
+    }
+  ]
+}

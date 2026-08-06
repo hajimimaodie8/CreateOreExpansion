@@ -1,0 +1,14 @@
+{
+  "type": "createaddition:rolling",
+  "ingredients": [
+    {
+      "tag": "c:ingots/sapphire"
+    }
+  ],
+  "results": [
+    {
+      "count": 2,
+      "id": "createoreexpansion:sapphire_rod"
+    }
+  ]
+}

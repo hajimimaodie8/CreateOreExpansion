@@ -1,0 +1,14 @@
+{
+  "type": "createaddition:rolling",
+  "ingredients": [
+    {
+      "tag": "c:ingots/jade"
+    }
+  ],
+  "results": [
+    {
+      "count": 2,
+      "id": "createoreexpansion:jade_rod"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "type": "createaddition:rolling",
+  "ingredients": [
+    {
+      "tag": "c:sheets/topaz"
+    }
+  ],
+  "results": [
+    {
+      "count": 2,
+      "id": "createoreexpansion:topaz_wire"
+    }
+  ]
+}

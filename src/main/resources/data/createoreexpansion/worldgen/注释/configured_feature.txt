@@ -1,0 +1,41 @@
+{
+  // 使用Minecraft的Ore地物预设
+  "type": "minecraft:ore",
+  // Ore地物的核心配置
+  "config": {
+    // 如果为1，周围有空气就会拒绝生成，地表暴露率为0
+    // 如果为0，周围无论有没有空气会生成，地表会暴露
+    // 如果在这之间，则暴露在空气中会根据你提供的概率随机是否生成。
+    "discard_chance_on_air_exposure": 0.0,
+    // 矿脉的最大大小
+    "size": 12,
+    // 替换目标，可以有多个匹配项
+    "targets": [
+      // 浅层的匹配项
+      {
+        // 指明使用 create 的锌矿石
+        "state": {
+          "Name": "create:zinc_ore"
+        },
+        // 用浅层的锌矿替换的目标
+        "target": {
+          // Minecraft的内置target，匹配一个方块的 Tag（标签）
+          "predicate_type": "minecraft:tag_match",
+          // 具体标签。这里的标签是主世界出现的浅层石头（石头和三费石）（其实不止三种
+          "tag": "minecraft:stone_ore_replaceables"
+        }
+      },
+      {
+        // 指明使用 create 的深层锌矿石
+        "state": {
+          "Name": "create:deepslate_zinc_ore"
+        },
+        // 同理，匹配深层的石头（如：深板岩，凝灰岩等）
+        "target": {
+          "predicate_type": "minecraft:tag_match",
+          "tag": "minecraft:deepslate_ore_replaceables"
+        }
+      }
+    ]
+  }
+}

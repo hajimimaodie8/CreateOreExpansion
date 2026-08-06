@@ -1,0 +1,6 @@
+{
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_nether",
+  "features": "createoreexpansion:nether_sapphire_ore",
+  "step": "underground_ores"
+}

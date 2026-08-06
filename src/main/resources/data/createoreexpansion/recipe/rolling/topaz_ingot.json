@@ -1,0 +1,14 @@
+{
+  "type": "createaddition:rolling",
+  "ingredients": [
+    {
+      "tag": "c:ingots/topaz"
+    }
+  ],
+  "results": [
+    {
+      "count": 2,
+      "id": "createoreexpansion:topaz_rod"
+    }
+  ]
+}

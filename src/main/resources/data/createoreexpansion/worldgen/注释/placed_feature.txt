@@ -1,0 +1,43 @@
+// 依旧注释
+{
+  // 指明要放置的是哪个地物，这是在configured_feature/里的文件名减去.json的后缀
+  "feature": "create:zinc_ore",
+  // 具体放置规则
+  "placement": [
+    // 这是一个放置规则，可以有很多个
+    {
+      // count的type，一个区块里刷几个这坨地物
+      "type": "minecraft:count",
+      "count": 8
+    },
+    {
+      // 这个in_square没有参数，一般矿物生成都要写
+      // 说实话这个东西具体干了啥的我也不知道（）
+      "type": "minecraft:in_square"
+    },
+    {
+      // 高度限制函数
+      "type": "minecraft:height_range",
+      // 高度配置项
+      "height": {
+        // 均匀出现
+        "type": "minecraft:uniform",
+        // 坐标 -63 ~ 70
+        "max_inclusive": {
+          "absolute": 70
+        },
+        "min_inclusive": {
+          "absolute": -63
+        }
+      }
+    },
+    {
+      // 机械动力自己的函数，用于完成配置项对这个矿的影响。
+      "type": "create:config_filter"
+    }
+    // 这是用来限制，只出现在列出群系的，但是create的锌矿全群系都会出现，不需要
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

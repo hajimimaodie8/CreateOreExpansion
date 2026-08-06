@@ -1,0 +1,11 @@
+{
+  // neoforge 的 群系修改工具 ，这里选择“添加地物”
+  "type": "neoforge:add_features"
+  // 选择修改的群系，这里是主世界的全部群系（群系标签）
+  "biomes": "#minecraft:is_overworld",
+  // 具体的地物，名字是 placed_feature 的
+  "features": "create:zinc_ore",
+  // 地物生成的阶段，这个建议查百科
+  // UNDERGROUND_ORES：地下矿物，原版用于放置各种矿石的团簇。
+  "step": "underground_ores"
+}

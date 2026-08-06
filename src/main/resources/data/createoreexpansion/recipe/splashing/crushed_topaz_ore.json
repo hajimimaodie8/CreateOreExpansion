@@ -1,0 +1,33 @@
+{
+  "type": "create:splashing",
+  "ingredients": [
+    {
+      "tag": "c:crushed_raw_materials/topaz"
+    }
+  ],
+  "results": [
+    {
+      "count": 3,
+      "id": "createoreexpansion:topaz_nugget"
+    },
+    {
+      "chance": 0.75,
+      "count": 3,
+      "id": "createoreexpansion:topaz_nugget"
+    },
+    {
+      "chance": 0.5,
+      "count": 3,
+      "id": "createoreexpansion:topaz_nugget"
+    },
+    {
+      "chance": 0.5,
+      "count": 3,
+      "id": "create:copper_nugget"
+    },
+    {
+      "chance": 0.25,
+      "id": "minecraft:emerald"
+    }
+  ]
+}

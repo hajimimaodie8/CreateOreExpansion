@@ -1,0 +1,13 @@
+{
+  "type": "create:pressing",
+  "ingredients": [
+    {
+      "tag": "c:ingots/sapphire"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_sheet"
+    }
+  ]
+}

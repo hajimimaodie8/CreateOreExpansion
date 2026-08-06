@@ -1,0 +1,25 @@
+{
+  "type": "create:cutting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:jade_big_shard"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:jade_nugget",
+      "count": 4
+    },
+    {
+      "id": "createoreexpansion:jade_nugget",
+      "chance": 0.5,
+      "count": 2
+    },
+    {
+      "id": "createoreexpansion:jade_nugget",
+      "chance": 0.25,
+      "count": 2
+    }
+  ],
+  "processingTime": 100
+}
