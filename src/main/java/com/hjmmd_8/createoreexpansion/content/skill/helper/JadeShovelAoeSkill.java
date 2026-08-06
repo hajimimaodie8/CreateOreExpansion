@@ -31,8 +31,7 @@ public class JadeShovelAoeSkill implements ItemSkill {
 
         HitResult pick = player.pick(20D, 0.0F, false);
         if (!(pick instanceof BlockHitResult blockHitResult)) return;
-
-                Direction digDir;
+        Direction digDir;
         // 视角朝下（pitch>45）时不挖入地，改沿玩家偏航方向水平挖
         if (livingEntity.getXRot() > 45.0) {
             float yaw = livingEntity.getYRot();

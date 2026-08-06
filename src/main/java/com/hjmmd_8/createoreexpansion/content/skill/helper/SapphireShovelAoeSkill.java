@@ -31,7 +31,7 @@ import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
  */
 public class SapphireShovelAoeSkill implements ItemSkill {
 
-    private static final int RADIUS = 6;
+    private static final int RADIUS = 7;
     private static final int DEPTH = 1;
 
     public static void causeAoe(Level level, BlockPos pos, BlockState state,
@@ -47,7 +47,7 @@ public class SapphireShovelAoeSkill implements ItemSkill {
 
         if (ToolEnergy.hasEnergy(shovel) && !ToolEnergy.consumeForSkill(player, shovel, ToolEnergy.SHOVEL_COST))
             return;
-                BlockBreaker.breakBlocks(blockHitResult, pos, shovel, level, player, RADIUS, DEPTH, BlockTags.MINEABLE_WITH_SHOVEL);
+        BlockBreaker.breakBlocks(blockHitResult, pos, shovel, level, player, RADIUS, DEPTH, BlockTags.MINEABLE_WITH_SHOVEL);
     }
 
     @Override

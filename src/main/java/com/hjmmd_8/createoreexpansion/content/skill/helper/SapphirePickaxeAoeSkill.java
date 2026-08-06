@@ -46,7 +46,7 @@ public class SapphirePickaxeAoeSkill implements ItemSkill {
 
         if (ToolEnergy.hasEnergy(pickaxe) && !ToolEnergy.consumeForSkill(player, pickaxe, ToolEnergy.PICKAXE_COST))
             return;
-                BlockBreaker.breakBlocks(blockHitResult, pos, pickaxe, level, player, RADIUS, DEPTH, BlockTags.MINEABLE_WITH_PICKAXE);
+        BlockBreaker.breakBlocks(blockHitResult, pos, pickaxe, level, player, RADIUS, DEPTH, BlockTags.MINEABLE_WITH_PICKAXE);
     }
 
     @Override

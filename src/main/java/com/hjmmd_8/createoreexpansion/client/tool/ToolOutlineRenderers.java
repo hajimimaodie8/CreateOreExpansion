@@ -34,7 +34,7 @@ public class ToolOutlineRenderers {
 
     public static final ToolOutlineRenderer SAPPHIRE_SHOVEL = new ToolOutlineRenderer(
         RendererConfig.sapphire(AllItems.SAPPHIRE_SHOVEL),
-        new AreaRenderStrategy(6, 1)
+        new AreaRenderStrategy(7, 1)
     );
 
     public static final ToolOutlineRenderer SAPPHIRE_AXE = new ToolOutlineRenderer(
