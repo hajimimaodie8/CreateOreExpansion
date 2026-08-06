@@ -1,16 +1,24 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.tterrag.registrate.builders.ItemBuilder;
 import com.tterrag.registrate.util.entry.ItemEntry;
+import com.tterrag.registrate.util.nullness.NonNullFunction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.*;
 import net.neoforged.neoforge.common.Tags;
 
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import static com.simibubi.create.AllTags.AllItemTags.CREATE_INGOTS;
 import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
 
-public final class AllMyItems {
+public final class AllItems {
     // ===== 机械动力方式注册 =====
 
     // 这个变量名可以随便写，好理解就行，一般是item id的大写
@@ -105,6 +113,7 @@ public final class AllMyItems {
                     PickaxeItem.createAttributes(AllTiers.JADE, 1, -2.8F)
             ))
             .tag(ItemTags.PICKAXES)
+            .transform(addSkills(AllSkills.JADE_PICKAXE_AOE))
             .register();
 
     public static final ItemEntry<AxeItem> JADE_AXE = CreateOreExpansion.REGISTRATE
@@ -115,6 +124,7 @@ public final class AllMyItems {
                     AxeItem.createAttributes(AllTiers.JADE, 6, -3.0F)
             ))
             .tag(ItemTags.AXES)
+            .transform(addSkills(AllSkills.JADE_AXE_AOE))
             .register();
 
     public static final ItemEntry<ShovelItem> JADE_SHOVEL = CreateOreExpansion.REGISTRATE
@@ -125,6 +135,7 @@ public final class AllMyItems {
                     ShovelItem.createAttributes(AllTiers.JADE, 1.5F, -3.0F)
             ))
             .tag(ItemTags.SHOVELS)
+            .transform(addSkills(AllSkills.JADE_SHOVEL_AOE))
             .register();
 
     public static final ItemEntry<Item> TOPAZ_INGOT = CreateOreExpansion.REGISTRATE
@@ -215,6 +226,7 @@ public final class AllMyItems {
                     PickaxeItem.createAttributes(AllTiers.TOPAZ, 1.5F, -2.3F)
             ))
             .tag(ItemTags.PICKAXES)
+            .transform(addSkills(AllSkills.TOPAZ_PICKAXE_AOE))
             .register();
 
     public static final ItemEntry<ShovelItem> TOPAZ_SHOVEL= CreateOreExpansion.REGISTRATE
@@ -225,6 +237,7 @@ public final class AllMyItems {
                     ShovelItem.createAttributes(AllTiers.TOPAZ, 1.5F, -2.8F)
             ))
             .tag(ItemTags.SHOVELS)
+            .transform(addSkills(AllSkills.TOPAZ_SHOVEL_AOE))
             .register();
 
     public static final ItemEntry<AxeItem> TOPAZ_AXE = CreateOreExpansion.REGISTRATE
@@ -235,6 +248,7 @@ public final class AllMyItems {
                     AxeItem.createAttributes(AllTiers.TOPAZ, 6.5F, -3.2F)
             ))
             .tag(ItemTags.AXES)
+            .transform(addSkills(AllSkills.TOPAZ_AXE_AOE))
             .register();
 
     public static final ItemEntry<Item> SAPPHIRE_INGOT = CreateOreExpansion.REGISTRATE
@@ -325,6 +339,7 @@ public final class AllMyItems {
                     PickaxeItem.createAttributes(AllTiers.SAPPHIRE, 2, -2.5F)
             ))
             .tag(ItemTags.PICKAXES)
+            .transform(addSkills(AllSkills.SAPPHIRE_PICKAXE_AOE))
             .register();
 
     public static final ItemEntry<ShovelItem> SAPPHIRE_SHOVEL= CreateOreExpansion.REGISTRATE
@@ -335,6 +350,7 @@ public final class AllMyItems {
                     ShovelItem.createAttributes(AllTiers.SAPPHIRE, 1.5F, -2.8F)
             ))
             .tag(ItemTags.SHOVELS)
+            .transform(addSkills(AllSkills.SAPPHIRE_SHOVEL_AOE))
             .register();
 
     public static final ItemEntry<AxeItem> SAPPHIRE_AXE = CreateOreExpansion.REGISTRATE
@@ -345,11 +361,24 @@ public final class AllMyItems {
                     AxeItem.createAttributes(AllTiers.SAPPHIRE, 6.5F, -3.4F)
             ))
             .tag(ItemTags.AXES)
+            .transform(addSkills(AllSkills.SAPPHIRE_AXE_AOE))
             .register();
 
     public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CreateOreExpansion.REGISTRATE
             .item("jade_topaz_bow", JadeTopazBowItem::new)
             .model((ctx, provider) -> {})
             .register();
+
+    public static <T extends Item, P> ItemBuilder<T, P> addSkills(ItemBuilder<T, P> builder, ItemSkill... skills) {
+        if (skills == null) return builder;
+        return builder.properties(p -> p.component(AllDataComponents.SKILLS,
+                Arrays.stream(skills).map(AllSkills::getId)
+                        .filter(Objects::nonNull).map(ResourceLocation::toString).collect(Collectors.toList())));
+    }
+
+    public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, ItemBuilder<T, P>> addSkills(ItemSkill... skills) {
+        return builder -> addSkills(builder, skills);
+    }
+
     public static void register() {}
 }

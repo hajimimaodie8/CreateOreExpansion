@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.client.AllSpriteShifts;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
@@ -39,7 +38,7 @@ public final class AllMyBlocks {
                                         block,
                                         lt.applyExplosionDecay(
                                                 block,
-                                                LootItem.lootTableItem(AllMyItems.RAW_JADE.get())
+                                                LootItem.lootTableItem(AllItems.RAW_JADE.get())
                                                     .apply(ApplyBonusCount.addOreBonusCount(
                                                             enchantmentRegistryLookup.getOrThrow(Enchantments.FORTUNE)))
                                         )
@@ -66,7 +65,7 @@ public final class AllMyBlocks {
                                         block,
                                         lt.applyExplosionDecay(
                                                 block,
-                                                LootItem.lootTableItem(AllMyItems.RAW_JADE.get())
+                                                LootItem.lootTableItem(AllItems.RAW_JADE.get())
                                                         .apply(ApplyBonusCount.addOreBonusCount(
                                                                 enchantmentRegistryLookup.getOrThrow(Enchantments.FORTUNE)))
                                         )
@@ -129,7 +128,7 @@ public final class AllMyBlocks {
                                 block,
                                 lt.applyExplosionDecay(
                                         block,
-                                        LootItem.lootTableItem(AllMyItems.RAW_TOPAZ.get())
+                                        LootItem.lootTableItem(AllItems.RAW_TOPAZ.get())
                                                 .apply(ApplyBonusCount.addOreBonusCount(
                                                         enchantmentRegistryLookup.getOrThrow(Enchantments.FORTUNE)))
                                 )
@@ -156,7 +155,7 @@ public final class AllMyBlocks {
                                 block,
                                 lt.applyExplosionDecay(
                                         block,
-                                        LootItem.lootTableItem(AllMyItems.RAW_TOPAZ.get())
+                                        LootItem.lootTableItem(AllItems.RAW_TOPAZ.get())
                                                 .apply(ApplyBonusCount.addOreBonusCount(
                                                         enchantmentRegistryLookup.getOrThrow(Enchantments.FORTUNE)))
                                 )
@@ -213,7 +212,7 @@ public final class AllMyBlocks {
                                 block,
                                 lt.applyExplosionDecay(
                                         block,
-                                        LootItem.lootTableItem(AllMyItems.RAW_SAPPHIRE.get())
+                                        LootItem.lootTableItem(AllItems.RAW_SAPPHIRE.get())
                                                 .apply(ApplyBonusCount.addOreBonusCount(
                                                         enchantmentRegistryLookup.getOrThrow(Enchantments.FORTUNE)))
                                 )

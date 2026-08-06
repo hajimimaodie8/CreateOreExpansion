@@ -1,6 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.skill.helper;
 
-import com.hjmmd_8.createoreexpansion.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -32,7 +35,7 @@ import java.util.Set;
  *   <tr><td>MINEABLE_WITH_SHOVEL</td><td>可改为其他标签（如 MINEABLE_WITH_PICKAXE）</td></tr>
  * </table>
  */
-public class TopazShovelAoeHelper {
+public class TopazShovelAoeSkill implements ItemSkill {
 
     /** 最大挖掘深度（格数） */
     private static final int MAX_DEPTH = 8;
@@ -85,5 +88,19 @@ public class TopazShovelAoeHelper {
                 return;
             BlockBreaker.breakPositions(targets, pos, shovel, level, player);
         }
+    }
+
+    @Override
+    public void release(Object context) {
+        if (!SkillType.EXCAVATION_SKILL.cast(context))
+            throw new ClassCastException("Expected ExcavationSkillContext");
+        if (context instanceof ExcavationSkillContext ctx) {
+            causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+        }
+    }
+
+    @Override
+    public SkillType getType() {
+        return SkillType.EXCAVATION_SKILL;
     }
 }

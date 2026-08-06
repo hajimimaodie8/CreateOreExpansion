@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 /**
  * 所有工具Tier的枚举类。
  *
- * @see AllMyItems
+ * @see AllItems
  * @see net.minecraft.world.item.Tiers
  * @see net.minecraft.world.item.Tier
  * @author Leaf
@@ -21,11 +21,11 @@ public enum AllTiers implements Tier {
     //     ↓耐久基数        速度                伤害                附魔值
     JADE(1600, 8.5F, 3.5F, 15,
     //                不可挖掘方块                                   修复材料
-            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllMyItems.JADE_INGOT.get())),
+            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllItems.JADE_INGOT.get())),
     TOPAZ(1828, 9.5F, 4.0F, 14,
-            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllMyItems.TOPAZ_INGOT.get())),
+            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllItems.TOPAZ_INGOT.get())),
     SAPPHIRE(2048, 10.0F, 4.5F, 16,
-            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllMyItems.SAPPHIRE_INGOT.get()));
+            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllItems.SAPPHIRE_INGOT.get()));
 
     private final int uses;
     private final float speed;

@@ -1,6 +1,6 @@
-package com.hjmmd_8.createoreexpansion.tool;
+package com.hjmmd_8.createoreexpansion.content.equipment.tool;
 
-import com.hjmmd_8.createoreexpansion.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;

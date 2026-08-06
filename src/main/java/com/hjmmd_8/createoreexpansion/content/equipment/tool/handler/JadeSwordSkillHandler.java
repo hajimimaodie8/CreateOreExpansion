@@ -1,7 +1,7 @@
-package com.hjmmd_8.createoreexpansion.tool;
+package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllMyItems;
+import com.hjmmd_8.createoreexpansion.common.AllItems;
 
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -12,7 +12,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
 @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
-public class SapphireSwordSkillHandler {
+public class JadeSwordSkillHandler {
 
 	private static final float DAMAGE_MULTIPLIER = 1.5F;
 
@@ -26,31 +26,24 @@ public class SapphireSwordSkillHandler {
 			return;
 
 		ItemStack sword = player.getMainHandItem();
-		if (!sword.is(AllMyItems.SAPPHIRE_SWORD.get()))
+		if (!sword.is(AllItems.JADE_SWORD.get()))
 			return;
 		if (player.getCooldowns().isOnCooldown(sword.getItem()))
-			return;
-		if (!ToolEnergy.consumeForSkill(player, sword, ToolEnergy.SWORD_COST))
 			return;
 
 		trigger(player, event.getEntity());
 		event.setAmount(event.getAmount() * DAMAGE_MULTIPLIER);
-		player.getCooldowns().addCooldown(sword.getItem(), 8 * 20);
+		player.getCooldowns().addCooldown(sword.getItem(), 3 * 20);
 	}
 
 	private static void trigger(Player player, LivingEntity target) {
-		EquipmentSlot[] slots = { EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND,
-			EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET };
-		for (EquipmentSlot slot : slots) {
-			ItemStack stack = target.getItemBySlot(slot);
-			if (stack.isEmpty())
-				continue;
-			target.setItemSlot(slot, ItemStack.EMPTY);
-			if (!player.getInventory().add(stack))
-				target.spawnAtLocation(stack);
-		}
-		player.heal(4.0F);
-		target.hurt(player.damageSources().magic(), 4.0F);
+		if (target.level().getRandom().nextFloat() >= 0.75F)
+			return;
+		ItemStack held = target.getMainHandItem();
+		if (held.isEmpty())
+			return;
+		target.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+		target.spawnAtLocation(held);
 	}
 
 }

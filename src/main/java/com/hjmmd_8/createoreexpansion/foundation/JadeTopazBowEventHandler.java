@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.foundation;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.common.AllModEffects;
 
 import net.minecraft.world.effect.MobEffectInstance;
@@ -26,14 +26,14 @@ public class JadeTopazBowEventHandler {
 
 	@SubscribeEvent
 	public static void onProjectileImpact(ProjectileImpactEvent event) {
-		if (event.getEntity().level().isClientSide)
+        if (event.getEntity().level().isClientSide)
 			return;
 		if (!(event.getProjectile() instanceof Arrow arrow))
 			return;
 		if (!(arrow.getOwner() instanceof Player player))
 			return;
 
-		String skill = arrow.getPersistentData().getString(JadeTopazBowItem.SKILL_TAG);
+		String skill = arrow.getPersistentData().getString(JadeTopazBowItem.TAG_SKILL);
 		if (skill.isEmpty())
 			return;
 		if (!(event.getRayTraceResult() instanceof EntityHitResult hit))
@@ -52,8 +52,7 @@ public class JadeTopazBowEventHandler {
 		float roll = target.level().getRandom().nextFloat();
 		if (roll < 0.5F) {
 			// 50% 无效果，也不掉落主手
-			return;
-		} else if (roll < 0.7F) {
+        } else if (roll < 0.7F) {
 			addEffect(target, MobEffects.WITHER, 60, 0);
 		} else if (roll < 0.9F) {
 			addEffect(target, MobEffects.MOVEMENT_SLOWDOWN, 60, 0);

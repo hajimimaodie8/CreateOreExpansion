@@ -1,5 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.skill.helper;
 
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,7 +18,7 @@ import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import java.util.HashSet;
 import java.util.Set;
 
-public class JadeShovelAoeHelper {
+public class JadeShovelAoeSkill implements ItemSkill {
 
     private static final int MAX_DEPTH = 6;
 
@@ -53,5 +56,19 @@ public class JadeShovelAoeHelper {
         if (!targets.isEmpty()) {
             BlockBreaker.breakPositions(targets, pos, shovel, level, player);
         }
+    }
+
+    @Override
+    public void release(Object context) {
+        if (!SkillType.EXCAVATION_SKILL.cast(context))
+            throw new ClassCastException("Expected ExcavationSkillContext");
+        if (context instanceof ExcavationSkillContext ctx) {
+            causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+        }
+    }
+
+    @Override
+    public SkillType getType() {
+        return SkillType.EXCAVATION_SKILL;
     }
 }

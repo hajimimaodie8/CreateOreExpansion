@@ -1,6 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.skill.helper;
 
-import com.hjmmd_8.createoreexpansion.tool.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
@@ -15,7 +18,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
 
-public class JadeAxeAoeHelper {
+public class JadeAxeAoeSkill implements ItemSkill {
 
     private static final int SEARCH_RANGE = 8;
     private static final int MAX_BLOCKS = 200;
@@ -65,5 +68,19 @@ public class JadeAxeAoeHelper {
             BlockBreaker.breakPositions(toDestroy, pos, axe, level, player);
             ToolSkillCooldown.start(player, axe, 3);
         }
+    }
+
+    @Override
+    public void release(Object context) {
+        if (!SkillType.EXCAVATION_SKILL.cast(context))
+            throw new ClassCastException("Expected ExcavationSkillContext");
+        if (context instanceof ExcavationSkillContext ctx) {
+            causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+        }
+    }
+
+    @Override
+    public SkillType getType() {
+        return SkillType.EXCAVATION_SKILL;
     }
 }

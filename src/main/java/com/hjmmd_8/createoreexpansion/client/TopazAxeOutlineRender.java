@@ -15,7 +15,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Matrix4f;
-import com.hjmmd_8.createoreexpansion.common.AllMyItems;
+import com.hjmmd_8.createoreexpansion.common.AllItems;
 
 import java.util.*;
 
@@ -47,7 +47,7 @@ public class TopazAxeOutlineRender {
         if (player == null || !player.isShiftKeyDown()) return;
 
         ItemStack held = player.getMainHandItem();
-        if (!held.is(AllMyItems.TOPAZ_AXE.get())) return;
+        if (!held.is(AllItems.TOPAZ_AXE.get())) return;
 
         var hit = Minecraft.getInstance().hitResult;
         if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;

@@ -17,7 +17,7 @@ public enum AllCreativeModeTabs {
     // 具体枚举项
     @SuppressWarnings("Convert2MethodRef")
     BASE_TAB("base_tab", "itemGroup.createoreexpansion",
-            com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(), () -> AllMyItems.JADE_INGOT.asStack());
+            com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(), () -> AllItems.JADE_INGOT.asStack());
 
     // 演出注册器
     private static final DeferredRegister<CreativeModeTab> TABS

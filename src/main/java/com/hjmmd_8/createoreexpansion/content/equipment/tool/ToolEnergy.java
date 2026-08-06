@@ -1,7 +1,7 @@
-package com.hjmmd_8.createoreexpansion.tool;
+package com.hjmmd_8.createoreexpansion.content.equipment.tool;
 
-import com.hjmmd_8.createoreexpansion.item.JadeTopazBowItem;
-import com.hjmmd_8.createoreexpansion.common.AllMyItems;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.common.AllItems;
 import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
 import net.minecraft.ChatFormatting;
@@ -31,11 +31,11 @@ public final class ToolEnergy {
 	public static int getMaxEnergy(ItemStack stack) {
 		if (stack.getItem() instanceof JadeTopazBowItem)
 			return BOW_MAX;
-		if (stack.is(AllMyItems.TOPAZ_SWORD.get()) || stack.is(AllMyItems.TOPAZ_PICKAXE.get())
-			|| stack.is(AllMyItems.TOPAZ_AXE.get()) || stack.is(AllMyItems.TOPAZ_SHOVEL.get()))
+		if (stack.is(AllItems.TOPAZ_SWORD.get()) || stack.is(AllItems.TOPAZ_PICKAXE.get())
+			|| stack.is(AllItems.TOPAZ_AXE.get()) || stack.is(AllItems.TOPAZ_SHOVEL.get()))
 			return TOPAZ_MAX;
-		if (stack.is(AllMyItems.SAPPHIRE_SWORD.get()) || stack.is(AllMyItems.SAPPHIRE_PICKAXE.get())
-			|| stack.is(AllMyItems.SAPPHIRE_AXE.get()) || stack.is(AllMyItems.SAPPHIRE_SHOVEL.get()))
+		if (stack.is(AllItems.SAPPHIRE_SWORD.get()) || stack.is(AllItems.SAPPHIRE_PICKAXE.get())
+			|| stack.is(AllItems.SAPPHIRE_AXE.get()) || stack.is(AllItems.SAPPHIRE_SHOVEL.get()))
 			return SAPPHIRE_MAX;
 		return 0;
 	}
@@ -102,21 +102,21 @@ public final class ToolEnergy {
 	}
 
 	public static int getToolColor(ItemStack stack) {
-		if (stack.is(AllMyItems.TOPAZ_SWORD.get()) || stack.is(AllMyItems.TOPAZ_PICKAXE.get())
-			|| stack.is(AllMyItems.TOPAZ_AXE.get()) || stack.is(AllMyItems.TOPAZ_SHOVEL.get()))
+		if (stack.is(AllItems.TOPAZ_SWORD.get()) || stack.is(AllItems.TOPAZ_PICKAXE.get())
+			|| stack.is(AllItems.TOPAZ_AXE.get()) || stack.is(AllItems.TOPAZ_SHOVEL.get()))
 			return 0xFFFF55;
-		if (stack.is(AllMyItems.SAPPHIRE_SWORD.get()) || stack.is(AllMyItems.SAPPHIRE_PICKAXE.get())
-			|| stack.is(AllMyItems.SAPPHIRE_AXE.get()) || stack.is(AllMyItems.SAPPHIRE_SHOVEL.get()))
+		if (stack.is(AllItems.SAPPHIRE_SWORD.get()) || stack.is(AllItems.SAPPHIRE_PICKAXE.get())
+			|| stack.is(AllItems.SAPPHIRE_AXE.get()) || stack.is(AllItems.SAPPHIRE_SHOVEL.get()))
 			return 0x55AAFF;
 		return 0xFFFFFF;
 	}
 
 	public static int getDarkColor(ItemStack stack) {
-		if (stack.is(AllMyItems.TOPAZ_SWORD.get()) || stack.is(AllMyItems.TOPAZ_PICKAXE.get())
-			|| stack.is(AllMyItems.TOPAZ_AXE.get()) || stack.is(AllMyItems.TOPAZ_SHOVEL.get()))
+		if (stack.is(AllItems.TOPAZ_SWORD.get()) || stack.is(AllItems.TOPAZ_PICKAXE.get())
+			|| stack.is(AllItems.TOPAZ_AXE.get()) || stack.is(AllItems.TOPAZ_SHOVEL.get()))
 			return 0x8A6D00;
-		if (stack.is(AllMyItems.SAPPHIRE_SWORD.get()) || stack.is(AllMyItems.SAPPHIRE_PICKAXE.get())
-			|| stack.is(AllMyItems.SAPPHIRE_AXE.get()) || stack.is(AllMyItems.SAPPHIRE_SHOVEL.get()))
+		if (stack.is(AllItems.SAPPHIRE_SWORD.get()) || stack.is(AllItems.SAPPHIRE_PICKAXE.get())
+			|| stack.is(AllItems.SAPPHIRE_AXE.get()) || stack.is(AllItems.SAPPHIRE_SHOVEL.get()))
 			return 0x1F4F8A;
 		return 0x808080;
 	}

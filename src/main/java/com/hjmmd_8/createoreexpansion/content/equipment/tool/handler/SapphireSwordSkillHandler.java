@@ -1,8 +1,9 @@
-package com.hjmmd_8.createoreexpansion.tool;
+package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllMyItems;
+import com.hjmmd_8.createoreexpansion.common.AllItems;
 
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -12,7 +13,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
 @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
-public class TopazSwordSkillHandler {
+public class SapphireSwordSkillHandler {
 
 	private static final float DAMAGE_MULTIPLIER = 1.5F;
 
@@ -26,7 +27,7 @@ public class TopazSwordSkillHandler {
 			return;
 
 		ItemStack sword = player.getMainHandItem();
-		if (!sword.is(AllMyItems.TOPAZ_SWORD.get()))
+		if (!sword.is(AllItems.SAPPHIRE_SWORD.get()))
 			return;
 		if (player.getCooldowns().isOnCooldown(sword.getItem()))
 			return;
@@ -35,39 +36,22 @@ public class TopazSwordSkillHandler {
 
 		trigger(player, event.getEntity());
 		event.setAmount(event.getAmount() * DAMAGE_MULTIPLIER);
-		player.getCooldowns().addCooldown(sword.getItem(), 5 * 20);
+		player.getCooldowns().addCooldown(sword.getItem(), 8 * 20);
 	}
 
 	private static void trigger(Player player, LivingEntity target) {
-		ItemStack mainHand = target.getMainHandItem();
-		if (!mainHand.isEmpty()) {
-			target.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
-			transferOrDrop(player, target, mainHand);
-			return;
-		}
-
-		EquipmentSlot[] armorSlots = { EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET };
-		for (EquipmentSlot slot : armorSlots) {
+		EquipmentSlot[] slots = { EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND,
+			EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET };
+		for (EquipmentSlot slot : slots) {
 			ItemStack stack = target.getItemBySlot(slot);
-			if (!stack.isEmpty()) {
-				target.setItemSlot(slot, ItemStack.EMPTY);
-				transferOrDrop(player, target, stack);
-				return;
-			}
+			if (stack.isEmpty())
+				continue;
+			target.setItemSlot(slot, ItemStack.EMPTY);
+			if (!player.getInventory().add(stack))
+				target.spawnAtLocation(stack);
 		}
-
-		ItemStack offhand = target.getItemBySlot(EquipmentSlot.OFFHAND);
-		if (!offhand.isEmpty()) {
-			target.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
-			transferOrDrop(player, target, offhand);
-		}
-	}
-
-	private static void transferOrDrop(Player player, LivingEntity target, ItemStack stack) {
-		if (player.level().getRandom().nextFloat() < 0.5F && player.getInventory().add(stack))
-			return;
-		if (!stack.isEmpty())
-			target.spawnAtLocation(stack);
+		player.heal(4.0F);
+		target.hurt(player.damageSources().magic(), 4.0F);
 	}
 
 }

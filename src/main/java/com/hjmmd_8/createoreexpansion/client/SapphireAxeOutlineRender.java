@@ -15,7 +15,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Matrix4f;
-import com.hjmmd_8.createoreexpansion.common.AllMyItems;
+import com.hjmmd_8.createoreexpansion.common.AllItems;
 
 import java.util.*;
 
@@ -37,7 +37,7 @@ public class SapphireAxeOutlineRender {
         if (player == null || !player.isShiftKeyDown()) return;
 
         ItemStack held = player.getMainHandItem();
-        if (!held.is(AllMyItems.SAPPHIRE_AXE.get())) return;
+        if (!held.is(AllItems.SAPPHIRE_AXE.get())) return;
 
         var hitResult = Minecraft.getInstance().hitResult;
         if (hitResult == null || hitResult.getType() != HitResult.Type.BLOCK) return;

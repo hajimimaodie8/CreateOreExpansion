@@ -1,7 +1,10 @@
 package com.hjmmd_8.createoreexpansion.content.skill.helper;
 
-import com.hjmmd_8.createoreexpansion.tool.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.tool.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
@@ -21,7 +24,6 @@ import java.util.Set;
  *
  * <p>技能逻辑：按住 Shift 时，破坏原木触发 BFS 遍历（26 方向），
  * 将整棵树（全部相连的原木 + 树叶）连锁破坏。搜索范围 16x16x16，
- * 超过 {@link #MAX_TREE_BLOCKS}（200）个方块则不触发。</p>
  *
  * <p>使用的标签：{@link BlockTags#LOGS}（原木）、{@link BlockTags#LEAVES}（树叶）</p>
  *
@@ -34,12 +36,11 @@ import java.util.Set;
  *   <tr><td>AllItems.xxx</td><td>改成对应物品注册名</td></tr>
  * </table>
  */
-public class TopazAxeAoeHelper {
+public class TopazAxeAoeSkill implements ItemSkill {
 
     /** 搜索半径（8 = 16x16x16 区域 = -8 ~ +8） */
     private static final int SEARCH_RANGE = 8;
-    /** 超过此数量的树不触发连锁（太大挖不动） */
-    
+
 
     /**
      * BFS 搜索相连的原木和树叶（26 方向，包含斜角）。
@@ -101,5 +102,19 @@ public class TopazAxeAoeHelper {
             BlockBreaker.breakPositions(toDestroy, pos, axe, level, player);
             ToolSkillCooldown.start(player, axe, 5);
         }
+    }
+
+    @Override
+    public void release(Object context) {
+        if (!SkillType.EXCAVATION_SKILL.cast(context))
+            throw new ClassCastException("Expected ExcavationSkillContext");
+        if (context instanceof ExcavationSkillContext ctx) {
+            causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+        }
+    }
+
+    @Override
+    public SkillType getType() {
+        return SkillType.EXCAVATION_SKILL;
     }
 }

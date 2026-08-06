@@ -1,28 +1,19 @@
 package com.hjmmd_8.createoreexpansion;
 
-import com.hjmmd_8.createoreexpansion.common.AllModEffects;
-import com.hjmmd_8.createoreexpansion.common.AllModPotions;
-import com.hjmmd_8.createoreexpansion.tool.ToolEnergyTooltip;
+import com.hjmmd_8.createoreexpansion.common.*;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergyTooltip;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.KineticStats;
 import com.simibubi.create.foundation.item.TooltipModifier;
 import net.createmod.catnip.lang.FontHelper;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.registries.RegisterEvent;
-import com.hjmmd_8.createoreexpansion.common.AllConfig;
-import com.hjmmd_8.createoreexpansion.common.AllMyBlocks;
-import com.hjmmd_8.createoreexpansion.common.AllCreativeModeTabs;
-import com.hjmmd_8.createoreexpansion.common.AllFanProcessingTypes;
-import com.hjmmd_8.createoreexpansion.common.AllMyFluids;
-import com.hjmmd_8.createoreexpansion.common.AllMyItems;
-import com.hjmmd_8.createoreexpansion.common.AllMetal;
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
-import com.hjmmd_8.createoreexpansion.common.AllTiers;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -59,12 +50,15 @@ public class CreateOreExpansion {
         // 如果不加这行代码，Registrate 的功能将会失效
         REGISTRATE.registerEventListeners(modEventBus);
 
+        AllSkills.register();
+
         AllCreativeModeTabs.register(modEventBus);
 
         // 主动触发类加载，让Java加载静态字段
+        AllDataComponents.register(modEventBus);
         AllMyBlocks.register();
         AllTiers.register();
-        AllMyItems.register();
+        AllItems.register();
         AllMetal.register();
         AllMyFluids.register();
         AllModEffects.register(modEventBus);
@@ -78,5 +72,9 @@ public class CreateOreExpansion {
 
     public static void onRegister(RegisterEvent event) {
         AllFanProcessingTypes.init();
+    }
+
+    public static ResourceLocation modLoc(String path) {
+        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
     }
 }

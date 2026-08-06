@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.tool;
+package com.hjmmd_8.createoreexpansion.content.equipment.tool;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;

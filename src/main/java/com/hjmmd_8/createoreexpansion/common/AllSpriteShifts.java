@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.client;
+package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.simibubi.create.foundation.block.connected.AllCTTypes;

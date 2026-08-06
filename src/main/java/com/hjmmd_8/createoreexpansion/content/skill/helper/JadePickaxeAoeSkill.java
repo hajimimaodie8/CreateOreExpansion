@@ -1,21 +1,24 @@
 package com.hjmmd_8.createoreexpansion.content.skill.helper;
 
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraft.tags.BlockTags;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class JadePickaxeAoeHelper {
+public class JadePickaxeAoeSkill implements ItemSkill {
 
     public static void causeAoe(Level level, BlockPos pos, BlockState state,
                                 ItemStack pickaxe, LivingEntity livingEntity) {
@@ -42,5 +45,19 @@ public class JadePickaxeAoeHelper {
         if (!targets.isEmpty()) {
             BlockBreaker.breakPositions(targets, pos, pickaxe, level, player);
         }
+    }
+
+    @Override
+    public void release(Object context) {
+        if (!SkillType.EXCAVATION_SKILL.cast(context))
+            throw new ClassCastException("Expected ExcavationSkillContext");
+        if (context instanceof ExcavationSkillContext ctx) {
+            causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+        }
+    }
+
+    @Override
+    public SkillType getType() {
+        return SkillType.EXCAVATION_SKILL;
     }
 }

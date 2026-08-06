@@ -1,6 +1,8 @@
-package com.hjmmd_8.createoreexpansion.tool;
+package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 
-import com.hjmmd_8.createoreexpansion.content.skill.helper.SapphireAxeAoeHelper;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.content.skill.helper.SapphireAxeAoeSkill;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.player.Player;
@@ -10,7 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import com.hjmmd_8.createoreexpansion.common.AllMyItems;
+import com.hjmmd_8.createoreexpansion.common.AllItems;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 
 import java.util.Set;
@@ -32,10 +34,10 @@ public class SapphireAxeSpeedHandler {
     @SubscribeEvent
     public static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
         Player player = event.getEntity();
-        if (player == null || !player.isShiftKeyDown()) return;
+        if (!player.isShiftKeyDown()) return;
 
         ItemStack held = player.getMainHandItem();
-        if (!held.is(AllMyItems.SAPPHIRE_AXE.get())) return;
+        if (!held.is(AllItems.SAPPHIRE_AXE.get())) return;
         if (!ToolSkillCooldown.isReady(player, held)) return;
         if (ToolEnergy.hasEnergy(held) && !ToolEnergy.canUseSkill(player, held)) {
             ToolEnergy.sendLowEnergy(player);
@@ -49,7 +51,7 @@ public class SapphireAxeSpeedHandler {
         if (pos == null) return;
 
         Level level = player.level();
-        Set<BlockPos> tree = SapphireAxeAoeHelper.calculateTreeBlocks(level, pos);
+        Set<BlockPos> tree = SapphireAxeAoeSkill.calculateTreeBlocks(level, pos);
 
         // 只计原木数，不计树叶
         int logCount = 0;

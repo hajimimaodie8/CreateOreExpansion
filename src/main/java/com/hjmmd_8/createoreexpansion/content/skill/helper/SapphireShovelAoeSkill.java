@@ -1,6 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.skill.helper;
 
-import com.hjmmd_8.createoreexpansion.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -26,7 +29,7 @@ import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
  *   <li>DEPTH — AOE 纵深（1 = 单层）</li>
  * </ul>
  */
-public class SapphireShovelAoeHelper {
+public class SapphireShovelAoeSkill implements ItemSkill {
 
     private static final int RADIUS = 6;
     private static final int DEPTH = 1;
@@ -45,5 +48,19 @@ public class SapphireShovelAoeHelper {
         if (ToolEnergy.hasEnergy(shovel) && !ToolEnergy.consumeForSkill(player, shovel, ToolEnergy.SHOVEL_COST))
             return;
                 BlockBreaker.breakBlocks(blockHitResult, pos, shovel, level, player, RADIUS, DEPTH, BlockTags.MINEABLE_WITH_SHOVEL);
+    }
+
+    @Override
+    public void release(Object context) {
+        if (!SkillType.EXCAVATION_SKILL.cast(context))
+            throw new ClassCastException("Expected ExcavationSkillContext");
+        if (context instanceof ExcavationSkillContext ctx) {
+            causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+        }
+    }
+
+    @Override
+    public SkillType getType() {
+        return SkillType.EXCAVATION_SKILL;
     }
 }
