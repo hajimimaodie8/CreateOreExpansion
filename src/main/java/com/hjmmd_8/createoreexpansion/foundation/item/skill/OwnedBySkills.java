@@ -17,6 +17,10 @@ public interface OwnedBySkills {
         return skills().containsKey(type);
     }
 
+    default boolean hasSkill(ItemSkill skill) {
+        return skills().containsKey(skill.getType()) && skills().get(skill.getType()).contains(skill);
+    }
+
     default OwnedBySkills addSkill(ItemSkill skill) {
         if (!skills().containsKey(skill.getType())) {
             skills().put(skill.getType(), new ArrayList<>());

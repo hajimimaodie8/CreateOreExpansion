@@ -1,183 +1,159 @@
 package com.hjmmd_8.createoreexpansion.foundation.util;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * AOE 方块破坏器 — 所有 AOE 技能共用的方块遍历/破坏/掉落/耐久逻辑。
+ * AOE 方块破坏器 — 所有 AOE 技能共用。
  *
- * <p>新建工具时<b>无需修改此文件</b>。</p>
- *
- * <p>提供两个入口方法：</p>
- * <ul>
- *   <li>{@link #breakBlocks(BlockHitResult, BlockPos, ItemStack, Level, LivingEntity, int, int)}
- *   — 基于 BoundingBox 遍历破坏（供镐子 3x3 等范围技能使用，自动跳过玩家点击的方块）</li>
- *   <li>{@link #breakPositions(Set, BlockPos, ItemStack, Level, LivingEntity)}
- *   — 基于预计算的位置集合破坏（供铲子一列、斧头连锁树等使用）</li>
- * </ul>
- *
- * <p>通用规则：<br>
- * - 生存模式跳过硬度 <= 0 的方块（基岩）；创造模式允许破坏任何方块<br>
- * - 跳过需要更高等级工具的方块（强化深板岩等）<br>
- * - 耐久消耗 = ceil(破坏总数 / 4) + 1<br>
- * - 创造模式不扣耐久、不掉落物</p>
+ * <p>统一依赖 {@link DualDirection} 计算范围，单个方法覆盖所有场景。</p>
  */
+@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 public class BlockBreaker {
-    /** 向后兼容版本（不传 mineableTag） */
-    public static void breakBlocks(BlockHitResult pick, BlockPos blockPos, ItemStack tool,
-                                   Level level, LivingEntity livingEntity, int radius, int depth) {
-        breakBlocks(pick, blockPos, tool, level, livingEntity, radius, depth, null);
-    }
-
 
     /**
-     * 基于 BoundingBox 遍历破坏方块（供镐子 3x3 使用）。
+     * 基于 DualDirection 破坏方块
      *
-     * @param pick         光线追踪结果（提供被击中的面方向）
-     * @param blockPos     玩家点击的方块位置（会跳过自身）
-     * @param tool         当前手持工具
-     * @param level        世界
-     * @param livingEntity 挖掘者
-     * @param radius       AOE 半径
-     * @param depth        AOE 纵深
+     * @param dd        双方向（从玩家点击解析）
+     * @param center    中心方块（会被跳过）
+     * @param tool      手持工具
+     * @param level     世界
+     * @param entity    挖掘者
+     * @param width     横向宽度
+     * @param height    纵向高度
+     * @param depth     挖掘深度
      */
-    public static void breakBlocks(BlockHitResult pick, BlockPos blockPos, ItemStack tool,
-                                   Level level, LivingEntity livingEntity, int radius, int depth,
+    public static void breakBlocks(DualDirection dd, BlockPos center, ItemStack tool,
+                                   Level level, LivingEntity entity,
+                                   int width, int height, int depth) {
+        breakBlocks(dd, center, tool, level, entity, width, height, depth, null);
+    }
+
+    /**
+     * 基于 DualDirection 破坏方块（带 mineableTag 过滤）
+     */
+    public static void breakBlocks(DualDirection dd, BlockPos center, ItemStack tool,
+                                   Level level, LivingEntity entity,
+                                   int width, int height, int depth,
                                    TagKey<Block> mineableTag) {
-        if (!(livingEntity instanceof ServerPlayer player)) return;
+        if (!(entity instanceof ServerPlayer player)) return;
+        if (!player.isCreative() && tool.getDamageValue() >= tool.getMaxDamage() - 1) return;
 
-        Direction direction = pick.getDirection();
-        BoundingBox boundingBox = AreaUtil.getAreaOfEffect(blockPos, direction, radius, depth);
-
-        if (!player.isCreative() && (tool.getDamageValue() >= tool.getMaxDamage() - 1)) return;
-
+        Set<BlockPos> positions = dd.collect(center, width, height, depth);
         int damage = 0;
-        Iterator<BlockPos> iterator = BlockPos.betweenClosedStream(boundingBox).iterator();
-        Set<BlockPos> removedPos = new HashSet<>();
 
-        while (iterator.hasNext()) {
-            BlockPos pos = iterator.next();
-            if (pick.getBlockPos().equals(pos)) continue;
+        for (BlockPos pos : positions) {
+            if (!player.isCreative() && tool.getDamageValue() + damage >= tool.getMaxDamage() - 1) break;
 
-            boolean isBroken = (tool.getDamageValue() + (damage + 1)) >= tool.getMaxDamage() - 1;
-            if (!player.isCreative() && isBroken) break;
+            BlockState state = level.getBlockState(pos);
+            if (!canBreak(state, level, pos, player, mineableTag)) continue;
 
-            BlockState targetState = level.getBlockState(pos);
-                        if (removedPos.contains(pos) || !AreaUtil.canDestroy(targetState, level, pos)) continue;
-            if (mineableTag != null && !targetState.is(mineableTag)) continue;
-            if (!player.isCreative() && targetState.getDestroySpeed(level, pos) <= 0) continue;
-            if (targetState.requiresCorrectToolForDrops() && !player.hasCorrectToolForDrops(targetState)) continue;
-
-            if (!player.isCreative()) {
-                boolean correctToolForDrops = player.hasCorrectToolForDrops(targetState);
-                if (correctToolForDrops) {
-                    targetState.spawnAfterBreak((ServerLevel) level, pos, tool, true);
-                    List<ItemStack> drops = Block.getDrops(targetState, (ServerLevel) level, pos,
-                            level.getBlockEntity(pos), livingEntity, tool);
-                    List<ItemEntity> dropEntities = drops.stream()
-                            .map(e -> new ItemEntity(level, pos.getX(), pos.getY(), pos.getZ(), e))
-                            .collect(Collectors.toList());
-                    for (ItemEntity entity : dropEntities) level.addFreshEntity(entity);
-
-                    if (level.getGameRules().getBoolean(GameRules.RULE_DOBLOCKDROPS)) {
-                        int xp = targetState.getBlock().getExpDrop(targetState, (ServerLevel) level, pos,
-                                level.getBlockEntity(pos), livingEntity, tool);
-                        if (xp > 0) ExperienceOrb.award((ServerLevel) level, Vec3.atCenterOf(pos), xp);
-                    }
-                }
-            }
-
-            removedPos.add(pos);
-            targetState.getBlock().destroy(level, pos, targetState);
-            level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-            level.gameEvent(GameEvent.BLOCK_DESTROY, blockPos, GameEvent.Context.of(livingEntity, targetState));
-            player.awardStat(Stats.BLOCK_MINED.get(targetState.getBlock()));
-            player.causeFoodExhaustion(0.005F);
+            breakSingle(state, pos, level, player, tool);
             damage++;
         }
 
-        if (damage != 0 && !player.isCreative()) {
-            int durabilityCost = (int) Math.ceil(damage / 4.0) + 1;
-            tool.hurtAndBreak(durabilityCost, livingEntity, net.minecraft.world.entity.EquipmentSlot.MAINHAND);
-        }
+        applyDurability(tool, entity, damage, player.isCreative());
     }
 
     /**
-     * 基于预计算的位置集合破坏方块（供铲子一列/斧头连锁使用）。
-     *
-     * @param positions   要破坏的方块位置集合（需预先计算好）
-     * @param clickedPos  玩家点击的方块位置（collection 中会跳过此位置）
-     * @param tool        当前手持工具
-     * @param level       世界
-     * @param livingEntity 挖掘者
+     * 破坏预先计算的位置集合
      */
-    public static void breakPositions(Set<BlockPos> positions, BlockPos clickedPos,
-                                      ItemStack tool, Level level, LivingEntity livingEntity) {
-        if (!(livingEntity instanceof ServerPlayer player)) return;
+    public static void breakPositions(Set<BlockPos> positions, BlockPos center,
+                                      ItemStack tool, Level level, LivingEntity entity) {
+        if (!(entity instanceof ServerPlayer player)) return;
+        if (!player.isCreative() && tool.getDamageValue() >= tool.getMaxDamage() - 1) return;
 
         int damage = 0;
+
         for (BlockPos pos : positions) {
-            if (pos.equals(clickedPos)) continue;
+            if (pos.equals(center)) continue;
+            if (!player.isCreative() && tool.getDamageValue() + damage >= tool.getMaxDamage() - 1) break;
 
-            BlockState targetState = level.getBlockState(pos);
-            if (!AreaUtil.canDestroy(targetState, level, pos)) continue;
-            if (!player.isCreative() && targetState.getDestroySpeed(level, pos) <= 0) continue;
-            if (targetState.requiresCorrectToolForDrops() && !player.hasCorrectToolForDrops(targetState)) continue;
+            BlockState state = level.getBlockState(pos);
+            if (!canBreak(state, level, pos, player, null)) continue;
 
-            if (!player.isCreative()) {
-                if (player.hasCorrectToolForDrops(targetState)) {
-                    targetState.spawnAfterBreak((ServerLevel) level, pos, tool, true);
-                    List<ItemStack> drops = Block.getDrops(targetState, (ServerLevel) level, pos,
-                            level.getBlockEntity(pos), livingEntity, tool);
-                    List<ItemEntity> dropEntities = drops.stream()
-                            .map(e -> new ItemEntity(level, pos.getX(), pos.getY(), pos.getZ(), e))
-                            .collect(Collectors.toList());
-                    for (ItemEntity entity : dropEntities) level.addFreshEntity(entity);
-
-                    if (level.getGameRules().getBoolean(GameRules.RULE_DOBLOCKDROPS)) {
-                        int xp = targetState.getBlock().getExpDrop(targetState, (ServerLevel) level, pos,
-                                level.getBlockEntity(pos), livingEntity, tool);
-                        if (xp > 0) ExperienceOrb.award((ServerLevel) level, Vec3.atCenterOf(pos), xp);
-                    }
-                }
-            }
-
-            targetState.getBlock().destroy(level, pos, targetState);
-            level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-            level.gameEvent(GameEvent.BLOCK_DESTROY, clickedPos, GameEvent.Context.of(livingEntity, targetState));
-            player.awardStat(Stats.BLOCK_MINED.get(targetState.getBlock()));
-            player.causeFoodExhaustion(0.005F);
+            breakSingle(state, pos, level, player, tool);
             damage++;
-
-            if (!player.isCreative() && tool.getDamageValue() >= tool.getMaxDamage() - 1) break;
         }
 
-        if (damage > 0 && !player.isCreative()) {
-            int durabilityCost = (int) Math.ceil(damage / 4.0) + 1;
-            tool.hurtAndBreak(durabilityCost, livingEntity, net.minecraft.world.entity.EquipmentSlot.MAINHAND);
+        applyDurability(tool, entity, damage, player.isCreative());
+    }
+
+    // ========== 内部逻辑 ==========
+
+    @SuppressWarnings("deprecation")
+    private static boolean canBreak(BlockState state, Level level, BlockPos pos,
+                                    ServerPlayer player, TagKey<Block> mineableTag) {
+        if (state.isAir()) return false;
+        if (!state.getFluidState().isEmpty()) return false;
+        if (level.getBlockEntity(pos) != null) return false;
+        if (mineableTag != null && !state.is(mineableTag)) return false;
+        if (!player.isCreative() && state.getDestroySpeed(level, pos) <= 0) return false;
+        if (state.requiresCorrectToolForDrops() && !player.hasCorrectToolForDrops(state)) return false;
+        return true;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void breakSingle(BlockState state, BlockPos pos, Level level,
+                                    ServerPlayer player, ItemStack tool) {
+        if (!player.isCreative() && player.hasCorrectToolForDrops(state)) {
+            spawnDrops(state, pos, level, player, tool);
+        }
+
+        state.getBlock().destroy(level, pos, state);
+        level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+        level.gameEvent(GameEvent.BLOCK_DESTROY, pos, GameEvent.Context.of(player, state));
+        player.awardStat(Stats.BLOCK_MINED.get(state.getBlock()));
+        player.causeFoodExhaustion(0.005F);
+    }
+
+    private static void spawnDrops(BlockState state, BlockPos pos, Level level,
+                                   ServerPlayer player, ItemStack tool) {
+        ServerLevel serverLevel = (ServerLevel) level;
+        state.spawnAfterBreak(serverLevel, pos, tool, true);
+
+        List<ItemStack> drops = Block.getDrops(state, serverLevel, pos,
+                level.getBlockEntity(pos), player, tool);
+        for (ItemStack drop : drops) {
+            ItemEntity entity = new ItemEntity(level,
+                    pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, drop);
+            level.addFreshEntity(entity);
+        }
+
+        if (level.getGameRules().getBoolean(GameRules.RULE_DOBLOCKDROPS)) {
+            int xp = state.getBlock().getExpDrop(state, serverLevel, pos,
+                    level.getBlockEntity(pos), player, tool);
+            if (xp > 0) {
+                ExperienceOrb.award(serverLevel, Vec3.atCenterOf(pos), xp);
+            }
+        }
+    }
+
+    private static void applyDurability(ItemStack tool, LivingEntity entity,
+                                        int brokenCount, boolean creative) {
+        if (brokenCount > 0 && !creative) {
+            int cost = (int) Math.ceil(brokenCount / 4.0) + 1;
+            tool.hurtAndBreak(cost, entity,
+                    net.minecraft.world.entity.EquipmentSlot.MAINHAND);
         }
     }
 }

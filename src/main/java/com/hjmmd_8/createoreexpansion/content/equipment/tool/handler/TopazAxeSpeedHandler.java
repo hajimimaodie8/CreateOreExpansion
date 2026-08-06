@@ -1,8 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolSkillCooldown;
-import com.hjmmd_8.createoreexpansion.content.skill.helper.TopazAxeAoeSkill;
+import com.hjmmd_8.createoreexpansion.common.AllSkills;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemStackSkillHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.player.Player;
@@ -46,10 +47,8 @@ public class TopazAxeSpeedHandler {
         ItemStack held = player.getMainHandItem();
         if (!held.is(AllItems.TOPAZ_AXE.get())) return;
         if (!ToolSkillCooldown.isReady(player, held)) return;
-        if (ToolEnergy.hasEnergy(held) && !ToolEnergy.canUseSkill(player, held)) {
-            ToolEnergy.sendLowEnergy(player);
-            return;
-        }
+        if (!ItemStackSkillHelper.hasSkill(held, AllSkills.TOPAZ_AXE_AOE)) return;
+        if (!ToolEnergy.canUseSkill(player, held, AllSkills.TOPAZ_AXE_AOE)) return;
 
         BlockState state = event.getState();
         if (!state.is(BlockTags.LOGS)) return;
@@ -58,7 +57,7 @@ public class TopazAxeSpeedHandler {
         if (pos == null) return;
 
         Level level = player.level();
-        Set<BlockPos> treeBlocks = TopazAxeAoeSkill.calculateTreeBlocks(level, pos);
+        Set<BlockPos> treeBlocks = AllSkills.TOPAZ_AXE_AOE.calculateTreeBlocks(level, pos);
 
                 int treeSize = 0;
         for (BlockPos bp : treeBlocks) {

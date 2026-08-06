@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import java.util.List;
 import javax.annotation.Nullable;

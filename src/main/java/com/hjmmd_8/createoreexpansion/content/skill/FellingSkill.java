@@ -1,9 +1,11 @@
-package com.hjmmd_8.createoreexpansion.content.skill.helper;
+package com.hjmmd_8.createoreexpansion.content.skill;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
@@ -11,37 +13,58 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Predicate;
 
-public class JadeAxeAoeSkill implements ItemSkill {
+public class FellingSkill implements ItemSkill {
 
-    private static final int SEARCH_RANGE = 8;
-    private static final int MAX_BLOCKS = 200;
+    private final int searchRange;
+    private final int maxBlocks;
+    private final int energyCost;
 
-    public static Set<BlockPos> calculateTreeBlocks(Level level, BlockPos startPos) {
+    private final Predicate<BlockState> predicate;
+
+    public static final Predicate<BlockState> IS_LOG = (state) -> state.is(BlockTags.LOGS);
+    public static final Predicate<BlockState> IS_TREE = (state) -> state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES);
+
+    public FellingSkill(int searchRange, int maxBlocks, int energyCost, Predicate<BlockState> predicate) {
+        this.searchRange = searchRange;
+        this.maxBlocks = maxBlocks;
+        this.energyCost = energyCost;
+        this.predicate = predicate;
+    }
+
+    public FellingSkill(int searchRange, int energyCost, Predicate<BlockState> predicate) {
+        this(searchRange, searchRange * searchRange * searchRange + 1, energyCost, predicate);
+    }
+
+    public FellingSkill(int searchRange, Predicate<BlockState> predicate) {
+        this(searchRange, 100, predicate);
+    }
+
+    public Set<BlockPos> calculateTreeBlocks(Level level, BlockPos startPos) {
         Set<BlockPos> result = new HashSet<>();
         Queue<BlockPos> queue = new LinkedList<>();
         queue.add(startPos);
         result.add(startPos);
 
-        while (!queue.isEmpty() && result.size() < MAX_BLOCKS) {
+        while (!queue.isEmpty() && result.size() < maxBlocks) {
             BlockPos current = queue.poll();
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dy = -1; dy <= 1; dy++) {
                     for (int dz = -1; dz <= 1; dz++) {
                         if (dx == 0 && dy == 0 && dz == 0) continue;
                         BlockPos nb = current.offset(dx, dy, dz);
-                        if (Math.abs(nb.getX() - startPos.getX()) > SEARCH_RANGE) continue;
-                        if (Math.abs(nb.getY() - startPos.getY()) > SEARCH_RANGE) continue;
-                        if (Math.abs(nb.getZ() - startPos.getZ()) > SEARCH_RANGE) continue;
+                        if (Math.abs(nb.getX() - startPos.getX()) > searchRange) continue;
+                        if (Math.abs(nb.getY() - startPos.getY()) > searchRange) continue;
+                        if (Math.abs(nb.getZ() - startPos.getZ()) > searchRange) continue;
                         if (result.contains(nb)) continue;
                         BlockState ns = level.getBlockState(nb);
-                        if (ns.is(BlockTags.LOGS)) {
+                        if (predicate.test(ns)) {
                             result.add(nb);
                             queue.add(nb);
                         }
@@ -50,11 +73,11 @@ public class JadeAxeAoeSkill implements ItemSkill {
             }
         }
 
-        if (result.size() >= MAX_BLOCKS) return new HashSet<>();
+        if (result.size() >= maxBlocks) return new HashSet<>();
         return result;
     }
 
-    public static void causeAoe(Level level, BlockPos pos, BlockState state,
+    public void causeAoe(Level level, BlockPos pos, BlockState state,
                                 ItemStack axe, LivingEntity livingEntity) {
         if (!(livingEntity instanceof ServerPlayer player)) return;
         if (level.isClientSide) return;
@@ -62,6 +85,8 @@ public class JadeAxeAoeSkill implements ItemSkill {
         if (!player.isShiftKeyDown()) return;
         if (!state.is(BlockTags.LOGS)) return;
         if (!ToolSkillCooldown.isReady(player, axe)) return;
+
+        if (energyCost != 0 && ToolEnergy.hasEnergy(axe) && !ToolEnergy.consumeForSkill(player, axe, this)) return;
 
         Set<BlockPos> toDestroy = calculateTreeBlocks(level, pos);
         if (toDestroy.size() > 1) {
@@ -72,8 +97,6 @@ public class JadeAxeAoeSkill implements ItemSkill {
 
     @Override
     public void release(Object context) {
-        if (!SkillType.EXCAVATION_SKILL.cast(context))
-            throw new ClassCastException("Expected ExcavationSkillContext");
         if (context instanceof ExcavationSkillContext ctx) {
             causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
         }
@@ -82,5 +105,10 @@ public class JadeAxeAoeSkill implements ItemSkill {
     @Override
     public SkillType getType() {
         return SkillType.EXCAVATION_SKILL;
+    }
+
+    @Override
+    public int getCost() {
+        return energyCost;
     }
 }

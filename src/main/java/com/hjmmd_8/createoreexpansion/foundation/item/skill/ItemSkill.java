@@ -10,4 +10,12 @@ public interface ItemSkill {
     void release(Object context);
 
     SkillType getType();
+
+    default int getCost() {
+        return 100;
+    }
+
+    default SkillCostProxy costProxy() {
+        return new SkillCostProxy(this);
+    }
 }

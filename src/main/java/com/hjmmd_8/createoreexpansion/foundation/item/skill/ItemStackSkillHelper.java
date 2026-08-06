@@ -23,6 +23,12 @@ public final class ItemStackSkillHelper {
         return skills.containsKey(type);
     }
 
+    public static boolean hasSkill(ItemStack itemStack, ItemSkill skill) {
+        Map<SkillType, List<ItemSkill>> skills = loadSkills(itemStack);
+        SkillType type = skill.getType();
+        return skills.containsKey(type) && skills.get(type).contains(skill);
+    }
+
     /**
      * 释放物品的指定类型技能
      */

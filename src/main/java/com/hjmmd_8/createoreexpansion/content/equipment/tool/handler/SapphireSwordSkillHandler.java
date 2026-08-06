@@ -3,7 +3,8 @@ package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.AllSkills;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -31,7 +32,7 @@ public class SapphireSwordSkillHandler {
 			return;
 		if (player.getCooldowns().isOnCooldown(sword.getItem()))
 			return;
-		if (!ToolEnergy.consumeForSkill(player, sword, ToolEnergy.SWORD_COST))
+		if (!ToolEnergy.consumeForSkill(player, sword, AllSkills.SAPPHIRE_AXE_AOE.costProxy()))
 			return;
 
 		trigger(player, event.getEntity());

@@ -1,7 +1,10 @@
-package com.hjmmd_8.createoreexpansion.content.equipment.tool;
+package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
 
+import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillCostProxy;
 import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
 import net.minecraft.ChatFormatting;
@@ -15,42 +18,38 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
 public final class ToolEnergy {
+	private ToolEnergy() {}
 
-	public static final String ENERGY_TAG = "energy";
-	public static final int BOW_MAX = 100;
-	public static final int TOPAZ_MAX = 600;
-	public static final int SAPPHIRE_MAX = 1100;
-	public static final int SWORD_COST = 100;
-	public static final int PICKAXE_COST = 10;
-	public static final int SHOVEL_COST = 10;
-	public static final int AXE_COST = 100;
-
-	private ToolEnergy() {
-	}
-
+	/**
+	 * 获取物品的最大能量值
+	 * @param stack 待处理的物品
+	 * @return 最大能量值，物品无最大能量值时返回 -1
+	 */
 	public static int getMaxEnergy(ItemStack stack) {
-		if (stack.getItem() instanceof JadeTopazBowItem)
-			return BOW_MAX;
-		if (stack.is(AllItems.TOPAZ_SWORD.get()) || stack.is(AllItems.TOPAZ_PICKAXE.get())
-			|| stack.is(AllItems.TOPAZ_AXE.get()) || stack.is(AllItems.TOPAZ_SHOVEL.get()))
-			return TOPAZ_MAX;
-		if (stack.is(AllItems.SAPPHIRE_SWORD.get()) || stack.is(AllItems.SAPPHIRE_PICKAXE.get())
-			|| stack.is(AllItems.SAPPHIRE_AXE.get()) || stack.is(AllItems.SAPPHIRE_SHOVEL.get()))
-			return SAPPHIRE_MAX;
-		return 0;
+		Integer mx = stack.getComponents().get(AllDataComponents.MAX_ENERGY);
+		if (mx != null)
+			return mx;
+		return -1;
 	}
 
+	/**
+	 * 判断物品是否具有能量值
+	 * @param stack 待处理的物品
+	 * @return 是否具有能量值
+	 */
 	public static boolean hasEnergy(ItemStack stack) {
-		return getMaxEnergy(stack) > 0;
+		int max = getMaxEnergy(stack);
+		return max != -1;
 	}
 
+	/**
+	 * 获取物品的能量值
+	 * @param stack 待处理的物品
+	 * @return 能量值，物品无能量值时返回 -1
+	 */
 	public static int getEnergy(ItemStack stack) {
-		int max = getMaxEnergy(stack);
-		if (max <= 0)
-			return 0;
-		CompoundTag tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-		int energy = tag.contains(ENERGY_TAG) ? tag.getInt(ENERGY_TAG) : max;
-		return Math.max(0, Math.min(max, energy));
+		Integer energy = stack.getComponents().get(AllDataComponents.ENERGY);
+		return energy != null ? energy : -1;
 	}
 
 	public static void setEnergy(ItemStack stack, int energy) {
@@ -58,20 +57,46 @@ public final class ToolEnergy {
 		if (max <= 0)
 			return;
 		int value = Math.max(0, Math.min(max, energy));
-		stack.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
-			data -> data.update(tag -> tag.putInt(ENERGY_TAG, value)));
+		stack.set(AllDataComponents.ENERGY, value);
 	}
 
-	public static boolean canUseSkill(Player player, ItemStack stack) {
-		return hasEnergy(stack) && getEnergy(stack) > getMaxEnergy(stack) / 5;
+	public static boolean canUseSkill(ItemStack stack, SkillCostProxy proxy) {
+		return hasEnergy(stack) && getEnergy(stack) > proxy.getCost();
 	}
 
-	public static boolean consumeForSkill(Player player, ItemStack stack, int cost) {
-		if (!canUseSkill(player, stack)) {
-			sendLowEnergy(player);
+	public static boolean canUseSkill(Player player, ItemStack stack, SkillCostProxy proxy) {
+		if (ToolEnergy.hasEnergy(stack) && !ToolEnergy.canUseSkill(stack, proxy)) {
+			ToolEnergy.sendLowEnergy(player);
 			return false;
 		}
-		setEnergy(stack, getEnergy(stack) - cost);
+		return true;
+	}
+
+	public static boolean canUseSkill(ItemStack stack, ItemSkill skill) {
+		return hasEnergy(stack) && getEnergy(stack) > skill.getCost();
+	}
+
+	public static boolean canUseSkill(Player player, ItemStack stack, ItemSkill skill) {
+		if (ToolEnergy.hasEnergy(stack) && !ToolEnergy.canUseSkill(stack, skill)) {
+			ToolEnergy.sendLowEnergy(player);
+			return false;
+		}
+		return true;
+	}
+
+	public static boolean consumeForSkill(Player player, ItemStack stack, SkillCostProxy proxy) {
+		if (!canUseSkill(player, stack, proxy)) {
+			return false;
+		}
+		setEnergy(stack, getEnergy(stack) - proxy.getCost());
+		return true;
+	}
+
+	public static boolean consumeForSkill(Player player, ItemStack stack, ItemSkill skill) {
+		if (!canUseSkill(player, stack, skill)) {
+			return false;
+		}
+		setEnergy(stack, getEnergy(stack) - skill.getCost());
 		return true;
 	}
 

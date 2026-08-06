@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.equipment.tool;
+package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 

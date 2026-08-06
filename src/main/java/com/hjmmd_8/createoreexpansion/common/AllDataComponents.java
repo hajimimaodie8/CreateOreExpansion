@@ -22,6 +22,12 @@ public class AllDataComponents {
             builder.persistent(LIST_STRING_CODEC)
                     .networkSynchronized(ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list())));
 
+    public static final DataComponentType<Integer> ENERGY = register("energy", builder ->
+            builder.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.INT));
+
+    public static final DataComponentType<Integer> MAX_ENERGY = register("max_energy", builder ->
+            builder.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.INT));
+
     private static <T> DataComponentType<T> register(String name, UnaryOperator<DataComponentType.Builder<T>> builder) {
         DataComponentType<T> type = builder.apply(DataComponentType.builder()).build();
         DATA_COMPONENTS.register(name, () -> type);

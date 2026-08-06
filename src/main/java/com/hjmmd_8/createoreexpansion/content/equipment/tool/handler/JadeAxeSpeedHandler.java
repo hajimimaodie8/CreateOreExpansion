@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 
-import com.hjmmd_8.createoreexpansion.content.skill.helper.JadeAxeAoeSkill;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.common.AllSkills;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.player.Player;
@@ -35,7 +35,7 @@ public class JadeAxeSpeedHandler {
         if (pos == null) return;
 
         Level level = player.level();
-        Set<BlockPos> treeBlocks = JadeAxeAoeSkill.calculateTreeBlocks(level, pos);
+        Set<BlockPos> treeBlocks = AllSkills.JADE_AXE_AOE.calculateTreeBlocks(level, pos);
 
                 int treeSize = 0;
         for (BlockPos bp : treeBlocks) {

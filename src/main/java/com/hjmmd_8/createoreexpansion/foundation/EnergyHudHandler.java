@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.foundation;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
