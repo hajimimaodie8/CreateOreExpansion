@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client;
 
+import com.hjmmd_8.createoreexpansion.client.tool.ToolOutlineRenderers;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -10,17 +11,9 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * AOE 范围挖掘 — 客户端预选框渲染注册
  *
  * <p>在 {@link RenderLevelStageEvent.Stage#AFTER_CUTOUT_BLOCKS} 阶段，
- * 调用三个工具的 outline render 绘制金黄色范围线框。</p>
+ * 调用所有工具的 outline render 绘制范围线框。</p>
  *
- * <hr>
- * <h3>新建工具需在此文件添加一行调用：</h3>
- * <pre>
- * SapphirePickaxeOutlineRender.render(
- *     instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
- *     instance.renderBuffers().bufferSource(), instance.gameRenderer,
- *     event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
- * );
- * </pre>
+ * <p>使用统一的渲染器架构，新增工具只需在 {@link ToolOutlineRenderers} 中添加配置即可。</p>
  */
 @EventBusSubscriber(value = Dist.CLIENT)
 public class ClientEvents {
@@ -31,58 +24,13 @@ public class ClientEvents {
 
         Minecraft instance = Minecraft.getInstance();
 
-        TopazPickaxeOutlineRender.render(
+        // 统一调用所有渲染器
+        for (var renderer : ToolOutlineRenderers.ALL_RENDERERS) {
+            renderer.render(
                 instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
                 instance.renderBuffers().bufferSource(), instance.gameRenderer,
                 event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
-
-        TopazShovelOutlineRender.render(
-                instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
-                instance.renderBuffers().bufferSource(), instance.gameRenderer,
-                event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
-
-        
-        JadePickaxeOutlineRender.render(
-                instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
-                instance.renderBuffers().bufferSource(), instance.gameRenderer,
-                event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
-
-        JadeShovelOutlineRender.render(
-                instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
-                instance.renderBuffers().bufferSource(), instance.gameRenderer,
-                event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
-
-        JadeAxeOutlineRender.render(
-                instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
-                instance.renderBuffers().bufferSource(), instance.gameRenderer,
-                event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
-        
-        SapphirePickaxeOutlineRender.render(
-                instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
-                instance.renderBuffers().bufferSource(), instance.gameRenderer,
-                event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
-
-        SapphireShovelOutlineRender.render(
-                instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
-                instance.renderBuffers().bufferSource(), instance.gameRenderer,
-                event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
-
-        SapphireAxeOutlineRender.render(
-                instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
-                instance.renderBuffers().bufferSource(), instance.gameRenderer,
-                event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
-        TopazAxeOutlineRender.render(
-                instance.level, event.getCamera(), event.getPartialTick(), event.getPoseStack(),
-                instance.renderBuffers().bufferSource(), instance.gameRenderer,
-                event.getProjectionMatrix(), instance.gameRenderer.lightTexture(), instance.levelRenderer
-        );
+            );
+        }
     }
 }
