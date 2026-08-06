@@ -4,6 +4,9 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttribute;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttributeType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.SkillAttributeModifierHolder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 
@@ -64,6 +67,12 @@ public final class AllSkills {
     public static ResourceLocation getId(ItemSkill skill) {
         if (skill == null) return null;
         return SKILL_IDS.get(skill);
+    }
+
+    public static <C, V> V modifier(ModifiableAttributeType<C, V> type, SkillAttributeModifierHolder holder, C context) {
+        ModifiableAttribute<V> attribute = type.create(context);
+        holder.modifier(type, attribute);
+        return attribute.getValue();
     }
 
     public static void register() {}

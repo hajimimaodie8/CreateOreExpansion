@@ -29,6 +29,10 @@ public final class ItemStackSkillHelper {
         return skills.containsKey(type) && skills.get(type).contains(skill);
     }
 
+    public static List<ItemSkill> getSkills(ItemStack stack, SkillType type) {
+        return loadSkills(stack).get(type);
+    }
+
     /**
      * 释放物品的指定类型技能
      */
