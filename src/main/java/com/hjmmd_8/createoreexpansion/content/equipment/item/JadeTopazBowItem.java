@@ -5,8 +5,10 @@ import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import java.util.List;
 import javax.annotation.Nullable;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -143,7 +145,11 @@ public class JadeTopazBowItem extends BowItem {
 				&& getEnergy(stack) >= SKILL_THRESHOLD;
 
 		if (!canUseSkill) {
-			ToolEnergy.sendLowEnergy(player);
+			player.displayClientMessage(
+					Component.literal("由于能量值过低无法使用技能")
+							.withStyle(ChatFormatting.RED),
+					true
+			);
 			return "NONE";
 		}
 
