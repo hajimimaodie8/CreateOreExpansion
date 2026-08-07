@@ -10,6 +10,8 @@
   "block.createoreexpansion.sapphire_block": "Sapphire Block",
   "block.createoreexpansion.topaz_block": "Topaz Block",
   "block.createoreexpansion.topaz_ore": "Topaz Ore",
+  "createoreexpansion.keyinfo.skill_release": "Release skill",
+  "createoreexpansion.mod_name": "Create Ore Expansion",
   "createoreexpansion.recipe.fan_transmuting": "Transmuting",
   "createoreexpansion.recipe.fan_transmuting.fan": "Encased Fan",
   "effect.createoreexpansion.transmutation_disorder": "Transmutation Disorder",

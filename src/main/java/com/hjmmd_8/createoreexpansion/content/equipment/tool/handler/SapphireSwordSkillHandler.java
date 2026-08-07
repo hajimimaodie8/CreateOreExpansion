@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
 
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -24,8 +25,7 @@ public class SapphireSwordSkillHandler {
 			return;
 		if (!(event.getSource().getDirectEntity() instanceof Player player))
 			return;
-		if (!player.isShiftKeyDown())
-			return;
+		if (!AllKeys.SKILL_RELEASE.isPressed()) return;
 
 		ItemStack sword = player.getMainHandItem();
 		if (!sword.is(AllItems.SAPPHIRE_SWORD.get()))

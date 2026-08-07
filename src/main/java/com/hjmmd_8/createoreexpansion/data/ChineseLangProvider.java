@@ -69,6 +69,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.SAPPHIRE_SHOVEL.get(), "蓝宝石铲");
 
         add("tooltip.createoreexpansion.mod_name", "机械动力：矿物拓展");
+        add("createoreexpansion.mod_name", "机械动力：矿物拓展");
 
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");
         add("fluid.createoreexpansion.transmutation_fluid", "嬗变液");
@@ -109,5 +110,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("create.tooltip.holdForControls", "按住 [%1$s] 可查看控制方法");
         add("create.tooltip.keyShift", "Shift");
         add("create.tooltip.keyCtrl", "Ctrl");
+
+        add("createoreexpansion.keyinfo.skill_release", "技能释放");
     }
 }

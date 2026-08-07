@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.AllModifiableAttributes;
 import com.hjmmd_8.createoreexpansion.common.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
@@ -25,7 +26,7 @@ public class BreakBlockSpeedHandler {
     @SubscribeEvent
     public static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
         Player player = event.getEntity();
-        if (!player.isShiftKeyDown()) return;
+        if (!AllKeys.SKILL_RELEASE.isPressed()) return;
 
         ItemStack held = player.getMainHandItem();
         if (!ItemStackSkillHelper.hasSkill(held, SkillType.EXCAVATION_SKILL)) return;

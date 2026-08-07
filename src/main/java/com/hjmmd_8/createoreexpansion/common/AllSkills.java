@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttribute;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttributeType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.SkillAttributeModifierHolder;
+import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 
@@ -33,7 +34,7 @@ public final class AllSkills {
     // 镐子技能 - 使用 AreaAoeSkill
     public static final AreaAoeSkill JADE_PICKAXE_AOE
             = skill(CreateOreExpansion.modLoc("jade_pickaxe_aoe"),
-            () -> new AreaAoeSkill(3, 1, 1, 0, BlockTags.MINEABLE_WITH_PICKAXE));
+            () -> new AreaAoeSkill(3, 1, 1, 0, BlockTags.MINEABLE_WITH_PICKAXE, DualDirection.fromPlayerYaw()));
     public static final AreaAoeSkill SAPPHIRE_PICKAXE_AOE
             = skill(CreateOreExpansion.modLoc("sapphire_pickaxe_aoe"),
             () -> new AreaAoeSkill(5, 5, 1, 50, BlockTags.MINEABLE_WITH_PICKAXE));

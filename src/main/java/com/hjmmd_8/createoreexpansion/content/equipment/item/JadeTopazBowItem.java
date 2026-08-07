@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import java.util.List;
@@ -126,7 +127,7 @@ public class JadeTopazBowItem extends BowItem {
 	}
 
 	private String detectSkill(Player player) {
-		if (player.isShiftKeyDown()) return "A";
+		if (AllKeys.SKILL_RELEASE.isPressed()) return "A";
 		if (player.isSprinting()) return "B";
 		return "NONE";
 	}

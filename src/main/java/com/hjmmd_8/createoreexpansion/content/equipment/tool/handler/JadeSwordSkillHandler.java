@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
 
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -22,8 +23,7 @@ public class JadeSwordSkillHandler {
 			return;
 		if (!(event.getSource().getDirectEntity() instanceof Player player))
 			return;
-		if (!player.isShiftKeyDown())
-			return;
+		if (!AllKeys.SKILL_RELEASE.isPressed()) return;
 
 		ItemStack sword = player.getMainHandItem();
 		if (!sword.is(AllItems.JADE_SWORD.get()))

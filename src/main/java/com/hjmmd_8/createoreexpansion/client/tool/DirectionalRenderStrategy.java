@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
+import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
@@ -17,13 +18,13 @@ public class DirectionalRenderStrategy implements RenderStrategy {
     public Set<BlockPos> calculatePositions(BlockPos center, BlockHitResult hit, Player player) {
         Set<BlockPos> positions = new HashSet<>();
 
-        // 将玩家偏航角映射为朝向方向
-        float yaw = player.getYRot();
-        int dirIndex = (int) Math.floor((((yaw % 360) + 360) % 360) / 90.0 + 0.5) % 4;
-        Direction[] dirs = {Direction.SOUTH, Direction.WEST, Direction.NORTH, Direction.EAST};
-        Direction facing = dirs[dirIndex];
-        Direction left = facing.getCounterClockWise();
-        Direction right = facing.getClockWise();
+        // 使用DualDirection基于玩家偏航角计算方向
+        DualDirection dualDirection = DualDirection.fromPlayerYaw(player);
+        Direction primary = dualDirection.primary;
+
+        // 计算左右两侧
+        Direction left = primary.getCounterClockWise();
+        Direction right = primary.getClockWise();
 
         positions.add(center.relative(left));
         positions.add(center.relative(right));

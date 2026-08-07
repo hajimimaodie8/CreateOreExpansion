@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -62,10 +63,10 @@ public class ToolOutlineRenderer {
         if (world == null) return;
 
         Player player = Minecraft.getInstance().player;
-        if (player == null || !player.isShiftKeyDown()) return;
+        if (!AllKeys.SKILL_RELEASE.isPressed()) return;
 
         // 检查手持物品
-        if (!player.getMainHandItem().is(config.item())) return;
+        if (player != null && !player.getMainHandItem().is(config.item())) return;
 
         // 检查是否看向方块
         HitResult hit = Minecraft.getInstance().hitResult;

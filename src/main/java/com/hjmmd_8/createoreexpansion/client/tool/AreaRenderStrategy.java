@@ -1,15 +1,11 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
-import com.hjmmd_8.createoreexpansion.foundation.util.AreaUtil;
+import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
 
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
-
-import static com.hjmmd_8.createoreexpansion.CreateOreExpansion.LOGGER;
 
 /**
  * AOE 范围渲染策略 - 用于镐和铲的范围挖掘
@@ -40,16 +36,8 @@ public class AreaRenderStrategy implements RenderStrategy {
 
     @Override
     public Set<BlockPos> calculatePositions(BlockPos center, BlockHitResult hit, Player player) {
-        Set<BlockPos> positions = new HashSet<>();
-        var bb = AreaUtil.getAreaOfEffect(center, hit.getDirection(), width, height, depth);
-
-        Iterator<BlockPos> it = BlockPos.betweenClosedStream(bb).iterator();
-        while (it.hasNext()) {
-            BlockPos pos = it.next().immutable();
-            if (!pos.equals(center)) {
-                positions.add(pos);
-            }
-        }
-        return positions;
+        // 使用DualDirection的collect方法直接收集所有位置
+        DualDirection dualDirection = DualDirection.fromBlockFace(player, hit);
+        return dualDirection.collect(center, width, height, depth);
     }
 }

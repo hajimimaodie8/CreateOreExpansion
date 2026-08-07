@@ -113,5 +113,9 @@ public class EnglishLangProvider extends LanguageProvider {
         add("item.minecraft.splash_potion.effect.long_transmutation_disorder", "Long Splash Transmutation Potion");
         add("item.minecraft.lingering_potion.effect.long_transmutation_disorder", "Long Lingering Transmutation Potion");
         add("item.minecraft.tipped_arrow.effect.long_transmutation_disorder", "Arrow of Long Transmutation Disorder");
+
+        add("createoreexpansion.keyinfo.skill_release", "Release skill");
+
+        add("createoreexpansion.mod_name", "Create Ore Expansion");
     }
 }

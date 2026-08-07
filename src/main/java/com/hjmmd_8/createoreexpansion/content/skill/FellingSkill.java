@@ -1,11 +1,13 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.AllModifiableAttributes;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedModifiableAttribute;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.AbstractSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
@@ -23,7 +25,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public class FellingSkill extends AbstractSkill {
+public class FellingSkill extends AbstractSkill implements TypedItemSkill<ExcavationSkillContext> {
 
     private final int searchRange;
     private final int maxBlocks;
@@ -131,7 +133,7 @@ public class FellingSkill extends AbstractSkill {
         if (!(livingEntity instanceof ServerPlayer player)) return;
         if (level.isClientSide) return;
         if (!player.isCreative() && state.getDestroySpeed(level, pos) == 0.0F) return;
-        if (!player.isShiftKeyDown()) return;
+        if (!AllKeys.SKILL_RELEASE.isPressed()) return;
         if (!state.is(BlockTags.LOGS)) return;
         if (!ToolSkillCooldown.isReady(player, axe)) return;
 
@@ -145,10 +147,15 @@ public class FellingSkill extends AbstractSkill {
     }
 
     @Override
+    public void releaseTyped(ExcavationSkillContext ctx) {
+        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+    }
+
+    @Override
+    @Deprecated
     public void release(Object context) {
-        if (context instanceof ExcavationSkillContext ctx) {
-            causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
-        }
+        // 通过 TypedItemSkill 实现，此方法保留用于向后兼容
+        TypedItemSkill.super.release(context);
     }
 
     @Override
