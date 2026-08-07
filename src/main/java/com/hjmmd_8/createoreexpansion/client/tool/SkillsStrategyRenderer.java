@@ -28,8 +28,7 @@ public class SkillsStrategyRenderer {
 
     private SkillsStrategyRenderer() {}
 
-    public void render(ClientLevel world, Camera camera, DeltaTracker v, PoseStack poseStack,
-                       MultiBufferSource consumers) {
+    public void render(ClientLevel world, Camera camera, PoseStack poseStack) {
         if (world == null) return;
         if (player == null) player = Minecraft.getInstance().player;
 
@@ -56,9 +55,18 @@ public class SkillsStrategyRenderer {
                 .map(s -> (AbstractStrategySkill) s).toList();
 
         // 渲染
+        poseStack.pushPose();
+        poseStack.translate(
+                -camera.getPosition().x(),
+                -camera.getPosition().y(),
+                -camera.getPosition().z()
+        );
+
         for (AbstractStrategySkill<?> skill : skills) {
             AllStrategies.RENDERERS.get(skill).render(
-                    world, camera, poseStack, consumers, center, centerState, blockHit, player);
+                    world, camera, poseStack, center, centerState, blockHit, player);
         }
+
+        poseStack.popPose();
     }
 }

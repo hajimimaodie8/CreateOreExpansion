@@ -27,9 +27,7 @@ public class ClientEvents {
         SkillsStrategyRenderer.INSTANCE.render(
                 instance.level,
                 instance.getEntityRenderDispatcher().camera,
-                event.getPartialTick(),
-                event.getPoseStack(),
-                instance.renderBuffers().bufferSource()
+                event.getPoseStack()
         );
     }
 }

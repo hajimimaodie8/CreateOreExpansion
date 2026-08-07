@@ -45,7 +45,7 @@ public final class AllSkills {
             .skill(strategy -> new FellingSkill(strategy, 100)
                     .breakBlockSpeedCorrection(tree ->
                             Math.max(.2f, 1f / (1f + tree.logs() * .08f + tree.leaves() * .01f))))
-            .strategy(new FellingStrategy(8, 100, FellingStrategy.IS_LOG))
+            .strategy(new FellingStrategy(8, 100, FellingStrategy.IS_TREE))
             .rendererConfig()
             .color(RendererConfig.SAPPHIRE_BLUE)
             .build()
@@ -55,7 +55,7 @@ public final class AllSkills {
             .skill(strategy -> new FellingSkill(strategy, 100)
                     .breakBlockSpeedCorrection(tree ->
                             Math.max(.35f, 1f / (1f + tree.logs() * .05f + tree.leaves() * .005f))))
-            .strategy(new FellingStrategy(12, 100, FellingStrategy.IS_LOG))
+            .strategy(new FellingStrategy(12, 100, FellingStrategy.IS_TREE))
             .rendererConfig()
             .color(RendererConfig.TOPAZ_GOLD)
             .build()
