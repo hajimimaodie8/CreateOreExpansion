@@ -32,23 +32,23 @@ public class AreaUtil {
         return switch (direction) {
             case DOWN, UP -> new BoundingBox(
                     blockPos.getX() - width / 2,
-                    blockPos.getY() - (direction == Direction.UP ? depth - 1 : 0),
+                    blockPos.getY() - (direction == Direction.DOWN ? depth - 1 : 0),
                     blockPos.getZ() - height / 2,
                     blockPos.getX() + (width - width / 2 - 1),
-                    blockPos.getY() + (direction == Direction.DOWN ? depth - 1 : 0),
+                    blockPos.getY() + (direction == Direction.UP ? depth - 1 : 0),
                     blockPos.getZ() + (height - height / 2 - 1));
             case NORTH, SOUTH -> new BoundingBox(
                     blockPos.getX() - width / 2,
                     blockPos.getY() - height / 2,
-                    blockPos.getZ() - (direction == Direction.SOUTH ? depth - 1 : 0),
+                    blockPos.getZ() - (direction == Direction.NORTH ? depth - 1 : 0),
                     blockPos.getX() + (width - width / 2 - 1),
                     blockPos.getY() + (height - height / 2 - 1),
-                    blockPos.getZ() + (direction == Direction.NORTH ? depth - 1 : 0));
+                    blockPos.getZ() + (direction == Direction.SOUTH ? depth - 1 : 0));
             case WEST, EAST -> new BoundingBox(
-                    blockPos.getX() - (direction == Direction.EAST ? depth - 1 : 0),
+                    blockPos.getX() - (direction == Direction.WEST ? depth - 1 : 0),
                     blockPos.getY() - height / 2,
                     blockPos.getZ() - width / 2,
-                    blockPos.getX() + (direction == Direction.WEST ? depth - 1 : 0),
+                    blockPos.getX() + (direction == Direction.EAST ? depth - 1 : 0),
                     blockPos.getY() + (height - height / 2 - 1),
                     blockPos.getZ() + (width - width / 2 - 1)
             );

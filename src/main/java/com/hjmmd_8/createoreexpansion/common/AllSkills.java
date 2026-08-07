@@ -99,7 +99,7 @@ public final class AllSkills {
     public static final AreaAoeSkill SAPPHIRE_SHOVEL_AOE =
         skill("sapphire_shovel_aoe", AreaAoeSkill.class, AreaAoeStrategy.class)
             .skill(strategy -> new AreaAoeSkill(strategy, 50, BlockTags.MINEABLE_WITH_SHOVEL))
-            .strategy(new AreaAoeStrategy(7, 1, 1, DualDirection.fromPlayerYaw()))
+            .strategy(new AreaAoeStrategy(7, 7, 1))
             .rendererConfig()
             .color(RendererConfig.SAPPHIRE_BLUE)
             .build()

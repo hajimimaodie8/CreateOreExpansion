@@ -97,9 +97,6 @@ public class JadeTopazBowItem extends BowItem {
 			shoot(serverLevel, player, player.getUsedItemHand(), stack, projectiles,
 					power * 3.0F, 1.0F, power >= 1.0F, null);
 		}
-
-		// 5. 后处理
-		ToolEnergy.sendEnergyActionBar(player, stack);
 		playShootSound(level, player, power);
 		player.awardStat(Stats.ITEM_USED.get(this));
 	}

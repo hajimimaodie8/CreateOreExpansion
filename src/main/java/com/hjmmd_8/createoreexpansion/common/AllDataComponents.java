@@ -28,6 +28,9 @@ public class AllDataComponents {
     public static final DataComponentType<Integer> MAX_ENERGY = register("max_energy", builder ->
             builder.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.INT));
 
+    public static final DataComponentType<Integer> ENERGY_COLOR = register("energy_color", builder ->
+            builder.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.INT));
+
     private static <T> DataComponentType<T> register(String name, UnaryOperator<DataComponentType.Builder<T>> builder) {
         DataComponentType<T> type = builder.apply(DataComponentType.builder()).build();
         DATA_COMPONENTS.register(name, () -> type);

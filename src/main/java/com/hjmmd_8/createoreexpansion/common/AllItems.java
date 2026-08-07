@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.tterrag.registrate.builders.ItemBuilder;
 import com.tterrag.registrate.util.entry.ItemEntry;
@@ -216,6 +217,7 @@ public final class AllItems {
                     SwordItem.createAttributes(AllTiers.TOPAZ, 4, -2.4F)
             ))
             .tag(ItemTags.SWORDS)
+            .transform(addEnergy(200, 1000, ToolEnergyConfig.TOPAZ_COLOR))
             .register();
 
     public static final ItemEntry<PickaxeItem> TOPAZ_PICKAXE = CreateOreExpansion.REGISTRATE
@@ -227,6 +229,7 @@ public final class AllItems {
             ))
             .tag(ItemTags.PICKAXES)
             .transform(addSkills(AllSkills.TOPAZ_PICKAXE_AOE))
+            .transform(addEnergy(200, 1000, ToolEnergyConfig.TOPAZ_COLOR))
             .register();
 
     public static final ItemEntry<ShovelItem> TOPAZ_SHOVEL= CreateOreExpansion.REGISTRATE
@@ -238,6 +241,7 @@ public final class AllItems {
             ))
             .tag(ItemTags.SHOVELS)
             .transform(addSkills(AllSkills.TOPAZ_SHOVEL_AOE))
+            .transform(addEnergy(200, 1000, ToolEnergyConfig.TOPAZ_COLOR))
             .register();
 
     public static final ItemEntry<AxeItem> TOPAZ_AXE = CreateOreExpansion.REGISTRATE
@@ -249,6 +253,7 @@ public final class AllItems {
             ))
             .tag(ItemTags.AXES)
             .transform(addSkills(AllSkills.TOPAZ_AXE_AOE))
+            .transform(addEnergy(200, 1000, ToolEnergyConfig.TOPAZ_COLOR))
             .register();
 
     public static final ItemEntry<Item> SAPPHIRE_INGOT = CreateOreExpansion.REGISTRATE
@@ -329,6 +334,7 @@ public final class AllItems {
                     SwordItem.createAttributes(AllTiers.SAPPHIRE, 5, -2.4F)
             ))
             .tag(ItemTags.SWORDS)
+            .transform(addEnergy(1000, 25000, ToolEnergyConfig.SAPPHIRE_COLOR))
             .register();
 
     public static final ItemEntry<PickaxeItem> SAPPHIRE_PICKAXE = CreateOreExpansion.REGISTRATE
@@ -340,6 +346,7 @@ public final class AllItems {
             ))
             .tag(ItemTags.PICKAXES)
             .transform(addSkills(AllSkills.SAPPHIRE_PICKAXE_AOE))
+            .transform(addEnergy(1000, 25000, ToolEnergyConfig.SAPPHIRE_COLOR))
             .register();
 
     public static final ItemEntry<ShovelItem> SAPPHIRE_SHOVEL= CreateOreExpansion.REGISTRATE
@@ -351,6 +358,7 @@ public final class AllItems {
             ))
             .tag(ItemTags.SHOVELS)
             .transform(addSkills(AllSkills.SAPPHIRE_SHOVEL_AOE))
+            .transform(addEnergy(1000, 25000, ToolEnergyConfig.SAPPHIRE_COLOR))
             .register();
 
     public static final ItemEntry<AxeItem> SAPPHIRE_AXE = CreateOreExpansion.REGISTRATE
@@ -362,6 +370,7 @@ public final class AllItems {
             ))
             .tag(ItemTags.AXES)
             .transform(addSkills(AllSkills.SAPPHIRE_AXE_AOE))
+            .transform(addEnergy(1000, 25000, ToolEnergyConfig.SAPPHIRE_COLOR))
             .register();
 
     public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CreateOreExpansion.REGISTRATE
@@ -378,6 +387,27 @@ public final class AllItems {
 
     public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, ItemBuilder<T, P>> addSkills(ItemSkill... skills) {
         return builder -> addSkills(builder, skills);
+    }
+
+    public static <T extends Item, P> ItemBuilder<T, P> addEnergy(ItemBuilder<T, P> builder,
+                                                                  int defaultEnergy, int maxEnergy, int energyColor) {
+        return builder.properties(p -> p
+                .component(AllDataComponents.ENERGY, defaultEnergy)
+                .component(AllDataComponents.MAX_ENERGY, maxEnergy)
+                .component(AllDataComponents.ENERGY_COLOR, energyColor));
+    }
+
+    public static <T extends Item, P> ItemBuilder<T, P> addEnergy(ItemBuilder<T, P> builder,
+                                                                  int defaultEnergy, int maxEnergy) {
+        return addEnergy(builder, defaultEnergy, maxEnergy, 0x5555FF);
+    }
+
+    public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, ItemBuilder<T, P>> addEnergy(int defaultEnergy, int maxEnergy) {
+        return builder -> addEnergy(builder, defaultEnergy, maxEnergy);
+    }
+
+    public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, ItemBuilder<T, P>> addEnergy(int defaultEnergy, int maxEnergy, int energyColor) {
+        return builder -> addEnergy(builder, defaultEnergy, maxEnergy, energyColor);
     }
 
     public static void register() {}

@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion;
 
 import com.hjmmd_8.createoreexpansion.common.*;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyTooltip;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.KineticStats;
@@ -34,7 +33,6 @@ public class CreateOreExpansion {
         REGISTRATE.setTooltipModifierFactory(item -> {
             TooltipModifier modifier = new ItemDescription.Modifier(item, FontHelper.Palette.STANDARD_CREATE)
                     .andThen(TooltipModifier.mapNull(KineticStats.create(item)));
-            modifier = modifier.andThen(new ToolEnergyTooltip());
             return modifier;
         });
 

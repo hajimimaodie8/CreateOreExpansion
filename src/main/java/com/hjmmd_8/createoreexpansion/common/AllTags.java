@@ -22,6 +22,10 @@ public class AllTags {
 			this.tag = TagKey.create(Registries.ITEM,
 				ResourceLocation.fromNamespaceAndPath("c", path));
 		}
+
+		AllItemTags(ResourceLocation id) {
+			this.tag = TagKey.create(Registries.ITEM, id);
+		}
 	}
 
 	public enum AllFluidTags {
