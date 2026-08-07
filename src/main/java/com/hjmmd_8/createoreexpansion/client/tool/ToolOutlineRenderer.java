@@ -1,6 +1,9 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemStackSkillHelper;
+import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
@@ -10,6 +13,7 @@ import net.minecraft.client.renderer.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -20,7 +24,10 @@ import java.util.Set;
 /**
  * 工具范围渲染器 - 统一的渲染逻辑
  *
- * <p>使用策略模式支持不同的渲染类型：
+ * <p>现在渲染器直接使用策略技能实例，通过 {@link AbstractStrategySkill#getStrategy()}
+ * 获取策略，确保渲染预览与实际技能行为完全一致。</p>
+ *
+ * <p>支持的渲染类型：
  * <ul>
  *   <li>AOE 范围渲染（镐/铲）</li>
  *   <li>方向性渲染（翡翠镐）</li>
@@ -30,65 +37,27 @@ import java.util.Set;
  */
 public class ToolOutlineRenderer {
     private final RendererConfig config;
-    private final RenderStrategy strategy;
-    private final boolean requireLogs;
-
-    /**
-     * 创建渲染器
-     * @param config 渲染配置（物品、颜色）
-     * @param strategy 位置计算策略
-     */
-    public ToolOutlineRenderer(RendererConfig config, RenderStrategy strategy) {
-        this(config, strategy, false);
-    }
+    private final AbstractStrategySkill<?> skill;
 
     /**
      * 创建渲染器（斧子专用）
      * @param config 渲染配置
-     * @param strategy 位置计算策略
-     * @param requireLogs 是否要求目标是原木
+     * @param skill 策略技能实例
      */
-    public ToolOutlineRenderer(RendererConfig config, RenderStrategy strategy, boolean requireLogs) {
+    public ToolOutlineRenderer(RendererConfig config, AbstractStrategySkill<?> skill) {
         this.config = config;
-        this.strategy = strategy;
-        this.requireLogs = requireLogs;
+        this.skill = skill;
     }
 
     /**
      * 渲染范围线框
      */
-    public void render(ClientLevel world, Camera camera, DeltaTracker v, PoseStack poseStack,
-                       MultiBufferSource consumers, GameRenderer gameRenderer, Matrix4f matrix4f,
-                       LightTexture lightTexture, LevelRenderer levelRenderer) {
-        if (world == null) return;
-
-        Player player = Minecraft.getInstance().player;
-        if (!AllKeys.SKILL_RELEASE.isPressed()) return;
-
-        // 检查手持物品
-        if (player != null && !player.getMainHandItem().is(config.item())) return;
-
-        // 检查是否看向方块
-        HitResult hit = Minecraft.getInstance().hitResult;
-        if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
-
-        BlockHitResult blockHit = (BlockHitResult) hit;
-        BlockPos center = blockHit.getBlockPos();
-        BlockState centerState = world.getBlockState(center);
-
-        // 空气方块不渲染
-        if (centerState.isAir()) return;
-
-        // 斧子检查是否是原木
-        if (requireLogs && !centerState.is(BlockTags.LOGS)) return;
-
-        // 计算需要渲染的位置
+    public void render(ClientLevel world, Camera camera, PoseStack poseStack, MultiBufferSource consumers,
+                       BlockPos center, BlockState centerState, BlockHitResult blockHit, Player player) {
+        AreaStrategy strategy = skill.getStrategy();
+        if (!strategy.shouldRender(world, center, centerState, player)) return;
         Set<BlockPos> positions = strategy.calculatePositions(center, blockHit, player);
-
-        // 将中心方块也加入渲染集合
         positions.add(center);
-
-        if (positions.isEmpty()) return;
 
         // 开始渲染
         poseStack.pushPose();
