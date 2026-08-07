@@ -1,6 +1,8 @@
 package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.client.tool.SkillsStrategyRenderer;
+import net.createmod.catnip.render.DefaultSuperRenderTypeBuffer;
+import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -26,8 +28,9 @@ public class ClientEvents {
         // 统一调用所有渲染器
         SkillsStrategyRenderer.INSTANCE.render(
                 instance.level,
-                instance.getEntityRenderDispatcher().camera,
-                event.getPoseStack()
+                event.getCamera(),
+                event.getPoseStack(),
+                DefaultSuperRenderTypeBuffer.getInstance()
         );
     }
 }

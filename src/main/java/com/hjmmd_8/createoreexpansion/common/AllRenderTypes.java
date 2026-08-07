@@ -17,15 +17,13 @@ public class AllRenderTypes extends RenderType {
             DefaultVertexFormat.POSITION_COLOR,
             VertexFormat.Mode.DEBUG_LINES,
             256,
-            false,
-            false,
             RenderType.CompositeState.builder()
                 .setShaderState(new ShaderStateShard(GameRenderer::getPositionColorShader))
                 .setLineState(new LineStateShard(OptionalDouble.empty()))
                 .setLayeringState(NO_LAYERING)
                 .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                 .setWriteMaskState(COLOR_DEPTH_WRITE)
-                .setCullState(CULL)
+                .setCullState(NO_CULL)
                 .setDepthTestState(NO_DEPTH_TEST)
                 .createCompositeState(false)
     );

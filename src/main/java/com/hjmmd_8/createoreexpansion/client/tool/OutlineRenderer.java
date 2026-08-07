@@ -9,10 +9,9 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.joml.Matrix4f;
 
 import java.util.*;
-
-import static com.hjmmd_8.createoreexpansion.CreateOreExpansion.LOGGER;
 
 /**
  * 高级轮廓渲染器
@@ -32,7 +31,7 @@ public class OutlineRenderer {
         if (boxes.isEmpty()) return;
 
         VoxelShape combined = combineToShape(boxes);
-        PoseStack.Pose pose = poseStack.last();
+        PoseStack.Pose pose = poseStack.last();  // 使用poseStack中的变换
         Set<Edge> rendered = new HashSet<>();
 
         combined.forAllEdges((x1, y1, z1, x2, y2, z2) -> {
@@ -202,12 +201,10 @@ public class OutlineRenderer {
 
         consumer.addVertex(pose, (float)x1, (float)y1, (float)z1)
                 .setColor(r, g, b, a)
-                .setUv(0, 0)
                 .setNormal(pose, dx, dy, dz);
 
         consumer.addVertex(pose, (float)x2, (float)y2, (float)z2)
                 .setColor(r, g, b, a)
-                .setUv(0, 0)
                 .setNormal(pose, dx, dy, dz);
     }
 

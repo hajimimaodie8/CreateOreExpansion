@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
 import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -14,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import org.joml.Matrix4f;
 
 import java.util.Set;
 
@@ -32,7 +34,7 @@ public class ToolOutlineRenderer {
         this.skill = skill;
     }
 
-    public void render(ClientLevel world, Camera camera, PoseStack poseStack,
+    public void render(ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer,
                        BlockPos center, BlockState centerState, BlockHitResult blockHit, Player player) {
         AreaStrategy strategy = skill.getStrategy();
         if (!strategy.shouldRender(world, center, centerState, player)) return;
@@ -44,22 +46,14 @@ public class ToolOutlineRenderer {
 
         float r = config.r(), g = config.g(), b = config.b(), a = config.a();
 
-        // TODO ：这里有渲染bug，实际渲染的框会跟着摄像头走
-
-        // 第一层
-        poseStack.pushPose();
-        VertexConsumer solid = mc.renderBuffers().bufferSource().getBuffer(RenderType.LINES);
+        // 第一层：不透明层（受深度测试影响）
+        VertexConsumer solid = buffer.getBuffer(RenderType.LINES);
         OutlineRenderer.renderOutline(world, positions, poseStack, solid, r, g, b, a);
-        mc.renderBuffers().bufferSource().endBatch(RenderType.LINES);
-        poseStack.popPose();
+        buffer.draw(RenderType.LINES);
 
-
-//        // 第二层
-        poseStack.pushPose();
-        VertexConsumer transparent = mc.renderBuffers().bufferSource().getBuffer(AllRenderTypes.LINES_TRANSPARENT);
+        // 第二层：半透明穿透层（禁用深度写入和测试）
+        VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
         OutlineRenderer.renderOutline(world, positions, poseStack, transparent, r, g, b, a * 0.3f);
-        mc.renderBuffers().bufferSource().endBatch(AllRenderTypes.LINES_TRANSPARENT);
-        poseStack.popPose();
-
+        buffer.draw(AllRenderTypes.LINES_TRANSPARENT);
     }
 }
