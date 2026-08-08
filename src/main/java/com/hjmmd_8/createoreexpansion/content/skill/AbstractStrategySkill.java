@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.AbstractSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -50,8 +51,8 @@ public abstract class AbstractStrategySkill<S extends AreaStrategy> extends Abst
         return (Class<S>) strategy.getClass();
     }
 
-    public final Set<BlockPos> calculatePositions(BlockPos center, BlockHitResult hit, Player player) {
-        return getStrategy().calculatePositions(this, center, hit, player);
+    public final Set<BlockPos> calculatePositions(DataSkill data, BlockPos center, BlockHitResult hit, Player player) {
+        return getStrategy().calculatePositions(data, center, hit, player);
     }
 
     @Override

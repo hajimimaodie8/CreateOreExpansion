@@ -33,7 +33,7 @@ public class AllDataComponents {
     public static final StreamCodec<RegistryFriendlyByteBuf, SkillsComponent> ITEM_SKILL_STREAM_CODEC =
         StreamCodec.of(
             (buf, value) -> {
-                var skills = value.getAllSkills();
+                var skills = value.getAllData();
                 buf.writeInt(skills.size());
                 SkillsComponent.getStrings(skills)
                         .forEach(s -> ByteBufCodecs.STRING_UTF8.encode(buf, s));
@@ -44,7 +44,7 @@ public class AllDataComponents {
                 for (int i = 0; i < siz; i++) {
                     strings.add(ByteBufCodecs.STRING_UTF8.decode(buf));
                 }
-                return new SkillsComponent(SkillsComponent.getSkills(strings));
+                return SkillsComponent.fromStrings(strings);
             }
         );
 
@@ -61,13 +61,13 @@ public class AllDataComponents {
                 List<String> strings = new ArrayList<>();
                 consumer.accept(element ->
                         ops.getStringValue(element).ifSuccess(strings::add));
-                return Pair.of(new SkillsComponent(SkillsComponent.getSkills(strings)), ops.empty());
+                return Pair.of(SkillsComponent.fromStrings(strings), ops.empty());
             });
         }
 
         @Override
         public <T> DataResult<T> encode(SkillsComponent input, DynamicOps<T> ops, T prefix) {
-            List<String> strings = SkillsComponent.getStrings(input.getAllSkills());
+            List<String> strings = SkillsComponent.getStrings(input.getAllData());
             return DataResult.success(ops.createList(strings.stream().map(ops::createString)));
         }
     };

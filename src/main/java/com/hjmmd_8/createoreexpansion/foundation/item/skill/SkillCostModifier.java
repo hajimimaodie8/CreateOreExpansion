@@ -11,5 +11,13 @@ public interface SkillCostModifier {
         return (skill, originalCost) -> cost;
     }
 
+    static SkillCostModifier merge(SkillCostModifier a, SkillCostModifier b) {
+        return (skill, cost) -> b.modify(skill, a.modify(skill, cost));
+    }
+
     int modify(ItemSkill skill, int cost);
+
+    default SkillCostModifier merge(SkillCostModifier other) {
+        return (skill, cost) -> other.modify(skill, modify(skill, cost));
+    }
 }

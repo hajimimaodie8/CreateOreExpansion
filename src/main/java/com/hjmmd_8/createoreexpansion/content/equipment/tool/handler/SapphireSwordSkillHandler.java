@@ -32,8 +32,8 @@ public class SapphireSwordSkillHandler {
 			return;
 		if (player.getCooldowns().isOnCooldown(sword.getItem()))
 			return;
-		if (!ToolEnergy.consumeForSkill(player, sword, AllSkills.GRAND_FELL.costProxy()))
-			return;
+//		if (!ToolEnergy.consumeForSkill(player, sword, AllSkills.GRAND_FELL.costProxy()))
+//			return;
 
 		trigger(player, event.getEntity());
 		event.setAmount(event.getAmount() * DAMAGE_MULTIPLIER);

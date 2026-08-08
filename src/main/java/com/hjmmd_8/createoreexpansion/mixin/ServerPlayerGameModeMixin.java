@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.mixin;
 
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.DestroyBlockContext;
@@ -48,6 +49,8 @@ public class ServerPlayerGameModeMixin {
         if (!skillStack.hasSkill(SkillType.EXCAVATION_SKILL)) return;
 
         ExcavationSkillContext context = new DestroyBlockContext(this.level, blockPos, stack, this.player);
-        skillStack.getSkillsHolder().releaseSkills(SkillType.EXCAVATION_SKILL, context);
+        var flag = skillStack.getSkillsHolder().releaseSkills(skillStack, SkillType.EXCAVATION_SKILL, context);
+        if (!flag) ToolEnergy.sendLowEnergy(player);
+        else ToolEnergy.sendRemainingEnergy(player, stack);
     }
 }

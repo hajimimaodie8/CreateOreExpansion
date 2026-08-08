@@ -1,8 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
 
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillCostProxy;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -56,43 +56,27 @@ public final class ToolEnergy {
 		return !(hasEnergy(stack) && getEnergy(stack) > getMaxEnergy(stack) / 5);
 	}
 
-	public static boolean canUseSkill(ItemStack stack, SkillCostProxy proxy) {
-		return hasEnergy(stack) && getEnergy(stack) > proxy.getCost();
-	}
-
-	public static boolean canUseSkill(Player player, ItemStack stack, SkillCostProxy proxy) {
-		if (ToolEnergy.hasEnergy(stack) && !ToolEnergy.canUseSkill(stack, proxy)) {
-			ToolEnergy.sendLowEnergy(player);
-			return false;
-		}
-		return true;
-	}
-
 	public static boolean canUseSkill(ItemStack stack, ItemSkill skill) {
 		return hasEnergy(stack) && getEnergy(stack) > skill.getCost();
 	}
 
-	public static boolean canUseSkill(Player player, ItemStack stack, ItemSkill skill) {
-		if (ToolEnergy.hasEnergy(stack) && !ToolEnergy.canUseSkill(stack, skill)) {
-			ToolEnergy.sendLowEnergy(player);
-			return false;
-		}
-		return true;
+	public static boolean canUseSkill(ItemStack stack, DataSkill data) {
+		return hasEnergy(stack) && getEnergy(stack) > data.cost;
 	}
 
-	public static boolean consumeForSkill(Player player, ItemStack stack, SkillCostProxy proxy) {
-		if (!canUseSkill(player, stack, proxy)) {
-			return false;
-		}
-		setEnergy(stack, getEnergy(stack) - proxy.getCost());
-		return true;
-	}
-
-	public static boolean consumeForSkill(Player player, ItemStack stack, ItemSkill skill) {
-		if (!canUseSkill(player, stack, skill)) {
+	public static boolean consumeForSkill(ItemStack stack, ItemSkill skill) {
+		if (!canUseSkill(stack, skill)) {
 			return false;
 		}
 		setEnergy(stack, getEnergy(stack) - skill.getCost());
+		return true;
+	}
+
+	public static boolean consumeForSkill(ItemStack stack, DataSkill data) {
+		if (!canUseSkill(stack, data)) {
+			return false;
+		}
+		setEnergy(stack, getEnergy(stack) - data.cost);
 		return true;
 	}
 

@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -14,11 +15,14 @@ public interface OwnedBySkills {
     }
 
     default List<ItemSkill> getAllSkills() {
+        if (skills().isEmpty()) {
+            return Collections.emptyList();
+        }
         List<ItemSkill> all = new ArrayList<>();
         for (List<ItemSkill> skillList : skills().values()) {
             all.addAll(skillList);
         }
-        return all;
+        return Collections.unmodifiableList(all);
     }
 
     default boolean isEmpty() {
@@ -56,18 +60,10 @@ public interface OwnedBySkills {
 
     /**
      * 释放技能
+     * @param skillStack 技能 ItemStack
      * @param type 技能类型
      * @param context 技能上下文
      * @throws ClassCastException 技能上下文类型不匹配
      */
-    default OwnedBySkills releaseSkills(SkillType type, Object context) {
-        if (hasSkill(type)) {
-            getSkills(type).forEach(skill -> {
-                if (!skill.getType().cast(context))
-                    throw new ClassCastException("Skill context type mismatch");
-                skill.release(context);
-            });
-        }
-        return this;
-    }
+    boolean releaseSkills(SkillItemStack skillStack, SkillType type, Object context);
 }

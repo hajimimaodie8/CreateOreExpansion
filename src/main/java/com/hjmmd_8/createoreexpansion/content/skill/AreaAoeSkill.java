@@ -4,9 +4,11 @@ import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.BreakBlockSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
@@ -52,7 +54,7 @@ public class AreaAoeSkill extends BreakBlockSkill<AreaAoeStrategy, ExcavationSki
     }
 
     protected void causeAoe(Level level, BlockPos pos, BlockState state,
-                         ItemStack pickaxe, LivingEntity livingEntity) {
+                         ItemStack pickaxe, LivingEntity livingEntity, DataSkill data) {
         if (!(livingEntity instanceof ServerPlayer player)) return;
         if (level.isClientSide) return;
 
@@ -64,11 +66,11 @@ public class AreaAoeSkill extends BreakBlockSkill<AreaAoeStrategy, ExcavationSki
         if (!(pick instanceof BlockHitResult hit)) return;
 
         // 使用Strategy计算位置
-        Set<BlockPos> positions = calculatePositions(pos, hit, player);
+        Set<BlockPos> positions = calculatePositions(data, pos, hit, player);
         if (positions.isEmpty()) return;
 
         // 检查能量
-        if (energyCost != 0 && ToolEnergy.hasEnergy(pickaxe) && !ToolEnergy.consumeForSkill(player, pickaxe, this))
+        if (energyCost != 0 && ToolEnergy.hasEnergy(pickaxe) && !ToolEnergy.consumeForSkill(pickaxe, this))
             return;
 
         // 破坏方块
@@ -76,8 +78,8 @@ public class AreaAoeSkill extends BreakBlockSkill<AreaAoeStrategy, ExcavationSki
     }
 
     @Override
-    public void releaseTyped(ExcavationSkillContext ctx) {
-        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+    public void releaseTyped(ExcavationSkillContext ctx, DataSkill data) {
+        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity(), data);
     }
 
     @Override

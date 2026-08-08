@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.strategy;
 
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.BreakBlockSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
@@ -63,13 +64,14 @@ public class AreaAoeStrategy implements AreaStrategy {
     }
 
     @Override
-    public Set<BlockPos> calculatePositions(ItemSkill skill, BlockPos center, BlockHitResult hit, Player player) {
+    public Set<BlockPos> calculatePositions(DataSkill skill, BlockPos center, BlockHitResult hit, Player player) {
         DualDirection dualDirection = DualDirection.from(player, hit, directionSource);
         return dualDirection.collect(center, width, height, depth);
     }
 
     @Override
-    public boolean shouldRender(ItemSkill skill, ClientLevel world, BlockPos pos, BlockState state, Player player) {
+    public boolean shouldRender(DataSkill data, ClientLevel world, BlockPos pos, BlockState state, Player player) {
+        ItemSkill skill = data.skill;
         if (!(skill instanceof BreakBlockSkill<?, ?> breakSkill)) return false;
         return state.is(breakSkill.mineableTag);
     }

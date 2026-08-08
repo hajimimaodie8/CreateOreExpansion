@@ -1,9 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.client.tool.RendererConfig;
-import com.hjmmd_8.createoreexpansion.client.tool.ToolOutlineRenderer;
-import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
 import com.hjmmd_8.createoreexpansion.content.strategy.AreaAoeStrategy;
@@ -27,8 +24,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static com.hjmmd_8.createoreexpansion.client.tool.RendererConfig.ALPHA;
-import static com.hjmmd_8.createoreexpansion.common.AllStrategies.RENDERERS;
 import static com.hjmmd_8.createoreexpansion.common.AllStrategies.STRATEGIES;
 
 public final class AllSkills {
@@ -42,9 +37,6 @@ public final class AllSkills {
                         .breakBlockSpeedCorrection(tree -> Math.max(.1f, 1f / (1f + tree.logs() * .12f))))
                 .strategy(new FellingStrategy(8, 200, 100, FellingStrategy.IS_LOG))
                 .translate("伐树 I", "Fell I")
-                .rendererConfig()
-                .color(RendererConfig.JADE_GREEN)
-                .build()
                 .register();
     public static final FellingSkill GREAT_FELL =
         skill("great_fell", FellingSkill.class, FellingStrategy.class)
@@ -53,9 +45,6 @@ public final class AllSkills {
                                 Math.max(.35f, 1f / (1f + tree.logs() * .05f + tree.leaves() * .005f))))
                 .strategy(new FellingStrategy(12, 100, FellingStrategy.IS_TREE))
                 .translate("伐树 II", "Fell II")
-                .rendererConfig()
-                .color(RendererConfig.TOPAZ_GOLD)
-                .build()
                 .register();
     public static final FellingSkill GRAND_FELL =
             skill("grand_fell", FellingSkill.class, FellingStrategy.class)
@@ -64,9 +53,6 @@ public final class AllSkills {
                                 Math.max(.2f, 1f / (1f + tree.logs() * .08f + tree.leaves() * .01f))))
                 .strategy(new FellingStrategy(8, 100, FellingStrategy.IS_TREE))
                 .translate("伐树 III", "Fell III")
-                .rendererConfig()
-                .color(RendererConfig.SAPPHIRE_BLUE)
-                .build()
                 .register();
 
     public static final AreaAoeSkill SHATTER =
@@ -74,27 +60,18 @@ public final class AllSkills {
                 .skill(strategy -> new AreaAoeSkill(strategy, 0, BlockTags.MINEABLE_WITH_PICKAXE))
                 .strategy(new AreaAoeStrategy(3, 1, 1, DualDirection.fromPlayerYaw()))
                 .translate("开岩 I", "Shatter I")
-                .rendererConfig()
-                .color(RendererConfig.JADE_GREEN)
-                .build()
                 .register();
     public static final AreaAoeSkill GREAT_SHATTER =
         skill("great_shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
                 .skill(strategy -> new AreaAoeSkill(strategy, 100, BlockTags.MINEABLE_WITH_PICKAXE))
                 .strategy(new AreaAoeStrategy(3, 3, 1))
                 .translate("开岩 II", "Shatter II")
-                .rendererConfig()
-                .color(RendererConfig.TOPAZ_GOLD)
-                .build()
                 .register();
     public static final AreaAoeSkill GRAND_SHATTER =
             skill("grand_shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
                     .skill(strategy -> new AreaAoeSkill(strategy, 100, BlockTags.MINEABLE_WITH_PICKAXE))
                     .strategy(new AreaAoeStrategy(5, 5, 1))
                     .translate("开岩 III", "Shatter III")
-                    .rendererConfig()
-                    .color(RendererConfig.SAPPHIRE_BLUE)
-                    .build()
                     .register();
 
     public static final AreaAoeSkill CHANNEL =
@@ -102,27 +79,18 @@ public final class AllSkills {
                 .skill(strategy -> new AreaAoeSkill(strategy, 0, BlockTags.MINEABLE_WITH_SHOVEL))
                 .strategy(new AreaAoeStrategy(1, 1, 6, DualDirection.fromPlayerYaw()))
                 .translate("引渠 I", "Channel I")
-                .rendererConfig()
-                .color(RendererConfig.JADE_GREEN)
-                .build()
                 .register();
     public static final AreaAoeSkill GREAT_CHANNEL =
         skill("great_channel", AreaAoeSkill.class, AreaAoeStrategy.class)
                 .skill(strategy -> new AreaAoeSkill(strategy, 50, BlockTags.MINEABLE_WITH_SHOVEL))
                 .strategy(new AreaAoeStrategy(1, 1, 8, DualDirection.fromPlayerYaw()))
                 .translate("引渠 II", "Channel II")
-                .rendererConfig()
-                .color(RendererConfig.TOPAZ_GOLD)
-                .build()
                 .register();
     public static final AreaAoeSkill GRADE =
             skill("grade", AreaAoeSkill.class, AreaAoeStrategy.class)
                     .skill(strategy -> new AreaAoeSkill(strategy, 50, BlockTags.MINEABLE_WITH_SHOVEL))
                     .strategy(new AreaAoeStrategy(7, 7, 1))
                     .translate("平场 I", "Grade I")
-                    .rendererConfig()
-                    .color(RendererConfig.SAPPHIRE_BLUE)
-                    .build()
                     .register();
 
     // ========== 工具方法 ==========
@@ -154,23 +122,6 @@ public final class AllSkills {
         return attribute.getValue();
     }
 
-    /**
-     * 获取技能对应的渲染器
-     * @param skill 技能
-     * @return 渲染器实例，如果不存在返回null
-     */
-    public static ToolOutlineRenderer getRenderer(ItemSkill skill) {
-        return RENDERERS.get(skill);
-    }
-
-    /**
-     * 获取所有渲染器
-     * @return 渲染器数组
-     */
-    public static ToolOutlineRenderer[] getAllRenderers() {
-        return RENDERERS.values().toArray(new ToolOutlineRenderer[0]);
-    }
-
     public static void register() {}
 
     private enum SkillsTranslator implements Translator {
@@ -196,7 +147,6 @@ public final class AllSkills {
         private Function<S, T> factory;
         private S strategy;
         private T skill;
-        private RendererConfig rendererConfig;
 
         public SkillBuilder(ResourceLocation id) {
             this.id = id;
@@ -226,66 +176,15 @@ public final class AllSkills {
             return this;
         }
 
-        public RendererConfigBuilder<T, S> rendererConfig() {
-            if (factory == null) throw new NullPointerException("Factory cannot be null");
-            if (strategy == null) throw new NullPointerException("Strategy cannot be null");
-            if (skill == null) skill = factory.apply(strategy);
-            if (skill == null) throw new NullPointerException("Skill cannot be null");
-            return new RendererConfigBuilder<>(this, skill);
-        }
-
         public T register() {
             if (factory == null) throw new NullPointerException("Factory cannot be null");
             if (strategy == null) throw new NullPointerException("Strategy cannot be null");
             if (skill == null) skill = factory.apply(strategy);
             if (skill == null) throw new NullPointerException("Skill cannot be null");
-            if (rendererConfig == null) throw new NullPointerException("RendererConfig cannot be null");
             SKILLS.put(id, skill);
             SKILL_IDS.put(skill, id);
             STRATEGIES.put(skill, strategy);
-
-            // 自动注册渲染器
-            if (skill instanceof AbstractStrategySkill<?> strategySkill) {
-                ToolOutlineRenderer renderer = new ToolOutlineRenderer(
-                        rendererConfig,
-                        strategySkill
-                );
-
-                RENDERERS.put(skill, renderer);
-            }
             return skill;
-        }
-
-        public static class RendererConfigBuilder<T extends ItemSkill, S extends AreaStrategy> {
-            private final SkillBuilder<T, S> builder;
-            private final ItemSkill skill;
-            private float r, g, b, a;
-
-            public RendererConfigBuilder(SkillBuilder<T, S> builder, ItemSkill skill) {
-                this.builder = builder;
-                this.skill = skill;
-            }
-
-            public RendererConfigBuilder<T, S> color(float r, float g, float b, float a) {
-                this.r = r;
-                this.g = g;
-                this.b = b;
-                this.a = a;
-                return this;
-            }
-
-            public RendererConfigBuilder<T, S> color(float[] color) {
-                this.r = color[0];
-                this.g = color[1];
-                this.b = color[2];
-                this.a = ALPHA;
-                return this;
-            }
-
-            public SkillBuilder<T, S> build() {
-                builder.rendererConfig = new RendererConfig(skill, r, g, b, a);
-                return builder;
-            }
         }
     }
 

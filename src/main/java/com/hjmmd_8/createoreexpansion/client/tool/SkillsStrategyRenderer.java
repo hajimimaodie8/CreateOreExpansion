@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.client.tool;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.AllStrategies;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
@@ -10,6 +11,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
@@ -17,12 +19,14 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.awt.*;
 import java.util.List;
 
 public class SkillsStrategyRenderer {
     public static SkillsStrategyRenderer INSTANCE = new SkillsStrategyRenderer();
 
     private Player player;
+    private static final ToolOutlineRenderer toolOutlineRenderer = new ToolOutlineRenderer();
 
     private SkillsStrategyRenderer() {}
 
@@ -48,10 +52,7 @@ public class SkillsStrategyRenderer {
         // 空气方块不渲染
         if (centerState.isAir()) return;
 
-        @SuppressWarnings("rawtypes")
-        List<AbstractStrategySkill> skills = skillStack.getSkillsHolder().getAllSkills().stream()
-                .filter(s -> s instanceof AbstractStrategySkill)
-                .map(s -> (AbstractStrategySkill) s).toList();
+        List<DataSkill> skills = skillStack.getSkillsHolder().getAllData();
 
         // 渲染
         poseStack.pushPose();
@@ -59,9 +60,29 @@ public class SkillsStrategyRenderer {
         Vec3 camPos = camera.getPosition();
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
 
-        for (AbstractStrategySkill<?> skill : skills) {
-            AllStrategies.RENDERERS.get(skill).render(
-                    world, camera, poseStack, buffer, center, centerState, blockHit, player);
+        for (DataSkill data : skills) {
+            if (!(data.skill instanceof AbstractStrategySkill<?>)) return;
+
+            RendererConfig config = RendererConfig.defaultConfig(data);
+
+
+            if (data.nbt != null) {
+                if (data.nbt.contains("OutlineColor")) {
+                    CompoundTag tag = data.nbt.getCompound("OutlineColor");
+
+                    config = new RendererConfig(
+                            data,
+                            tag.getFloat("r"),
+                            tag.getFloat("g"),
+                            tag.getFloat("b"),
+                            RendererConfig.ALPHA
+                    );
+                }
+            }
+            toolOutlineRenderer.render(
+                    config, world, camera, poseStack, buffer,
+                    center, centerState, blockHit, player
+            );
         }
 
         poseStack.popPose();

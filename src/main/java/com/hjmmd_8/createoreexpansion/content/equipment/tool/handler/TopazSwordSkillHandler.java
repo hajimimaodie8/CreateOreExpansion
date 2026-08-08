@@ -4,9 +4,6 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillCostModifier;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillCostProxy;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -33,8 +30,8 @@ public class TopazSwordSkillHandler {
 			return;
 		if (player.getCooldowns().isOnCooldown(sword.getItem()))
 			return;
-		if (!ToolEnergy.consumeForSkill(player, sword, new SkillCostProxy(null).modifier(SkillCostModifier.fixed(100))))
-			return;
+//		if (!ToolEnergy.consumeForSkill(player, sword, ))
+//			return;
 
 		trigger(player, event.getEntity());
 		event.setAmount(event.getAmount() * DAMAGE_MULTIPLIER);

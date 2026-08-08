@@ -378,7 +378,7 @@ public final class AllItems {
 
     public static <T extends Item, P> ItemBuilder<T, P> addSkills(ItemBuilder<T, P> builder, ItemSkill... skills) {
         if (skills == null) return builder;
-        return builder.properties(p -> p.component(AllDataComponents.SKILLS, new SkillsComponent(List.of(skills))));
+        return builder.properties(p -> p.component(AllDataComponents.SKILLS, SkillsComponent.of(List.of(skills))));
     }
 
     public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, ItemBuilder<T, P>> addSkills(ItemSkill... skills) {

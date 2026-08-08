@@ -9,5 +9,4 @@ import java.util.Map;
 
 public class AllStrategies {
     public static final Map<ItemSkill, AreaStrategy> STRATEGIES = new HashMap<>();
-    public static final Map<ItemSkill, ToolOutlineRenderer> RENDERERS = new HashMap<>();
 }

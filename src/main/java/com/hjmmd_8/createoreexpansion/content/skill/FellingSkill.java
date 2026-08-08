@@ -7,11 +7,13 @@ import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCoo
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedModifiableAttribute;
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.TreeCounter;
 import com.hjmmd_8.createoreexpansion.content.strategy.FellingStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.LivingEntity;
@@ -78,7 +80,7 @@ public class FellingSkill extends AbstractStrategySkill<FellingStrategy> impleme
     }
 
     public void causeAoe(Level level, BlockPos pos, BlockState state,
-                                ItemStack axe, LivingEntity livingEntity) {
+                                ItemStack axe, LivingEntity livingEntity, DataSkill data) {
         if (!(livingEntity instanceof ServerPlayer player)) return;
         if (level.isClientSide) return;
 
@@ -91,11 +93,11 @@ public class FellingSkill extends AbstractStrategySkill<FellingStrategy> impleme
         if (!(pick instanceof BlockHitResult hit)) return;
 
         // 使用Strategy计算位置
-        Set<BlockPos> toDestroy = calculatePositions(pos, hit, player);
+        Set<BlockPos> toDestroy = calculatePositions(data, pos, hit, player);
         if (toDestroy.isEmpty()) return;
 
         // 检查能量
-        if (energyCost != 0 && ToolEnergy.hasEnergy(axe) && !ToolEnergy.consumeForSkill(player, axe, this))
+        if (energyCost != 0 && ToolEnergy.hasEnergy(axe) && !ToolEnergy.consumeForSkill(axe, this))
             return;
 
         BlockBreaker.breakPositions(toDestroy, pos, axe, level, player);
@@ -103,8 +105,8 @@ public class FellingSkill extends AbstractStrategySkill<FellingStrategy> impleme
     }
 
     @Override
-    public void releaseTyped(ExcavationSkillContext ctx) {
-        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
+    public void releaseTyped(ExcavationSkillContext ctx, DataSkill data) {
+        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity(), data);
     }
 
     @Override

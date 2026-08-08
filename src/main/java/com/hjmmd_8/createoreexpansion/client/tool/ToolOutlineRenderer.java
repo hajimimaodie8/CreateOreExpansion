@@ -2,12 +2,12 @@ package com.hjmmd_8.createoreexpansion.client.tool;
 
 import com.hjmmd_8.createoreexpansion.common.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Camera;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
@@ -23,21 +23,16 @@ import java.util.Set;
  * <p>双层渲染：第一层不透明（可被方块遮挡），第二层半透明（穿透方块始终可见）。</p>
  */
 public class ToolOutlineRenderer {
+    public ToolOutlineRenderer() {}
 
-    private final RendererConfig config;
-    private final AbstractStrategySkill<?> skill;
-
-    public ToolOutlineRenderer(RendererConfig config, AbstractStrategySkill<?> skill) {
-        this.config = config;
-        this.skill = skill;
-    }
-
-    public void render(ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer,
+    public void render(RendererConfig config, ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer,
                        BlockPos center, BlockState centerState, BlockHitResult blockHit, Player player) {
+        DataSkill dataSkill = config.skill();
+        AbstractStrategySkill<?> skill = (AbstractStrategySkill<?>) dataSkill.skill;
         AreaStrategy strategy = skill.getStrategy();
-        if (!strategy.shouldRender(skill, world, center, centerState, player)) return;
+        if (!strategy.shouldRender(dataSkill, world, center, centerState, player)) return;
 
-        Set<BlockPos> positions = strategy.calculatePositions(skill, center, blockHit, player);
+        Set<BlockPos> positions = strategy.calculatePositions(dataSkill, center, blockHit, player);
         positions.add(center);
 
         float r = config.r(), g = config.g(), b = config.b(), a = config.a();

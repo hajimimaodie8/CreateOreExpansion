@@ -14,6 +14,10 @@ public class SkillItemStack {
         if (component == null) hasSkill = false;
     }
 
+    public ItemStack itemStack() {
+        return stack;
+    }
+
     public boolean hasSkill() {
         return hasSkill;
     }
@@ -26,7 +30,7 @@ public class SkillItemStack {
         return hasSkill && component.hasSkill(skill.getType()) && component.hasSkill(skill);
     }
 
-    public OwnedBySkills getSkillsHolder() {
+    public SkillsComponent getSkillsHolder() {
         return component;
     }
 
