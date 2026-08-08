@@ -21,7 +21,7 @@ public class ClientEvents {
 
     @SubscribeEvent
     public static void onWorldRenderLast(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_CUTOUT_BLOCKS) return;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
 
         Minecraft instance = Minecraft.getInstance();
 
