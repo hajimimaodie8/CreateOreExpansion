@@ -72,7 +72,6 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.fan_transmuting.fan", "Encased Fan");
 
         add(AllItems.JADE_TOPAZ_BOW.get(), "Jade Topaz Bow");
-        add("item.createoreexpansion.tool.energy", "Energy");
 //        add("item.createoreexpansion.jade_topaz_bow.tooltip.summary", "Holding _Left Shift_ while attacking fires arrows with _2x damage_ and random _debuffs_; _Shift_ casts _Skill A_, _Ctrl_ casts _Skill B_, both consuming _energy_");
 //        add("item.createoreexpansion.jade_topaz_bow.tooltip.energy", "Energy");
 //        add("item.createoreexpansion.jade_pickaxe.tooltip.summary",
