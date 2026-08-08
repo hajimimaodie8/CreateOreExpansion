@@ -44,15 +44,12 @@ public class CreateOreExpansion {
     }
 
     public CreateOreExpansion(IEventBus modEventBus, ModContainer modContainer) {
-        // 让 Registrate 知道自己应该什么时候该干什么
-        // 如果不加这行代码，Registrate 的功能将会失效
         REGISTRATE.registerEventListeners(modEventBus);
 
         AllSkills.register();
 
         AllCreativeModeTabs.register(modEventBus);
 
-        // 主动触发类加载，让Java加载静态字段
         AllDataComponents.register(modEventBus);
         AllMyBlocks.register();
         AllTiers.register();

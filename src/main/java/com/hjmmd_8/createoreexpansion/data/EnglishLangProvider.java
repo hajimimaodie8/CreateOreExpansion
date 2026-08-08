@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.data;
 
 import com.hjmmd_8.createoreexpansion.common.AllMyBlocks;
-import com.hjmmd_8.createoreexpansion.common.AllCreativeModeTabs;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import net.minecraft.data.PackOutput;
@@ -15,7 +14,7 @@ public class EnglishLangProvider extends LanguageProvider {
 
     @Override
     protected void addTranslations() {
-        add(AllCreativeModeTabs.BASE_TAB.titleTranslationKey, "Create: Ore Expansion");
+        COELangProvider.INSTANCE.addTranslations(this);
         add(AllItems.JADE_INGOT.get(), "Jade Ingot");
         add(AllItems.RAW_JADE.get(), "Raw Jade");
         add(AllItems.JADE_NUGGET.get(), "Jade Nugget");
@@ -74,32 +73,32 @@ public class EnglishLangProvider extends LanguageProvider {
 
         add(AllItems.JADE_TOPAZ_BOW.get(), "Jade Topaz Bow");
         add("item.createoreexpansion.tool.energy", "Energy");
-        add("item.createoreexpansion.jade_topaz_bow.tooltip.summary", "Holding _Left Shift_ while attacking fires arrows with _2x damage_ and random _debuffs_; _Shift_ casts _Skill A_, _Ctrl_ casts _Skill B_, both consuming _energy_");
-        add("item.createoreexpansion.jade_topaz_bow.tooltip.energy", "Energy");
-        add("item.createoreexpansion.jade_pickaxe.tooltip.summary",
-                "While holding _Left Shift_, allows you to _mine_ a _3x1 area_ of blocks in front of you");
-        add("item.createoreexpansion.jade_shovel.tooltip.summary",
-                "While holding _Left Shift_, allows you to _dig_ up to _6 blocks_ of dirt, sand, and similar blocks");
-        add("item.createoreexpansion.jade_axe.tooltip.summary",
-                "While holding _Left Shift_, allows you to _chop tree trunks_, but requires additional time");
-        add("item.createoreexpansion.topaz_pickaxe.tooltip.summary",
-                "While holding _Left Shift_, allows you to _mine_ a _3x3 area_ of blocks in front of you");
-        add("item.createoreexpansion.topaz_shovel.tooltip.summary",
-                "While holding _Left Shift_, allows you to _dig_ up to _9 blocks_ of dirt, sand, and similar blocks");
-        add("item.createoreexpansion.topaz_axe.tooltip.summary",
-                "While holding _Left Shift_, allows you to _chop down trees_ in front of you, but requires additional time");
-        add("item.createoreexpansion.sapphire_pickaxe.tooltip.summary",
-                "While holding _Left Shift_, allows you to _mine_ a _5x5 area_ of blocks in front of you");
-        add("item.createoreexpansion.sapphire_shovel.tooltip.summary",
-                "While holding _Left Shift_, allows you to _dig_ a _7x7 area_ of dirt, sand, and similar blocks beneath you");
-        add("item.createoreexpansion.sapphire_axe.tooltip.summary",
-                "While holding _Left Shift_, allows you to _quickly chop down trees_ in front of you, but requires additional time");
-        add("item.createoreexpansion.jade_sword.tooltip.summary",
-                "While holding _Left Shift_, attacking deals _bonus damage_ and has a _75%%_ chance to drop the target's _main hand item_");
-        add("item.createoreexpansion.topaz_sword.tooltip.summary",
-                "While holding _Left Shift_, attacking makes the target drop its _main hand item_ or _equipment_, with a _50%%_ chance to _steal_ it into your inventory");
-        add("item.createoreexpansion.sapphire_sword.tooltip.summary",
-                "While holding _Left Shift_, attacking moves all of the target's _weapons and equipment_ into your inventory and _drains 4 HP_ from the target");
+//        add("item.createoreexpansion.jade_topaz_bow.tooltip.summary", "Holding _Left Shift_ while attacking fires arrows with _2x damage_ and random _debuffs_; _Shift_ casts _Skill A_, _Ctrl_ casts _Skill B_, both consuming _energy_");
+//        add("item.createoreexpansion.jade_topaz_bow.tooltip.energy", "Energy");
+//        add("item.createoreexpansion.jade_pickaxe.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _mine_ a _3x1 area_ of blocks in front of you");
+//        add("item.createoreexpansion.jade_shovel.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _dig_ up to _6 blocks_ of dirt, sand, and similar blocks");
+//        add("item.createoreexpansion.jade_axe.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _chop tree trunks_, but requires additional time");
+//        add("item.createoreexpansion.topaz_pickaxe.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _mine_ a _3x3 area_ of blocks in front of you");
+//        add("item.createoreexpansion.topaz_shovel.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _dig_ up to _9 blocks_ of dirt, sand, and similar blocks");
+//        add("item.createoreexpansion.topaz_axe.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _chop down trees_ in front of you, but requires additional time");
+//        add("item.createoreexpansion.sapphire_pickaxe.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _mine_ a _5x5 area_ of blocks in front of you");
+//        add("item.createoreexpansion.sapphire_shovel.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _dig_ a _7x7 area_ of dirt, sand, and similar blocks beneath you");
+//        add("item.createoreexpansion.sapphire_axe.tooltip.summary",
+//                "While holding _Left Shift_, allows you to _quickly chop down trees_ in front of you, but requires additional time");
+//        add("item.createoreexpansion.jade_sword.tooltip.summary",
+//                "While holding _Left Shift_, attacking deals _bonus damage_ and has a _75%%_ chance to drop the target's _main hand item_");
+//        add("item.createoreexpansion.topaz_sword.tooltip.summary",
+//                "While holding _Left Shift_, attacking makes the target drop its _main hand item_ or _equipment_, with a _50%%_ chance to _steal_ it into your inventory");
+//        add("item.createoreexpansion.sapphire_sword.tooltip.summary",
+//                "While holding _Left Shift_, attacking moves all of the target's _weapons and equipment_ into your inventory and _drains 4 HP_ from the target");
         add("effect.createoreexpansion.transmutation_disorder", "Transmutation Disorder");
         add("item.minecraft.potion.effect.transmutation_disorder", "Transmutation Potion");
         add("item.minecraft.splash_potion.effect.transmutation_disorder", "Splash Transmutation Potion");
@@ -113,9 +112,5 @@ public class EnglishLangProvider extends LanguageProvider {
         add("item.minecraft.splash_potion.effect.long_transmutation_disorder", "Long Splash Transmutation Potion");
         add("item.minecraft.lingering_potion.effect.long_transmutation_disorder", "Long Lingering Transmutation Potion");
         add("item.minecraft.tipped_arrow.effect.long_transmutation_disorder", "Arrow of Long Transmutation Disorder");
-
-        add("createoreexpansion.keyinfo.skill_release", "Release skill");
-
-        add("createoreexpansion.mod_name", "Create Ore Expansion");
     }
 }

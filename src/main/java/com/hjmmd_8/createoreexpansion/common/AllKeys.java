@@ -1,8 +1,8 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.data.COELangProvider;
 import com.mojang.blaze3d.platform.InputConstants;
-import com.simibubi.create.Create;
 import net.createmod.catnip.client.ConflictSafeKeyMapping;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -16,10 +16,12 @@ import org.lwjgl.glfw.GLFW;
 import java.util.function.BiConsumer;
 
 @EventBusSubscriber(Dist.CLIENT)
-public enum AllKeys {
+public enum AllKeys implements COELangProvider.Translatable {
 
     SKILL_RELEASE("skill_release", GLFW.GLFW_KEY_LEFT_SHIFT, "Skill Release"),
     ;
+
+    public static final COELangProvider.Translatable MOD_NAME_TRANSLATABLE = () -> "createoreexpansion.mod_name";
 
     private KeyMapping keybind;
     private final String description;
@@ -54,9 +56,9 @@ public enum AllKeys {
     public static void register(RegisterKeyMappingsEvent event) {
         for (AllKeys key : values()) {
             if (key.conflictSafe) {
-                key.keybind = new ConflictSafeKeyMapping(key.description, key.key, "createoreexpansion.mod_name");
+                key.keybind = new ConflictSafeKeyMapping(key.description, key.key, MOD_NAME_TRANSLATABLE.getTranslateKey());
             } else {
-                key.keybind = new KeyMapping(key.description, key.key, "createoreexpansion.mod_name");
+                key.keybind = new KeyMapping(key.description, key.key, MOD_NAME_TRANSLATABLE.getTranslateKey());
             }
             if (!key.modifiable)
                 continue;
@@ -105,5 +107,10 @@ public enum AllKeys {
         return GLFW.glfwGetMouseButton(Minecraft.getInstance()
                 .getWindow()
                 .getWindow(), button) == 1;
+    }
+
+    @Override
+    public String getTranslateKey() {
+        return description;
     }
 }

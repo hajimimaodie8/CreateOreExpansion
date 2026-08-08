@@ -1,21 +1,13 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
 
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
-import com.hjmmd_8.createoreexpansion.common.AllItems;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillCostProxy;
-import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.component.DataComponents;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 
 public final class ToolEnergy {
 	private ToolEnergy() {}
@@ -58,6 +50,10 @@ public final class ToolEnergy {
 			return;
 		int value = Math.max(0, Math.min(max, energy));
 		stack.set(AllDataComponents.ENERGY, value);
+	}
+
+	public static boolean isFailure(ItemStack stack) {
+		return !(hasEnergy(stack) && getEnergy(stack) > getMaxEnergy(stack) / 5);
 	}
 
 	public static boolean canUseSkill(ItemStack stack, SkillCostProxy proxy) {

@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation.util;
 
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
@@ -24,22 +25,24 @@ public interface AreaStrategy {
 
     /**
      * 计算需要处理的方块位置
+     * @param skill 技能
      * @param center 玩家点击的中心方块
      * @param hit 玩家看向的结果
      * @param player 玩家
      * @return 需要处理的方块位置集合（不包括中心方块）
      */
-    Set<BlockPos> calculatePositions(BlockPos center, BlockHitResult hit, Player player);
+    Set<BlockPos> calculatePositions(ItemSkill skill, BlockPos center, BlockHitResult hit, Player player);
 
     /**
      * 是否需要渲染
+     * @param skill 技能
      * @param world 世界
      * @param pos 方块位置
      * @param state 方块状态
      * @param player 玩家
      * @return 是否需要渲染
      */
-    default boolean shouldRender(ClientLevel world, BlockPos pos, BlockState state, Player player) {
+    default boolean shouldRender(ItemSkill skill, ClientLevel world, BlockPos pos, BlockState state, Player player) {
         return true;
     }
 }

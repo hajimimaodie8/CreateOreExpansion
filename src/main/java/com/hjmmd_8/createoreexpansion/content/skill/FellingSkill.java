@@ -91,7 +91,7 @@ public class FellingSkill extends AbstractStrategySkill<FellingStrategy> impleme
         if (!(pick instanceof BlockHitResult hit)) return;
 
         // 使用Strategy计算位置
-        Set<BlockPos> toDestroy = getStrategy().calculatePositions(pos, hit, player);
+        Set<BlockPos> toDestroy = calculatePositions(pos, hit, player);
         if (toDestroy.isEmpty()) return;
 
         // 检查能量
@@ -105,13 +105,6 @@ public class FellingSkill extends AbstractStrategySkill<FellingStrategy> impleme
     @Override
     public void releaseTyped(ExcavationSkillContext ctx) {
         causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
-    }
-
-    @Override
-    @Deprecated
-    public void release(Object context) {
-        // 通过 TypedItemSkill 实现，此方法保留用于向后兼容
-        TypedItemSkill.super.release(context);
     }
 
     @Override

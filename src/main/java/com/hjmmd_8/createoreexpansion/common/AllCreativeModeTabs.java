@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.data.COELangProvider;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -28,7 +29,8 @@ public enum AllCreativeModeTabs {
     public DeferredHolder<CreativeModeTab, CreativeModeTab> holder;
 
     public final String id;
-    public final String titleTranslationKey;
+    private final String titleTranslationKey;
+    public final COELangProvider.Translatable translatable;
     public final ResourceKey<CreativeModeTab> before;
     public final Supplier<ItemStack> icon;
 
@@ -38,6 +40,7 @@ public enum AllCreativeModeTabs {
         this.titleTranslationKey = title;
         this.before = before;
         this.icon = icon;
+        this.translatable = () -> titleTranslationKey;
     }
 
     AllCreativeModeTabs(String id, ResourceKey<CreativeModeTab> before, Supplier<ItemStack> icon) {

@@ -1,13 +1,14 @@
 package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.client.tool.SkillsStrategyRenderer;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.EnergyTooltipHandler;
 import net.createmod.catnip.render.DefaultSuperRenderTypeBuffer;
-import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 /**
  * AOE 范围挖掘 — 客户端预选框渲染注册
@@ -32,5 +33,10 @@ public class ClientEvents {
                 event.getPoseStack(),
                 DefaultSuperRenderTypeBuffer.getInstance()
         );
+    }
+
+    @SubscribeEvent
+    public static void onItemTooltip(ItemTooltipEvent event) {
+        EnergyTooltipHandler.addEnergyTooltip(event);
     }
 }

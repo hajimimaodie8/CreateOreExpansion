@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.mixin;
 
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemStackSkillHelper;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.DestroyBlockContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
@@ -42,11 +42,12 @@ public class ServerPlayerGameModeMixin {
 
     @Unique
     private void createOreExpansion$trigger(BlockPos blockPos) {
-        ItemStack itemStack = this.player.getMainHandItem();
+        ItemStack stack = this.player.getMainHandItem();
+        SkillItemStack skillStack = SkillItemStack.of(stack);
 
-        if (!ItemStackSkillHelper.hasSkill(itemStack, SkillType.EXCAVATION_SKILL)) return;
+        if (!skillStack.hasSkill(SkillType.EXCAVATION_SKILL)) return;
 
-        ExcavationSkillContext context = new DestroyBlockContext(this.level, blockPos, itemStack, this.player);
-        ItemStackSkillHelper.releaseSkills(itemStack, SkillType.EXCAVATION_SKILL, context);
+        ExcavationSkillContext context = new DestroyBlockContext(this.level, blockPos, stack, this.player);
+        skillStack.getSkillsHolder().releaseSkills(SkillType.EXCAVATION_SKILL, context);
     }
 }

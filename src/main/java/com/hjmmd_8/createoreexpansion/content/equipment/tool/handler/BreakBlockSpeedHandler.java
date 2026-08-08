@@ -8,7 +8,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCoo
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedModifiableAttribute;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemStackSkillHelper;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.AttributeModifierCollector;
 import net.minecraft.core.BlockPos;
@@ -29,7 +29,8 @@ public class BreakBlockSpeedHandler {
         if (!AllKeys.SKILL_RELEASE.isPressed()) return;
 
         ItemStack held = player.getMainHandItem();
-        if (!ItemStackSkillHelper.hasSkill(held, SkillType.EXCAVATION_SKILL)) return;
+        SkillItemStack skillStack = SkillItemStack.of(held);
+        if (!skillStack.hasSkill(SkillType.EXCAVATION_SKILL)) return;
         if (!ToolSkillCooldown.isReady(player, held)) return;
 
         BlockState state = event.getState();
@@ -41,7 +42,7 @@ public class BreakBlockSpeedHandler {
         Level level = player.level();
         AttributeModifierCollector collector = new AttributeModifierCollector();
 
-        for (ItemSkill skill : ItemStackSkillHelper.getSkills(held, SkillType.EXCAVATION_SKILL)) {
+        for (ItemSkill skill : skillStack.getSkillsHolder().getSkills(SkillType.EXCAVATION_SKILL)) {
             if (skill instanceof FellingSkill fellingSkill) {
                 collector.collect(fellingSkill);
             }

@@ -34,7 +34,7 @@ public class BarTooltipRender {
     public static Component energy(int current, int max, int total, Color fillColor) {
         float ratio = max > 0 ? (float) current / max : 0;
         return makeBar(ratio, total,
-                new Color(0x5555FF),
+                fillColor,
                 new Color(0x333333));
     }
 

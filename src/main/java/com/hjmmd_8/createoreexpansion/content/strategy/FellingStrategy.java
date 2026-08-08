@@ -1,10 +1,10 @@
 package com.hjmmd_8.createoreexpansion.content.strategy;
 
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.TreeCounter;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -67,7 +67,7 @@ public class FellingStrategy implements AreaStrategy {
     }
 
     @Override
-    public Set<BlockPos> calculatePositions(BlockPos center, BlockHitResult hit, Player player) {
+    public Set<BlockPos> calculatePositions(ItemSkill skill, BlockPos center, BlockHitResult hit, Player player) {
         Level level = player.level();
         return calculateTreeBlocks(level, center);
     }
@@ -125,7 +125,7 @@ public class FellingStrategy implements AreaStrategy {
     }
 
     @Override
-    public boolean shouldRender(ClientLevel world, BlockPos pos, BlockState state, Player player) {
+    public boolean shouldRender(ItemSkill skill, ClientLevel world, BlockPos pos, BlockState state, Player player) {
         return IS_LOG.test(state);
     }
 }

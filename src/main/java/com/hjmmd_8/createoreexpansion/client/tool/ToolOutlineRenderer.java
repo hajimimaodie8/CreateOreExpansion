@@ -9,13 +9,11 @@ import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import org.joml.Matrix4f;
 
 import java.util.Set;
 
@@ -37,11 +35,9 @@ public class ToolOutlineRenderer {
     public void render(ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer,
                        BlockPos center, BlockState centerState, BlockHitResult blockHit, Player player) {
         AreaStrategy strategy = skill.getStrategy();
-        if (!strategy.shouldRender(world, center, centerState, player)) return;
+        if (!strategy.shouldRender(skill, world, center, centerState, player)) return;
 
-        Minecraft mc = Minecraft.getInstance();
-
-        Set<BlockPos> positions = strategy.calculatePositions(center, blockHit, player);
+        Set<BlockPos> positions = strategy.calculatePositions(skill, center, blockHit, player);
         positions.add(center);
 
         float r = config.r(), g = config.g(), b = config.b(), a = config.a();

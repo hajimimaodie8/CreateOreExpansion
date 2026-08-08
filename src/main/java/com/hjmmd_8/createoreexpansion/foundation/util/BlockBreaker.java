@@ -15,10 +15,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -75,10 +74,11 @@ public class BlockBreaker {
     }
 
     /**
-     * 破坏预先计算的位置集合
+     * 破坏预先计算的位置集合（带 mineableTag 过滤）
      */
     public static void breakPositions(Set<BlockPos> positions, BlockPos center,
-                                      ItemStack tool, Level level, LivingEntity entity) {
+                                      ItemStack tool, Level level, LivingEntity entity,
+                                      @Nullable TagKey<Block> mineableTag) {
         if (!(entity instanceof ServerPlayer player)) return;
         if (!player.isCreative() && tool.getDamageValue() >= tool.getMaxDamage() - 1) return;
 
@@ -89,7 +89,7 @@ public class BlockBreaker {
             if (!player.isCreative() && tool.getDamageValue() + damage >= tool.getMaxDamage() - 1) break;
 
             BlockState state = level.getBlockState(pos);
-            if (!canBreak(state, level, pos, player, null)) continue;
+            if (!canBreak(state, level, pos, player, mineableTag)) continue;
 
             breakSingle(state, pos, level, player, tool);
             damage++;
@@ -98,11 +98,19 @@ public class BlockBreaker {
         applyDurability(tool, entity, damage, player.isCreative());
     }
 
+    /**
+     * 破坏预先计算的位置集合
+     */
+    public static void breakPositions(Set<BlockPos> positions, BlockPos center,
+                                      ItemStack tool, Level level, LivingEntity entity) {
+        breakPositions(positions, center, tool, level, entity, null);
+    }
+
     // ========== 内部逻辑 ==========
 
     @SuppressWarnings("deprecation")
     private static boolean canBreak(BlockState state, Level level, BlockPos pos,
-                                    ServerPlayer player, TagKey<Block> mineableTag) {
+                                    ServerPlayer player, @Nullable TagKey<Block> mineableTag) {
         if (state.isAir()) return false;
         if (!state.getFluidState().isEmpty()) return false;
         if (level.getBlockEntity(pos) != null) return false;

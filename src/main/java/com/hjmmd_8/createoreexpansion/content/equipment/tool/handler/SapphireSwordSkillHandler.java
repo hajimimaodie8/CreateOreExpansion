@@ -32,7 +32,7 @@ public class SapphireSwordSkillHandler {
 			return;
 		if (player.getCooldowns().isOnCooldown(sword.getItem()))
 			return;
-		if (!ToolEnergy.consumeForSkill(player, sword, AllSkills.SAPPHIRE_AXE_AOE.costProxy()))
+		if (!ToolEnergy.consumeForSkill(player, sword, AllSkills.GRAND_FELL.costProxy()))
 			return;
 
 		trigger(player, event.getEntity());

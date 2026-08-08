@@ -3,10 +3,9 @@ package com.hjmmd_8.createoreexpansion.content.skill;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.strategy.AreaAoeStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.BreakBlockSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
-import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
@@ -30,10 +29,9 @@ import java.util.Set;
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全，
  * 防止将错误的Strategy类型传入。</p>
  */
-public class AreaAoeSkill extends AbstractStrategySkill<AreaAoeStrategy> implements TypedItemSkill<ExcavationSkillContext> {
+public class AreaAoeSkill extends BreakBlockSkill<AreaAoeStrategy, ExcavationSkillContext> {
 
     private final int energyCost;
-    private final TagKey<Block> mineableTag;
 
     /**
      * 创建范围AOE技能
@@ -42,9 +40,8 @@ public class AreaAoeSkill extends AbstractStrategySkill<AreaAoeStrategy> impleme
      * @param mineableTag 可挖掘的方块标签
      */
     public AreaAoeSkill(AreaAoeStrategy strategy, int energyCost, TagKey<Block> mineableTag) {
-        super(strategy);
+        super(strategy, mineableTag);
         this.energyCost = energyCost;
-        this.mineableTag = mineableTag;
     }
 
     /**
@@ -67,7 +64,7 @@ public class AreaAoeSkill extends AbstractStrategySkill<AreaAoeStrategy> impleme
         if (!(pick instanceof BlockHitResult hit)) return;
 
         // 使用Strategy计算位置
-        Set<BlockPos> positions = getStrategy().calculatePositions(pos, hit, player);
+        Set<BlockPos> positions = calculatePositions(pos, hit, player);
         if (positions.isEmpty()) return;
 
         // 检查能量
@@ -75,19 +72,12 @@ public class AreaAoeSkill extends AbstractStrategySkill<AreaAoeStrategy> impleme
             return;
 
         // 破坏方块
-        BlockBreaker.breakPositions(positions, pos, pickaxe, level, player);
+        breakBlocks(positions, pos, pickaxe, level, player, mineableTag);
     }
 
     @Override
     public void releaseTyped(ExcavationSkillContext ctx) {
         causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
-    }
-
-    @Override
-    @Deprecated
-    public void release(Object context) {
-        // 通过 TypedItemSkill 实现，此方法保留用于向后兼容
-        TypedItemSkill.super.release(context);
     }
 
     @Override

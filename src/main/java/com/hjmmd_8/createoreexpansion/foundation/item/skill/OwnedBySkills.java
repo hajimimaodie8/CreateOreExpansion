@@ -13,7 +13,19 @@ public interface OwnedBySkills {
         return skills().get(type);
     }
 
-     default boolean hasSkill(SkillType type) {
+    default List<ItemSkill> getAllSkills() {
+        List<ItemSkill> all = new ArrayList<>();
+        for (List<ItemSkill> skillList : skills().values()) {
+            all.addAll(skillList);
+        }
+        return all;
+    }
+
+    default boolean isEmpty() {
+        return skills().isEmpty();
+    }
+
+    default boolean hasSkill(SkillType type) {
         return skills().containsKey(type);
     }
 

@@ -1,9 +1,13 @@
 package com.hjmmd_8.createoreexpansion.content.strategy;
 
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.BreakBlockSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 import java.util.Set;
@@ -59,9 +63,15 @@ public class AreaAoeStrategy implements AreaStrategy {
     }
 
     @Override
-    public Set<BlockPos> calculatePositions(BlockPos center, BlockHitResult hit, Player player) {
+    public Set<BlockPos> calculatePositions(ItemSkill skill, BlockPos center, BlockHitResult hit, Player player) {
         DualDirection dualDirection = DualDirection.from(player, hit, directionSource);
         return dualDirection.collect(center, width, height, depth);
+    }
+
+    @Override
+    public boolean shouldRender(ItemSkill skill, ClientLevel world, BlockPos pos, BlockState state, Player player) {
+        if (!(skill instanceof BreakBlockSkill<?, ?> breakSkill)) return false;
+        return state.is(breakSkill.mineableTag);
     }
 
     // Getters

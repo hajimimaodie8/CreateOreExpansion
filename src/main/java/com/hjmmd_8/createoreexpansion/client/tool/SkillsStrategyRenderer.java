@@ -3,16 +3,12 @@ package com.hjmmd_8.createoreexpansion.client.tool;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.AllStrategies;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemStackSkillHelper;
-import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.engine_room.flywheel.lib.transform.TransformStack;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Camera;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -22,7 +18,6 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
-import java.util.Set;
 
 public class SkillsStrategyRenderer {
     public static SkillsStrategyRenderer INSTANCE = new SkillsStrategyRenderer();
@@ -39,7 +34,8 @@ public class SkillsStrategyRenderer {
         if (!AllKeys.SKILL_RELEASE.isPressed()) return;
 
         ItemStack stack = player.getMainHandItem();
-        if (stack.isEmpty() || !ItemStackSkillHelper.hasSkill(stack)) return;
+        SkillItemStack skillStack = SkillItemStack.of(stack);
+        if (stack.isEmpty() || !skillStack.hasSkill()) return;
 
         // 检查是否看向方块
         HitResult hit = Minecraft.getInstance().hitResult;
@@ -53,7 +49,7 @@ public class SkillsStrategyRenderer {
         if (centerState.isAir()) return;
 
         @SuppressWarnings("rawtypes")
-        List<AbstractStrategySkill> skills = ItemStackSkillHelper.getSkills(stack).stream()
+        List<AbstractStrategySkill> skills = skillStack.getSkillsHolder().getAllSkills().stream()
                 .filter(s -> s instanceof AbstractStrategySkill)
                 .map(s -> (AbstractStrategySkill) s).toList();
 
