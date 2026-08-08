@@ -8,7 +8,8 @@ import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
 import com.hjmmd_8.createoreexpansion.content.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.content.strategy.FellingStrategy;
-import com.hjmmd_8.createoreexpansion.data.COELangProvider;
+import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
+import com.hjmmd_8.createoreexpansion.data.lang.Translator;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttribute;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttributeType;
@@ -172,16 +173,15 @@ public final class AllSkills {
 
     public static void register() {}
 
-    public enum SkillsTranslator implements COELangProvider.Translator {
+    private enum SkillsTranslator implements Translator {
         INSTANCE;
 
         private final List<Consumer<COELangProvider.Builder>> lst = new ArrayList<>();
 
-        public SkillsTranslator add(ItemSkill skill,
-                                    @Nullable String chineseTranslate,
-                                    @Nullable String englishTranslate) {
+        public void add(ItemSkill skill,
+                        @Nullable String chineseTranslate,
+                        @Nullable String englishTranslate) {
             lst.add(builder -> builder.add(skill, chineseTranslate, englishTranslate));
-            return this;
         }
 
         @Override
@@ -287,6 +287,10 @@ public final class AllSkills {
                 return builder;
             }
         }
+    }
 
+    public static COELangProvider.Builder translate(COELangProvider.Builder builder) {
+        return builder
+                .add(SkillsTranslator.INSTANCE);
     }
 }

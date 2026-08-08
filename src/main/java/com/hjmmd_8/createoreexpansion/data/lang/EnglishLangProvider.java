@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.data;
+package com.hjmmd_8.createoreexpansion.data.lang;
 
 import com.hjmmd_8.createoreexpansion.common.AllMyBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllItems;

@@ -1,7 +1,8 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.data.COELangProvider;
+import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
+import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.createmod.catnip.client.ConflictSafeKeyMapping;
 import net.minecraft.client.KeyMapping;
@@ -16,12 +17,12 @@ import org.lwjgl.glfw.GLFW;
 import java.util.function.BiConsumer;
 
 @EventBusSubscriber(Dist.CLIENT)
-public enum AllKeys implements COELangProvider.Translatable {
+public enum AllKeys implements Translatable {
 
     SKILL_RELEASE("skill_release", GLFW.GLFW_KEY_LEFT_SHIFT, "Skill Release"),
     ;
 
-    public static final COELangProvider.Translatable MOD_NAME_TRANSLATABLE = () -> "createoreexpansion.mod_name";
+    public static final Translatable MOD_NAME_TRANSLATABLE = () -> "createoreexpansion.mod_name";
 
     private KeyMapping keybind;
     private final String description;
@@ -65,6 +66,15 @@ public enum AllKeys implements COELangProvider.Translatable {
 
             event.register(key.keybind);
         }
+    }
+
+    public static COELangProvider.Builder translate(COELangProvider.Builder builder) {
+        return builder
+                .add(AllKeys.MOD_NAME_TRANSLATABLE,
+                        "机械动力：矿物拓展", "Create: Ore Expansion")
+                .add(AllKeys.SKILL_RELEASE,
+                        "技能释放", "Release skill")
+                ;
     }
 
     public KeyMapping getKeybind() {

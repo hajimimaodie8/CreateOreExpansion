@@ -25,6 +25,8 @@ public class CreateOreExpansion {
     // 创建 Logger
     public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
+    public static IEventBus MOD_BUS;
+
     // 创建Create的注册器 —— Registrate
     public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(MOD_ID);
 
@@ -44,6 +46,7 @@ public class CreateOreExpansion {
     }
 
     public CreateOreExpansion(IEventBus modEventBus, ModContainer modContainer) {
+        MOD_BUS = modEventBus;
         REGISTRATE.registerEventListeners(modEventBus);
 
         AllSkills.register();

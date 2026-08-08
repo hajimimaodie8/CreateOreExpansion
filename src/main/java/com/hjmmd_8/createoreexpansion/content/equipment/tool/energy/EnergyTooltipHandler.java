@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
 
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.data.COELangProvider;
+import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -14,9 +14,6 @@ public class EnergyTooltipHandler {
     private static final int BAR_SLOTS = 20;
 
     private static final String ENERGY_TRANSLATE_KEY = "item.createoreexpansion.tool.energy";
-
-    public static final COELangProvider.Translatable ENERGY_TRANSLATABLE
-            = () -> ENERGY_TRANSLATE_KEY;
 
     public static void addEnergyTooltip(ItemTooltipEvent event) {
         ItemStack stack = event.getItemStack();
@@ -44,5 +41,12 @@ public class EnergyTooltipHandler {
         }
 
         event.getToolTip().add(2, BarTooltipRender.energy(energy, max, BAR_SLOTS, fillColor));
+    }
+
+    public static COELangProvider.Builder translate(COELangProvider.Builder builder) {
+        return builder
+                .add(ENERGY_TRANSLATE_KEY,
+                        "能量", "Energy")
+                ;
     }
 }

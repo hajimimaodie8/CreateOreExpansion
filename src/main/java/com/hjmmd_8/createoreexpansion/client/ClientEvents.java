@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.client.tool.SkillsStrategyRenderer;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.EnergyTooltipHandler;
+import com.hjmmd_8.createoreexpansion.content.skill.tooltip.SkillsTooltipHandler;
 import net.createmod.catnip.render.DefaultSuperRenderTypeBuffer;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
@@ -38,5 +39,6 @@ public class ClientEvents {
     @SubscribeEvent
     public static void onItemTooltip(ItemTooltipEvent event) {
         EnergyTooltipHandler.addEnergyTooltip(event);
+        SkillsTooltipHandler.addSkillsTooltip(event);
     }
 }

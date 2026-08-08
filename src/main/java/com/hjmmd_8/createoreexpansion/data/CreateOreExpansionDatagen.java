@@ -1,6 +1,8 @@
 package com.hjmmd_8.createoreexpansion.data;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.data.lang.ChineseLangProvider;
+import com.hjmmd_8.createoreexpansion.data.lang.EnglishLangProvider;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
 import net.neoforged.bus.api.SubscribeEvent;
