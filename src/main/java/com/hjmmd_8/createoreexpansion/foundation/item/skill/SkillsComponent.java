@@ -129,20 +129,50 @@ public class SkillsComponent implements OwnedBySkills {
         List<DataSkill> skills = dataSkills.get(type);
         ItemStack stack = skillStack.itemStack();
 
-        int energySum = 0;
-        for (DataSkill data : skills) {
-            energySum += data.cost;
+        // 检查是否为创造模式
+        boolean isCreative = false;
+        if (context instanceof com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext excavationContext) {
+            var entity = excavationContext.entity();
+            if (entity instanceof net.minecraft.server.level.ServerPlayer player) {
+                isCreative = player.isCreative();
+            }
         }
 
-        if (energySum != 0 || !ToolEnergy.hasEnergy(stack)) return false;
-        int energy = ToolEnergy.getEnergy(stack);
-        if (ToolEnergy.isFailure(stack) || energy < energySum) return false;
+        // 如果不是创造模式，检查能量
+        if (!isCreative) {
+            int energySum = 0;
+            for (DataSkill data : skills) {
+                energySum += data.cost;
+            }
 
-        for (DataSkill data : skills) {
-            ToolEnergy.consumeForSkill(stack, data);
+            // 能量预检查：确保有足够能量释放所有技能
+            if (energySum != 0) {
+                if (!ToolEnergy.hasEnergy(stack)) return false;
+                int energy = ToolEnergy.getEnergy(stack);
+                // 检查能量失败状态（<1/5最大能量）或能量不足
+                if (ToolEnergy.isFailure(stack) || energy < energySum) {
+                    return false; // 能量不足，返回false
+                }
+            }
         }
 
-        return true;
+        // 执行技能释放
+        for (DataSkill data : skills) {
+            // 加载config到skill和strategy（如果存在）
+            if (data.config != null) {
+                data.config.load(data);
+            }
+
+            // 调用技能释放方法
+            data.skill.release(context, data);
+
+            // 技能执行后消耗能量（仅在非创造模式）
+            if (!isCreative && data.cost > 0) {
+                ToolEnergy.consumeForSkill(stack, data);
+            }
+        }
+
+        return true; // 所有技能成功释放
     }
 
     // ========== 实用查询方法 ==========

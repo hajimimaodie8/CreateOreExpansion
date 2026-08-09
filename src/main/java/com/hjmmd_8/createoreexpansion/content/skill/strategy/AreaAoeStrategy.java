@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
+import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.BreakBlockSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
@@ -65,8 +65,8 @@ public class AreaAoeStrategy extends ConfigStrategy<AreaAoeConfig> {
     @Override
     public boolean shouldRender(DataSkill data, ClientLevel world, BlockPos pos, BlockState state, Player player) {
         ItemSkill skill = data.skill;
-        if (!(skill instanceof BreakBlockSkill<?, ?> breakSkill)) return false;
-        return state.is(breakSkill.mineableTag);
+        if (!(skill instanceof AreaAoeSkill aoeSkill)) return false;
+        return state.is(aoeSkill.getMineableTag());
     }
 
     // Getters

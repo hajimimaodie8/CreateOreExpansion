@@ -59,7 +59,12 @@ public class SkillsStrategyRenderer {
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
 
         for (DataSkill data : skills) {
-            if (!(data.skill instanceof AbstractStrategySkill<?, ?>)) return;
+            if (!(data.skill instanceof AbstractStrategySkill<?, ?>)) continue;
+
+            // 加载config到skill和strategy（如果存在）
+            if (data.config != null) {
+                data.config.load(data);
+            }
 
             SkillRendererConfig config = SkillRendererConfig.defaultConfig(data);
 

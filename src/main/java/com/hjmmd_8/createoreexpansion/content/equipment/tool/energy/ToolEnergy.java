@@ -57,26 +57,42 @@ public final class ToolEnergy {
 	}
 
 	public static boolean canUseSkill(ItemStack stack, ItemSkill skill) {
-		return hasEnergy(stack) && getEnergy(stack) > skill.getCost();
+		int cost = skill.getCost();
+		// cost为0时不需要能量组件
+		if (cost == 0) return true;
+		// cost>0时需要能量组件和足够能量
+		return hasEnergy(stack) && getEnergy(stack) >= cost;
 	}
 
 	public static boolean canUseSkill(ItemStack stack, DataSkill data) {
-		return hasEnergy(stack) && getEnergy(stack) > data.cost;
+		int cost = data.cost;
+		// cost为0时不需要能量组件
+		if (cost == 0) return true;
+		// cost>0时需要能量组件和足够能量
+		return hasEnergy(stack) && getEnergy(stack) >= cost;
 	}
 
 	public static boolean consumeForSkill(ItemStack stack, ItemSkill skill) {
+		int cost = skill.getCost();
+		// cost为0时不需要消耗
+		if (cost == 0) return true;
+
 		if (!canUseSkill(stack, skill)) {
 			return false;
 		}
-		setEnergy(stack, getEnergy(stack) - skill.getCost());
+		setEnergy(stack, getEnergy(stack) - cost);
 		return true;
 	}
 
 	public static boolean consumeForSkill(ItemStack stack, DataSkill data) {
+		int cost = data.cost;
+		// cost为0时不需要消耗
+		if (cost == 0) return true;
+
 		if (!canUseSkill(stack, data)) {
 			return false;
 		}
-		setEnergy(stack, getEnergy(stack) - data.cost);
+		setEnergy(stack, getEnergy(stack) - cost);
 		return true;
 	}
 

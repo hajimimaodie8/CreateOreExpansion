@@ -15,14 +15,24 @@ public interface SkillConfig<S extends ItemSkill, T extends AreaStrategy> extend
 
     default void load(DataSkill data, S skill, T strategy) {
         read(data);
-        loadStrategy(strategy);
+        if (strategy != null) {
+            loadStrategy(strategy);
+        }
         loadSkill(skill);
     }
 
     @SuppressWarnings("unchecked")
     default void load(DataSkill data) {
         read(data);
-        loadStrategy((T) ((AbstractStrategySkill<?, ?>) data.skill).strategy());
+
+        // 只对AbstractStrategySkill类型的技能加载strategy
+        if (data.skill instanceof AbstractStrategySkill<?, ?> strategySkill) {
+            T strategy = (T) strategySkill.getStrategy();
+            if (strategy != null) {
+                loadStrategy(strategy);
+            }
+        }
+
         loadSkill((S) data.skill);
     }
 }

@@ -49,20 +49,26 @@ public final class AllSkills {
                             0, .12f, .12f))
                     .level(1)
                     .register();
-    public static final RegisteredDataSkill GREAT_FELL = skill("great_fell", FELL)
-            .config(new FellingConfig(
-                    8, FellingConfig.BlockPredicate.IS_TREE,
-                    100, .08f, .01f))
-            .translate("伐树", "Fell")
-            .level(2)
-            .register();
-    public static final RegisteredDataSkill GRAND_FELL = skill("grand_fell", FELL)
-            .translate("伐树", "Fell")
-            .config(new FellingConfig(
-                    8, FellingConfig.BlockPredicate.IS_TREE,
-                    100, .05f, .005f))
-            .level(3)
-            .register();
+    public static final RegisteredDataSkill GREAT_FELL =
+        skill("great_fell", FellingSkill.class, FellingStrategy.class)
+                .skill(FellingSkill::new)
+                .strategy(FellingStrategy::new)
+                .config(new FellingConfig(
+                        8, FellingConfig.BlockPredicate.IS_TREE,
+                        100, .08f, .01f))
+                .translate("伐树", "Fell")
+                .level(2)
+                .register();
+    public static final RegisteredDataSkill GRAND_FELL =
+        skill("grand_fell", FellingSkill.class, FellingStrategy.class)
+                .skill(FellingSkill::new)
+                .strategy(FellingStrategy::new)
+                .config(new FellingConfig(
+                        8, FellingConfig.BlockPredicate.IS_TREE,
+                        100, .05f, .005f))
+                .translate("伐树", "Fell")
+                .level(3)
+                .register();
 
     public static final RegisteredDataSkill SHATTER =
             skill("shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
@@ -72,16 +78,22 @@ public final class AllSkills {
                     .translate("开岩", "Shatter")
                     .level(1)
                     .register();
-    public static final RegisteredDataSkill GREAT_SHATTER = skill("great_shatter", SHATTER)
-            .config(new AreaAoeConfig(100, BlockTags.MINEABLE_WITH_PICKAXE, 3, 3, 1))
-            .translate("开岩", "Shatter")
-            .level(2)
-            .register();
-    public static final RegisteredDataSkill GRAND_SHATTER = skill("grand_shatter", SHATTER)
-            .config(new AreaAoeConfig(100, BlockTags.MINEABLE_WITH_PICKAXE, 5, 5, 1))
-            .translate("开岩", "Shatter")
-            .level(3)
-            .register();
+    public static final RegisteredDataSkill GREAT_SHATTER =
+            skill("great_shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
+                    .skill(AreaAoeSkill::new)
+                    .strategy(AreaAoeStrategy::new)
+                    .config(new AreaAoeConfig(100, BlockTags.MINEABLE_WITH_PICKAXE, 3, 3, 1))
+                    .translate("开岩", "Shatter")
+                    .level(2)
+                    .register();
+    public static final RegisteredDataSkill GRAND_SHATTER =
+            skill("grand_shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
+                    .skill(AreaAoeSkill::new)
+                    .strategy(AreaAoeStrategy::new)
+                    .config(new AreaAoeConfig(100, BlockTags.MINEABLE_WITH_PICKAXE, 5, 5, 1))
+                    .translate("开岩", "Shatter")
+                    .level(3)
+                    .register();
 
     public static final RegisteredDataSkill CHANNEL =
             skill("channel", AreaAoeSkill.class, AreaAoeStrategy.class)
@@ -91,11 +103,14 @@ public final class AllSkills {
                     .translate("引渠", "Channel")
                     .level(1)
                     .register();
-    public static final RegisteredDataSkill GREAT_CHANNEL = skill("great_channel", CHANNEL)
-            .config(new AreaAoeConfig(50, BlockTags.MINEABLE_WITH_SHOVEL, 1, 1, 8, DualDirection.From.PLAYER_YAW))
-            .translate("引渠", "Channel")
-            .level(2)
-            .register();
+    public static final RegisteredDataSkill GREAT_CHANNEL =
+        skill("great_channel", AreaAoeSkill.class, AreaAoeStrategy.class)
+                .skill(AreaAoeSkill::new)
+                .strategy(AreaAoeStrategy::new)
+                .config(new AreaAoeConfig(50, BlockTags.MINEABLE_WITH_SHOVEL, 1, 1, 8, DualDirection.From.PLAYER_YAW))
+                .translate("引渠", "Channel")
+                .level(2)
+                .register();
     public static final RegisteredDataSkill GRADE =
         skill("grade", AreaAoeSkill.class, AreaAoeStrategy.class)
                 .skill(AreaAoeSkill::new)
@@ -220,7 +235,7 @@ public final class AllSkills {
         public SkillBuilder<T, S> translate(@Nullable String chineseTranslate,
                                             @Nullable String englishTranslate) {
             if (factory == null) throw new NullPointerException("Factory cannot be null");
-            if (strategy == null) throw new NullPointerException("Strategy cannot be null");
+            // 允许strategy为null，支持没有strategy的技能
             if (skill == null) skill = factory.apply(strategy);
             if (skill == null) throw new NullPointerException("Skill cannot be null");
             SkillsTranslator.INSTANCE.add(skill, chineseTranslate, englishTranslate);
@@ -229,12 +244,15 @@ public final class AllSkills {
 
         public RegisteredDataSkill register() {
             if (factory == null) throw new NullPointerException("Factory cannot be null");
-            if (strategy == null) throw new NullPointerException("Strategy cannot be null");
+            // 允许strategy为null，支持没有strategy的技能
             if (skill == null) skill = factory.apply(strategy);
             if (skill == null) throw new NullPointerException("Skill cannot be null");
             SKILLS.put(id, skill);
             SKILL_IDS.put(skill, id);
-            STRATEGIES.put(skill, strategy);
+            // 只有在strategy不为null时才放入STRATEGIES map
+            if (strategy != null) {
+                STRATEGIES.put(skill, strategy);
+            }
             if (config != null) {
                 CONFIGS.put(skill, config);
             }

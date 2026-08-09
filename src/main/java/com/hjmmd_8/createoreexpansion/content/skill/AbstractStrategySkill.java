@@ -25,42 +25,50 @@ public abstract class AbstractStrategySkill<S extends AreaStrategy, C extends Sk
 
     /**
      * 创建策略技能
-     * @param strategy 此技能使用的策略实例
-     * @throws IllegalArgumentException 如果strategy为null
+     * @param strategy 此技能使用的策略实例（可以为null）
      */
     protected AbstractStrategySkill(S strategy) {
         super();
-        if (strategy == null) {
-            throw new IllegalArgumentException("Strategy cannot be null");
-        }
-        this.strategy = strategy;
+        this.strategy = strategy; // 允许null，支持没有strategy的技能
     }
 
     /**
      * 获取此技能使用的策略
-     * @return 策略实例
+     * @return 策略实例，可能为null
      */
     public final S strategy() {
         return strategy;
     }
 
     /**
+     * 获取此技能使用的策略（安全版本）
+     * @return 策略实例，如果不存在则返回null
+     */
+    public final S getStrategy() {
+        return strategy;
+    }
+
+    /**
      * 获取策略类型（用于反射等场景）
-     * @return 策略的Class对象
+     * @return 策略的Class对象，如果strategy为null则返回null
      */
     @SuppressWarnings("unchecked")
     public final Class<S> getStrategyType() {
+        if (strategy == null) return null;
         return (Class<S>) strategy.getClass();
     }
 
     public final Set<BlockPos> calculatePositions(DataSkill data, BlockPos center, BlockHitResult hit, Player player) {
-        return strategy().calculatePositions(data, center, hit, player);
+        if (strategy == null) {
+            return java.util.Collections.emptySet();
+        }
+        return strategy.calculatePositions(data, center, hit, player);
     }
 
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" +
-                "strategy=" + strategy +
+                "strategy=" + (strategy != null ? strategy : "null") +
                 ", cost=" + getCost() +
                 ", id=" + AllSkills.getId(this) +
                 '}';
