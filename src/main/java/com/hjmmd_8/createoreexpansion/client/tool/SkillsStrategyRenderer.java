@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
-import com.hjmmd_8.createoreexpansion.common.AllStrategies;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
@@ -19,7 +18,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
-import java.awt.*;
 import java.util.List;
 
 public class SkillsStrategyRenderer {
@@ -61,24 +59,27 @@ public class SkillsStrategyRenderer {
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
 
         for (DataSkill data : skills) {
-            if (!(data.skill instanceof AbstractStrategySkill<?>)) return;
+            if (!(data.skill instanceof AbstractStrategySkill<?, ?>)) return;
 
-            RendererConfig config = RendererConfig.defaultConfig(data);
+            SkillRendererConfig config = SkillRendererConfig.defaultConfig(data);
 
+            if (data.nbt != null && data.nbt.contains("OutlineColor")) {
+                CompoundTag tag = data.nbt.getCompound("OutlineColor");
 
-            if (data.nbt != null) {
-                if (data.nbt.contains("OutlineColor")) {
-                    CompoundTag tag = data.nbt.getCompound("OutlineColor");
+                float r, g, b;
+                r = tag.getFloat("r");
+                g = tag.getFloat("g");
+                b = tag.getFloat("b");
 
-                    config = new RendererConfig(
-                            data,
-                            tag.getFloat("r"),
-                            tag.getFloat("g"),
-                            tag.getFloat("b"),
-                            RendererConfig.ALPHA
-                    );
-                }
+                config = new SkillRendererConfig(
+                        data,
+                        r == (int) r && r > 0 ? 1.0f : r - (int) r,
+                        g == (int) g && g > 0 ? 1.0f : g - (int) g,
+                        b == (int) b && b > 0 ? 1.0f : b - (int) b,
+                        SkillRendererConfig.ALPHA
+                );
             }
+
             toolOutlineRenderer.render(
                     config, world, camera, poseStack, buffer,
                     center, centerState, blockHit, player

@@ -1,11 +1,11 @@
-package com.hjmmd_8.createoreexpansion.content.strategy;
+package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.TreeCounter;
+import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -20,51 +20,13 @@ import java.util.function.Predicate;
 /**
  * 砍伐策略 - 用于斧头的连锁砍树
  *
- * <p>使用BFS算法搜索相连的原木和树叶，支持：
- * <ul>
- *   <li>仅原木 - {@link #IS_LOG}</li>
- *   <li>原木+树叶 - {@link #IS_TREE}</li>
- * </ul>
+ * <p>使用BFS算法搜索相连的原木和树叶
  */
-public class FellingStrategy implements AreaStrategy {
+public class FellingStrategy extends ConfigStrategy<FellingConfig> {
 
-    private final int searchRange;
-    private final int maxBlocks;
-    private final int renderLimit;
-    private final Predicate<BlockState> predicate;
-
-    public static final Predicate<BlockState> IS_LOG =
-        state -> state.is(BlockTags.LOGS);
-    public static final Predicate<BlockState> IS_TREE =
-        state -> state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES);
-
-    /**
-     * 创建砍伐策略
-     * @param searchRange 搜索半径（8 = 16x16x16 区域）
-     * @param maxBlocks 最大方块数限制
-     * @param renderLimit 渲染限制（防止渲染过多方块）
-     * @param predicate 方块匹配条件
-     */
-    public FellingStrategy(int searchRange, int maxBlocks, int renderLimit, Predicate<BlockState> predicate) {
-        this.searchRange = searchRange;
-        this.maxBlocks = maxBlocks;
-        this.renderLimit = renderLimit;
-        this.predicate = predicate;
-    }
-
-    /**
-     * 简化构造器 - 自动计算最大方块数
-     */
-    public FellingStrategy(int searchRange, int renderLimit, Predicate<BlockState> predicate) {
-        this(searchRange, searchRange * searchRange * searchRange + 1, renderLimit, predicate);
-    }
-
-    /**
-     * 默认构造器 - 使用默认限制
-     */
-    public FellingStrategy(int searchRange, Predicate<BlockState> predicate) {
-        this(searchRange, 200, 100, predicate);
-    }
+    private int searchRange;
+    private int maxBlocks;
+    private Predicate<BlockState> predicate;
 
     @Override
     public Set<BlockPos> calculatePositions(DataSkill skill, BlockPos center, BlockHitResult hit, Player player) {
@@ -81,7 +43,7 @@ public class FellingStrategy implements AreaStrategy {
         queue.add(startPos);
         result.add(startPos);
 
-        while (!queue.isEmpty() && result.size() < renderLimit) {
+        while (!queue.isEmpty() && result.size() < maxBlocks) {
             BlockPos current = queue.poll();
 
             for (int dx = -1; dx <= 1; dx++) {
@@ -121,11 +83,18 @@ public class FellingStrategy implements AreaStrategy {
      * @return TreeCounter实例
      */
     public TreeCounter createCounter() {
-        return new TreeCounter(searchRange, maxBlocks, predicate == IS_TREE);
+        return new TreeCounter(searchRange, maxBlocks, predicate == FellingConfig.BlockPredicate.IS_TREE);
     }
 
     @Override
     public boolean shouldRender(DataSkill skill, ClientLevel world, BlockPos pos, BlockState state, Player player) {
-        return IS_LOG.test(state);
+        return FellingConfig.BlockPredicate.IS_LOG.test(state);
+    }
+
+    @Override
+    public void load(FellingConfig config) {
+        this.searchRange = config.searchRange;
+        this.maxBlocks = config.maxBlocks;
+        this.predicate = config.predicate;
     }
 }

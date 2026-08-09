@@ -1,7 +1,8 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
-import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.TagKey;
@@ -13,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
-public abstract class BreakBlockSkill<T extends AreaStrategy, C> extends AbstractStrategySkill<T> implements TypedItemSkill<C>{
+public abstract class BreakBlockSkill<T extends AreaStrategy, C extends SkillConfig<?, T>> extends AbstractStrategySkill<T, C> implements TypedItemSkill<C>{
 
     public final TagKey<Block> mineableTag;
 

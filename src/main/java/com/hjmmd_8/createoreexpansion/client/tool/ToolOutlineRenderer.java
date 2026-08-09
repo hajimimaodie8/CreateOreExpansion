@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.client.tool;
 import com.hjmmd_8.createoreexpansion.common.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
@@ -25,11 +25,11 @@ import java.util.Set;
 public class ToolOutlineRenderer {
     public ToolOutlineRenderer() {}
 
-    public void render(RendererConfig config, ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer,
+    public void render(SkillRendererConfig config, ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer,
                        BlockPos center, BlockState centerState, BlockHitResult blockHit, Player player) {
         DataSkill dataSkill = config.skill();
-        AbstractStrategySkill<?> skill = (AbstractStrategySkill<?>) dataSkill.skill;
-        AreaStrategy strategy = skill.getStrategy();
+        AbstractStrategySkill<?, ?> skill = (AbstractStrategySkill<?, ?>) dataSkill.skill;
+        AreaStrategy strategy = skill.strategy();
         if (!strategy.shouldRender(dataSkill, world, center, centerState, player)) return;
 
         Set<BlockPos> positions = strategy.calculatePositions(dataSkill, center, blockHit, player);

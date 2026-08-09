@@ -2,13 +2,14 @@ package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.content.strategy.AreaAoeStrategy;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.BreakBlockSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
@@ -31,26 +32,19 @@ import java.util.Set;
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全，
  * 防止将错误的Strategy类型传入。</p>
  */
-public class AreaAoeSkill extends BreakBlockSkill<AreaAoeStrategy, ExcavationSkillContext> {
+public class AreaAoeSkill extends AbstractStrategySkill<AreaAoeStrategy, AreaAoeConfig> implements TypedItemSkill<ExcavationSkillContext> {
 
-    private final int energyCost;
+    private int energyCost;
+    private TagKey<Block> mineableTag;
 
     /**
      * 创建范围AOE技能
      * @param strategy 区域策略（必须是AreaAoeStrategy类型）
-     * @param energyCost 能量消耗
-     * @param mineableTag 可挖掘的方块标签
      */
-    public AreaAoeSkill(AreaAoeStrategy strategy, int energyCost, TagKey<Block> mineableTag) {
-        super(strategy, mineableTag);
-        this.energyCost = energyCost;
-    }
-
-    /**
-     * 简化构造器 - 默认使用镐子标签
-     */
-    public AreaAoeSkill(AreaAoeStrategy strategy, int energyCost) {
-        this(strategy, energyCost, BlockTags.MINEABLE_WITH_PICKAXE);
+    public AreaAoeSkill(AreaAoeStrategy strategy) {
+        super(strategy);
+        this.energyCost = 0;
+        this.mineableTag = BlockTags.MINEABLE_WITH_PICKAXE;
     }
 
     protected void causeAoe(Level level, BlockPos pos, BlockState state,
@@ -74,7 +68,7 @@ public class AreaAoeSkill extends BreakBlockSkill<AreaAoeStrategy, ExcavationSki
             return;
 
         // 破坏方块
-        breakBlocks(positions, pos, pickaxe, level, player, mineableTag);
+        BlockBreaker.breakPositions(positions, pos, pickaxe, level, player, mineableTag);
     }
 
     @Override
@@ -90,5 +84,15 @@ public class AreaAoeSkill extends BreakBlockSkill<AreaAoeStrategy, ExcavationSki
     @Override
     public int getCost() {
         return energyCost;
+    }
+
+    public TagKey<Block> getMineableTag() {
+        return mineableTag;
+    }
+
+    @Override
+    public void load(AreaAoeConfig config) {
+        this.energyCost = config.energyCost;
+        this.mineableTag = config.mineableTag;
     }
 }

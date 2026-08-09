@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.tooltip;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import net.minecraft.ChatFormatting;
@@ -29,10 +30,16 @@ public class SkillsTooltipHandler {
                     .withStyle(ChatFormatting.GRAY));
 
             int index = 2;
-            List<ItemSkill> skills = skillStack.getSkillsHolder().getAllSkills();
-            for (ItemSkill skill : skills) {
+            List<DataSkill> skills = skillStack.getSkillsHolder().getAllData();
+            for (DataSkill data : skills) {
+                ItemSkill skill = data.skill;
+                int level = 1;
+                if (data.nbt != null) {
+                    level = Math.max(level, data.nbt.getInt("Level"));
+                }
                 event.getToolTip().add(index, Component.literal("  ")
                         .append(Component.translatable(skill.getTranslateKey()))
+                        .append(" " + "I".repeat(level))
                         .append(" - ")
                         .append(Component.translatable(skill.getType().translatable.getTranslateKey()))
                 );

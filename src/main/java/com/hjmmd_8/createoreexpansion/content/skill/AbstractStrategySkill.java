@@ -1,8 +1,10 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
+import com.hjmmd_8.createoreexpansion.common.AllSkills;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.AbstractSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
@@ -17,7 +19,7 @@ import java.util.Set;
  *
  * @param <S> 此技能使用的Strategy类型（必须继承AreaStrategy）
  */
-public abstract class AbstractStrategySkill<S extends AreaStrategy> extends AbstractSkill {
+public abstract class AbstractStrategySkill<S extends AreaStrategy, C extends SkillConfig<?, S>> extends AbstractSkill {
 
     private final S strategy;
 
@@ -38,7 +40,7 @@ public abstract class AbstractStrategySkill<S extends AreaStrategy> extends Abst
      * 获取此技能使用的策略
      * @return 策略实例
      */
-    public final S getStrategy() {
+    public final S strategy() {
         return strategy;
     }
 
@@ -52,7 +54,7 @@ public abstract class AbstractStrategySkill<S extends AreaStrategy> extends Abst
     }
 
     public final Set<BlockPos> calculatePositions(DataSkill data, BlockPos center, BlockHitResult hit, Player player) {
-        return getStrategy().calculatePositions(data, center, hit, player);
+        return strategy().calculatePositions(data, center, hit, player);
     }
 
     @Override
@@ -60,6 +62,11 @@ public abstract class AbstractStrategySkill<S extends AreaStrategy> extends Abst
         return this.getClass().getSimpleName() + "{" +
                 "strategy=" + strategy +
                 ", cost=" + getCost() +
+                ", id=" + AllSkills.getId(this) +
                 '}';
+    }
+
+    public void load(C config) {
+
     }
 }

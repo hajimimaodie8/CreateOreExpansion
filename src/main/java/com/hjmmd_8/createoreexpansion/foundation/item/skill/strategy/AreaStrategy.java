@@ -1,7 +1,6 @@
-package com.hjmmd_8.createoreexpansion.foundation.util;
+package com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy;
 
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;

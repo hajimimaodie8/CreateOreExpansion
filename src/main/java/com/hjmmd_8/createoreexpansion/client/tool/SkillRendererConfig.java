@@ -5,13 +5,13 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 /**
  * 工具渲染配置
  */
-public record RendererConfig(DataSkill skill, float r, float g, float b, float a) {
+public record SkillRendererConfig(DataSkill skill, float r, float g, float b, float a) {
 
-    public static RendererConfig fromArray(DataSkill skill, float[] config) {
-        return new RendererConfig(skill, config[0], config[1], config[2], ALPHA);
+    public static SkillRendererConfig fromArray(DataSkill skill, float[] config) {
+        return new SkillRendererConfig(skill, config[0], config[1], config[2], ALPHA);
     }
 
-    public static RendererConfig defaultConfig(DataSkill skill) {
+    public static SkillRendererConfig defaultConfig(DataSkill skill) {
         return fromArray(skill, DEFAULT);
     }
 

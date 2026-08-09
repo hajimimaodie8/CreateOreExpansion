@@ -1,9 +1,10 @@
-package com.hjmmd_8.createoreexpansion.content.strategy;
+package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
+import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.BreakBlockSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.util.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -25,42 +26,34 @@ import java.util.Set;
  *
  * <p>基于 {@link DualDirection} 计算范围，与实际挖掘行为一致。
  */
-public class AreaAoeStrategy implements AreaStrategy {
+public class AreaAoeStrategy extends ConfigStrategy<AreaAoeConfig> {
 
-    private final int width;
-    private final int height;
-    private final int depth;
-    private final DualDirection.From directionSource;
+    private int width;
+    private int height;
+    private int depth;
+    private DualDirection.From directionSource;
 
     /**
-     * 创建范围AOE策略
-     * @param width 横向宽度（如 3 表示 3 格宽）
-     * @param height 纵向高度（如 3 表示 3 格高）
-     * @param depth 挖掘深度（如 1 表示 1 格深）
+     * 无参构造器 - 通过config加载参数
      */
-    public AreaAoeStrategy(int width, int height, int depth) {
-        this(width, height, depth, DualDirection.From.BLOCK_FACE);
+    public AreaAoeStrategy() {
+        // 默认值
+        this.width = 3;
+        this.height = 3;
+        this.depth = 1;
+        this.directionSource = DualDirection.From.BLOCK_FACE;
     }
 
     /**
-     * 创建范围AOE策略（指定方向源）
-     * @param width 横向宽度
-     * @param height 纵向高度
-     * @param depth 挖掘深度
-     * @param directionSource 方向源（基于方块面或玩家偏航角）
+     * 从config加载参数
+     * @param config 配置对象
      */
-    public AreaAoeStrategy(int width, int height, int depth, DualDirection.From directionSource) {
-        this.width = width;
-        this.height = height;
-        this.depth = depth;
-        this.directionSource = directionSource;
-    }
-
-    /**
-     * 简化构造器 - 宽高相同
-     */
-    public AreaAoeStrategy(int size, int depth) {
-        this(size, size, depth, DualDirection.From.BLOCK_FACE);
+    @Override
+    public void load(AreaAoeConfig config) {
+        this.width = config.width;
+        this.height = config.height;
+        this.depth = config.depth;
+        this.directionSource = config.directionSource;
     }
 
     @Override

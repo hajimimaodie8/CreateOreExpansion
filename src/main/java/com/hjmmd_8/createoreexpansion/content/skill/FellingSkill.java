@@ -6,14 +6,14 @@ import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedModifiableAttribute;
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.TreeCounter;
-import com.hjmmd_8.createoreexpansion.content.strategy.FellingStrategy;
+import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.LivingEntity;
@@ -24,7 +24,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
 import java.util.Set;
-import java.util.function.Function;
 
 /**
  * 砍伐技能 - 强类型依赖FellingStrategy
@@ -34,49 +33,19 @@ import java.util.function.Function;
  *
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全。</p>
  */
-public class FellingSkill extends AbstractStrategySkill<FellingStrategy> implements TypedItemSkill<ExcavationSkillContext> {
+public class FellingSkill extends AbstractStrategySkill<FellingStrategy, FellingConfig> implements TypedItemSkill<ExcavationSkillContext> {
 
-    private final int energyCost;
+    private int energyCost;
+    private float logResistance;
+    private float leafResistance;
+    private FellingConfig.BlockPredicate predicate;
 
     /**
      * 创建砍伐技能
      * @param strategy 砍伐策略（必须是FellingStrategy类型）
-     * @param energyCost 能量消耗
      */
-    public FellingSkill(FellingStrategy strategy, int energyCost) {
+    public FellingSkill(FellingStrategy strategy) {
         super(strategy);
-        this.energyCost = energyCost;
-    }
-
-    /**
-     * 树方块速度修正 - 使用TreeCounter提供详细的统计信息
-     *
-     * <p>示例用法：</p>
-     * <pre>{@code
-     * .breakBlockSpeedCorrection(counter ->
-     *     Math.max(.2f, 1f / (1f + counter.logs() * .08f + counter.leaves() * .01f))
-     * )
-     * }</pre>
-     *
-     * @param speedCorrection 速度修正函数（接收TreeCounter实例，返回速度乘数）
-     * @return this
-     */
-    public FellingSkill breakBlockSpeedCorrection(Function<TreeCounter, Float> speedCorrection) {
-        return (FellingSkill) addModifier(AllModifiableAttributes.BREAK_BLOCK_SPEED, attribute -> {
-            if (!(attribute instanceof BreakBlockSpeedModifiableAttribute speedAttribute)) return;
-
-            Level level = speedAttribute.getLevel();
-            BlockPos pos = speedAttribute.getPos();
-
-            // 使用FellingStrategy创建TreeCounter进行统计
-            TreeCounter counter = getStrategy().createCounter();
-            counter.count(level, pos);
-
-            int treeSize = counter.total();
-            if (treeSize == 0) return;
-            float multiplier = speedCorrection.apply(counter);
-            speedAttribute.setValue(speedAttribute.getValue() * multiplier);
-        });
     }
 
     public void causeAoe(Level level, BlockPos pos, BlockState state,
@@ -117,5 +86,32 @@ public class FellingSkill extends AbstractStrategySkill<FellingStrategy> impleme
     @Override
     public int getCost() {
         return energyCost;
+    }
+
+    @Override
+    public void load(FellingConfig config) {
+        this.energyCost = config.energyCost;
+        this.logResistance = config.logResistance;
+        this.leafResistance = config.leafResistance;
+        this.predicate = config.predicate;
+
+        addModifier(AllModifiableAttributes.BREAK_BLOCK_SPEED, attribute -> {
+            if (!(attribute instanceof BreakBlockSpeedModifiableAttribute speedAttribute)) return;
+
+            Level level = speedAttribute.getLevel();
+            BlockPos pos = speedAttribute.getPos();
+
+            // 使用FellingStrategy创建TreeCounter进行统计
+            TreeCounter tree = strategy().createCounter();
+            tree.count(level, pos);
+
+            int treeSize = tree.total();
+            if (treeSize == 0) return;
+            float multiplier = Math.max(.1f, 1f / (1f + tree.logs() * logResistance +
+                    ((predicate == FellingConfig.BlockPredicate.IS_TREE)
+                            ? tree.leaves() * leafResistance
+                            : 0)));
+            speedAttribute.setValue(speedAttribute.getValue() * multiplier);
+        });
     }
 }
