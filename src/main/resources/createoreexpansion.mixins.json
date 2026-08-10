@@ -11,5 +11,9 @@
   },
   "overwrites": {
     "requireAnnotations": true
-  }
+  },
+  "client": [
+    "renderers.EntityRendererAccessor",
+    "renderers.LivingEntityRendererAccessor"
+  ]
 }

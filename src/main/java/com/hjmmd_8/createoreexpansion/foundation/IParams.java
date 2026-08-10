@@ -11,5 +11,7 @@ public interface IParams {
 
     IParams putChild(String key, IParams child);
 
+    boolean isEmpty();
+
     void clear();
 }

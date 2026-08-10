@@ -19,6 +19,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -53,16 +54,12 @@ public class SkillsStrategyRenderer {
 
         IParams params = pool.borrow()
                 .putChild("BlockParams", () -> this.getBlockParams(world))
+                .putChild("EntityParams", this::getEntityParams)
                 .put("Player", player)
                 ;
 
         for (DataSkill data : skills) {
-            if (!(data.skill instanceof AbstractStrategySkill<?, ?, ?>)) continue;
-
-            // 加载config到skill和strategy（如果存在）
-            if (data.config != null) {
-                data.config.load(data);
-            }
+            if (data.skill.getStrategy() == null) continue;
 
             SkillRendererConfig config = SkillRendererConfig.defaultConfig(data);
 
@@ -83,7 +80,7 @@ public class SkillsStrategyRenderer {
                 );
             }
 
-            AllStrategies.Renderers.BLOCK.render(
+            data.skill.getStrategy().getRenderer().render(
                     config, world, camera, poseStack, buffer, params);
         }
 
@@ -108,5 +105,16 @@ public class SkillsStrategyRenderer {
                 .put("Center", center)
                 .put("CenterState", centerState)
                 .put("BlockHitResult", blockHit);
+    }
+
+    private FrameParams getEntityParams() {
+        HitResult hit = Minecraft.getInstance().hitResult;
+        if (hit == null || hit.getType() != HitResult.Type.ENTITY) return pool.borrow();
+
+        EntityHitResult entityHit = (EntityHitResult) hit;
+
+        return pool.borrow()
+                .put("EntityHitResult", entityHit)
+                .put("Entity", entityHit.getEntity());
     }
 }

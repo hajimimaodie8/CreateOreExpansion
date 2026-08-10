@@ -158,10 +158,6 @@ public class SkillsComponent implements OwnedBySkills {
 
         // 执行技能释放
         for (DataSkill data : skills) {
-            // 加载config到skill和strategy（如果存在）
-            if (data.config != null) {
-                data.config.load(data);
-            }
 
             // 调用技能释放方法
             data.skill.release(context, data);

@@ -6,9 +6,11 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
@@ -21,10 +23,14 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import java.util.List;
 import java.util.Objects;
 
-public class SkinSkill implements ItemSkill, TypedItemSkill<HitSkillContext> {
+public class SkinSkill extends AbstractStrategySkill<Entity, EntityStrategy, SkinConfig> implements TypedItemSkill<HitSkillContext> {
 
     private float dropChance;
     private int energyCost;
+
+    public SkinSkill(EntityStrategy strategy) {
+        super(strategy);
+    }
 
     @Override
     public SkillType getType() {

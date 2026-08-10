@@ -18,7 +18,8 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.Modifiable
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttributeType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.SkillAttributeModifierHolder;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -124,20 +125,21 @@ public final class AllSkills {
                 .register();
 
     public static final RegisteredDataSkill SKIN =
-            skill("skin", SkinSkill.class, null)
-                    .skill(strategy -> new SkinSkill())
+            skill("skin", SkinSkill.class, EntityStrategy.class)
+                    .skill(SkinSkill::new)
+                    .strategy(EntityStrategy::new)
                     .config(new SkinConfig(.5f, 0))
                     .translate("剥取", "Skin")
                     .level(1)
                     .register();
 
     // ========== 工具方法 ==========
-    public static <T extends ItemSkill, S extends AreaStrategy> SkillBuilder<T, S> skill(
+    public static <T extends ItemSkill, S extends SkillStrategy<?>> SkillBuilder<T, S> skill(
             ResourceLocation id, Class<T> skillType, Class<S> strategyType) {
         return new SkillBuilder<>(id);
     }
 
-    public static <T extends ItemSkill, S extends AreaStrategy> SkillBuilder<T, S> skill(
+    public static <T extends ItemSkill, S extends SkillStrategy<?>> SkillBuilder<T, S> skill(
             String id, Class<T> skillType, Class<S> strategyType) {
         return new SkillBuilder<>(id);
     }
@@ -186,7 +188,7 @@ public final class AllSkills {
         }
     }
 
-    public static class SkillBuilder<T extends ItemSkill, S extends AreaStrategy> {
+    public static class SkillBuilder<T extends ItemSkill, S extends SkillStrategy<?>> {
         private final ResourceLocation id;
         private Function<S, T> factory;
         private S strategy;
@@ -212,7 +214,7 @@ public final class AllSkills {
             return this;
         }
 
-        public SkillBuilder<T, S> config(Consumer<CompoundTag> tag) {
+        public SkillBuilder<T, S> setTag(Consumer<CompoundTag> tag) {
             if (defaultNbt == null) defaultNbt = new CompoundTag();
             tag.accept(defaultNbt);
             return this;
@@ -220,11 +222,11 @@ public final class AllSkills {
 
         public SkillBuilder<T, S> config(SkillConfig<T, S> c) {
             this.config = c;
-            return config((Consumer<CompoundTag>) c);
+            return setTag(c);
         }
 
         public SkillBuilder<T, S> level(int level) {
-            return config(nbt -> nbt.putInt("Level", level));
+            return setTag(nbt -> nbt.putInt("Level", level));
         }
 
         public SkillBuilder<T, S> translate(@Nullable String chineseTranslate,

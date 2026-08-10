@@ -1,5 +1,8 @@
-package com.hjmmd_8.createoreexpansion.client.tool;
+package com.hjmmd_8.createoreexpansion.client.tool.renderer;
 
+import com.hjmmd_8.createoreexpansion.client.tool.OutlineRenderer;
+import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
+import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
 import com.hjmmd_8.createoreexpansion.common.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
 import com.hjmmd_8.createoreexpansion.foundation.IParams;
@@ -29,6 +32,7 @@ public class BlockToolOutlineRenderer implements StrategyRenderer {
     public void render(SkillRendererConfig config, ClientLevel world, Camera camera, PoseStack poseStack,
                        SuperRenderTypeBuffer buffer, IParams params) {
         IParams blockParams = params.get("BlockParams", IParams.class);
+        if (blockParams.isEmpty()) return;
         BlockPos center = blockParams.get("Center", BlockPos.class);
         BlockState centerState = blockParams.get("CenterState", BlockState.class);
         BlockHitResult blockHit = blockParams.get("BlockHitResult", BlockHitResult.class);

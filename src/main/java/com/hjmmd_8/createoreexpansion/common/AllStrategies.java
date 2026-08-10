@@ -1,12 +1,12 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import com.hjmmd_8.createoreexpansion.client.tool.BlockToolOutlineRenderer;
+import com.hjmmd_8.createoreexpansion.client.tool.renderer.BlockToolOutlineRenderer;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
+import com.hjmmd_8.createoreexpansion.client.tool.renderer.EmptyRenderer;
+import com.hjmmd_8.createoreexpansion.client.tool.renderer.EntityOutlineRenderer;
 import com.hjmmd_8.createoreexpansion.foundation.IParams;
-import com.hjmmd_8.createoreexpansion.foundation.Params;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
@@ -21,7 +21,10 @@ public class AllStrategies {
     public static final Map<SkillStrategy<?>, StrategyRenderer> RENDERERS = new HashMap<>();
 
     public enum Renderers implements StrategyRenderer {
-        BLOCK(new BlockToolOutlineRenderer());
+        EMPTY(new EmptyRenderer()),
+        BLOCK(new BlockToolOutlineRenderer()),
+        ENTITY(new EntityOutlineRenderer()),
+        ;
 
         private final StrategyRenderer renderer;
         Renderers(StrategyRenderer instance) {

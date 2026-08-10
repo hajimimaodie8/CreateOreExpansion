@@ -30,6 +30,11 @@ public class Params implements IParams {
     }
 
     @Override
+    public boolean isEmpty() {
+        return params.isEmpty();
+    }
+
+    @Override
     public List<IParams> getChildren() {
         return children;
     }
