@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
@@ -57,21 +58,19 @@ public class AreaAoeStrategy extends ConfigStrategy<AreaAoeConfig> {
     }
 
     @Override
-    public Set<BlockPos> calculatePositions(DataSkill skill, BlockPos center, BlockHitResult hit, Player player) {
+    public Set<BlockPos> calculate(DataSkill skill, IParams params) {
+        Player player = params.get("Player", Player.class);
+        BlockHitResult hit = params.get("BlockHitResult", BlockHitResult.class);
+        BlockPos center = params.get("Center", BlockPos.class);
         DualDirection dualDirection = DualDirection.from(player, hit, directionSource);
         return dualDirection.collect(center, width, height, depth);
     }
 
     @Override
-    public boolean shouldRender(DataSkill data, ClientLevel world, BlockPos pos, BlockState state, Player player) {
+    public boolean shouldRender(DataSkill data, ClientLevel world, IParams params) {
+        BlockState state = params.get("CenterState", BlockState.class);
         ItemSkill skill = data.skill;
         if (!(skill instanceof AreaAoeSkill aoeSkill)) return false;
         return state.is(aoeSkill.getMineableTag());
     }
-
-    // Getters
-    public int getWidth() { return width; }
-    public int getHeight() { return height; }
-    public int getDepth() { return depth; }
-    public DualDirection.From getDirectionSource() { return directionSource; }
 }

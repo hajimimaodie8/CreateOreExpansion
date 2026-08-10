@@ -21,8 +21,6 @@ public class AreaAoeConfig extends AutoSkillConfig<AreaAoeSkill, AreaAoeStrategy
     public DualDirection.From directionSource;
     public TagKey<Block> mineableTag;
 
-    public AreaAoeConfig() {}
-
     public AreaAoeConfig(int energyCost, TagKey<Block> mineableTag,
                          int width, int height, int depth, DualDirection.From directionSource) {
         this.energyCost = energyCost;

@@ -8,6 +8,8 @@ import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedMod
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.TreeCounter;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
@@ -33,7 +35,7 @@ import java.util.Set;
  *
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全。</p>
  */
-public class FellingSkill extends AbstractStrategySkill<FellingStrategy, FellingConfig> implements TypedItemSkill<ExcavationSkillContext> {
+public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrategy, FellingConfig> implements TypedItemSkill<ExcavationSkillContext> {
 
     private int energyCost;
     private float logResistance;
@@ -61,8 +63,15 @@ public class FellingSkill extends AbstractStrategySkill<FellingStrategy, Felling
         HitResult pick = player.pick(20D, 0.0F, false);
         if (!(pick instanceof BlockHitResult hit)) return;
 
+        IParams params = ParamsPool.DEFAULT_POOL.borrow()
+                .put("Center", pos)
+                .put("CenterState", state)
+                .put("BlockHitResult", hit)
+                .put("Player", player);
+
         // 使用Strategy计算位置
-        Set<BlockPos> toDestroy = calculatePositions(data, pos, hit, player);
+        Set<BlockPos> toDestroy = calculate(data, params);
+        ParamsPool.DEFAULT_POOL.returnParams(params);
         if (toDestroy.isEmpty()) return;
 
         // 检查能量

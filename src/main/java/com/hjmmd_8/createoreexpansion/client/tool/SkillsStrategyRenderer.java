@@ -1,7 +1,11 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.common.AllStrategies;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
+import com.hjmmd_8.createoreexpansion.foundation.FrameParams;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -22,9 +26,9 @@ import java.util.List;
 
 public class SkillsStrategyRenderer {
     public static SkillsStrategyRenderer INSTANCE = new SkillsStrategyRenderer();
+    public static ParamsPool<FrameParams> pool = new ParamsPool<>(50, FrameParams::new);
 
     private Player player;
-    private static final ToolOutlineRenderer toolOutlineRenderer = new ToolOutlineRenderer();
 
     private SkillsStrategyRenderer() {}
 
@@ -39,17 +43,6 @@ public class SkillsStrategyRenderer {
         SkillItemStack skillStack = SkillItemStack.of(stack);
         if (stack.isEmpty() || !skillStack.hasSkill()) return;
 
-        // 检查是否看向方块
-        HitResult hit = Minecraft.getInstance().hitResult;
-        if (hit == null || hit.getType() != HitResult.Type.BLOCK) return;
-
-        BlockHitResult blockHit = (BlockHitResult) hit;
-        BlockPos center = blockHit.getBlockPos();
-        BlockState centerState = world.getBlockState(center);
-
-        // 空气方块不渲染
-        if (centerState.isAir()) return;
-
         List<DataSkill> skills = skillStack.getSkillsHolder().getAllData();
 
         // 渲染
@@ -58,8 +51,13 @@ public class SkillsStrategyRenderer {
         Vec3 camPos = camera.getPosition();
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
 
+        IParams params = pool.borrow()
+                .putChild("BlockParams", () -> this.getBlockParams(world))
+                .put("Player", player)
+                ;
+
         for (DataSkill data : skills) {
-            if (!(data.skill instanceof AbstractStrategySkill<?, ?>)) continue;
+            if (!(data.skill instanceof AbstractStrategySkill<?, ?, ?>)) continue;
 
             // 加载config到skill和strategy（如果存在）
             if (data.config != null) {
@@ -85,12 +83,30 @@ public class SkillsStrategyRenderer {
                 );
             }
 
-            toolOutlineRenderer.render(
-                    config, world, camera, poseStack, buffer,
-                    center, centerState, blockHit, player
-            );
+            AllStrategies.Renderers.BLOCK.render(
+                    config, world, camera, poseStack, buffer, params);
         }
 
         poseStack.popPose();
+
+        pool.returnParams(params);
+    }
+
+    private FrameParams getBlockParams(ClientLevel world) {
+        // 检查是否看向方块
+        HitResult hit = Minecraft.getInstance().hitResult;
+        if (hit == null || hit.getType() != HitResult.Type.BLOCK) return pool.borrow();
+
+        BlockHitResult blockHit = (BlockHitResult) hit;
+        BlockPos center = blockHit.getBlockPos();
+        BlockState centerState = world.getBlockState(center);
+
+        // 空气方块不渲染
+        if (centerState.isAir()) return pool.borrow();
+
+        return pool.borrow()
+                .put("Center", center)
+                .put("CenterState", centerState)
+                .put("BlockHitResult", blockHit);
     }
 }

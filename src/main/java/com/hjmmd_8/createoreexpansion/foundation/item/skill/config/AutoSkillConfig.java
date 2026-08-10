@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.foundation.item.skill.config;
 
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import net.minecraft.nbt.CompoundTag;
 
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.function.*;
 /**
  * 声明式 Config — 支持嵌套
  */
-public abstract class AutoSkillConfig<S extends ItemSkill, T extends AreaStrategy> implements SkillConfig<S, T> {
+public abstract class AutoSkillConfig<S extends ItemSkill, T extends SkillStrategy<?>> implements SkillConfig<S, T> {
 
     public interface FieldMapping {
         String key();

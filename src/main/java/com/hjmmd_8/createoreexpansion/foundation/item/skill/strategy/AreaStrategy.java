@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy;
 
+import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
+import com.hjmmd_8.createoreexpansion.common.AllStrategies;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -21,28 +23,10 @@ import java.util.Set;
  *
  */
 @FunctionalInterface
-public interface AreaStrategy {
+public interface AreaStrategy extends SkillStrategy<BlockPos> {
 
-    /**
-     * 计算需要处理的方块位置
-     * @param skill 技能
-     * @param center 玩家点击的中心方块
-     * @param hit 玩家看向的结果
-     * @param player 玩家
-     * @return 需要处理的方块位置集合（不包括中心方块）
-     */
-    Set<BlockPos> calculatePositions(DataSkill skill, BlockPos center, BlockHitResult hit, Player player);
-
-    /**
-     * 是否需要渲染
-     * @param skill 技能
-     * @param world 世界
-     * @param pos 方块位置
-     * @param state 方块状态
-     * @param player 玩家
-     * @return 是否需要渲染
-     */
-    default boolean shouldRender(DataSkill skill, ClientLevel world, BlockPos pos, BlockState state, Player player) {
-        return true;
+    @Override
+    default StrategyRenderer getRenderer() {
+        return AllStrategies.Renderers.BLOCK;
     }
 }

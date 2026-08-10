@@ -4,8 +4,10 @@ import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.SkinSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
 import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
@@ -30,6 +32,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static com.hjmmd_8.createoreexpansion.common.AllStrategies.RENDERERS;
 import static com.hjmmd_8.createoreexpansion.common.AllStrategies.STRATEGIES;
 
 public final class AllSkills {
@@ -120,6 +123,14 @@ public final class AllSkills {
                 .level(1)
                 .register();
 
+    public static final RegisteredDataSkill SKIN =
+            skill("skin", SkinSkill.class, null)
+                    .skill(strategy -> new SkinSkill())
+                    .config(new SkinConfig(.5f, 0))
+                    .translate("剥取", "Skin")
+                    .level(1)
+                    .register();
+
     // ========== 工具方法 ==========
     public static <T extends ItemSkill, S extends AreaStrategy> SkillBuilder<T, S> skill(
             ResourceLocation id, Class<T> skillType, Class<S> strategyType) {
@@ -129,22 +140,6 @@ public final class AllSkills {
     public static <T extends ItemSkill, S extends AreaStrategy> SkillBuilder<T, S> skill(
             String id, Class<T> skillType, Class<S> strategyType) {
         return new SkillBuilder<>(id);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends ItemSkill, S extends AreaStrategy> SkillBuilder<T, S> skill(
-            ResourceLocation id, RegisteredDataSkill data) {
-        return (SkillBuilder<T, S>) new SkillBuilder<>(id)
-                .skill(strategy -> data.skill)
-                .strategy(() -> data.skill.getStrategy());
-    }
-
-    @SuppressWarnings("unchecked")
-    public static <T extends ItemSkill, S extends AreaStrategy> SkillBuilder<T, S> skill(
-            String id, RegisteredDataSkill data) {
-        return (SkillBuilder<T, S>) new SkillBuilder<>(id)
-                .skill(strategy -> data.skill)
-                .strategy(() -> data.skill.getStrategy());
     }
 
     public static ItemSkill get(ResourceLocation id) {
@@ -252,6 +247,7 @@ public final class AllSkills {
             // 只有在strategy不为null时才放入STRATEGIES map
             if (strategy != null) {
                 STRATEGIES.put(skill, strategy);
+                RENDERERS.put(strategy, strategy.getRenderer());
             }
             if (config != null) {
                 CONFIGS.put(skill, config);

@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.AllStrategies;
 import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import net.minecraft.resources.ResourceLocation;
 
 public interface ItemSkill extends Translatable {
@@ -37,7 +38,7 @@ public interface ItemSkill extends Translatable {
         return AllSkills.getConfig(this);
     }
 
-    default AreaStrategy getStrategy() {
+    default SkillStrategy<?> getStrategy() {
         return AllStrategies.STRATEGIES.get(this);
     }
 }

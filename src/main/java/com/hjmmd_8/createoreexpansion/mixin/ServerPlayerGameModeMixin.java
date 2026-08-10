@@ -49,8 +49,7 @@ public class ServerPlayerGameModeMixin {
         if (!skillStack.hasSkill(SkillType.EXCAVATION_SKILL)) return;
 
         ExcavationSkillContext context = new DestroyBlockContext(this.level, blockPos, stack, this.player);
-        var flag = skillStack.getSkillsHolder().releaseSkills(skillStack, SkillType.EXCAVATION_SKILL, context);
-        if (!flag) ToolEnergy.sendLowEnergy(player);
-        else ToolEnergy.sendRemainingEnergy(player, stack);
+        ToolEnergy.sendEnergyMessage(player, stack,
+                skillStack.getSkillsHolder().releaseSkills(skillStack, SkillType.EXCAVATION_SKILL, context));
     }
 }

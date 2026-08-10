@@ -1,13 +1,11 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.common.AllSkills;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.AbstractSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.BlockHitResult;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 
 import java.util.Set;
 
@@ -19,7 +17,7 @@ import java.util.Set;
  *
  * @param <S> 此技能使用的Strategy类型（必须继承AreaStrategy）
  */
-public abstract class AbstractStrategySkill<S extends AreaStrategy, C extends SkillConfig<?, S>> extends AbstractSkill {
+public abstract class AbstractStrategySkill<P, S extends SkillStrategy<P>, C extends SkillConfig<?, S>> extends AbstractSkill {
 
     private final S strategy;
 
@@ -41,14 +39,6 @@ public abstract class AbstractStrategySkill<S extends AreaStrategy, C extends Sk
     }
 
     /**
-     * 获取此技能使用的策略（安全版本）
-     * @return 策略实例，如果不存在则返回null
-     */
-    public final S getStrategy() {
-        return strategy;
-    }
-
-    /**
      * 获取策略类型（用于反射等场景）
      * @return 策略的Class对象，如果strategy为null则返回null
      */
@@ -58,11 +48,11 @@ public abstract class AbstractStrategySkill<S extends AreaStrategy, C extends Sk
         return (Class<S>) strategy.getClass();
     }
 
-    public final Set<BlockPos> calculatePositions(DataSkill data, BlockPos center, BlockHitResult hit, Player player) {
+    public final Set<P> calculate(DataSkill data, IParams params) {
         if (strategy == null) {
             return java.util.Collections.emptySet();
         }
-        return strategy.calculatePositions(data, center, hit, player);
+        return strategy.calculate(data, params);
     }
 
     @Override

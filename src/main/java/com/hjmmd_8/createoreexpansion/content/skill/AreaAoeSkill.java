@@ -4,6 +4,8 @@ import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
@@ -32,7 +34,7 @@ import java.util.Set;
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全，
  * 防止将错误的Strategy类型传入。</p>
  */
-public class AreaAoeSkill extends AbstractStrategySkill<AreaAoeStrategy, AreaAoeConfig> implements TypedItemSkill<ExcavationSkillContext> {
+public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrategy, AreaAoeConfig> implements TypedItemSkill<ExcavationSkillContext> {
 
     private int energyCost;
     private TagKey<Block> mineableTag;
@@ -59,8 +61,17 @@ public class AreaAoeSkill extends AbstractStrategySkill<AreaAoeStrategy, AreaAoe
         HitResult pick = player.pick(20D, 0.0F, false);
         if (!(pick instanceof BlockHitResult hit)) return;
 
+        IParams params = ParamsPool.DEFAULT_POOL.borrow()
+                .put("Center", pos)
+                .put("CenterState", state)
+                .put("BlockHitResult", hit)
+                .put("Player", player);
+
         // 使用Strategy计算位置
-        Set<BlockPos> positions = calculatePositions(data, pos, hit, player);
+        Set<BlockPos> positions = calculate(data, params);
+
+        ParamsPool.DEFAULT_POOL.returnParams(params);
+
         if (positions.isEmpty()) return;
 
         // 检查能量

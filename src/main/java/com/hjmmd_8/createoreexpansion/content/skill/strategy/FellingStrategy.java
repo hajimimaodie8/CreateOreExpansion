@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.TreeCounter;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -9,7 +10,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.BlockHitResult;
 
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -29,7 +29,9 @@ public class FellingStrategy extends ConfigStrategy<FellingConfig> {
     private Predicate<BlockState> predicate;
 
     @Override
-    public Set<BlockPos> calculatePositions(DataSkill skill, BlockPos center, BlockHitResult hit, Player player) {
+    public Set<BlockPos> calculate(DataSkill skill, IParams params) {
+        Player player = params.get("Player", Player.class);
+        BlockPos center = params.get("Center", BlockPos.class);
         Level level = player.level();
         return calculateTreeBlocks(level, center);
     }
@@ -87,7 +89,8 @@ public class FellingStrategy extends ConfigStrategy<FellingConfig> {
     }
 
     @Override
-    public boolean shouldRender(DataSkill skill, ClientLevel world, BlockPos pos, BlockState state, Player player) {
+    public boolean shouldRender(DataSkill skill, ClientLevel world, IParams params) {
+        BlockState state = params.get("CenterState", BlockState.class);
         return FellingConfig.BlockPredicate.IS_LOG.test(state);
     }
 

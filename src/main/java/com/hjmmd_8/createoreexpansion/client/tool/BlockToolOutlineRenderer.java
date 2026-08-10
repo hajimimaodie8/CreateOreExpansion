@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.client.tool;
 
 import com.hjmmd_8.createoreexpansion.common.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -22,17 +23,25 @@ import java.util.Set;
  *
  * <p>双层渲染：第一层不透明（可被方块遮挡），第二层半透明（穿透方块始终可见）。</p>
  */
-public class ToolOutlineRenderer {
-    public ToolOutlineRenderer() {}
+public class BlockToolOutlineRenderer implements StrategyRenderer {
+    public BlockToolOutlineRenderer() {}
 
-    public void render(SkillRendererConfig config, ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer,
-                       BlockPos center, BlockState centerState, BlockHitResult blockHit, Player player) {
+    public void render(SkillRendererConfig config, ClientLevel world, Camera camera, PoseStack poseStack,
+                       SuperRenderTypeBuffer buffer, IParams params) {
+        IParams blockParams = params.get("BlockParams", IParams.class);
+        BlockPos center = blockParams.get("Center", BlockPos.class);
+        BlockState centerState = blockParams.get("CenterState", BlockState.class);
+        BlockHitResult blockHit = blockParams.get("BlockHitResult", BlockHitResult.class);
+        Player player = params.get("Player", Player.class);
+
+        blockParams.put("Player", player);
+
         DataSkill dataSkill = config.skill();
-        AbstractStrategySkill<?, ?> skill = (AbstractStrategySkill<?, ?>) dataSkill.skill;
-        AreaStrategy strategy = skill.strategy();
-        if (!strategy.shouldRender(dataSkill, world, center, centerState, player)) return;
+        AbstractStrategySkill<?, ?, ?> skill = (AbstractStrategySkill<?, ?, ?>) dataSkill.skill;
+        AreaStrategy strategy = (AreaStrategy) skill.strategy();
+        if (!strategy.shouldRender(dataSkill, world, blockParams)) return;
 
-        Set<BlockPos> positions = strategy.calculatePositions(dataSkill, center, blockHit, player);
+        Set<BlockPos> positions = strategy.calculate(dataSkill, blockParams);
         positions.add(center);
 
         float r = config.r(), g = config.g(), b = config.b(), a = config.a();

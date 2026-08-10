@@ -114,6 +114,10 @@ public final class AllItems {
             ))
             // 添加 剑 的标签，不然没有横扫效果
             .tag(ItemTags.SWORDS)
+            .transform(skillItem())
+            .addSkills(AllSkills.SKIN)
+            .skillColor(SkillRendererConfig.JADE_GREEN)
+            .build()
             .register();
 
     public static final ItemEntry<PickaxeItem> JADE_PICKAXE = CreateOreExpansion.REGISTRATE

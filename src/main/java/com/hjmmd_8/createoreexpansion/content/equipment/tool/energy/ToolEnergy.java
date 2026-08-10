@@ -108,4 +108,9 @@ public final class ToolEnergy {
 		player.displayClientMessage(Component.literal("剩余能量：" + energy + " / " + max)
 				.withStyle(ChatFormatting.WHITE), true);
 	}
+
+	public static void sendEnergyMessage(Player player, ItemStack stack, boolean flag) {
+		if (!flag) sendLowEnergy(player);
+		else sendRemainingEnergy(player, stack);
+	}
 }
