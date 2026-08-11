@@ -1,10 +1,8 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
+import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
-import com.hjmmd_8.createoreexpansion.common.AllStrategies;
-import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
 import com.hjmmd_8.createoreexpansion.foundation.FrameParams;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
@@ -22,18 +20,41 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class SkillsStrategyRenderer {
     public static SkillsStrategyRenderer INSTANCE = new SkillsStrategyRenderer();
     public static ParamsPool<FrameParams> pool = new ParamsPool<>(50, FrameParams::new);
 
+    private FrameParams lastParams;
+    private boolean isParamsReturned;
     private Player player;
+
+    private ClientLevel world;
+    private Camera camera;
+    private PoseStack poseStack;
+    private SuperRenderTypeBuffer buffer;
+
+    private final Map<RenderLevelStageEvent.Stage, List<Runnable>> renderers = Maps.newHashMap();
 
     private SkillsStrategyRenderer() {}
 
-    public void render(ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer) {
+    public void schedule(ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer) {
+        this.world = world;
+        this.camera = camera;
+        this.poseStack = poseStack;
+        this.buffer = buffer;
+
+        renderers.clear();
+        if (!isParamsReturned) {
+            pool.returnParams(lastParams);
+            isParamsReturned = true;
+        }
+
         if (world == null) return;
         if (player == null) player = Minecraft.getInstance().player;
 
@@ -46,17 +67,12 @@ public class SkillsStrategyRenderer {
 
         List<DataSkill> skills = skillStack.getSkillsHolder().getAllData();
 
-        // 渲染
-        poseStack.pushPose();
-        // 使用负的摄像机位置进行平移，将世界坐标转换为渲染坐标
-        Vec3 camPos = camera.getPosition();
-        poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
-
-        IParams params = pool.borrow()
+        lastParams = pool.borrow()
                 .putChild("BlockParams", () -> this.getBlockParams(world))
                 .putChild("EntityParams", this::getEntityParams)
                 .put("Player", player)
                 ;
+        isParamsReturned = false;
 
         for (DataSkill data : skills) {
             if (data.skill.getStrategy() == null) continue;
@@ -80,13 +96,27 @@ public class SkillsStrategyRenderer {
                 );
             }
 
-            data.skill.getStrategy().getRenderer().render(
-                    config, world, camera, poseStack, buffer, params);
+            StrategyRenderer renderer = data.skill.getStrategy().getRenderer();
+            SkillRendererConfig finalConfig = config;
+            renderers.computeIfAbsent(renderer.getStage(), key -> new ArrayList<>())
+                    .add(() -> renderer.render(
+                            finalConfig, this.world, this.camera, this.poseStack, this.buffer, lastParams));
+        }
+    }
+
+    public void render(RenderLevelStageEvent.Stage stage) {
+        List<Runnable> list = renderers.get(stage);
+        if (list == null || list.isEmpty()) return;
+
+        poseStack.pushPose();
+        Vec3 camPos = camera.getPosition();
+        poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
+
+        for (Runnable r : list) {
+            r.run();
         }
 
         poseStack.popPose();
-
-        pool.returnParams(params);
     }
 
     private FrameParams getBlockParams(ClientLevel world) {

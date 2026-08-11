@@ -23,17 +23,19 @@ public class ClientEvents {
 
     @SubscribeEvent
     public static void onWorldRenderLast(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) return;
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
+            Minecraft instance = Minecraft.getInstance();
 
-        Minecraft instance = Minecraft.getInstance();
+            // 统一调用所有渲染器
+            SkillsStrategyRenderer.INSTANCE.schedule(
+                    instance.level,
+                    event.getCamera(),
+                    event.getPoseStack(),
+                    DefaultSuperRenderTypeBuffer.getInstance()
+            );
+        }
 
-        // 统一调用所有渲染器
-        SkillsStrategyRenderer.INSTANCE.render(
-                instance.level,
-                event.getCamera(),
-                event.getPoseStack(),
-                DefaultSuperRenderTypeBuffer.getInstance()
-        );
+        SkillsStrategyRenderer.INSTANCE.render(event.getStage());
     }
 
     @SubscribeEvent

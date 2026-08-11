@@ -14,6 +14,7 @@
   },
   "client": [
     "renderers.EntityRendererAccessor",
-    "renderers.LivingEntityRendererAccessor"
+    "renderers.LivingEntityRendererAccessor",
+    "renderers.MinecraftMixin"
   ]
 }

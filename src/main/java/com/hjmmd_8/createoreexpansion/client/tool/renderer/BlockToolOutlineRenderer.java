@@ -18,6 +18,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 import java.util.Set;
 
@@ -59,5 +60,10 @@ public class BlockToolOutlineRenderer implements StrategyRenderer {
         VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
         OutlineRenderer.renderOutline(world, positions, poseStack, transparent, r, g, b, a * 0.3f);
         buffer.draw(AllRenderTypes.LINES_TRANSPARENT);
+    }
+
+    @Override
+    public RenderLevelStageEvent.Stage getStage() {
+        return RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS;
     }
 }

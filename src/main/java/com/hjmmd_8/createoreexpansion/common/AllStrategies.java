@@ -12,6 +12,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,6 +35,11 @@ public class AllStrategies {
         @Override
         public void render(SkillRendererConfig config, ClientLevel world, Camera camera, PoseStack poseStack, SuperRenderTypeBuffer buffer, IParams params) {
             renderer.render(config, world, camera, poseStack, buffer, params);
+        }
+
+        @Override
+        public RenderLevelStageEvent.Stage getStage() {
+            return renderer.getStage();
         }
     }
 }
