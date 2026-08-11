@@ -10,6 +10,7 @@ import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
@@ -35,12 +36,14 @@ import java.util.Set;
  *
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全。</p>
  */
-public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrategy, FellingConfig> implements TypedItemSkill<ExcavationSkillContext> {
+public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrategy, FellingConfig>
+        implements ConfigSkill<ExcavationSkillContext, FellingConfig> {
 
     private int energyCost;
     private float logResistance;
     private float leafResistance;
     private FellingConfig.BlockPredicate predicate;
+    private DataSkill data;
 
     /**
      * 创建砍伐技能
@@ -51,7 +54,7 @@ public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrateg
     }
 
     public void causeAoe(Level level, BlockPos pos, BlockState state,
-                                ItemStack axe, LivingEntity livingEntity, DataSkill data) {
+                                ItemStack axe, LivingEntity livingEntity) {
         if (!(livingEntity instanceof ServerPlayer player)) return;
         if (level.isClientSide) return;
 
@@ -83,8 +86,8 @@ public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrateg
     }
 
     @Override
-    public void releaseTyped(ExcavationSkillContext ctx, DataSkill data) {
-        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity(), data);
+    public void release(ExcavationSkillContext ctx) {
+        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
     }
 
     @Override
@@ -98,12 +101,14 @@ public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrateg
     }
 
     @Override
-    public void load(FellingConfig config) {
+    public void load(FellingConfig config, DataSkill data) {
         this.energyCost = config.energyCost;
         this.logResistance = config.logResistance;
         this.leafResistance = config.leafResistance;
         this.predicate = config.predicate;
+        this.data = data;
 
+        clearModifier();
         addModifier(AllModifiableAttributes.BREAK_BLOCK_SPEED, attribute -> {
             if (!(attribute instanceof BreakBlockSpeedModifiableAttribute speedAttribute)) return;
 
@@ -122,5 +127,10 @@ public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrateg
                             : 0)));
             speedAttribute.setValue(speedAttribute.getValue() * multiplier);
         });
+    }
+
+    @Override
+    public Class<FellingConfig> getConfigType() {
+        return FellingConfig.class;
     }
 }

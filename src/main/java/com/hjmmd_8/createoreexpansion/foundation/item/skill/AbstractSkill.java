@@ -22,14 +22,17 @@ public abstract class AbstractSkill implements ItemSkill, SkillAttributeModifier
         return modifiers;
     }
 
-    protected <C, V> AbstractSkill addModifier(ModifiableAttributeType<C, V> type, SkillAttributeModifier<V> modifier) {
-        modifiers.computeIfAbsent(type, k -> new ArrayList<>()).add(modifier);
-        return this;
+    protected final void clearModifier() {
+        modifiers.clear();
     }
 
-    protected <C, V> AbstractSkill addModifiers(ModifiableAttributeType<C, V> type, SkillAttributeModifier<V>... modifiers) {
+    protected final <C, V> void addModifier(ModifiableAttributeType<C, V> type, SkillAttributeModifier<V> modifier) {
+        modifiers.computeIfAbsent(type, k -> new ArrayList<>()).add(modifier);
+    }
+
+    @SafeVarargs
+    protected final <C, V> void addModifiers(ModifiableAttributeType<C, V> type, SkillAttributeModifier<V>... modifiers) {
         this.modifiers.computeIfAbsent(type, k -> new ArrayList<>())
                 .addAll(Arrays.stream(modifiers).toList());
-        return this;
     }
 }

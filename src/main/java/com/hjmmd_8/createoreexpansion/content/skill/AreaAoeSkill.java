@@ -6,6 +6,7 @@ import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
@@ -34,10 +35,12 @@ import java.util.Set;
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全，
  * 防止将错误的Strategy类型传入。</p>
  */
-public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrategy, AreaAoeConfig> implements TypedItemSkill<ExcavationSkillContext> {
+public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrategy, AreaAoeConfig>
+        implements ConfigSkill<ExcavationSkillContext, AreaAoeConfig> {
 
     private int energyCost;
     private TagKey<Block> mineableTag;
+    private DataSkill data;
 
     /**
      * 创建范围AOE技能
@@ -50,7 +53,7 @@ public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrateg
     }
 
     protected void causeAoe(Level level, BlockPos pos, BlockState state,
-                         ItemStack pickaxe, LivingEntity livingEntity, DataSkill data) {
+                         ItemStack pickaxe, LivingEntity livingEntity) {
         if (!(livingEntity instanceof ServerPlayer player)) return;
         if (level.isClientSide) return;
 
@@ -83,8 +86,8 @@ public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrateg
     }
 
     @Override
-    public void releaseTyped(ExcavationSkillContext ctx, DataSkill data) {
-        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity(), data);
+    public void release(ExcavationSkillContext ctx) {
+        causeAoe(ctx.level(), ctx.pos(), ctx.level().getBlockState(ctx.pos()), ctx.tool(), ctx.entity());
     }
 
     @Override
@@ -102,8 +105,14 @@ public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrateg
     }
 
     @Override
-    public void load(AreaAoeConfig config) {
+    public void load(AreaAoeConfig config, DataSkill data) {
         this.energyCost = config.energyCost;
         this.mineableTag = config.mineableTag;
+        this.data = data;
+    }
+
+    @Override
+    public Class<AreaAoeConfig> getConfigType() {
+        return AreaAoeConfig.class;
     }
 }

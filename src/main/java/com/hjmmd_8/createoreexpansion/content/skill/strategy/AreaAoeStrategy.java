@@ -1,10 +1,12 @@
 package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
+import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
+import com.hjmmd_8.createoreexpansion.common.AllStrategies;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -27,7 +29,7 @@ import java.util.Set;
  *
  * <p>基于 {@link DualDirection} 计算范围，与实际挖掘行为一致。
  */
-public class AreaAoeStrategy extends ConfigStrategy<AreaAoeConfig> {
+public class AreaAoeStrategy extends ConfigStrategy<BlockPos, AreaAoeConfig> implements AreaStrategy {
 
     private int width;
     private int height;
@@ -37,20 +39,14 @@ public class AreaAoeStrategy extends ConfigStrategy<AreaAoeConfig> {
     /**
      * 无参构造器 - 通过config加载参数
      */
-    public AreaAoeStrategy() {
-        // 默认值
-        this.width = 3;
-        this.height = 3;
-        this.depth = 1;
-        this.directionSource = DualDirection.From.BLOCK_FACE;
-    }
+    public AreaAoeStrategy() {}
 
     /**
      * 从config加载参数
      * @param config 配置对象
      */
     @Override
-    public void load(AreaAoeConfig config) {
+    public void load(AreaAoeConfig config, DataSkill data) {
         this.width = config.width;
         this.height = config.height;
         this.depth = config.depth;
@@ -58,7 +54,12 @@ public class AreaAoeStrategy extends ConfigStrategy<AreaAoeConfig> {
     }
 
     @Override
-    public Set<BlockPos> calculate(DataSkill skill, IParams params) {
+    protected Class<AreaAoeConfig> getConfigType() {
+        return AreaAoeConfig.class;
+    }
+
+    @Override
+    public Set<BlockPos> calculate(IParams params) {
         Player player = params.get("Player", Player.class);
         BlockHitResult hit = params.get("BlockHitResult", BlockHitResult.class);
         BlockPos center = params.get("Center", BlockPos.class);
@@ -67,9 +68,8 @@ public class AreaAoeStrategy extends ConfigStrategy<AreaAoeConfig> {
     }
 
     @Override
-    public boolean shouldRender(DataSkill data, ClientLevel world, IParams params) {
+    public boolean shouldRender(ClientLevel world, IParams params) {
         BlockState state = params.get("CenterState", BlockState.class);
-        ItemSkill skill = data.skill;
         if (!(skill instanceof AreaAoeSkill aoeSkill)) return false;
         return state.is(aoeSkill.getMineableTag());
     }

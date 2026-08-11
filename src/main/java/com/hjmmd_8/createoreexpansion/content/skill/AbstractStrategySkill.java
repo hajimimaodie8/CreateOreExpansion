@@ -17,7 +17,7 @@ import java.util.Set;
  *
  * @param <S> 此技能使用的Strategy类型（必须继承AreaStrategy）
  */
-public abstract class AbstractStrategySkill<P, S extends SkillStrategy<P>, C extends SkillConfig<?, S>> extends AbstractSkill {
+public abstract class AbstractStrategySkill<P, S extends SkillStrategy<P>, C extends SkillConfig> extends AbstractSkill {
 
     private final S strategy;
 
@@ -38,16 +38,6 @@ public abstract class AbstractStrategySkill<P, S extends SkillStrategy<P>, C ext
         return strategy;
     }
 
-    /**
-     * 获取策略类型（用于反射等场景）
-     * @return 策略的Class对象，如果strategy为null则返回null
-     */
-    @SuppressWarnings("unchecked")
-    public final Class<S> getStrategyType() {
-        if (strategy == null) return null;
-        return (Class<S>) strategy.getClass();
-    }
-
     public final Set<P> calculate(DataSkill data, IParams params) {
         if (strategy == null) {
             return java.util.Collections.emptySet();
@@ -62,9 +52,5 @@ public abstract class AbstractStrategySkill<P, S extends SkillStrategy<P>, C ext
                 ", cost=" + getCost() +
                 ", id=" + AllSkills.getId(this) +
                 '}';
-    }
-
-    public void load(C config) {
-
     }
 }

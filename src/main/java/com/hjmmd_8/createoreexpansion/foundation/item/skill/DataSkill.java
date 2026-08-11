@@ -11,10 +11,10 @@ import com.mojang.datafixers.util.Pair;
 public class DataSkill {
     public ItemSkill skill;
     public CompoundTag nbt;
-    public SkillConfig<?, ?> config;
+    public SkillConfig config;
     public int cost;
 
-    public DataSkill(ItemSkill skill, SkillConfig<?, ?> config, CompoundTag nbt, int cost) {
+    public DataSkill(ItemSkill skill, SkillConfig config, CompoundTag nbt, int cost) {
         this.skill = skill;
         this.config = config;
         this.nbt = nbt;
@@ -26,8 +26,12 @@ public class DataSkill {
         return nbt;
     }
 
+    public <T extends SkillConfig> T getConfig(Class<T> type) {
+        return type.cast(config);
+    }
+
     public static DataSkill fromSkill(ItemSkill skill) {
-        return new DataSkill(skill, skill.getConfig(), null, skill.getCost());
+        return new DataSkill(skill, null, new CompoundTag(), skill.getCost());
     }
 
     public void modifyCost(SkillCostModifier modifier) {
@@ -47,7 +51,7 @@ public class DataSkill {
             if (skill == null) return null;
             int cost = skill.getCost();
             if (nbt != null && nbt.contains("Cost")) cost = nbt.getInt("Cost");
-            return new DataSkill(skill, skill.getConfig(), nbt, cost);
+            return new DataSkill(skill, null, nbt, cost);
         } catch (Exception ignored) {
         }
         return null;

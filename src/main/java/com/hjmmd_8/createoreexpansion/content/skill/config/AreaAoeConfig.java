@@ -1,7 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
-import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.AutoSkillConfig;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.core.registries.Registries;
@@ -12,7 +10,7 @@ import net.minecraft.world.level.block.Block;
 
 import java.util.List;
 
-public class AreaAoeConfig extends AutoSkillConfig<AreaAoeSkill, AreaAoeStrategy> {
+public class AreaAoeConfig extends AutoSkillConfig {
 
     public int energyCost;
     public int width;
@@ -42,16 +40,6 @@ public class AreaAoeConfig extends AutoSkillConfig<AreaAoeSkill, AreaAoeStrategy
 
     public AreaAoeConfig(int energyCost, int size, int depth) {
         this(energyCost, BlockTags.MINEABLE_WITH_PICKAXE, size, size, depth, DualDirection.From.BLOCK_FACE);
-    }
-
-    @Override
-    public void loadSkill(AreaAoeSkill skill) {
-        skill.load(this);
-    }
-
-    @Override
-    public void loadStrategy(AreaAoeStrategy strategy) {
-        strategy.load(this);
     }
 
     @Override

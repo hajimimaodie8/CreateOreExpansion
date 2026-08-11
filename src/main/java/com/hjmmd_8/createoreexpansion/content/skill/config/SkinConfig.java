@@ -1,12 +1,10 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
-import com.hjmmd_8.createoreexpansion.content.skill.SkinSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.AutoSkillConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
 
 import java.util.List;
 
-public class SkinConfig extends AutoSkillConfig<SkinSkill, EntityStrategy> {
+public class SkinConfig extends AutoSkillConfig {
 
     public float dropChance;
     public int energyCost;
@@ -23,12 +21,4 @@ public class SkinConfig extends AutoSkillConfig<SkinSkill, EntityStrategy> {
                 of("Cost", () -> energyCost, value -> energyCost = value)
         );
     }
-
-    @Override
-    public void loadSkill(SkinSkill skill) {
-        skill.load(this);
-    }
-
-    @Override
-    public void loadStrategy(EntityStrategy strategy) {}
 }

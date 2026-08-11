@@ -9,7 +9,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class FellingConfig extends AutoSkillConfig<FellingSkill, FellingStrategy> {
+public class FellingConfig extends AutoSkillConfig {
 
     public int searchRange;
     public int maxBlocks;
@@ -50,16 +50,6 @@ public class FellingConfig extends AutoSkillConfig<FellingSkill, FellingStrategy
                         ofFloat("Leaf", () -> leafResistance, v -> leafResistance = v)
                 ))
         );
-    }
-
-    @Override
-    public void loadSkill(FellingSkill skill) {
-        skill.load(this);
-    }
-
-    @Override
-    public void loadStrategy(FellingStrategy strategy) {
-        strategy.load(this);
     }
 
     public enum BlockPredicate implements Predicate<BlockState> {

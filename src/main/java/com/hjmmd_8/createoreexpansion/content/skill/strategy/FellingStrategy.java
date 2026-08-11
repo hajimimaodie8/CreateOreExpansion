@@ -1,9 +1,11 @@
 package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
+import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.TreeCounter;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
 import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -22,14 +24,14 @@ import java.util.function.Predicate;
  *
  * <p>使用BFS算法搜索相连的原木和树叶
  */
-public class FellingStrategy extends ConfigStrategy<FellingConfig> {
+public class FellingStrategy extends ConfigStrategy<BlockPos, FellingConfig> implements AreaStrategy {
 
     private int searchRange;
     private int maxBlocks;
     private Predicate<BlockState> predicate;
 
     @Override
-    public Set<BlockPos> calculate(DataSkill skill, IParams params) {
+    public Set<BlockPos> calculate(IParams params) {
         Player player = params.get("Player", Player.class);
         BlockPos center = params.get("Center", BlockPos.class);
         Level level = player.level();
@@ -89,15 +91,20 @@ public class FellingStrategy extends ConfigStrategy<FellingConfig> {
     }
 
     @Override
-    public boolean shouldRender(DataSkill skill, ClientLevel world, IParams params) {
+    public boolean shouldRender(ClientLevel world, IParams params) {
         BlockState state = params.get("CenterState", BlockState.class);
         return FellingConfig.BlockPredicate.IS_LOG.test(state);
     }
 
     @Override
-    public void load(FellingConfig config) {
+    public void load(FellingConfig config, DataSkill data) {
         this.searchRange = config.searchRange;
         this.maxBlocks = config.maxBlocks;
         this.predicate = config.predicate;
+    }
+
+    @Override
+    protected Class<FellingConfig> getConfigType() {
+        return FellingConfig.class;
     }
 }

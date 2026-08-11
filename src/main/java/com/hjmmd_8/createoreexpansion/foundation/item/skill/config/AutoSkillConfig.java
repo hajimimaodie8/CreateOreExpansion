@@ -1,8 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill.config;
 
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import net.minecraft.nbt.CompoundTag;
 
 import java.util.List;
@@ -11,7 +9,7 @@ import java.util.function.*;
 /**
  * 声明式 Config — 支持嵌套
  */
-public abstract class AutoSkillConfig<S extends ItemSkill, T extends SkillStrategy<?>> implements SkillConfig<S, T> {
+public abstract class AutoSkillConfig implements SkillConfig {
 
     public interface FieldMapping {
         String key();
@@ -22,7 +20,7 @@ public abstract class AutoSkillConfig<S extends ItemSkill, T extends SkillStrate
     protected abstract List<FieldMapping> mappings();
 
     @Override
-    public void read(DataSkill data) {
+    public void load(DataSkill data) {
         if (data.nbt == null || !data.nbt.contains("Config")) return;
         CompoundTag tag = data.nbt.getCompound("Config");
         mappings().forEach(m -> m.load(tag));

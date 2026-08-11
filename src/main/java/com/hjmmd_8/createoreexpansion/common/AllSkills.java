@@ -39,7 +39,6 @@ import static com.hjmmd_8.createoreexpansion.common.AllStrategies.STRATEGIES;
 public final class AllSkills {
     private static final Map<ResourceLocation, ItemSkill> SKILLS = Maps.newHashMap();
     private static final Map<ItemSkill, ResourceLocation> SKILL_IDS = Maps.newHashMap();
-    private static final Map<ItemSkill, SkillConfig<?, ?>> CONFIGS = Maps.newHashMap();
 
     // ========== 公共技能实例 ==========
     public static final RegisteredDataSkill FELL =
@@ -156,12 +155,6 @@ public final class AllSkills {
         return SKILL_IDS.get(skill);
     }
 
-    public static SkillConfig<?, ?> getConfig(ItemSkill skill) {
-        if (skill == null) return null;
-        if (!CONFIGS.containsKey(skill)) return null;
-        return CONFIGS.get(skill);
-    }
-
     public static <C, V> V modifier(ModifiableAttributeType<C, V> type, SkillAttributeModifierHolder holder, C context) {
         ModifiableAttribute<V> attribute = type.create(context);
         holder.modifier(type, attribute);
@@ -194,7 +187,7 @@ public final class AllSkills {
         private S strategy;
         private T skill;
         private CompoundTag defaultNbt;
-        private SkillConfig<T, S> config;
+        private SkillConfig config;
 
         public SkillBuilder(ResourceLocation id) {
             this.id = id;
@@ -220,7 +213,7 @@ public final class AllSkills {
             return this;
         }
 
-        public SkillBuilder<T, S> config(SkillConfig<T, S> c) {
+        public SkillBuilder<T, S> config(SkillConfig c) {
             this.config = c;
             return setTag(c);
         }
@@ -251,14 +244,11 @@ public final class AllSkills {
                 STRATEGIES.put(skill, strategy);
                 RENDERERS.put(strategy, strategy.getRenderer());
             }
-            if (config != null) {
-                CONFIGS.put(skill, config);
-            }
             RegisteredDataSkill data = (defaultNbt == null)
                     ? new RegisteredDataSkill(skill)
                     : new RegisteredDataSkill(skill, config, defaultNbt, skill.getCost());
             if (config != null) {
-                config.load(data, skill, strategy);
+                config.load(data);
             }
             return data;
         }
@@ -269,7 +259,7 @@ public final class AllSkills {
             super(skill, null, new CompoundTag(), skill.getCost());
         }
 
-        public RegisteredDataSkill(ItemSkill skill, SkillConfig<?, ?> config, CompoundTag nbt, int cost) {
+        public RegisteredDataSkill(ItemSkill skill, SkillConfig config, CompoundTag nbt, int cost) {
             super(skill, config, nbt, cost);
             if (config != null) {
                 config.accept(nbt);

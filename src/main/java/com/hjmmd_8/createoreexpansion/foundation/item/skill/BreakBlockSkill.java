@@ -14,7 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
-public abstract class BreakBlockSkill<T extends AreaStrategy, C extends SkillConfig<?, T>> extends AbstractStrategySkill<BlockPos, T, C> implements TypedItemSkill<C>{
+public abstract class BreakBlockSkill<T extends AreaStrategy, C extends SkillConfig> extends AbstractStrategySkill<BlockPos, T, C> implements TypedItemSkill<C>{
 
     public final TagKey<Block> mineableTag;
 

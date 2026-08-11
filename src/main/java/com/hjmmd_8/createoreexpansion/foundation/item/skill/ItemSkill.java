@@ -34,10 +34,6 @@ public interface ItemSkill extends Translatable {
         return AllSkills.getId(this);
     }
 
-    default SkillConfig<?, ?> getConfig() {
-        return AllSkills.getConfig(this);
-    }
-
     default SkillStrategy<?> getStrategy() {
         return AllStrategies.STRATEGIES.get(this);
     }
