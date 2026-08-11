@@ -4,12 +4,15 @@ import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.ReapSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.SkinSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.ReapConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
+import com.hjmmd_8.createoreexpansion.content.skill.strategy.ReapStrategy;
 import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
 import com.hjmmd_8.createoreexpansion.data.lang.Translator;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
@@ -129,6 +132,34 @@ public final class AllSkills {
                     .strategy(EntityStrategy::new)
                     .config(new SkinConfig(.5f, 0))
                     .translate("剥取", "Skin")
+                    .level(1)
+                    .register();
+
+    public static final RegisteredDataSkill GREAT_SKIN =
+            skill("great_skin", SkinSkill.class, EntityStrategy.class)
+                    .skill(SkinSkill::new)
+                    .strategy(EntityStrategy::new)
+                    .config(new SkinConfig(.75f, 50))
+                    .translate("剥取", "Skin")
+                    .level(2)
+                    .register();
+
+    public static final RegisteredDataSkill GRAND_SKIN =
+            skill("grand_skin", SkinSkill.class, EntityStrategy.class)
+                    .skill(SkinSkill::new)
+                    .strategy(EntityStrategy::new)
+                    .config(new SkinConfig(.95f, 100))
+                    .translate("剥取", "Skin")
+                    .level(3)
+                    .register();
+
+    public static final RegisteredDataSkill REAP =
+            skill("reap", ReapSkill.class, ReapStrategy.class)
+                    .skill(ReapSkill::new)
+                    .strategy(ReapStrategy::new)
+                    .config(new ReapConfig(
+                            0, false, 4, 8, 0, 2))
+                    .translate("丰收", "Reap")
                     .level(1)
                     .register();
 
@@ -266,6 +297,10 @@ public final class AllSkills {
             }
         }
 
+        public RegisteredDataSkill create() {
+            return new RegisteredDataSkill(skill, config, nbt, cost);
+        }
+
         public RegisteredDataSkill addConfig(Consumer<CompoundTag> c) {
             c.accept(nbt);
             return this;
@@ -275,6 +310,15 @@ public final class AllSkills {
             nbt = new CompoundTag();
             c.accept(nbt);
             return this;
+        }
+
+        public RegisteredDataSkill config(SkillConfig config) {
+            this.config = config;
+            return setConfig(config);
+        }
+
+        public RegisteredDataSkill level(int level) {
+            return addConfig(nbt -> nbt.putInt("Level", level));
         }
     }
 

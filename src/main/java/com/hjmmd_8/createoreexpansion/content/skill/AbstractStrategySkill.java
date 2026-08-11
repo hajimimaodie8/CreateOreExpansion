@@ -1,10 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.common.AllSkills;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.AbstractSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 
 import java.util.Set;
@@ -17,7 +16,7 @@ import java.util.Set;
  *
  * @param <S> 此技能使用的Strategy类型（必须继承AreaStrategy）
  */
-public abstract class AbstractStrategySkill<P, S extends SkillStrategy<P>, C extends SkillConfig> extends AbstractSkill {
+public abstract class AbstractStrategySkill<P, S extends SkillStrategy<P>> extends AbstractSkill {
 
     private final S strategy;
 

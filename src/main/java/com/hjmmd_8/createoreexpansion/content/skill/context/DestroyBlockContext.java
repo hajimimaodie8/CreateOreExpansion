@@ -1,6 +1,6 @@
-package com.hjmmd_8.createoreexpansion.foundation.item.skill.context;
+package com.hjmmd_8.createoreexpansion.content.skill.context;
 
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;

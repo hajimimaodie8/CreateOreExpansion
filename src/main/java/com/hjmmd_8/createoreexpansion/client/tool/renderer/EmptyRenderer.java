@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.client.tool.renderer;
 
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Camera;

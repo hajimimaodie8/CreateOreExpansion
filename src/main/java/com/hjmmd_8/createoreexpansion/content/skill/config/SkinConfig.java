@@ -18,7 +18,7 @@ public class SkinConfig extends AutoSkillConfig {
     protected List<FieldMapping> mappings() {
         return List.of(
                 ofFloat("DropChance", () -> dropChance, value -> dropChance = value),
-                of("Cost", () -> energyCost, value -> energyCost = value)
+                ofInt("Cost", () -> energyCost, value -> energyCost = value)
         );
     }
 }

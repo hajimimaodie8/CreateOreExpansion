@@ -4,13 +4,12 @@ import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
-import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.ParamsPool;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -35,7 +34,7 @@ import java.util.Set;
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全，
  * 防止将错误的Strategy类型传入。</p>
  */
-public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrategy, AreaAoeConfig>
+public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrategy>
         implements ConfigSkill<ExcavationSkillContext, AreaAoeConfig> {
 
     private int energyCost;

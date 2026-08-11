@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl;
+package com.hjmmd_8.createoreexpansion.foundation.item.skill.context;
 
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;

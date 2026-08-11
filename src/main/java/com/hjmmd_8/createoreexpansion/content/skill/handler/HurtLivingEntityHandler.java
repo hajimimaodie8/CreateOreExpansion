@@ -1,15 +1,12 @@
-package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
+package com.hjmmd_8.createoreexpansion.content.skill.handler;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllItems;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.LivingHurtContext;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.LivingEntity;
+import com.hjmmd_8.createoreexpansion.content.skill.context.LivingHurtContext;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -34,7 +31,7 @@ public class HurtLivingEntityHandler {
 			return;
 
 		trigger(skillStack, event, sword, player);
-		player.getCooldowns().addCooldown(sword.getItem(), 3 * 20);
+		player.getCooldowns().addCooldown(sword.getItem(), 20);
 	}
 
 	private static void trigger(SkillItemStack skillStack, LivingIncomingDamageEvent event,

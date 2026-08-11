@@ -5,7 +5,7 @@ import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
 import com.hjmmd_8.createoreexpansion.common.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -42,7 +42,7 @@ public class BlockToolOutlineRenderer implements StrategyRenderer {
         blockParams.put("Player", player);
 
         DataSkill dataSkill = config.skill();
-        AbstractStrategySkill<?, ?, ?> skill = (AbstractStrategySkill<?, ?, ?>) dataSkill.skill;
+        AbstractStrategySkill<?, ?> skill = (AbstractStrategySkill<?, ?>) dataSkill.skill;
         AreaStrategy strategy = (AreaStrategy) skill.strategy();
         if (!strategy.shouldRender(dataSkill, world, blockParams)) return;
 

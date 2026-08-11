@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.equipment.tool.handler;
+package com.hjmmd_8.createoreexpansion.content.skill.handler;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;

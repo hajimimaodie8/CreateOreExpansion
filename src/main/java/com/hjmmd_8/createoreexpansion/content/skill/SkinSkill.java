@@ -1,11 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.*;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -23,7 +20,8 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import java.util.List;
 import java.util.Objects;
 
-public class SkinSkill extends AbstractStrategySkill<Entity, EntityStrategy, SkinConfig> implements TypedItemSkill<HitSkillContext> {
+public class SkinSkill extends AbstractStrategySkill<Entity, EntityStrategy>
+        implements ConfigSkill<HitSkillContext, SkinConfig> {
 
     private float dropChance;
     private int energyCost;
@@ -38,7 +36,7 @@ public class SkinSkill extends AbstractStrategySkill<Entity, EntityStrategy, Ski
     }
 
     @Override
-    public void releaseTyped(HitSkillContext context, DataSkill data) {
+    public void release(HitSkillContext context) {
         if (context.target().level().isClientSide()) return;
         var stack = getLoot(context);
         if (stack.isEmpty()) return;
@@ -74,9 +72,14 @@ public class SkinSkill extends AbstractStrategySkill<Entity, EntityStrategy, Ski
         return drops.isEmpty() ? ItemStack.EMPTY : drops.getFirst();
     }
 
-    public void load(SkinConfig config) {
+    public void load(SkinConfig config, DataSkill data) {
         this.dropChance = config.dropChance;
         this.energyCost = config.energyCost;
+    }
+
+    @Override
+    public Class<SkinConfig> getConfigType() {
+        return SkinConfig.class;
     }
 
     @Override

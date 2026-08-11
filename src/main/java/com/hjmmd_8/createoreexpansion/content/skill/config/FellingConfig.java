@@ -1,7 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
-import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.AutoSkillConfig;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.block.state.BlockState;
@@ -41,9 +39,9 @@ public class FellingConfig extends AutoSkillConfig {
     @Override
     protected List<FieldMapping> mappings() {
         return List.of(
-                of("Range",  () -> searchRange,  v -> searchRange = v),
-                of("MaxBlocks", () -> maxBlocks, v -> maxBlocks = v),
-                of("Cost",      () -> energyCost, v -> energyCost = v),
+                ofInt("Range",  () -> searchRange, v -> searchRange = v),
+                ofInt("MaxBlocks", () -> maxBlocks, v -> maxBlocks = v),
+                ofInt("Cost",      () -> energyCost, v -> energyCost = v),
                 ofStr("Predicate", () -> predicate.name(), v -> predicate = BlockPredicate.valueOf(v)),
                 nested("SpeedCorrection", List.of(
                         ofFloat("Log",  () -> logResistance,  v -> logResistance = v),

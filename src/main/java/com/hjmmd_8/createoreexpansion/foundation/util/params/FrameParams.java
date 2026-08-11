@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.foundation;
+package com.hjmmd_8.createoreexpansion.foundation.util.params;
 
 import com.google.common.collect.Maps;
 

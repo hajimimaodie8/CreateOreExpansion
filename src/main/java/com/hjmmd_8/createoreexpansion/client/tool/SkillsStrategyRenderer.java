@@ -2,8 +2,8 @@ package com.hjmmd_8.createoreexpansion.client.tool;
 
 import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
-import com.hjmmd_8.createoreexpansion.foundation.FrameParams;
-import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.FrameParams;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.ParamsPool;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.mojang.blaze3d.vertex.PoseStack;

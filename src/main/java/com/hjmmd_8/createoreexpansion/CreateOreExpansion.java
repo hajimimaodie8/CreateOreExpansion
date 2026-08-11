@@ -57,7 +57,7 @@ public class CreateOreExpansion {
         AllMyBlocks.register();
         AllTiers.register();
         AllItems.register();
-        AllMetal.register();
+        AllMetalTags.register();
         AllMyFluids.register();
         AllModEffects.register(modEventBus);
         AllModPotions.register(modEventBus);

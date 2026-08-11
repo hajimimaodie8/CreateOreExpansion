@@ -15,6 +15,31 @@ public abstract class AutoSkillConfig implements SkillConfig {
         String key();
         void load(CompoundTag tag);
         void save(CompoundTag tag);
+
+        static <T> FieldMapping of(String key, Supplier<T> valueGetter, Consumer<T> valueSetter,
+                                   Getter<T> getter, Putter<T> putter) {
+            return new FieldMapping() {
+                public String key() { return key; }
+
+                public void load(CompoundTag tag) {
+                    if (tag.contains(key)) {
+                        valueSetter.accept(getter.get(tag, key));
+                    }
+                }
+
+                public void save(CompoundTag tag) {
+                    putter.put(tag, key, valueGetter.get());
+                }
+            };
+        }
+
+        interface Getter<T> {
+            T get(CompoundTag tag, String key);
+        }
+
+        interface Putter<T> {
+            void put(CompoundTag tag, String key, T value);
+        }
     }
 
     protected abstract List<FieldMapping> mappings();
@@ -35,28 +60,25 @@ public abstract class AutoSkillConfig implements SkillConfig {
 
     // ========== 基础类型 ==========
 
-    public static FieldMapping of(String key, Supplier<Integer> getter, IntConsumer setter) {
-        return new FieldMapping() {
-            public String key() { return key; }
-            public void load(CompoundTag t) { if (t.contains(key)) setter.accept(t.getInt(key)); }
-            public void save(CompoundTag t) { t.putInt(key, getter.get()); }
-        };
+    public static FieldMapping ofBool(String key, Supplier<Boolean> getter, Consumer<Boolean> setter) {
+        return of(key, getter, setter, CompoundTag::getBoolean, CompoundTag::putBoolean);
+    }
+
+    public static FieldMapping ofInt(String key, Supplier<Integer> getter, Consumer<Integer> setter) {
+        return of(key, getter, setter, CompoundTag::getInt, CompoundTag::putInt);
     }
 
     public static FieldMapping ofFloat(String key, Supplier<Float> getter, Consumer<Float> setter) {
-        return new FieldMapping() {
-            public String key() { return key; }
-            public void load(CompoundTag t) { if (t.contains(key)) setter.accept(t.getFloat(key)); }
-            public void save(CompoundTag t) { t.putFloat(key, getter.get()); }
-        };
+        return of(key, getter, setter, CompoundTag::getFloat, CompoundTag::putFloat);
     }
 
     public static FieldMapping ofStr(String key, Supplier<String> getter, Consumer<String> setter) {
-        return new FieldMapping() {
-            public String key() { return key; }
-            public void load(CompoundTag t) { if (t.contains(key)) setter.accept(t.getString(key)); }
-            public void save(CompoundTag t) { t.putString(key, getter.get()); }
-        };
+        return of(key, getter, setter, CompoundTag::getString, CompoundTag::putString);
+    }
+
+    public static <T> FieldMapping of(String key, Supplier<T> valueGetter, Consumer<T> valueSetter,
+                                      FieldMapping.Getter<T> getter, FieldMapping.Putter<T> putter) {
+        return FieldMapping.of(key, valueGetter, valueSetter, getter, putter);
     }
 
     // ========== 嵌套 ==========

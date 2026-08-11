@@ -8,13 +8,12 @@ import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedMod
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.TreeCounter;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
-import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.ParamsPool;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.TypedItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
@@ -36,7 +35,7 @@ import java.util.Set;
  *
  * <p>通过继承 {@link AbstractStrategySkill} 确保类型安全。</p>
  */
-public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrategy, FellingConfig>
+public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrategy>
         implements ConfigSkill<ExcavationSkillContext, FellingConfig> {
 
     private int energyCost;

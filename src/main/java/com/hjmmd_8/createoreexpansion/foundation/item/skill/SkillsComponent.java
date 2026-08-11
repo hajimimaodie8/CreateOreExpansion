@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.world.item.ItemStack;
 
@@ -131,7 +132,7 @@ public class SkillsComponent implements OwnedBySkills {
 
         // 检查是否为创造模式
         boolean isCreative = false;
-        if (context instanceof com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext excavationContext) {
+        if (context instanceof ExcavationSkillContext excavationContext) {
             var entity = excavationContext.entity();
             if (entity instanceof net.minecraft.server.level.ServerPlayer player) {
                 isCreative = player.isCreative();

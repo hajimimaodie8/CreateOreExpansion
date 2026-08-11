@@ -45,10 +45,10 @@ public class AreaAoeConfig extends AutoSkillConfig {
     @Override
     protected List<FieldMapping> mappings() {
         return List.of(
-                of("Cost",   () -> energyCost, v -> energyCost = v),
-                of("Width",  () -> width,      v -> width = v),
-                of("Height", () -> height,     v -> height = v),
-                of("Depth",  () -> depth,      v -> depth = v),
+                ofInt("Cost",   () -> energyCost, v -> energyCost = v),
+                ofInt("Width",  () -> width, v -> width = v),
+                ofInt("Height", () -> height, v -> height = v),
+                ofInt("Depth",  () -> depth, v -> depth = v),
                 ofStr("DirectionSource", () -> directionSource.name(),
                         v -> directionSource = DualDirection.From.valueOf(v)),
                 ofStr("MineableTag",     () -> mineableTag.location().toString(),

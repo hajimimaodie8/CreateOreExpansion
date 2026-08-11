@@ -7,7 +7,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 
-public enum AllMetal {
+public enum AllMetalTags {
     TOPAZ,
     SAPPHIRE,
     JADE;
@@ -28,7 +28,7 @@ public enum AllMetal {
     public final TagKey<Block> storageRawBlocks;
     public final TagKey<Block> storageBlocks;
 
-    AllMetal() {
+    AllMetalTags() {
         name = Lang.asId(name());
 
         rawOres = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "raw_materials/" + name));
@@ -46,6 +46,58 @@ public enum AllMetal {
         blockOres = TagKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath("c", "ores/" + name));
         storageRawBlocks = TagKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath("c", "storage_blocks/raw_" + name));
         storageBlocks = TagKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath("c", "storage_blocks/" + name));
+    }
+
+    TagKey<Item> rawOres() {
+        return rawOres;
+    }
+
+    TagKey<Item> crushedRawOres() {
+        return crushedRawOres;
+    }
+
+    TagKey<Item> ingots() {
+        return ingots;
+    }
+
+    TagKey<Item> nuggets() {
+        return nuggets;
+    }
+
+    TagKey<Item> sheets() {
+        return sheets;
+    }
+
+    TagKey<Item> rods() {
+        return rods;
+    }
+
+    TagKey<Item> wires() {
+        return wires;
+    }
+
+    TagKey<Item> itemOres() {
+        return itemOres;
+    }
+
+    TagKey<Item> itemStorageRawBlocks() {
+        return itemStorageRawBlocks;
+    }
+
+    TagKey<Item> itemStorageBlocks() {
+        return itemStorageBlocks;
+    }
+
+    TagKey<Block> blockOres() {
+        return blockOres;
+    }
+
+    TagKey<Block> storageRawBlocks() {
+        return storageRawBlocks;
+    }
+
+    TagKey<Block> storageBlocks() {
+        return storageBlocks;
     }
 
     public static void register() {}

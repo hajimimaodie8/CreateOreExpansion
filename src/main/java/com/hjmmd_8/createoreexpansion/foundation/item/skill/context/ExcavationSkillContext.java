@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl;
+package com.hjmmd_8.createoreexpansion.foundation.item.skill.context;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.LivingEntity;

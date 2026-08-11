@@ -78,10 +78,13 @@
   "skill.createoreexpansion.grade": "Grade",
   "skill.createoreexpansion.grand_fell": "Fell",
   "skill.createoreexpansion.grand_shatter": "Shatter",
+  "skill.createoreexpansion.grand_skin": "Skin",
   "skill.createoreexpansion.great_channel": "Channel",
   "skill.createoreexpansion.great_fell": "Fell",
   "skill.createoreexpansion.great_shatter": "Shatter",
+  "skill.createoreexpansion.great_skin": "Skin",
   "skill.createoreexpansion.shatter": "Shatter",
+  "skill.createoreexpansion.skin": "Skin",
   "skillType.createoreexpansion.excavation_skill": "Excavation Skill",
   "skillType.createoreexpansion.hit_skill": "Hit Skill"
 }

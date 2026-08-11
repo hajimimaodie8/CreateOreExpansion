@@ -1,10 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
-import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
-import com.hjmmd_8.createoreexpansion.common.AllStrategies;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;

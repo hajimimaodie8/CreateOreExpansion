@@ -28,7 +28,7 @@ public final class AllMyBlocks {
             // 二者加起来就是方块的最佳挖掘工具是镐子，且需要石质工具
             // 就是需要石质以上的镐子挖掘
             .tag(BlockTags.NEEDS_IRON_TOOL)
-            .tag(AllMetal.JADE.blockOres)
+            .tag(AllMetalTags.JADE.blockOres)
             // 注册掉落物，这里比较复杂（因为Minecraft本身的对于矿物的掉落物就是很复杂的，比如处理时运和精准采集等，概率掉落等）
             .loot((lt, block) -> {
                         HolderLookup.RegistryLookup<Enchantment> enchantmentRegistryLookup = lt.getRegistries().lookupOrThrow(Registries.ENCHANTMENT);
@@ -46,7 +46,7 @@ public final class AllMyBlocks {
                         );
                     })
             .item()
-            .tag(AllMetal.JADE.itemOres)
+            .tag(AllMetalTags.JADE.itemOres)
             .build()
             .register();
 
@@ -55,7 +55,7 @@ public final class AllMyBlocks {
             .initialProperties(() -> Blocks.DEEPSLATE_DIAMOND_ORE)
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .tag(BlockTags.NEEDS_IRON_TOOL)
-            .tag(AllMetal.JADE.blockOres)
+            .tag(AllMetalTags.JADE.blockOres)
             // 同理，也需要为深层矿石注册战利品，战利品由数据包定义，所以需要runData生成数据
             .loot((lt, block) -> {
                         HolderLookup.RegistryLookup<Enchantment> enchantmentRegistryLookup = lt.getRegistries().lookupOrThrow(Registries.ENCHANTMENT);
@@ -73,7 +73,7 @@ public final class AllMyBlocks {
                         );
                     })
             .item()
-            .tag(AllMetal.JADE.itemOres)
+            .tag(AllMetalTags.JADE.itemOres)
             .build()
             .register();
     // 这里通过调用方法让Java加载这个类，触发类加载，这样Java才会加载字段
@@ -88,9 +88,9 @@ public final class AllMyBlocks {
             .tag(BlockTags.NEEDS_IRON_TOOL)
             .tag(Tags.Blocks.STORAGE_BLOCKS)
             .tag(BlockTags.BEACON_BASE_BLOCKS)
-            .tag(AllMetal.JADE.storageBlocks)
+            .tag(AllMetalTags.JADE.storageBlocks)
             .item()
-            .tag(AllMetal.JADE.itemStorageBlocks)
+            .tag(AllMetalTags.JADE.itemStorageBlocks)
             .build()
             .register();
 
@@ -102,9 +102,9 @@ public final class AllMyBlocks {
             .transform(pickaxeOnly())
             .tag(Tags.Blocks.STORAGE_BLOCKS)
             .tag(BlockTags.NEEDS_IRON_TOOL)
-            .tag(AllMetal.JADE.storageRawBlocks)
+            .tag(AllMetalTags.JADE.storageRawBlocks)
             .item()
-            .tag(AllMetal.JADE.itemStorageRawBlocks)
+            .tag(AllMetalTags.JADE.itemStorageRawBlocks)
             .build()
             .register();
 
@@ -119,7 +119,7 @@ public final class AllMyBlocks {
             .initialProperties(() -> Blocks.DIAMOND_ORE)
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .tag(BlockTags.NEEDS_DIAMOND_TOOL)
-            .tag(AllMetal.TOPAZ.blockOres)
+            .tag(AllMetalTags.TOPAZ.blockOres)
             .loot((lt, block) -> {
                 HolderLookup.RegistryLookup<Enchantment> enchantmentRegistryLookup = lt.getRegistries().lookupOrThrow(Registries.ENCHANTMENT);
                 lt.add(
@@ -136,7 +136,7 @@ public final class AllMyBlocks {
                 );
             })
             .item()
-            .tag(AllMetal.TOPAZ.itemOres)
+            .tag(AllMetalTags.TOPAZ.itemOres)
             .build()
             .register();
 
@@ -145,7 +145,7 @@ public final class AllMyBlocks {
             .initialProperties(() -> Blocks.DEEPSLATE_DIAMOND_ORE)
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .tag(BlockTags.NEEDS_DIAMOND_TOOL)
-            .tag(AllMetal.TOPAZ.blockOres)
+            .tag(AllMetalTags.TOPAZ.blockOres)
             // 同理，也需要为深层矿石注册战利品，战利品由数据包定义，所以需要runData生成数据
             .loot((lt, block) -> {
                 HolderLookup.RegistryLookup<Enchantment> enchantmentRegistryLookup = lt.getRegistries().lookupOrThrow(Registries.ENCHANTMENT);
@@ -163,7 +163,7 @@ public final class AllMyBlocks {
                 );
             })
             .item()
-            .tag(AllMetal.TOPAZ.itemOres)
+            .tag(AllMetalTags.TOPAZ.itemOres)
             .build()
             .register();
     // 这里通过调用方法让Java加载这个类，触发类加载，这样Java才会加载字段
@@ -178,9 +178,9 @@ public final class AllMyBlocks {
             .tag(BlockTags.NEEDS_IRON_TOOL)
             .tag(Tags.Blocks.STORAGE_BLOCKS)
             .tag(BlockTags.BEACON_BASE_BLOCKS)
-            .tag(AllMetal.TOPAZ.storageBlocks)
+            .tag(AllMetalTags.TOPAZ.storageBlocks)
             .item()
-            .tag(AllMetal.TOPAZ.itemStorageBlocks)
+            .tag(AllMetalTags.TOPAZ.itemStorageBlocks)
             .build()
             .register();
 
@@ -192,9 +192,9 @@ public final class AllMyBlocks {
             .transform(pickaxeOnly())
             .tag(Tags.Blocks.STORAGE_BLOCKS)
             .tag(BlockTags.NEEDS_IRON_TOOL)
-            .tag(AllMetal.TOPAZ.storageRawBlocks)
+            .tag(AllMetalTags.TOPAZ.storageRawBlocks)
             .item()
-            .tag(AllMetal.TOPAZ.itemStorageRawBlocks)
+            .tag(AllMetalTags.TOPAZ.itemStorageRawBlocks)
             .build()
             .register();
 
@@ -203,7 +203,7 @@ public final class AllMyBlocks {
             .initialProperties(() -> Blocks.ANCIENT_DEBRIS)
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .tag(BlockTags.NEEDS_DIAMOND_TOOL)
-            .tag(AllMetal.SAPPHIRE.blockOres)
+            .tag(AllMetalTags.SAPPHIRE.blockOres)
             .loot((lt, block) -> {
                 HolderLookup.RegistryLookup<Enchantment> enchantmentRegistryLookup = lt.getRegistries().lookupOrThrow(Registries.ENCHANTMENT);
                 lt.add(
@@ -220,7 +220,7 @@ public final class AllMyBlocks {
                 );
             })
             .item()
-            .tag(AllMetal.SAPPHIRE.itemOres)
+            .tag(AllMetalTags.SAPPHIRE.itemOres)
             .build()
             .register();
 
@@ -233,9 +233,9 @@ public final class AllMyBlocks {
             .tag(BlockTags.NEEDS_IRON_TOOL)
             .tag(Tags.Blocks.STORAGE_BLOCKS)
             .tag(BlockTags.BEACON_BASE_BLOCKS)
-            .tag(AllMetal.SAPPHIRE.storageBlocks)
+            .tag(AllMetalTags.SAPPHIRE.storageBlocks)
             .item()
-            .tag(AllMetal.SAPPHIRE.itemStorageBlocks)
+            .tag(AllMetalTags.SAPPHIRE.itemStorageBlocks)
             .build()
             .register();
 
@@ -247,9 +247,9 @@ public final class AllMyBlocks {
             .transform(pickaxeOnly())
             .tag(Tags.Blocks.STORAGE_BLOCKS)
             .tag(BlockTags.NEEDS_IRON_TOOL)
-            .tag(AllMetal.SAPPHIRE.storageRawBlocks)
+            .tag(AllMetalTags.SAPPHIRE.storageRawBlocks)
             .item()
-            .tag(AllMetal.SAPPHIRE.itemStorageRawBlocks)
+            .tag(AllMetalTags.SAPPHIRE.itemStorageRawBlocks)
             .build()
             .register();
     public static void register() {}

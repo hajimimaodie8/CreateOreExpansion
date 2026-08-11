@@ -83,10 +83,13 @@
   "skill.createoreexpansion.grade": "平场",
   "skill.createoreexpansion.grand_fell": "伐树",
   "skill.createoreexpansion.grand_shatter": "开岩",
+  "skill.createoreexpansion.grand_skin": "剥取",
   "skill.createoreexpansion.great_channel": "引渠",
   "skill.createoreexpansion.great_fell": "伐树",
   "skill.createoreexpansion.great_shatter": "开岩",
+  "skill.createoreexpansion.great_skin": "剥取",
   "skill.createoreexpansion.shatter": "开岩",
+  "skill.createoreexpansion.skin": "剥取",
   "skillType.createoreexpansion.excavation_skill": "挖掘技能",
   "skillType.createoreexpansion.hit_skill": "攻击技能"
 }

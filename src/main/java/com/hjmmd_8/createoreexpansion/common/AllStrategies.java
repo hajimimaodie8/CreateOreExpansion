@@ -5,7 +5,7 @@ import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
 import com.hjmmd_8.createoreexpansion.client.tool.renderer.EmptyRenderer;
 import com.hjmmd_8.createoreexpansion.client.tool.renderer.EntityOutlineRenderer;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;

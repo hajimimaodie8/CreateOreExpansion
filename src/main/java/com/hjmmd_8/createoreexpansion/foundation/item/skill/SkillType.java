@@ -4,8 +4,9 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
 import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
 import com.hjmmd_8.createoreexpansion.data.lang.Translator;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.ExcavationSkillContext;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.impl.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext;
 
 import java.util.Locale;
 
@@ -13,7 +14,10 @@ public enum SkillType {
     // 挖掘技能
     EXCAVATION_SKILL(ExcavationSkillContext.class),
     // 击中技能
-    HIT_SKILL(HitSkillContext.class);
+    HIT_SKILL(HitSkillContext.class),
+
+    USE_SKILL(UseItemContext.class),
+    ;
 
     public final Class<?> contextClass;
     private final String translateKey;

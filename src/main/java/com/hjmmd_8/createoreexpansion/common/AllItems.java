@@ -39,7 +39,7 @@ public final class AllItems {
             .item("jade_ingot", Item::new)
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
-            .tag(AllMetal.JADE.ingots)
+            .tag(AllMetalTags.JADE.ingots)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -47,7 +47,7 @@ public final class AllItems {
     public static final ItemEntry<Item> RAW_JADE = CreateOreExpansion.REGISTRATE
             .item("raw_jade", Item::new)
             .tag(Tags.Items.RAW_MATERIALS)
-            .tag(AllMetal.JADE.rawOres)
+            .tag(AllMetalTags.JADE.rawOres)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -55,7 +55,7 @@ public final class AllItems {
     public static final ItemEntry<Item> JADE_NUGGET = CreateOreExpansion.REGISTRATE
             .item("jade_nugget", Item::new)
             .tag(Tags.Items.NUGGETS)
-            .tag(AllMetal.JADE.nuggets)
+            .tag(AllMetalTags.JADE.nuggets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -63,7 +63,7 @@ public final class AllItems {
     public static final ItemEntry<Item> CRUSHED_JADE_ORE = CreateOreExpansion.REGISTRATE
             .item("crushed_jade_ore", Item::new)
             .tag(CRUSHED_RAW_MATERIALS.tag)
-            .tag(AllMetal.JADE.crushedRawOres)
+            .tag(AllMetalTags.JADE.crushedRawOres)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -82,14 +82,14 @@ public final class AllItems {
 
     public static final ItemEntry<Item> JADE_SHEET = CreateOreExpansion.REGISTRATE
             .item("jade_sheet", Item::new)
-            .tag(AllMetal.JADE.sheets)
+            .tag(AllMetalTags.JADE.sheets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
     public static final ItemEntry<Item> JADE_ROD = CreateOreExpansion.REGISTRATE
             .item("jade_rod", Item::new)
-            .tag(AllMetal.JADE.rods)
+            .tag(AllMetalTags.JADE.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
             .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
             .model((ctx, provider) ->
@@ -98,7 +98,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> JADE_WIRE = CreateOreExpansion.REGISTRATE
             .item("jade_wire", Item::new)
-            .tag(AllMetal.JADE.wires)
+            .tag(AllMetalTags.JADE.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
             .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
             .model((ctx, provider) ->
@@ -166,7 +166,7 @@ public final class AllItems {
             .item("topaz_ingot", Item::new)
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
-            .tag(AllMetal.TOPAZ.ingots)
+            .tag(AllMetalTags.TOPAZ.ingots)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -174,7 +174,7 @@ public final class AllItems {
     public static final ItemEntry<Item> RAW_TOPAZ = CreateOreExpansion.REGISTRATE
             .item("raw_topaz", Item::new)
             .tag(Tags.Items.RAW_MATERIALS)
-            .tag(AllMetal.TOPAZ.rawOres)
+            .tag(AllMetalTags.TOPAZ.rawOres)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -182,7 +182,7 @@ public final class AllItems {
     public static final ItemEntry<Item> TOPAZ_NUGGET = CreateOreExpansion.REGISTRATE
             .item("topaz_nugget", Item::new)
             .tag(Tags.Items.NUGGETS)
-            .tag(AllMetal.TOPAZ.nuggets)
+            .tag(AllMetalTags.TOPAZ.nuggets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -190,7 +190,7 @@ public final class AllItems {
     public static final ItemEntry<Item> CRUSHED_TOPAZ_ORE = CreateOreExpansion.REGISTRATE
             .item("crushed_topaz_ore", Item::new)
             .tag(CRUSHED_RAW_MATERIALS.tag)
-            .tag(AllMetal.TOPAZ.crushedRawOres)
+            .tag(AllMetalTags.TOPAZ.crushedRawOres)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -209,14 +209,14 @@ public final class AllItems {
 
     public static final ItemEntry<Item> TOPAZ_SHEET = CreateOreExpansion.REGISTRATE
             .item("topaz_sheet", Item::new)
-            .tag(AllMetal.TOPAZ.sheets)
+            .tag(AllMetalTags.TOPAZ.sheets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
     public static final ItemEntry<Item> TOPAZ_ROD = CreateOreExpansion.REGISTRATE
             .item("topaz_rod", Item::new)
-            .tag(AllMetal.TOPAZ.rods)
+            .tag(AllMetalTags.TOPAZ.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
             .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
             .model((ctx, provider) ->
@@ -225,7 +225,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> TOPAZ_WIRE = CreateOreExpansion.REGISTRATE
             .item("topaz_wire", Item::new)
-            .tag(AllMetal.TOPAZ.wires)
+            .tag(AllMetalTags.TOPAZ.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
             .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
             .model((ctx, provider) ->
@@ -240,13 +240,13 @@ public final class AllItems {
                     SwordItem.createAttributes(AllTiers.TOPAZ, 4, -2.4F)
             ))
             .tag(ItemTags.SWORDS)
-//            .transform(addEnergy(450, 1000, ToolEnergyColorConfig.TOPAZ))
             .transform(skillItem())
             .addEnergy()
             .defaultEnergy(450)
             .maxEnergy(1000)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
+            .addSkills(AllSkills.GREAT_SKIN)
             .skillColor(SkillRendererConfig.TOPAZ_GOLD)
             .build()
             .register();
@@ -312,7 +312,7 @@ public final class AllItems {
             .item("sapphire_ingot", Item::new)
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
-            .tag(AllMetal.SAPPHIRE.ingots)
+            .tag(AllMetalTags.SAPPHIRE.ingots)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -320,7 +320,7 @@ public final class AllItems {
     public static final ItemEntry<Item> RAW_SAPPHIRE = CreateOreExpansion.REGISTRATE
             .item("raw_sapphire", Item::new)
             .tag(Tags.Items.RAW_MATERIALS)
-            .tag(AllMetal.SAPPHIRE.rawOres)
+            .tag(AllMetalTags.SAPPHIRE.rawOres)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -328,7 +328,7 @@ public final class AllItems {
     public static final ItemEntry<Item> SAPPHIRE_NUGGET = CreateOreExpansion.REGISTRATE
             .item("sapphire_nugget", Item::new)
             .tag(Tags.Items.NUGGETS)
-            .tag(AllMetal.SAPPHIRE.nuggets)
+            .tag(AllMetalTags.SAPPHIRE.nuggets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -336,7 +336,7 @@ public final class AllItems {
     public static final ItemEntry<Item> CRUSHED_SAPPHIRE_ORE = CreateOreExpansion.REGISTRATE    
             .item("crushed_sapphire_ore", Item::new)
             .tag(CRUSHED_RAW_MATERIALS.tag)
-            .tag(AllMetal.SAPPHIRE.crushedRawOres)
+            .tag(AllMetalTags.SAPPHIRE.crushedRawOres)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
@@ -355,14 +355,14 @@ public final class AllItems {
 
     public static final ItemEntry<Item> SAPPHIRE_SHEET = CreateOreExpansion.REGISTRATE
             .item("sapphire_sheet", Item::new)
-            .tag(AllMetal.SAPPHIRE.sheets)
+            .tag(AllMetalTags.SAPPHIRE.sheets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
     public static final ItemEntry<Item> SAPPHIRE_ROD = CreateOreExpansion.REGISTRATE
             .item("sapphire_rod", Item::new)
-            .tag(AllMetal.SAPPHIRE.rods)
+            .tag(AllMetalTags.SAPPHIRE.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
             .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
             .model((ctx, provider) ->
@@ -371,7 +371,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> SAPPHIRE_WIRE = CreateOreExpansion.REGISTRATE
             .item("sapphire_wire", Item::new)
-            .tag(AllMetal.SAPPHIRE.wires)
+            .tag(AllMetalTags.SAPPHIRE.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
             .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
             .model((ctx, provider) ->
@@ -392,6 +392,7 @@ public final class AllItems {
             .maxEnergy(25000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
+            .addSkills(AllSkills.GRAND_SKIN)
             .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
             .build()
             .register();
