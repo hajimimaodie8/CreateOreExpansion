@@ -115,6 +115,11 @@ public final class AllItems {
             // 添加 剑 的标签，不然没有横扫效果
             .tag(ItemTags.SWORDS)
             .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(600)
+            .maxEnergy(600)
+            .color(ToolEnergyColorConfig.JADE)
+            .build()
             .addSkills(AllSkills.SKIN)
             .skillColor(SkillRendererConfig.JADE_GREEN)
             .build()
@@ -129,6 +134,11 @@ public final class AllItems {
             ))
             .tag(ItemTags.PICKAXES)
             .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(1000)
+            .maxEnergy(1000)
+            .color(ToolEnergyColorConfig.JADE)
+            .build()
             .addSkills(AllSkills.SHATTER)
             .skillColor(SkillRendererConfig.JADE_GREEN)
             .build()
@@ -143,6 +153,11 @@ public final class AllItems {
             ))
             .tag(ItemTags.AXES)
             .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(600)
+            .maxEnergy(600)
+            .color(ToolEnergyColorConfig.JADE)
+            .build()
             .addSkills(AllSkills.FELL)
             .skillColor(SkillRendererConfig.JADE_GREEN)
             .build()
@@ -157,7 +172,30 @@ public final class AllItems {
             ))
             .tag(ItemTags.SHOVELS)
             .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(1000)
+            .maxEnergy(1000)
+            .color(ToolEnergyColorConfig.JADE)
+            .build()
             .addSkills(AllSkills.CHANNEL)
+            .skillColor(SkillRendererConfig.JADE_GREEN)
+            .build()
+            .register();
+    public static final ItemEntry<HoeItem> JADE_HOE = CreateOreExpansion.REGISTRATE
+            .item("jade_hoe", p -> new HoeItem(AllTiers.JADE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p.attributes(
+                    HoeItem.createAttributes(AllTiers.JADE, -2, -1.0F)
+            ))
+            .tag(ItemTags.HOES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(1000)
+            .maxEnergy(1000)
+            .color(ToolEnergyColorConfig.JADE)
+            .build()
+            .addSkills(AllSkills.REAP, AllSkills.PLANT)
             .skillColor(SkillRendererConfig.JADE_GREEN)
             .build()
             .register();
@@ -307,6 +345,24 @@ public final class AllItems {
             .skillColor(SkillRendererConfig.TOPAZ_GOLD)
             .build()
             .register();
+    public static final ItemEntry<HoeItem> TOPAZ_HOE = CreateOreExpansion.REGISTRATE
+            .item("topaz_hoe", p -> new HoeItem(AllTiers.TOPAZ, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p.attributes(
+                    HoeItem.createAttributes(AllTiers.TOPAZ, -1.5F, 0.0F)
+            ))
+            .tag(ItemTags.HOES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(1000)
+            .maxEnergy(1000)
+            .color(ToolEnergyColorConfig.TOPAZ)
+            .build()
+            .addSkills(AllSkills.GREAT_REAP, AllSkills.GREAT_PLANT)
+            .skillColor(SkillRendererConfig.TOPAZ_GOLD)
+            .build()
+            .register();
 
     public static final ItemEntry<Item> SAPPHIRE_INGOT = CreateOreExpansion.REGISTRATE
             .item("sapphire_ingot", Item::new)
@@ -450,6 +506,24 @@ public final class AllItems {
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
             .addSkills(AllSkills.GRAND_FELL)
+            .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
+            .build()
+            .register();
+    public static final ItemEntry<HoeItem> SAPPHIRE_HOE = CreateOreExpansion.REGISTRATE
+            .item("sapphire_hoe", p -> new HoeItem(AllTiers.SAPPHIRE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p.attributes(
+                    HoeItem.createAttributes(AllTiers.SAPPHIRE, -1, 0.0F)
+            ))
+            .tag(ItemTags.HOES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(25000)
+            .maxEnergy(25000)
+            .color(ToolEnergyColorConfig.SAPPHIRE)
+            .build()
+            .addSkills(AllSkills.GRAND_REAP, AllSkills.GRAND_PLANT)
             .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
             .build()
             .register();

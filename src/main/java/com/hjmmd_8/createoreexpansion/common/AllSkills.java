@@ -4,14 +4,17 @@ import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.PlantSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.ReapSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.SkinSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.PlantConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ReapConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
+import com.hjmmd_8.createoreexpansion.content.skill.strategy.PlantStrategy;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.ReapStrategy;
 import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
 import com.hjmmd_8.createoreexpansion.data.lang.Translator;
@@ -52,7 +55,7 @@ public final class AllSkills {
                     .config(new FellingConfig(
                             8, 200,
                             FellingConfig.BlockPredicate.IS_LOG,
-                            0, .12f, .12f))
+                            100, .12f, .12f))
                     .level(1)
                     .register();
     public static final RegisteredDataSkill GREAT_FELL =
@@ -80,7 +83,7 @@ public final class AllSkills {
             skill("shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
                     .skill(AreaAoeSkill::new)
                     .strategy(AreaAoeStrategy::new)
-                    .config(new AreaAoeConfig(0, BlockTags.MINEABLE_WITH_PICKAXE, 3, 1, 1, DualDirection.From.PLAYER_YAW))
+                    .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_PICKAXE, 3, 1, 1, DualDirection.From.PLAYER_YAW))
                     .translate("开岩", "Shatter")
                     .level(1)
                     .register();
@@ -105,7 +108,7 @@ public final class AllSkills {
             skill("channel", AreaAoeSkill.class, AreaAoeStrategy.class)
                     .skill(AreaAoeSkill::new)
                     .strategy(AreaAoeStrategy::new)
-                    .config(new AreaAoeConfig(0, BlockTags.MINEABLE_WITH_SHOVEL, 1, 1, 6, DualDirection.From.PLAYER_YAW))
+                    .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_SHOVEL, 1, 1, 6, DualDirection.From.PLAYER_YAW))
                     .translate("引渠", "Channel")
                     .level(1)
                     .register();
@@ -158,9 +161,66 @@ public final class AllSkills {
                     .skill(ReapSkill::new)
                     .strategy(ReapStrategy::new)
                     .config(new ReapConfig(
-                            0, false, 4, 8, 0, 2))
+                            10, true, ReapConfig.DEFAULT_RANGE_3X3, 
+                            ReapConfig.DEFAULT_MAX_BLOCKS_3X3, 0, 2, 
+                            ReapConfig.JADE_MATURE_CHANCE))
                     .translate("丰收", "Reap")
                     .level(1)
+                    .register();
+    public static final RegisteredDataSkill GREAT_REAP =
+            skill("great_reap", ReapSkill.class, ReapStrategy.class)
+                    .skill(ReapSkill::new)
+                    .strategy(ReapStrategy::new)
+                    .config(new ReapConfig(
+                            50, true, ReapConfig.DEFAULT_RANGE_3X5, 
+                            ReapConfig.DEFAULT_MAX_BLOCKS_3X5, 1, 3, 
+                            ReapConfig.TOPAZ_MATURE_CHANCE))
+                    .translate("丰收", "Reap")
+                    .level(2)
+                    .register();
+
+    public static final RegisteredDataSkill GRAND_REAP =
+            skill("grand_reap", ReapSkill.class, ReapStrategy.class)
+                    .skill(ReapSkill::new)
+                    .strategy(ReapStrategy::new)
+                    .config(new ReapConfig(
+                            100, true, ReapConfig.DEFAULT_RANGE_5X5, 
+                            ReapConfig.DEFAULT_MAX_BLOCKS_5X5, 2, 4, 
+                            ReapConfig.SAPPHIRE_MATURE_CHANCE))
+                    .translate("丰收", "Reap")
+                    .level(3)
+                    .register();
+
+    public static final RegisteredDataSkill PLANT =
+            skill("plant", PlantSkill.class, PlantStrategy.class)
+                    .skill(PlantSkill::new)
+                    .strategy(PlantStrategy::new)
+                    .config(new PlantConfig(
+                            0, PlantConfig.DEFAULT_RANGE_3X3, 
+                            PlantConfig.DEFAULT_MAX_BLOCKS_3X3))
+                    .translate("种植", "Plant")
+                    .level(1)
+                    .register();
+    public static final RegisteredDataSkill GREAT_PLANT =
+            skill("great_plant", PlantSkill.class, PlantStrategy.class)
+                    .skill(PlantSkill::new)
+                    .strategy(PlantStrategy::new)
+                    .config(new PlantConfig(
+                            10, PlantConfig.DEFAULT_RANGE_3X5, 
+                            PlantConfig.DEFAULT_MAX_BLOCKS_3X5))
+                    .translate("种植", "Plant")
+                    .level(2)
+                    .register();
+
+    public static final RegisteredDataSkill GRAND_PLANT =
+            skill("grand_plant", PlantSkill.class, PlantStrategy.class)
+                    .skill(PlantSkill::new)
+                    .strategy(PlantStrategy::new)
+                    .config(new PlantConfig(
+                            10, PlantConfig.DEFAULT_RANGE_5X5, 
+                            PlantConfig.DEFAULT_MAX_BLOCKS_5X5))
+                    .translate("种植", "Plant")
+                    .level(3)
                     .register();
 
     // ========== 工具方法 ==========

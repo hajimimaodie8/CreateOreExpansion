@@ -20,7 +20,7 @@ public class SkillsComponent implements OwnedBySkills {
     private final Map<SkillType, List<DataSkill>> dataSkills;
 
     /**
-     * 该字段不会参与网络通信和持续化，只能用于修改dataSkills的cost值
+     * 该字段不会参与网络通信和持久化，只能用于修改dataSkills的cost值
      */
     private final SkillCostModifier costModifier = SkillCostModifier.DEFAULT;
 
@@ -128,51 +128,85 @@ public class SkillsComponent implements OwnedBySkills {
     @Override
     public boolean releaseSkills(SkillItemStack skillStack, SkillType type, Object context) {
         List<DataSkill> skills = dataSkills.get(type);
+        if (skills == null || skills.isEmpty()) return false;
         ItemStack stack = skillStack.itemStack();
 
-        // 检查是否为创造模式
+        net.minecraft.world.entity.player.Player player = null;
         boolean isCreative = false;
+        
         if (context instanceof ExcavationSkillContext excavationContext) {
             var entity = excavationContext.entity();
-            if (entity instanceof net.minecraft.server.level.ServerPlayer player) {
+            if (entity instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                player = serverPlayer;
+                isCreative = serverPlayer.isCreative();
+            }
+        } else if (context instanceof com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext<?> useContext) {
+            var event = useContext.event();
+            if (event instanceof net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickItem rightClick) {
+                player = rightClick.getEntity();
+                isCreative = player.isCreative();
+            } else if (event instanceof net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent useOnBlock) {
+                player = useOnBlock.getPlayer();
+                isCreative = player.isCreative();
+            }
+        } else if (context instanceof com.hjmmd_8.createoreexpansion.content.skill.context.LivingHurtContext hurtContext) {
+            player = hurtContext.player();
+            if (player != null) {
                 isCreative = player.isCreative();
             }
         }
 
-        // 如果不是创造模式，检查能量
         if (!isCreative) {
+            // 1. 检查技能释放条件（不满足时静默失败，不消耗能量）
+            for (DataSkill data : skills) {
+                if (!data.skill.canRelease(context, data)) {
+                    return false;
+                }
+            }
+
+            // 2. 计算能量消耗
             int energySum = 0;
             for (DataSkill data : skills) {
                 energySum += data.cost;
             }
 
-            // 能量预检查：确保有足够能量释放所有技能
+            // 3. 能量检查（20%阈值）
             if (energySum != 0) {
                 if (!ToolEnergy.hasEnergy(stack)) return false;
                 int energy = ToolEnergy.getEnergy(stack);
-                // 检查能量失败状态（<1/5最大能量）或能量不足
-                if (ToolEnergy.isFailure(stack) || energy < energySum) {
-                    return false; // 能量不足，返回false
+                int maxEnergy = ToolEnergy.getMaxEnergy(stack);
+                int threshold = (int)(maxEnergy * 0.2);
+                
+                if (energy < threshold || energy < energySum) {
+                    if (player != null) {
+                        ToolEnergy.sendLowEnergy(player, stack);
+                    }
+                    return false;
                 }
             }
         }
 
-        // 执行技能释放
         for (DataSkill data : skills) {
-
-            // 调用技能释放方法
             data.skill.release(context, data);
-
-            // 技能执行后消耗能量（仅在非创造模式）
             if (!isCreative && data.cost > 0) {
                 ToolEnergy.consumeForSkill(stack, data);
             }
         }
 
-        return true; // 所有技能成功释放
+        return true;
     }
 
     // ========== 实用查询方法 ==========
+
+    
+    /**
+     * 获取指定类型的技能数据列表
+     */
+    public List<DataSkill> getSkillsData(SkillType type) {
+        List<DataSkill> skills = dataSkills.get(type);
+        if (skills == null) return Collections.emptyList();
+        return skills;
+    }
 
     public List<DataSkill> getAllData() {
         if (dataSkills.isEmpty()) {

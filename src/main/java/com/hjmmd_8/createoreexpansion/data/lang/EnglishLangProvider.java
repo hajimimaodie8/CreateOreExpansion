@@ -28,6 +28,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllItems.JADE_PICKAXE.get(), "Jade Pickaxe");
         add(AllItems.JADE_AXE.get(), "Jade Axe");
         add(AllItems.JADE_SHOVEL.get(), "Jade Shovel");
+        add(AllItems.JADE_HOE.get(), "Jade Hoe");
         add(AllItems.TOPAZ_INGOT.get(), "Topaz Ingot");
         add(AllItems.RAW_TOPAZ.get(), "Raw Topaz");
         add(AllItems.TOPAZ_NUGGET.get(), "Topaz Nugget");
@@ -41,6 +42,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllItems.TOPAZ_PICKAXE.get(), "Topaz Pickaxe");
         add(AllItems.TOPAZ_AXE.get(), "Topaz Axe");
         add(AllItems.TOPAZ_SHOVEL.get(), "Topaz Shovel");
+        add(AllItems.TOPAZ_HOE.get(), "Topaz Hoe");
         add(AllItems.RAW_SAPPHIRE.get(), "Raw Sapphire");
         add(AllItems.SAPPHIRE_INGOT.get(), "Sapphire Ingot");
         add(AllItems.SAPPHIRE_NUGGET.get(), "Sapphire Nugget");
@@ -65,6 +67,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllItems.SAPPHIRE_PICKAXE.get(), "Sapphire Pickaxe");
         add(AllItems.SAPPHIRE_AXE.get(), "Sapphire Axe");
         add(AllItems.SAPPHIRE_SHOVEL.get(), "Sapphire Shovel");
+        add(AllItems.SAPPHIRE_HOE.get(), "Sapphire Hoe");
 
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");
         add("item.createoreexpansion.transmutation_fluid_bucket", "Transmutation Fluid Bucket");

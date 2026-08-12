@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.handler;
 
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.context.RightClickItemContext;
 import com.hjmmd_8.createoreexpansion.content.skill.context.UseOnBlockContext;
@@ -28,6 +29,7 @@ public class UseItemHandler {
 
     private static void releaseSkills(Player player, ItemStack stack, UseItemContext<?> context) {
         if (player.level().isClientSide()) return;
+        if (!AllKeys.SKILL_RELEASE.isPressed()) return;
         SkillItemStack skillStack = SkillItemStack.of(stack);
         if (!skillStack.hasSkill(SkillType.USE_SKILL)) return;
         ToolEnergy.sendEnergyMessage(player, stack,

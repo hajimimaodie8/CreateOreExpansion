@@ -29,6 +29,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.JADE_PICKAXE.get(), "翡翠镐");
         add(AllItems.JADE_AXE.get(), "翡翠斧");
         add(AllItems.JADE_SHOVEL.get(), "翡翠铲");
+        add(AllItems.JADE_HOE.get(), "翡翠锄");
         add(AllMyBlocks.JADE_CASING.get(), "翡翠机壳");
         add(AllItems.TOPAZ_INGOT.get(), "黄玉锭");
         add(AllItems.RAW_TOPAZ.get(), "粗黄玉");
@@ -43,6 +44,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.TOPAZ_PICKAXE.get(), "黄玉镐");
         add(AllItems.TOPAZ_AXE.get(), "黄玉斧");
         add(AllItems.TOPAZ_SHOVEL.get(), "黄玉铲");
+        add(AllItems.TOPAZ_HOE.get(), "黄玉锄");
         add(AllItems.SAPPHIRE_INGOT.get(), "蓝宝石锭");
         add(AllItems.RAW_SAPPHIRE.get(), "粗蓝宝石");
         add(AllItems.SAPPHIRE_NUGGET.get(), "蓝宝石粒");
@@ -67,6 +69,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.SAPPHIRE_PICKAXE.get(), "蓝宝石镐");
         add(AllItems.SAPPHIRE_AXE.get(), "蓝宝石斧");
         add(AllItems.SAPPHIRE_SHOVEL.get(), "蓝宝石铲");
+        add(AllItems.SAPPHIRE_HOE.get(), "蓝宝石锄");
 
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");
         add("fluid.createoreexpansion.transmutation_fluid", "嬗变液");

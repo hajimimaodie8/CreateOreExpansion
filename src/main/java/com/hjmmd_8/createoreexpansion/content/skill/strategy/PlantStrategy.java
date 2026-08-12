@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
-import com.hjmmd_8.createoreexpansion.content.skill.config.ReapConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.PlantConfig;
 import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
@@ -9,31 +9,28 @@ import com.hjmmd_8.createoreexpansion.foundation.util.BlockSearcher;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Set;
 import java.util.function.Predicate;
 
-/*
-丰收策略 - 用于锄头的作物收割
-搜索范围内所有作物方块（包含CropBlock.AGE属性的方块）
- */
-public class ReapStrategy extends ConfigStrategy<BlockPos, ReapConfig> implements AreaStrategy {
+public class PlantStrategy extends ConfigStrategy<BlockPos, PlantConfig> implements AreaStrategy {
 
-    private ReapConfig config;
+    private PlantConfig config;
 
-    private static final Predicate<BlockState> IS_CROP =
-            blockState -> blockState.hasProperty(CropBlock.AGE);
+    // 可种植方块：耕地
+    private static final Predicate<BlockState> IS_FARMLAND =
+            blockState -> blockState.is(Blocks.FARMLAND);
 
     @Override
-    public void load(ReapConfig config, DataSkill data) {
+    public void load(PlantConfig config, DataSkill data) {
         this.config = config;
     }
 
     @Override
-    protected Class<ReapConfig> getConfigType() {
-        return ReapConfig.class;
+    protected Class<PlantConfig> getConfigType() {
+        return PlantConfig.class;
     }
 
     @Override
@@ -43,11 +40,11 @@ public class ReapStrategy extends ConfigStrategy<BlockPos, ReapConfig> implement
                 params.get("Center", BlockPos.class),
                 config.maxBlocks,
                 config.searchRange,
-                IS_CROP);
+                IS_FARMLAND);
     }
 
     @Override
     public boolean shouldRender(ClientLevel world, IParams params) {
-        return IS_CROP.test(params.get("CenterState", BlockState.class));
+        return IS_FARMLAND.test(params.get("CenterState", BlockState.class));
     }
 }

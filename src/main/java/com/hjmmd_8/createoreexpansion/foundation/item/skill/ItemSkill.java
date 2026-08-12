@@ -13,10 +13,20 @@ public interface ItemSkill extends Translatable {
     /**
      * 释放技能
      * @param context 技能上下文
-     * @param data 技能 data
+     * @param data 技能data
      * @throws ClassCastException 技能上下文类型错误
      */
     void release(Object context, DataSkill data);
+
+    /**
+     * 检查技能是否可以释放（在消耗能量前调用）
+     * @param context 技能上下文
+     * @param data 技能data
+     * @return true=可以释放，false=条件不满足
+     */
+    default boolean canRelease(Object context, DataSkill data) {
+        return true; // 默认总是可以释放
+    }
 
     SkillType getType();
 

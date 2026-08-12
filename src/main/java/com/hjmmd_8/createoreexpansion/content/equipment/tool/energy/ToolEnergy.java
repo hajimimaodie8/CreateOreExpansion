@@ -8,6 +8,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import java.awt.Color;
 
 public final class ToolEnergy {
 	private ToolEnergy() {}
@@ -96,8 +97,9 @@ public final class ToolEnergy {
 		return true;
 	}
 
-	public static void sendLowEnergy(Player player) {
-		player.displayClientMessage(Component.literal("由于能量值过低，无法释放技能！").withStyle(ChatFormatting.WHITE), true);
+	public static void sendLowEnergy(Player player, ItemStack stack) {
+		ChatFormatting color = getColorFormatting(stack);
+		player.displayClientMessage(Component.literal("由于能量值过低，无法释放技能！").withStyle(color), true);
 	}
 
 	public static void sendRemainingEnergy(Player player, ItemStack stack) {
@@ -105,12 +107,29 @@ public final class ToolEnergy {
 		int max = getMaxEnergy(stack);
 		if (energy <= 0 || max <= 0)
 			return;
+		ChatFormatting color = getColorFormatting(stack);
 		player.displayClientMessage(Component.literal("剩余能量：" + energy + " / " + max)
-				.withStyle(ChatFormatting.WHITE), true);
+				.withStyle(color), true);
 	}
 
 	public static void sendEnergyMessage(Player player, ItemStack stack, boolean flag) {
-		if (!flag) sendLowEnergy(player);
+		if (!flag) sendLowEnergy(player, stack);
 		else sendRemainingEnergy(player, stack);
+	}
+
+	private static ChatFormatting getColorFormatting(ItemStack stack) {
+		Integer colorValue = stack.get(AllDataComponents.ENERGY_COLOR);
+		if (colorValue == null) return ChatFormatting.WHITE;
+
+		Color color = new Color(colorValue % 0xFFFFFF);
+		int r = color.getRed();
+		int g = color.getGreen();
+		int b = color.getBlue();
+
+		// 根据RGB判断主色调
+		if (g > r && g > b) return ChatFormatting.GREEN;      // 翡翠绿
+		if (r > g && r > b) return ChatFormatting.GOLD;  // 黄玉金
+		if (b > r && b > g) return ChatFormatting.AQUA;       // 蓝宝石蓝
+		return ChatFormatting.WHITE;
 	}
 }
