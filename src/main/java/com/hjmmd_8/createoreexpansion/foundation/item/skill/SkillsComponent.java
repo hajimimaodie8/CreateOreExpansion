@@ -170,14 +170,20 @@ public class SkillsComponent implements OwnedBySkills {
                 energySum += data.cost;
             }
 
-            // 3. 能量检查（20%阈值）
+            // 3. 能量检查（当前能量不足则无法释放）
             if (energySum != 0) {
-                if (!ToolEnergy.hasEnergy(stack)) return false;
-                int energy = ToolEnergy.getEnergy(stack);
-                int maxEnergy = ToolEnergy.getMaxEnergy(stack);
-                int threshold = (int)(maxEnergy * 0.2);
+                if (!ToolEnergy.hasEnergy(stack)) {
+                    // 需要能量但物品没有能量组件
+                    if (player != null) {
+                        ToolEnergy.sendLowEnergy(player, stack);
+                    }
+                    return false;
+                }
                 
-                if (energy < threshold || energy < energySum) {
+                int energy = ToolEnergy.getEnergy(stack);
+                
+                if (energy < energySum) {
+                    // 能量不足
                     if (player != null) {
                         ToolEnergy.sendLowEnergy(player, stack);
                     }
@@ -193,14 +199,19 @@ public class SkillsComponent implements OwnedBySkills {
             }
         }
 
+        // 技能释放成功后显示剩余能量
+        if (!isCreative && player != null && ToolEnergy.hasEnergy(stack) && ToolEnergy.getEnergy(stack) >= 0) {
+            ToolEnergy.sendRemainingEnergy(player, stack);
+        }
+
         return true;
     }
 
     // ========== 实用查询方法 ==========
 
     
-    /**
-     * 获取指定类型的技能数据列表
+    /*
+    获取指定类型的技能数据列表
      */
     public List<DataSkill> getSkillsData(SkillType type) {
         List<DataSkill> skills = dataSkills.get(type);

@@ -7,6 +7,8 @@
     "createoreexpansion:topaz_block",
     "createoreexpansion:raw_topaz_block",
     "createoreexpansion:sapphire_block",
-    "createoreexpansion:raw_sapphire_block"
+    "createoreexpansion:raw_sapphire_block",
+    "createoreexpansion:stellarstone_block",
+    "createoreexpansion:raw_stellarstone_block"
   ]
 }

@@ -1,0 +1,44 @@
+{
+  "type": "create:splashing",
+  "ingredients": [
+    {
+      "tag": "c:crushed_raw_materials/stellarstone"
+    }
+  ],
+  "results": [
+    {
+      "count": 3,
+      "id": "createoreexpansion:stellarstone_nugget"
+    },
+    {
+      "chance": 0.75,
+      "count": 3,
+      "id": "createoreexpansion:stellarstone_nugget"
+    },
+    {
+      "chance": 0.5,
+      "count": 3,
+      "id": "createoreexpansion:stellarstone_nugget"
+    },
+    {
+      "chance": 0.25,
+      "count": 3,
+      "id": "createoreexpansion:jade_nugget"
+    },
+    {
+      "chance": 0.25,
+      "count": 3,
+      "id": "createoreexpansion:topaz_nugget"
+    },
+    {
+      "chance": 0.125,
+      "count": 3,
+      "id": "createoreexpansion:sapphire_nugget"
+    },
+    {
+      "chance": 0.125,
+      "count": 3,
+      "id": "minecraft:netherite_scrap"
+    }
+  ]
+}

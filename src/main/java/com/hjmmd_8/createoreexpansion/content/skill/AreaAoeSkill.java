@@ -77,8 +77,10 @@ public class AreaAoeSkill extends AbstractStrategySkill<BlockPos, AreaAoeStrateg
         if (positions.isEmpty()) return;
 
         // 检查能量
-        if (energyCost != 0 && ToolEnergy.hasEnergy(pickaxe) && !ToolEnergy.consumeForSkill(pickaxe, this))
+        if (energyCost != 0 && ToolEnergy.hasEnergy(pickaxe) && !ToolEnergy.consumeForSkill(pickaxe, this)) {
+            ToolEnergy.sendLowEnergy(player, pickaxe);
             return;
+        }
 
         // 破坏方块
         BlockBreaker.breakPositions(positions, pos, pickaxe, level, player, mineableTag);

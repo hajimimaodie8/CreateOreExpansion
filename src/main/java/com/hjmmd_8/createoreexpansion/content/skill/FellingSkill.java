@@ -77,8 +77,10 @@ public class FellingSkill extends AbstractStrategySkill<BlockPos, FellingStrateg
         if (toDestroy.isEmpty()) return;
 
         // 检查能量
-        if (energyCost != 0 && ToolEnergy.hasEnergy(axe) && !ToolEnergy.consumeForSkill(axe, this))
+        if (energyCost != 0 && ToolEnergy.hasEnergy(axe) && !ToolEnergy.consumeForSkill(axe, this)) {
+            ToolEnergy.sendLowEnergy(player, axe);
             return;
+        }
 
         BlockBreaker.breakPositions(toDestroy, pos, axe, level, player);
         ToolSkillCooldown.start(player, axe, 3);

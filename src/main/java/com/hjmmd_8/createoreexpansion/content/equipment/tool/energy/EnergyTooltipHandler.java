@@ -28,11 +28,13 @@ public class EnergyTooltipHandler {
                 .append(":")
                 .withStyle(ChatFormatting.GRAY));
 
-        Color fillColor = ToolEnergy.isFailure(stack)
+        // 能量为0时显示暗色，否则显示亮色
+        boolean isEmpty = energy == 0;
+        Color fillColor = isEmpty
                 ? ToolEnergyColorConfig.DEFAULT.light
                 : ToolEnergyColorConfig.DEFAULT.dark;
 
-        Integer color = ToolEnergy.isFailure(stack)
+        Integer color = isEmpty
                 ? stack.get(AllDataComponents.ENERGY_COLOR_DARK)
                 : stack.get(AllDataComponents.ENERGY_COLOR);
 

@@ -10,7 +10,8 @@ import net.minecraft.world.level.block.Block;
 public enum AllMetalTags {
     TOPAZ,
     SAPPHIRE,
-    JADE;
+    JADE,
+    STELLARSTONE;
 
     public final String name;
     public final TagKey<Item> rawOres;

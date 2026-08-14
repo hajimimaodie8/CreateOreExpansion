@@ -9,7 +9,7 @@ import com.simibubi.create.foundation.data.CreateRegistrate;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.Tags;
 
-public class AllMyFluids {
+public class AllFluids {
 
 	public static final FluidEntry<TransmutationFluid.Flowing> TRANSMUTATION_FLUID =
 		CreateOreExpansion.REGISTRATE.fluid("transmutation_fluid",

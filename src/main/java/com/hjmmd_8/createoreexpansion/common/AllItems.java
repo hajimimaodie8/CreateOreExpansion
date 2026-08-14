@@ -135,8 +135,8 @@ public final class AllItems {
             .tag(ItemTags.PICKAXES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(1000)
-            .maxEnergy(1000)
+            .defaultEnergy(600)
+            .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
             .addSkills(AllSkills.SHATTER)
@@ -173,8 +173,8 @@ public final class AllItems {
             .tag(ItemTags.SHOVELS)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(1000)
-            .maxEnergy(1000)
+            .defaultEnergy(600)
+            .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
             .addSkills(AllSkills.CHANNEL)
@@ -191,8 +191,8 @@ public final class AllItems {
             .tag(ItemTags.HOES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(1000)
-            .maxEnergy(1000)
+            .defaultEnergy(600)
+            .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
             .addSkills(AllSkills.REAP, AllSkills.PLANT)
@@ -280,8 +280,8 @@ public final class AllItems {
             .tag(ItemTags.SWORDS)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(450)
-            .maxEnergy(1000)
+            .defaultEnergy(1500)
+            .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
             .addSkills(AllSkills.GREAT_SKIN)
@@ -299,8 +299,8 @@ public final class AllItems {
             .tag(ItemTags.PICKAXES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(450)
-            .maxEnergy(1000)
+            .defaultEnergy(1500)
+            .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
             .addSkills(AllSkills.GREAT_SHATTER)
@@ -318,8 +318,8 @@ public final class AllItems {
             .tag(ItemTags.SHOVELS)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(450)
-            .maxEnergy(1000)
+            .defaultEnergy(1500)
+            .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
             .addSkills(AllSkills.GREAT_CHANNEL)
@@ -337,8 +337,8 @@ public final class AllItems {
             .tag(ItemTags.AXES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(450)
-            .maxEnergy(1000)
+            .defaultEnergy(1500)
+            .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
             .addSkills(AllSkills.GREAT_FELL)
@@ -355,8 +355,8 @@ public final class AllItems {
             .tag(ItemTags.HOES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(1000)
-            .maxEnergy(1000)
+            .defaultEnergy(1500)
+            .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
             .addSkills(AllSkills.GREAT_REAP, AllSkills.GREAT_PLANT)
@@ -444,8 +444,8 @@ public final class AllItems {
             .tag(ItemTags.SWORDS)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(10000)
-            .maxEnergy(25000)
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
             .addSkills(AllSkills.GRAND_SKIN)
@@ -463,8 +463,8 @@ public final class AllItems {
             .tag(ItemTags.PICKAXES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(10000)
-            .maxEnergy(25000)
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
             .addSkills(AllSkills.GRAND_SHATTER)
@@ -482,8 +482,8 @@ public final class AllItems {
             .tag(ItemTags.SHOVELS)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(10000)
-            .maxEnergy(25000)
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
             .addSkills(AllSkills.GRADE)
@@ -501,14 +501,15 @@ public final class AllItems {
             .tag(ItemTags.AXES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(10000)
-            .maxEnergy(25000)
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
             .addSkills(AllSkills.GRAND_FELL)
             .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
             .build()
             .register();
+
     public static final ItemEntry<HoeItem> SAPPHIRE_HOE = CreateOreExpansion.REGISTRATE
             .item("sapphire_hoe", p -> new HoeItem(AllTiers.SAPPHIRE, p))
             .model((ctx, provider) ->
@@ -519,13 +520,83 @@ public final class AllItems {
             .tag(ItemTags.HOES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(25000)
-            .maxEnergy(25000)
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
             .addSkills(AllSkills.GRAND_REAP, AllSkills.GRAND_PLANT)
             .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
             .build()
+            .register();
+
+    public static final ItemEntry<Item> STELLARSTONE_INGOT = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_ingot", Item::new)
+            .tag(CREATE_INGOTS.tag)
+            .tag(Tags.Items.INGOTS)
+            .tag(AllMetalTags.STELLARSTONE.ingots)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> RAW_STELLARSTONE = CreateOreExpansion.REGISTRATE
+            .item("raw_stellarstone", Item::new)
+            .tag(Tags.Items.RAW_MATERIALS)
+            .tag(AllMetalTags.STELLARSTONE.rawOres)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> STELLARSTONE_NUGGET = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_nugget", Item::new)
+            .tag(Tags.Items.NUGGETS)
+            .tag(AllMetalTags.STELLARSTONE.nuggets)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> CRUSHED_STELLARSTONE_ORE = CreateOreExpansion.REGISTRATE
+            .item("crushed_stellarstone_ore", Item::new)
+            .tag(CRUSHED_RAW_MATERIALS.tag)
+            .tag(AllMetalTags.STELLARSTONE.crushedRawOres)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    /*public static final ItemEntry<Item> STELLARSTONE_SMALL_SHARD = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_small_shard", Item::new)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();*/
+
+    public static final ItemEntry<Item> STELLARSTONE_BIG_SHARD = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_big_shard", Item::new)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> STELLARSTONE_SHEET = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_sheet", Item::new)
+            .tag(AllMetalTags.STELLARSTONE.sheets)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> STELLARSTONE_ROD = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_rod", Item::new)
+            .tag(AllMetalTags.STELLARSTONE.rods)
+            .tag(AllTags.AllItemTags.RODS.tag)
+            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> STELLARSTONE_WIRE = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_wire", Item::new)
+            .tag(AllMetalTags.STELLARSTONE.wires)
+            .tag(AllTags.AllItemTags.WIRES.tag)
+            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
             .register();
 
     public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CreateOreExpansion.REGISTRATE

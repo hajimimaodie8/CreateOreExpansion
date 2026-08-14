@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlantConfig;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.context.UseOnBlockContext;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.PlantStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.params.FrameParams;
@@ -30,6 +31,7 @@ public class PlantSkill extends AbstractStrategySkill<BlockPos, PlantStrategy>
 
     private DataSkill data;
     private PlantConfig config;
+    private int energyCost;
 
     public PlantSkill(PlantStrategy strategy) {
         super(strategy);
@@ -39,6 +41,7 @@ public class PlantSkill extends AbstractStrategySkill<BlockPos, PlantStrategy>
     public void load(PlantConfig config, DataSkill data) {
         this.data = data;
         this.config = config;
+        this.energyCost = config.energyCost;
     }
 
     @Override
@@ -88,6 +91,13 @@ public class PlantSkill extends AbstractStrategySkill<BlockPos, PlantStrategy>
         ItemStack heldItem = player.getItemInHand(InteractionHand.MAIN_HAND);
         if (heldItem.isEmpty()) return;
 
+        // 检查能量
+        ItemStack hoe = player.getMainHandItem();
+        if (energyCost != 0 && ToolEnergy.hasEnergy(hoe) && !ToolEnergy.consumeForSkill(hoe, this)) {
+            ToolEnergy.sendLowEnergy(player, hoe);
+            return;
+        }
+
         IS_PLANTING.set(true);
         try {
         FrameParams params = ParamsPool.DEFAULT_POOL.borrow()
@@ -131,6 +141,11 @@ public class PlantSkill extends AbstractStrategySkill<BlockPos, PlantStrategy>
         InteractionResult result = seedItem.useOn(useContext);
         
         return result == InteractionResult.SUCCESS || result == InteractionResult.CONSUME;
+    }
+
+    @Override
+    public int getCost() {
+        return energyCost;
     }
 
     @Override

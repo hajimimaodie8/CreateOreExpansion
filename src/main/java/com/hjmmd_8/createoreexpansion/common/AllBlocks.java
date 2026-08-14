@@ -18,7 +18,7 @@ import com.simibubi.create.foundation.data.BuilderTransformers;
 
 import static com.simibubi.create.foundation.data.TagGen.pickaxeOnly;
 
-public final class AllMyBlocks {
+public final class AllBlocks {
     public static final BlockEntry<Block> JADE_ORE = CreateOreExpansion.REGISTRATE
             .block("jade_ore", Block::new)
             .initialProperties(() -> Blocks.DIAMOND_ORE)
@@ -252,5 +252,61 @@ public final class AllMyBlocks {
             .tag(AllMetalTags.SAPPHIRE.itemStorageRawBlocks)
             .build()
             .register();
+
+    public static final BlockEntry<Block> END_STELLARSTONE_ORE = CreateOreExpansion.REGISTRATE
+            .block("end_stellarstone_ore", Block::new)
+            .initialProperties(() -> Blocks.ANCIENT_DEBRIS)
+            .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+            .tag(BlockTags.NEEDS_DIAMOND_TOOL)
+            .tag(AllMetalTags.STELLARSTONE.blockOres)
+            .loot((lt, block) -> {
+                HolderLookup.RegistryLookup<Enchantment> enchantmentRegistryLookup = lt.getRegistries().lookupOrThrow(Registries.ENCHANTMENT);
+                lt.add(
+                        block,
+                        lt.createSilkTouchDispatchTable(
+                                block,
+                                lt.applyExplosionDecay(
+                                        block,
+                                        LootItem.lootTableItem(AllItems.RAW_STELLARSTONE.get())
+                                                .apply(ApplyBonusCount.addOreBonusCount(
+                                                        enchantmentRegistryLookup.getOrThrow(Enchantments.FORTUNE)))
+                                )
+                        )
+                );
+            })
+            .item()
+            .tag(AllMetalTags.STELLARSTONE.itemOres)
+            .build()
+            .register();
+
+    public static final BlockEntry<Block> STELLARSTONE_BLOCK = CreateOreExpansion.REGISTRATE
+            .block("stellarstone_block", Block::new)
+            .initialProperties(() -> Blocks.DIAMOND_BLOCK)
+            .properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE)
+                    .requiresCorrectToolForDrops())
+            .transform(pickaxeOnly())
+            .tag(BlockTags.NEEDS_IRON_TOOL)
+            .tag(Tags.Blocks.STORAGE_BLOCKS)
+            .tag(BlockTags.BEACON_BASE_BLOCKS)
+            .tag(AllMetalTags.STELLARSTONE.storageBlocks)
+            .item()
+            .tag(AllMetalTags.STELLARSTONE.itemStorageBlocks)
+            .build()
+            .register();
+
+    public static final BlockEntry<Block> RAW_STELLARSTONE_BLOCK = CreateOreExpansion.REGISTRATE
+            .block("raw_stellarstone_block", Block::new)
+            .initialProperties(() -> Blocks.RAW_GOLD_BLOCK)
+            .properties(p -> p.mapColor(MapColor.GLOW_LICHEN)
+                    .requiresCorrectToolForDrops())
+            .transform(pickaxeOnly())
+            .tag(Tags.Blocks.STORAGE_BLOCKS)
+            .tag(BlockTags.NEEDS_IRON_TOOL)
+            .tag(AllMetalTags.STELLARSTONE.storageRawBlocks)
+            .item()
+            .tag(AllMetalTags.STELLARSTONE.itemStorageRawBlocks)
+            .build()
+            .register();
+
     public static void register() {}
 }

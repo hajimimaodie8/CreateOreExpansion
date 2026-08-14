@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.ReapConfig;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.context.UseOnBlockContext;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.ReapStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.params.FrameParams;
@@ -28,6 +29,7 @@ public class ReapSkill extends AbstractStrategySkill<BlockPos, ReapStrategy>
 
     private DataSkill data;
     private ReapConfig config;
+    private int energyCost;
 
     public ReapSkill(ReapStrategy strategy) {
         super(strategy);
@@ -37,6 +39,7 @@ public class ReapSkill extends AbstractStrategySkill<BlockPos, ReapStrategy>
     public void load(ReapConfig config, DataSkill data) {
         this.data = data;
         this.config = config;
+        this.energyCost = config.energyCost;
     }
 
     @Override
@@ -77,6 +80,13 @@ public class ReapSkill extends AbstractStrategySkill<BlockPos, ReapStrategy>
         if (!(centerState.getBlock() instanceof CropBlock)) return;
 
         RandomSource random = level.getRandom();
+
+        // 检查能量
+        ItemStack hoe = player.getMainHandItem();
+        if (energyCost != 0 && ToolEnergy.hasEnergy(hoe) && !ToolEnergy.consumeForSkill(hoe, this)) {
+            ToolEnergy.sendLowEnergy(player, hoe);
+            return;
+        }
 
         FrameParams params = ParamsPool.DEFAULT_POOL.borrow()
                 .put("Center", center)
@@ -121,6 +131,11 @@ public class ReapSkill extends AbstractStrategySkill<BlockPos, ReapStrategy>
         }
         
         level.setBlock(pos, newState, 3);
+    }
+
+    @Override
+    public int getCost() {
+        return energyCost;
     }
 
     @Override

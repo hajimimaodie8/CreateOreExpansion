@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.*;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
@@ -38,6 +39,14 @@ public class SkinSkill extends AbstractStrategySkill<Entity, EntityStrategy>
     @Override
     public void release(HitSkillContext context) {
         if (context.target().level().isClientSide()) return;
+        
+        // 检查能量
+        ItemStack weapon = context.player().getMainHandItem();
+        if (energyCost != 0 && ToolEnergy.hasEnergy(weapon) && !ToolEnergy.consumeForSkill(weapon, this)) {
+            ToolEnergy.sendLowEnergy(context.player(), weapon);
+            return;
+        }
+        
         var stack = getLoot(context);
         if (stack.isEmpty()) return;
         LivingEntity entity = context.target();

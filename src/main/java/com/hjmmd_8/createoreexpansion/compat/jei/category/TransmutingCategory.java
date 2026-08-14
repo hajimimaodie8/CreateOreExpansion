@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.compat.jei.category;
 
-import com.hjmmd_8.createoreexpansion.common.AllMyFluids;
+import com.hjmmd_8.createoreexpansion.common.AllFluids;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
 import com.simibubi.create.compat.jei.category.animations.AnimatedKinetics;
 
@@ -15,7 +15,7 @@ public class TransmutingCategory extends ProcessingViaFanCategory.MultiOutput<Al
 
 	@Override
 	protected void renderAttachedBlock(GuiGraphics graphics) {
-		GuiGameElement.of(AllMyFluids.TRANSMUTATION_FLUID.get().getSource())
+		GuiGameElement.of(AllFluids.TRANSMUTATION_FLUID.get().getSource())
 			.scale(SCALE)
 			.atLocal(0, 0, 2)
 			.lighting(AnimatedKinetics.DEFAULT_LIGHTING)

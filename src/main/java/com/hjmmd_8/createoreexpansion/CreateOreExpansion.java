@@ -54,11 +54,11 @@ public class CreateOreExpansion {
         AllCreativeModeTabs.register(modEventBus);
 
         AllDataComponents.register(modEventBus);
-        AllMyBlocks.register();
+        AllBlocks.register();
         AllTiers.register();
         AllItems.register();
         AllMetalTags.register();
-        AllMyFluids.register();
+        AllFluids.register();
         AllModEffects.register(modEventBus);
         AllModPotions.register(modEventBus);
         NeoForge.EVENT_BUS.addListener(AllModPotions::registerBrewingRecipes);

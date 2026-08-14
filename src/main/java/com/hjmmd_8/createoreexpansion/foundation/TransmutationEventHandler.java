@@ -6,7 +6,7 @@ import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllModEffects;
-import com.hjmmd_8.createoreexpansion.common.AllMyFluids;
+import com.hjmmd_8.createoreexpansion.common.AllFluids;
 
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
@@ -34,7 +34,7 @@ public final class TransmutationEventHandler {
 		if (player.isSpectator())
 			return;
 
-		if (player.getFluidTypeHeight(AllMyFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D) {
+		if (player.getFluidTypeHeight(AllFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D) {
 			int contactTicks = FLUID_CONTACT_TICKS.merge(player.getUUID(), 1, Integer::sum);
 			int level = 1 + contactTicks / (15 * 20);
 			player.addEffect(new MobEffectInstance(AllModEffects.TRANSMUTATION_DISORDER, 60, level - 1));
@@ -49,7 +49,7 @@ public final class TransmutationEventHandler {
 		if (entity.level().isClientSide)
 			return;
 		if (entity instanceof ItemEntity item
-			&& item.getFluidTypeHeight(AllMyFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D) {
+			&& item.getFluidTypeHeight(AllFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D) {
 			item.discard();
 		}
 	}

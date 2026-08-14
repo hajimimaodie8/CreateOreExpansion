@@ -53,7 +53,7 @@ public final class AllSkills {
                     .strategy(FellingStrategy::new)
                     .translate("伐树", "Fell")
                     .config(new FellingConfig(
-                            8, 200,
+                            100, 200,
                             FellingConfig.BlockPredicate.IS_LOG,
                             100, .12f, .12f))
                     .level(1)
@@ -63,7 +63,7 @@ public final class AllSkills {
                 .skill(FellingSkill::new)
                 .strategy(FellingStrategy::new)
                 .config(new FellingConfig(
-                        8, FellingConfig.BlockPredicate.IS_TREE,
+                        100, FellingConfig.BlockPredicate.IS_TREE,
                         100, .08f, .01f))
                 .translate("伐树", "Fell")
                 .level(2)
@@ -73,7 +73,7 @@ public final class AllSkills {
                 .skill(FellingSkill::new)
                 .strategy(FellingStrategy::new)
                 .config(new FellingConfig(
-                        8, FellingConfig.BlockPredicate.IS_TREE,
+                        100, FellingConfig.BlockPredicate.IS_TREE,
                         100, .05f, .005f))
                 .translate("伐树", "Fell")
                 .level(3)
@@ -91,7 +91,7 @@ public final class AllSkills {
             skill("great_shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
                     .skill(AreaAoeSkill::new)
                     .strategy(AreaAoeStrategy::new)
-                    .config(new AreaAoeConfig(100, BlockTags.MINEABLE_WITH_PICKAXE, 3, 3, 1))
+                    .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_PICKAXE, 3, 3, 1))
                     .translate("开岩", "Shatter")
                     .level(2)
                     .register();
@@ -99,7 +99,7 @@ public final class AllSkills {
             skill("grand_shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
                     .skill(AreaAoeSkill::new)
                     .strategy(AreaAoeStrategy::new)
-                    .config(new AreaAoeConfig(100, BlockTags.MINEABLE_WITH_PICKAXE, 5, 5, 1))
+                    .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_PICKAXE, 5, 5, 1))
                     .translate("开岩", "Shatter")
                     .level(3)
                     .register();
@@ -116,7 +116,7 @@ public final class AllSkills {
         skill("great_channel", AreaAoeSkill.class, AreaAoeStrategy.class)
                 .skill(AreaAoeSkill::new)
                 .strategy(AreaAoeStrategy::new)
-                .config(new AreaAoeConfig(50, BlockTags.MINEABLE_WITH_SHOVEL, 1, 1, 8, DualDirection.From.PLAYER_YAW))
+                .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_SHOVEL, 1, 1, 8, DualDirection.From.PLAYER_YAW))
                 .translate("引渠", "Channel")
                 .level(2)
                 .register();
@@ -124,7 +124,7 @@ public final class AllSkills {
         skill("grade", AreaAoeSkill.class, AreaAoeStrategy.class)
                 .skill(AreaAoeSkill::new)
                 .strategy(AreaAoeStrategy::new)
-                .config(new AreaAoeConfig(50, BlockTags.MINEABLE_WITH_SHOVEL, 7, 7, 1))
+                .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_SHOVEL, 7, 7, 1))
                 .translate("平场", "Grade")
                 .level(1)
                 .register();
@@ -133,7 +133,7 @@ public final class AllSkills {
             skill("skin", SkinSkill.class, EntityStrategy.class)
                     .skill(SkinSkill::new)
                     .strategy(EntityStrategy::new)
-                    .config(new SkinConfig(.5f, 0))
+                    .config(new SkinConfig(100, 0))
                     .translate("剥取", "Skin")
                     .level(1)
                     .register();
@@ -142,7 +142,7 @@ public final class AllSkills {
             skill("great_skin", SkinSkill.class, EntityStrategy.class)
                     .skill(SkinSkill::new)
                     .strategy(EntityStrategy::new)
-                    .config(new SkinConfig(.75f, 50))
+                    .config(new SkinConfig(100, 50))
                     .translate("剥取", "Skin")
                     .level(2)
                     .register();
@@ -151,7 +151,7 @@ public final class AllSkills {
             skill("grand_skin", SkinSkill.class, EntityStrategy.class)
                     .skill(SkinSkill::new)
                     .strategy(EntityStrategy::new)
-                    .config(new SkinConfig(.95f, 100))
+                    .config(new SkinConfig(100, 100))
                     .translate("剥取", "Skin")
                     .level(3)
                     .register();
@@ -161,7 +161,7 @@ public final class AllSkills {
                     .skill(ReapSkill::new)
                     .strategy(ReapStrategy::new)
                     .config(new ReapConfig(
-                            10, true, ReapConfig.DEFAULT_RANGE_3X3, 
+                            50, true, ReapConfig.DEFAULT_RANGE_3X3, 
                             ReapConfig.DEFAULT_MAX_BLOCKS_3X3, 0, 2, 
                             ReapConfig.JADE_MATURE_CHANCE))
                     .translate("丰收", "Reap")
@@ -184,7 +184,7 @@ public final class AllSkills {
                     .skill(ReapSkill::new)
                     .strategy(ReapStrategy::new)
                     .config(new ReapConfig(
-                            100, true, ReapConfig.DEFAULT_RANGE_5X5, 
+                            50, true, ReapConfig.DEFAULT_RANGE_5X5, 
                             ReapConfig.DEFAULT_MAX_BLOCKS_5X5, 2, 4, 
                             ReapConfig.SAPPHIRE_MATURE_CHANCE))
                     .translate("丰收", "Reap")
@@ -196,7 +196,7 @@ public final class AllSkills {
                     .skill(PlantSkill::new)
                     .strategy(PlantStrategy::new)
                     .config(new PlantConfig(
-                            0, PlantConfig.DEFAULT_RANGE_3X3, 
+                            50, PlantConfig.DEFAULT_RANGE_3X3, 
                             PlantConfig.DEFAULT_MAX_BLOCKS_3X3))
                     .translate("种植", "Plant")
                     .level(1)
@@ -206,7 +206,7 @@ public final class AllSkills {
                     .skill(PlantSkill::new)
                     .strategy(PlantStrategy::new)
                     .config(new PlantConfig(
-                            10, PlantConfig.DEFAULT_RANGE_3X5, 
+                            50, PlantConfig.DEFAULT_RANGE_3X5, 
                             PlantConfig.DEFAULT_MAX_BLOCKS_3X5))
                     .translate("种植", "Plant")
                     .level(2)
@@ -217,7 +217,7 @@ public final class AllSkills {
                     .skill(PlantSkill::new)
                     .strategy(PlantStrategy::new)
                     .config(new PlantConfig(
-                            10, PlantConfig.DEFAULT_RANGE_5X5, 
+                            50, PlantConfig.DEFAULT_RANGE_5X5, 
                             PlantConfig.DEFAULT_MAX_BLOCKS_5X5))
                     .translate("种植", "Plant")
                     .level(3)

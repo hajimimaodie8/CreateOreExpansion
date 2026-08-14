@@ -1,0 +1,13 @@
+{
+  "type": "create:pressing",
+  "ingredients": [
+    {
+      "tag": "c:ingots/stellarstone"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:stellarstone_sheet"
+    }
+  ]
+}

@@ -4,8 +4,9 @@ import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import java.awt.Color;
@@ -53,10 +54,6 @@ public final class ToolEnergy {
 		stack.set(AllDataComponents.ENERGY, value);
 	}
 
-	public static boolean isFailure(ItemStack stack) {
-		return !(hasEnergy(stack) && getEnergy(stack) > getMaxEnergy(stack) / 5);
-	}
-
 	public static boolean canUseSkill(ItemStack stack, ItemSkill skill) {
 		int cost = skill.getCost();
 		// cost为0时不需要能量组件
@@ -98,18 +95,21 @@ public final class ToolEnergy {
 	}
 
 	public static void sendLowEnergy(Player player, ItemStack stack) {
-		ChatFormatting color = getColorFormatting(stack);
-		player.displayClientMessage(Component.literal("由于能量值过低，无法释放技能！").withStyle(color), true);
+		int colorRGB = getEnergyColor(stack);
+		player.displayClientMessage(
+			Component.literal("由于能量值过低，无法释放技能！")
+				.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colorRGB))), 
+			true);
 	}
 
 	public static void sendRemainingEnergy(Player player, ItemStack stack) {
 		int energy = getEnergy(stack);
 		int max = getMaxEnergy(stack);
-		if (energy <= 0 || max <= 0)
-			return;
-		ChatFormatting color = getColorFormatting(stack);
-		player.displayClientMessage(Component.literal("剩余能量：" + energy + " / " + max)
-				.withStyle(color), true);
+		int colorRGB = getEnergyColor(stack);
+		player.displayClientMessage(
+			Component.literal("剩余能量：" + energy + " / " + max)
+				.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colorRGB))), 
+			true);
 	}
 
 	public static void sendEnergyMessage(Player player, ItemStack stack, boolean flag) {
@@ -117,19 +117,11 @@ public final class ToolEnergy {
 		else sendRemainingEnergy(player, stack);
 	}
 
-	private static ChatFormatting getColorFormatting(ItemStack stack) {
+	/**
+	 * 获取工具能量条颜色（RGB）
+	 */
+	private static int getEnergyColor(ItemStack stack) {
 		Integer colorValue = stack.get(AllDataComponents.ENERGY_COLOR);
-		if (colorValue == null) return ChatFormatting.WHITE;
-
-		Color color = new Color(colorValue % 0xFFFFFF);
-		int r = color.getRed();
-		int g = color.getGreen();
-		int b = color.getBlue();
-
-		// 根据RGB判断主色调
-		if (g > r && g > b) return ChatFormatting.GREEN;      // 翡翠绿
-		if (r > g && r > b) return ChatFormatting.GOLD;  // 黄玉金
-		if (b > r && b > g) return ChatFormatting.AQUA;       // 蓝宝石蓝
-		return ChatFormatting.WHITE;
+		return colorValue != null ? (colorValue & 0xFFFFFF) : 0xFFFFFF;
 	}
 }
