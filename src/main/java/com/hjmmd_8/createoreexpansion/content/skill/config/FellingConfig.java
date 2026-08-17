@@ -15,25 +15,29 @@ public class FellingConfig extends AutoSkillConfig {
     public int energyCost;
     public float logResistance;
     public float leafResistance;
+    /** 砍伐后冷却秒数（创造模式无冷却） */
+    public int cooldownSeconds;
 
     public FellingConfig(int searchRange, int maxBlocks, BlockPredicate predicate,
-                         int energyCost, float logResistance, float leafResistance) {
+                         int energyCost, float logResistance, float leafResistance, int cooldownSeconds) {
         this.searchRange = searchRange;
         this.maxBlocks = maxBlocks;
         this.predicate = predicate;
         this.energyCost = energyCost;
         this.logResistance = logResistance;
         this.leafResistance = leafResistance;
+        this.cooldownSeconds = cooldownSeconds;
+    }
+
+    public FellingConfig(int searchRange, int maxBlocks, BlockPredicate predicate,
+                         int energyCost, float logResistance, float leafResistance) {
+        this(searchRange, maxBlocks, predicate, energyCost, logResistance, leafResistance, 3);
     }
 
     public FellingConfig(int searchRange, BlockPredicate predicate,
                          int energyCost, float logResistance, float leafResistance) {
-        this.searchRange = searchRange;
-        this.maxBlocks = searchRange * searchRange * searchRange + 1;
-        this.predicate = predicate;
-        this.energyCost = energyCost;
-        this.logResistance = logResistance;
-        this.leafResistance = leafResistance;
+        this(searchRange, searchRange * searchRange * searchRange + 1, predicate,
+                energyCost, logResistance, leafResistance, 3);
     }
 
     @Override
@@ -42,6 +46,7 @@ public class FellingConfig extends AutoSkillConfig {
                 ofInt("Range",  () -> searchRange, v -> searchRange = v),
                 ofInt("MaxBlocks", () -> maxBlocks, v -> maxBlocks = v),
                 ofInt("Cost",      () -> energyCost, v -> energyCost = v),
+                ofInt("Cooldown",  () -> cooldownSeconds, v -> cooldownSeconds = v),
                 ofStr("Predicate", () -> predicate.name(), v -> predicate = BlockPredicate.valueOf(v)),
                 nested("SpeedCorrection", List.of(
                         ofFloat("Log",  () -> logResistance,  v -> logResistance = v),

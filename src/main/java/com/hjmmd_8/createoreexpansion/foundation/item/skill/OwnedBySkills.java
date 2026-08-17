@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("UnusedReturnValue")
 public interface OwnedBySkills {
 
     Map<SkillType, List<ItemSkill>> skills();
@@ -37,33 +36,12 @@ public interface OwnedBySkills {
         return skills().containsKey(skill.getType()) && skills().get(skill.getType()).contains(skill);
     }
 
-    default OwnedBySkills addSkill(ItemSkill skill) {
-        if (!skills().containsKey(skill.getType())) {
-            skills().put(skill.getType(), new ArrayList<>());
-        }
-        skills().get(skill.getType()).add(skill);
-        return this;
-    }
-
-    default OwnedBySkills removeSkill(SkillType type) {
-        skills().remove(type);
-        return this;
-    }
-
-    default OwnedBySkills removeSkill(ItemSkill skill) {
-        SkillType type = skill.getType();
-        if (hasSkill(type)) {
-            skills().get(type).remove(skill);
-        }
-        return this;
-    }
-
     /**
      * 释放技能
      * @param skillStack 技能 ItemStack
      * @param type 技能类型
      * @param context 技能上下文
-     * @throws ClassCastException 技能上下文类型不匹配
+     * @return true=至少有一个技能被释放（能量预检查通过）
      */
     boolean releaseSkills(SkillItemStack skillStack, SkillType type, Object context);
 }

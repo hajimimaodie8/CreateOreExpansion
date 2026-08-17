@@ -1,12 +1,12 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
+import com.hjmmd_8.createoreexpansion.client.tool.SkillOutlineColors;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.Builder;
 import com.tterrag.registrate.builders.ItemBuilder;
@@ -120,8 +120,8 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.SKIN)
-            .skillColor(SkillRendererConfig.JADE_GREEN)
+            .addSkills(AllSkills.SKIN, 1) // 剥取 Lv1（键一，一技能多等级：addSkills(SKIN,1)）
+            .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
 
@@ -139,8 +139,8 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.SHATTER)
-            .skillColor(SkillRendererConfig.JADE_GREEN)
+            .addSkills(AllSkills.SHATTER, 1) // 开岩 Lv1（1×3，一技能多等级：addSkills(SHATTER,1)）
+            .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
 
@@ -158,8 +158,8 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.FELL)
-            .skillColor(SkillRendererConfig.JADE_GREEN)
+            .addSkills(AllSkills.FELL, 1) // 伐树 Lv1（翡翠斧，只砍树干，一技能多等级：addSkills(FELL,1)）
+            .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
 
@@ -177,8 +177,8 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.CHANNEL)
-            .skillColor(SkillRendererConfig.JADE_GREEN)
+            .addSkills(AllSkills.CHANNEL, 1) // 引渠 Lv1（向前 4 格，一技能多等级：addSkills(CHANNEL,1)）
+            .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
     public static final ItemEntry<HoeItem> JADE_HOE = CreateOreExpansion.REGISTRATE
@@ -195,8 +195,8 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.REAP, AllSkills.PLANT)
-            .skillColor(SkillRendererConfig.JADE_GREEN)
+            .addSkills(AllSkills.HOE, 1) // 耕作 Lv1（3×3，一技能多等级：addSkills(HOE,1)）
+            .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
 
@@ -284,8 +284,9 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.GREAT_SKIN)
-            .skillColor(SkillRendererConfig.TOPAZ_GOLD)
+            .addSkills(AllSkills.SKIN, 2) // 剑技能一：剥取 Lv2（键一，一技能多等级：addSkills(SKIN,2)）
+            .addSkills(AllSkills.PLUNDER, 1) // 剑技能二：夺取 Lv1（键二，一技能多等级：addSkills(PLUNDER,1)）
+            .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
 
@@ -303,8 +304,8 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.GREAT_SHATTER)
-            .skillColor(SkillRendererConfig.TOPAZ_GOLD)
+            .addSkills(AllSkills.SHATTER, 2) // 开岩 Lv2（3×3，一技能多等级：addSkills(SHATTER,2)）
+            .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
 
@@ -322,8 +323,8 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.GREAT_CHANNEL)
-            .skillColor(SkillRendererConfig.TOPAZ_GOLD)
+            .addSkills(AllSkills.CHANNEL, 2) // 引渠 Lv2（向前 6 格，一技能多等级：addSkills(CHANNEL,2)）
+            .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
 
@@ -341,8 +342,8 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.GREAT_FELL)
-            .skillColor(SkillRendererConfig.TOPAZ_GOLD)
+            .addSkills(AllSkills.FELL, 2) // 伐树 Lv2（黄玉斧，连叶带干，一技能多等级：addSkills(FELL,2)）
+            .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
     public static final ItemEntry<HoeItem> TOPAZ_HOE = CreateOreExpansion.REGISTRATE
@@ -359,8 +360,8 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.GREAT_REAP, AllSkills.GREAT_PLANT)
-            .skillColor(SkillRendererConfig.TOPAZ_GOLD)
+            .addSkills(AllSkills.HOE, 2) // 耕作 Lv2（3×5，一技能多等级：addSkills(HOE,2)）
+            .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
 
@@ -444,12 +445,13 @@ public final class AllItems {
             .tag(ItemTags.SWORDS)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(5000)
-            .maxEnergy(5000)
+            .defaultEnergy(3000)
+            .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.GRAND_SKIN)
-            .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
+            .addSkills(AllSkills.SKIN, 3) // 剑技能一：剥取 Lv3（键一，一技能多等级：addSkills(SKIN,3)）
+            .addSkills(AllSkills.PLUNDER, 2) // 剑技能二：夺取 Lv2（键二，一技能多等级：addSkills(PLUNDER,2)）
+            .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
 
@@ -463,12 +465,12 @@ public final class AllItems {
             .tag(ItemTags.PICKAXES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(5000)
-            .maxEnergy(5000)
+            .defaultEnergy(3000)
+            .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.GRAND_SHATTER)
-            .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
+            .addSkills(AllSkills.SHATTER, 3) // 开岩 Lv3（5×3，一技能多等级：addSkills(SHATTER,3)）
+            .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
 
@@ -482,12 +484,13 @@ public final class AllItems {
             .tag(ItemTags.SHOVELS)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(5000)
-            .maxEnergy(5000)
+            .defaultEnergy(3000)
+            .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.GRADE)
-            .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
+            .addSkills(AllSkills.CHANNEL, 3) // 引渠 Lv3（一技能多等级：addSkills(CHANNEL,3) 自动取 CHANNEL_3 = 7 格）
+            .addSkills(AllSkills.GRADE, 1) // 平场 Lv1（5×5 平面，数值见 SkillAoeConfigs.GRADE_1）
+            .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
 
@@ -501,12 +504,12 @@ public final class AllItems {
             .tag(ItemTags.AXES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(5000)
-            .maxEnergy(5000)
+            .defaultEnergy(3000)
+            .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.GRAND_FELL)
-            .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
+            .addSkills(AllSkills.FELL, 3) // 伐树 Lv3（蓝宝石斧，范围扩大，一技能多等级：addSkills(FELL,3)）
+            .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
 
@@ -520,12 +523,12 @@ public final class AllItems {
             .tag(ItemTags.HOES)
             .transform(skillItem())
             .addEnergy()
-            .defaultEnergy(5000)
-            .maxEnergy(5000)
+            .defaultEnergy(3000)
+            .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.GRAND_REAP, AllSkills.GRAND_PLANT)
-            .skillColor(SkillRendererConfig.SAPPHIRE_BLUE)
+            .addSkills(AllSkills.HOE, 3) // 耕作 Lv3（5×5，一技能多等级：addSkills(HOE,3)）
+            .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
 
@@ -599,6 +602,103 @@ public final class AllItems {
                     provider.basicItem(ctx.get()))
             .register();
 
+    public static final ItemEntry<SwordItem> STELLARSTONE_SWORD = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_sword", p -> new SwordItem(AllTiers.STELLARSTONE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p.attributes(
+                    SwordItem.createAttributes(AllTiers.STELLARSTONE, 5, -2.4F)
+            ))
+            .tag(ItemTags.SWORDS)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(4500)
+            .maxEnergy(4500)
+            .color(ToolEnergyColorConfig.STELLARSTONE)
+            .build()
+            .addSkills(AllSkills.SKIN, 4) // 剑技能一：剥取 Lv4（键一，一技能多等级：addSkills(SKIN,4)）
+            .addSkills(AllSkills.PLUNDER, 3) // 剑技能二：夺取 Lv3（键二，一技能多等级：addSkills(PLUNDER,3)）
+            .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
+            .build()
+            .register();
+
+    public static final ItemEntry<PickaxeItem> STELLARSTONE_PICKAXE = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_pickaxe", p -> new PickaxeItem (AllTiers.STELLARSTONE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p.attributes(
+                    PickaxeItem.createAttributes(AllTiers.STELLARSTONE, 2, -2.5F)
+            ))
+            .tag(ItemTags.PICKAXES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(4500)
+            .maxEnergy(4500)
+            .color(ToolEnergyColorConfig.STELLARSTONE)
+            .build()
+            .addSkills(AllSkills.SHATTER, 4) // 开岩 Lv4（5×5，一技能多等级：addSkills(SHATTER,4)）
+            .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
+            .build()
+            .register();
+
+    public static final ItemEntry<ShovelItem> STELLARSTONE_SHOVEL= CreateOreExpansion.REGISTRATE
+            .item("stellarstone_shovel", p -> new ShovelItem (AllTiers.STELLARSTONE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p.attributes(
+                    ShovelItem.createAttributes(AllTiers.STELLARSTONE, 1.5F, -2.8F)
+            ))
+            .tag(ItemTags.SHOVELS)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(4500)
+            .maxEnergy(4500)
+            .color(ToolEnergyColorConfig.STELLARSTONE)
+            .build()
+            .addSkills(AllSkills.CHANNEL, 4) // 引渠 Lv4（一技能多等级：addSkills(CHANNEL,4) 自动取 CHANNEL_4 = 8 格）
+            .addSkills(AllSkills.GRADE, 2) // 平场 Lv2（5×7 平面，数值见 SkillAoeConfigs.GRADE_2）
+            .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
+            .build()
+            .register();
+
+    public static final ItemEntry<AxeItem> STELLARSTONE_AXE = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_axe", p -> new AxeItem (AllTiers.STELLARSTONE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p.attributes(
+                    AxeItem.createAttributes(AllTiers.STELLARSTONE, 6.5F, -3.4F)
+            ))
+            .tag(ItemTags.AXES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(4500)
+            .maxEnergy(4500)
+            .color(ToolEnergyColorConfig.STELLARSTONE)
+            .build()
+            .addSkills(AllSkills.FELL, 4) // 伐树 Lv4（蓝宝石斧，范围扩大，一技能多等级：addSkills(FELL,4   )）
+            .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
+            .build()
+            .register();
+
+    public static final ItemEntry<HoeItem> STELLARSTONE_HOE = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_hoe", p -> new HoeItem(AllTiers.STELLARSTONE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p.attributes(
+                    HoeItem.createAttributes(AllTiers.STELLARSTONE, -1, 0.0F)
+            ))
+            .tag(ItemTags.HOES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(4500)
+            .maxEnergy(4500)
+            .color(ToolEnergyColorConfig.STELLARSTONE)
+            .build()
+            .addSkills(AllSkills.HOE, 4) // 耕作 Lv4（5×7，一技能多等级：addSkills(HOE,4)）
+            .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
+            .build()
+            .register();
+
     public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CreateOreExpansion.REGISTRATE
             .item("jade_topaz_bow", JadeTopazBowItem::new)
             .model((ctx, provider) -> {})
@@ -613,39 +713,78 @@ public final class AllItems {
         public List<DataSkill> skillData = new ArrayList<>();
 
         private final ItemBuilder<T, P> builder;
+        /** 武器技能发光颜色（延迟到 register 时注册到 SkillOutlineColors） */
+        private SkillOutlineColors.SkillColor outlineColor;
+        /** 武器技能冷却时长（tick，延迟到 register 时注册到 SkillCooldowns；-1 表示未设置） */
+        private int cooldownTicks = -1;
 
         public SkillItemBuilder(ItemBuilder<T, P> builder) {
             this.builder = builder;
         }
 
-        public SkillItemBuilder<T, P> addSkills(ItemSkill... skills) {
-            skillData.addAll(Arrays.stream(skills)
-                    .map(DataSkill::fromSkill)
-                    .toList());
-            return this;
-        }
-
+        /**
+         * 绑定技能（使用技能注册时的默认等级）。
+         */
         public SkillItemBuilder<T, P> addSkills(DataSkill... skills) {
             skillData.addAll(Arrays.stream(skills)
                     .toList());
             return this;
         }
 
-        public SkillItemBuilder<T, P> skillColor(float[] colorArray) {
+        /**
+         * 绑定技能并指定等级 —— 等级同时决定显示等级与实际技能数值等级（一技能多等级）。
+         *
+         * 内部复制技能数据后写入等级，并按等级从注册表取出对应配置（configForLevel），
+         * 不同物品可绑同一技能但使用不同等级的实际效果。
+         *
+         * @param skill 技能数据（来自 AllSkills）
+         * @param level 技能等级（1~5）
+         */
+        public SkillItemBuilder<T, P> addSkills(DataSkill skill, int level) {
+            DataSkill copy = skill.copy();
+            copy.getOrCreateNbt().putInt("Level", level);
+
+            // 一技能多等级：按等级取实际配置并写入副本（未设置映射时退回注册默认配置）
+            if (skill instanceof AllSkills.RegisteredDataSkill registered) {
+                SkillConfig levelConfig = registered.configForLevel(level);
+                if (levelConfig != null) {
+                    copy.config = levelConfig;
+                    levelConfig.accept(copy.getOrCreateNbt()); // 配置写入 NBT，保证存档/网络恢复一致
+                }
+            }
+
+            skillData.add(copy);
+            return this;
+        }
+
+        /**
+         * 设置武器技能发光颜色，并注册到 {@link SkillOutlineColors}。
+         *
+         * 注册表为渲染端的统一颜色来源（无需依赖 NBT）。
+         */
+        public SkillItemBuilder<T, P> skillColor(SkillOutlineColors.SkillColor color) {
+            this.outlineColor = color;
             skillData.forEach(data -> {
-                // 获取或创建 NBT
                 CompoundTag nbt = data.getOrCreateNbt();
-
-                // 创建颜色标签
                 CompoundTag colorTag = new CompoundTag();
-                colorTag.putFloat("r", colorArray[0]);
-                colorTag.putFloat("g", colorArray[1]);
-                colorTag.putFloat("b", colorArray[2]);
-
-                // 保存到 NBT
+                colorTag.putFloat("r", color.r());
+                colorTag.putFloat("g", color.g());
+                colorTag.putFloat("b", color.b());
                 nbt.put("OutlineColor", colorTag);
                 data.nbt = nbt;
             });
+            return this;
+        }
+
+        /**
+         * 设置武器技能冷却时长，并注册到 {@link SkillCooldowns}。
+         *
+         * 注册表为触发端的统一冷却来源。未设置时使用默认 1 秒。
+         *
+         * @param cooldownTicks 冷却时长（tick，20 tick = 1 秒）
+         */
+        public SkillItemBuilder<T, P> skillCooldown(int cooldownTicks) {
+            this.cooldownTicks = cooldownTicks;
             return this;
         }
 
@@ -655,7 +794,12 @@ public final class AllItems {
 
         @Override
         public @NotNull RegistryEntry<Item, T> register() {
-            return builder.register();
+            // 颜色已由 skillColor() 写入技能 NBT（渲染端直接读取），此处只需注册冷却
+            RegistryEntry<Item, T> entry = builder.register();
+            if (cooldownTicks > 0) {
+                SkillCooldowns.register(entry.get(), cooldownTicks);
+            }
+            return entry;
         }
 
         @Override

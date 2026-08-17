@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
 
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -15,16 +14,24 @@ public class EnergyTooltipHandler {
 
     private static final String ENERGY_TRANSLATE_KEY = "item.createoreexpansion.tool.energy";
 
-    public static void addEnergyTooltip(ItemTooltipEvent event) {
+    /**
+     * 能量条紧跟技能区插入（index 由技能区返回），保证能量条显示在技能下方、其它信息上方。
+     *
+     * @param startIndex 技能区结束后的下一个可用 index
+     * @return 插入完成后的下一个可用 index
+     */
+    public static int addEnergyTooltip(ItemTooltipEvent event, int startIndex) {
         ItemStack stack = event.getItemStack();
 
         if (!ToolEnergy.hasEnergy(stack))
-            return;
+            return startIndex;
 
         int energy = ToolEnergy.getEnergy(stack);
         int max = ToolEnergy.getMaxEnergy(stack);
 
-        event.getToolTip().add(1, Component.translatable(ENERGY_TRANSLATE_KEY)
+        int index = startIndex;
+
+        event.getToolTip().add(index++, Component.translatable(ENERGY_TRANSLATE_KEY)
                 .append(":")
                 .withStyle(ChatFormatting.GRAY));
 
@@ -42,13 +49,7 @@ public class EnergyTooltipHandler {
             fillColor = new Color(color % 0xFFFFFF);
         }
 
-        event.getToolTip().add(2, BarTooltipRender.energy(energy, max, BAR_SLOTS, fillColor));
-    }
-
-    public static COELangProvider.Builder translate(COELangProvider.Builder builder) {
-        return builder
-                .add(ENERGY_TRANSLATE_KEY,
-                        "能量", "Energy")
-                ;
+        event.getToolTip().add(index, BarTooltipRender.energy(energy, max, BAR_SLOTS, fillColor));
+        return index + 1;
     }
 }

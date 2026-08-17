@@ -62,8 +62,8 @@ public class JadeTopazBowItem extends BowItem {
 		InteractionResultHolder<ItemStack> ret = EventHooks.onArrowNock(stack, level, player, hand, hasArrows);
 		if (ret != null) return ret;
 
-		// 检查能否射击
-		if (!player.hasInfiniteMaterials() && !hasArrows && getEnergy(stack) < NO_ARROW_COST) {
+		// 检查能否射击：无箭且能量不足时不允许（所有模式一致，不区分创造模式）
+		if (!hasArrows && getEnergy(stack) < NO_ARROW_COST) {
 			return InteractionResultHolder.fail(stack);
 		}
 
@@ -105,18 +105,15 @@ public class JadeTopazBowItem extends BowItem {
 
 	private List<ItemStack> prepareProjectiles(ItemStack bow, Player player) {
 		ItemStack ammo = player.getProjectile(bow);
-		boolean infinite = player.hasInfiniteMaterials();
 
 		// 有实体箭
 		if (!ammo.isEmpty()) {
 			return draw(bow, ammo, player);
 		}
 
-		// 无箭但能量够 → 魔法箭
-		if (getEnergy(bow) >= NO_ARROW_COST || infinite) {
-			if (!infinite) {
-				setEnergy(bow, getEnergy(bow) - NO_ARROW_COST);
-			}
+		// 无箭但能量够 → 魔法箭（所有模式统一消耗能量，不区分创造模式）
+		if (getEnergy(bow) >= NO_ARROW_COST) {
+			setEnergy(bow, getEnergy(bow) - NO_ARROW_COST);
 			ItemStack magicArrow = Items.ARROW.getDefaultInstance();
 			magicArrow.set(DataComponents.INTANGIBLE_PROJECTILE, Unit.INSTANCE);
 			return List.of(magicArrow);
@@ -144,7 +141,7 @@ public class JadeTopazBowItem extends BowItem {
 
 		if (!canUseSkill) {
 			player.displayClientMessage(
-					Component.literal("由于能量值过低无法使用技能")
+					Component.literal(ToolEnergy.LOW_ENERGY_MESSAGE)
 							.withStyle(ChatFormatting.RED),
 					true
 			);

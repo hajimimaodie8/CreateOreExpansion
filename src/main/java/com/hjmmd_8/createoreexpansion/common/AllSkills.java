@@ -4,288 +4,184 @@ import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.PlantSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.ReapSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.HoeSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.PlunderSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.SkinSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
-import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
-import com.hjmmd_8.createoreexpansion.content.skill.config.PlantConfig;
-import com.hjmmd_8.createoreexpansion.content.skill.config.ReapConfig;
-import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.SkillAoeConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
-import com.hjmmd_8.createoreexpansion.content.skill.strategy.PlantStrategy;
-import com.hjmmd_8.createoreexpansion.content.skill.strategy.ReapStrategy;
-import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
-import com.hjmmd_8.createoreexpansion.data.lang.Translator;
+import com.hjmmd_8.createoreexpansion.content.skill.strategy.HoeStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttribute;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttributeType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.SkillAttributeModifierHolder;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
-import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.BlockTags;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static com.hjmmd_8.createoreexpansion.common.AllStrategies.RENDERERS;
-import static com.hjmmd_8.createoreexpansion.common.AllStrategies.STRATEGIES;
-
+/**
+ * 技能注册表 —— 全模组技能的统一注册入口。
+ *
+ * 技能名称翻译不在此处定义，统一由
+ * {@code ChineseLangProvider} / {@code EnglishLangProvider} 管理。
+ */
 public final class AllSkills {
     private static final Map<ResourceLocation, ItemSkill> SKILLS = Maps.newHashMap();
     private static final Map<ItemSkill, ResourceLocation> SKILL_IDS = Maps.newHashMap();
 
-    // ========== 公共技能实例 ==========
+    /**
+     * 已注册技能的完整数据（含配置）。
+     * 用于反序列化时恢复技能配置，保证物品从存档/网络加载后仍能正常释放技能。
+     */
+    private static final Map<ResourceLocation, RegisteredDataSkill> SKILL_DATA = Maps.newHashMap();
+
+    // ========== 伐树（斧类连锁砍树）—— 数值统一在 FellingConfigs 修改 ==========
+    /** 伐树（一技能多等级：addSkills(FELL, 等级) 按等级取实际配置，Lv1 翡翠斧/ Lv2 黄玉斧/ Lv3 蓝宝石斧） */
     public static final RegisteredDataSkill FELL =
             skill("fell", FellingSkill.class, FellingStrategy.class)
                     .skill(FellingSkill::new)
                     .strategy(FellingStrategy::new)
-                    .translate("伐树", "Fell")
-                    .config(new FellingConfig(
-                            100, 200,
-                            FellingConfig.BlockPredicate.IS_LOG,
-                            100, .12f, .12f))
-                    .level(1)
+                    .config(FellingConfigs.config(FellingConfigs.LEVEL_1))
+                    .configsByLevel(level -> FellingConfigs.config(FellingConfigs.level(level)))
                     .register();
-    public static final RegisteredDataSkill GREAT_FELL =
-        skill("great_fell", FellingSkill.class, FellingStrategy.class)
-                .skill(FellingSkill::new)
-                .strategy(FellingStrategy::new)
-                .config(new FellingConfig(
-                        100, FellingConfig.BlockPredicate.IS_TREE,
-                        100, .08f, .01f))
-                .translate("伐树", "Fell")
-                .level(2)
-                .register();
-    public static final RegisteredDataSkill GRAND_FELL =
-        skill("grand_fell", FellingSkill.class, FellingStrategy.class)
-                .skill(FellingSkill::new)
-                .strategy(FellingStrategy::new)
-                .config(new FellingConfig(
-                        100, FellingConfig.BlockPredicate.IS_TREE,
-                        100, .05f, .005f))
-                .translate("伐树", "Fell")
-                .level(3)
-                .register();
+    // 伐树 Lv4（范围再扩大）、Lv5（无视范围限制）为预留等级：数值已在 FellingConfigs 定义，
+    // 将来启用时 addSkills(FELL, 4/5) 即可，无需新增注册。
 
+    // ========== 开岩（稿类范围挖掘）—— 数值统一在 SkillAoeConfigs 修改 ==========
+    /** 开岩（一技能多等级：addSkills(SHATTER, 等级) 按等级取实际配置，Lv1 翡翠稿/ Lv2 黄玉稿/ Lv3 蓝宝石稿） */
     public static final RegisteredDataSkill SHATTER =
             skill("shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
                     .skill(AreaAoeSkill::new)
                     .strategy(AreaAoeStrategy::new)
-                    .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_PICKAXE, 3, 1, 1, DualDirection.From.PLAYER_YAW))
-                    .translate("开岩", "Shatter")
-                    .level(1)
+                    .config(SkillAoeConfigs.aoeConfig(SkillAoeConfigs.BREAK_ROCK_TAG, SkillAoeConfigs.BREAK_ROCK_1))
+                    .configsByLevel(level -> SkillAoeConfigs.aoeConfig(
+                            SkillAoeConfigs.BREAK_ROCK_TAG, SkillAoeConfigs.breakRockLevel(level)))
                     .register();
-    public static final RegisteredDataSkill GREAT_SHATTER =
-            skill("great_shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
-                    .skill(AreaAoeSkill::new)
-                    .strategy(AreaAoeStrategy::new)
-                    .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_PICKAXE, 3, 3, 1))
-                    .translate("开岩", "Shatter")
-                    .level(2)
-                    .register();
-    public static final RegisteredDataSkill GRAND_SHATTER =
-            skill("grand_shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
-                    .skill(AreaAoeSkill::new)
-                    .strategy(AreaAoeStrategy::new)
-                    .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_PICKAXE, 5, 5, 1))
-                    .translate("开岩", "Shatter")
-                    .level(3)
-                    .register();
+    // 开岩 Lv4（5×5）、Lv5（5×5×2）为预留等级：数值已在 SkillAoeConfigs 定义，
+    // 将来启用时 addSkills(SHATTER, 4/5) 即可，无需新增注册。
 
+    // ========== 引渠 / 平场（铲类范围挖掘）—— 数值统一在 SkillAoeConfigs 修改 ==========
+    /** 引渠（一技能多等级：addSkills(CHANNEL, 等级) 按等级取实际配置，Lv1 翡翠铲/ Lv2 黄玉铲/ Lv3 蓝宝石铲） */
     public static final RegisteredDataSkill CHANNEL =
             skill("channel", AreaAoeSkill.class, AreaAoeStrategy.class)
                     .skill(AreaAoeSkill::new)
                     .strategy(AreaAoeStrategy::new)
-                    .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_SHOVEL, 1, 1, 6, DualDirection.From.PLAYER_YAW))
-                    .translate("引渠", "Channel")
-                    .level(1)
+                    .config(SkillAoeConfigs.aoeConfig(SkillAoeConfigs.CHANNEL_TAG, SkillAoeConfigs.CHANNEL_1))
+                    .configsByLevel(level -> SkillAoeConfigs.aoeConfig(
+                            SkillAoeConfigs.CHANNEL_TAG, SkillAoeConfigs.channelLevel(level)))
                     .register();
-    public static final RegisteredDataSkill GREAT_CHANNEL =
-        skill("great_channel", AreaAoeSkill.class, AreaAoeStrategy.class)
-                .skill(AreaAoeSkill::new)
-                .strategy(AreaAoeStrategy::new)
-                .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_SHOVEL, 1, 1, 8, DualDirection.From.PLAYER_YAW))
-                .translate("引渠", "Channel")
-                .level(2)
-                .register();
+    // 引渠 Lv4（8 格）、Lv5（10 格）为预留等级：数值已在 SkillAoeConfigs 定义，
+    // 将来启用时 addSkills(CHANNEL, 4/5) 即可，无需新增注册。
+    /** 平场（一技能多等级：addSkills(GRADE, 等级) 按等级取实际配置，Lv1 蓝宝石铲/ Lv2/ Lv3） */
     public static final RegisteredDataSkill GRADE =
         skill("grade", AreaAoeSkill.class, AreaAoeStrategy.class)
                 .skill(AreaAoeSkill::new)
                 .strategy(AreaAoeStrategy::new)
-                .config(new AreaAoeConfig(10, BlockTags.MINEABLE_WITH_SHOVEL, 7, 7, 1))
-                .translate("平场", "Grade")
-                .level(1)
+                .config(SkillAoeConfigs.aoeConfig(SkillAoeConfigs.GRADE_TAG, SkillAoeConfigs.GRADE_1))
+                .configsByLevel(level -> SkillAoeConfigs.aoeConfig(
+                        SkillAoeConfigs.GRADE_TAG, SkillAoeConfigs.gradeLevel(level)))
                 .register();
+    // 平场 Lv2（5×7）、Lv3（7×7）为预留等级：数值已在 SkillAoeConfigs 定义（平场仅 3 级），
+    // 将来启用时 addSkills(GRADE, 2/3) 即可，无需新增注册。
 
+    // ========== 剥取（剑类额外掉落）—— 数值统一在 SkinConfigs 修改 ==========
+    /** 剥取（一技能多等级：addSkills(SKIN, 等级) 按等级取实际配置，Lv1 翡翠剑/ Lv2 黄玉剑/ Lv3 蓝宝石剑） */
     public static final RegisteredDataSkill SKIN =
             skill("skin", SkinSkill.class, EntityStrategy.class)
                     .skill(SkinSkill::new)
                     .strategy(EntityStrategy::new)
-                    .config(new SkinConfig(100, 0))
-                    .translate("剥取", "Skin")
-                    .level(1)
+                    .config(SkinConfigs.config(SkinConfigs.LEVEL_1))
+                    .configsByLevel(level -> SkinConfigs.config(SkinConfigs.level(level)))
                     .register();
+    // 剥取 Lv4（87%，25/25/50 掉0/1/2）、Lv5（95%，25/50/25 掉1/2/3）为预留等级：
+    // 数值已在 SkinConfigs 定义，将来启用时 addSkills(SKIN, 4/5) 即可，无需新增注册。
 
-    public static final RegisteredDataSkill GREAT_SKIN =
-            skill("great_skin", SkinSkill.class, EntityStrategy.class)
-                    .skill(SkinSkill::new)
+    // ========== 夺取（剑类夺取装备 + 吸血）—— 数值统一在 PlunderConfigs 修改 ==========
+    /** 夺取（一技能多等级：addSkills(PLUNDER, 等级) 按等级取实际配置，Lv1 黄玉剑键二/ Lv2 蓝宝石剑键二） */
+    public static final RegisteredDataSkill PLUNDER =
+            skill("plunder", PlunderSkill.class, EntityStrategy.class)
+                    .skill(PlunderSkill::new)
                     .strategy(EntityStrategy::new)
-                    .config(new SkinConfig(100, 50))
-                    .translate("剥取", "Skin")
-                    .level(2)
+                    .config(PlunderConfigs.config(PlunderConfigs.LEVEL_1))
+                    .configsByLevel(level -> PlunderConfigs.config(PlunderConfigs.level(level)))
                     .register();
+    // 夺取 Lv3~Lv5 为预留等级：数值已在 PlunderConfigs 定义，
+    // 将来启用时 addSkills(PLUNDER, 3/4/5) 即可，无需新增注册。
 
-    public static final RegisteredDataSkill GRAND_SKIN =
-            skill("grand_skin", SkinSkill.class, EntityStrategy.class)
-                    .skill(SkinSkill::new)
-                    .strategy(EntityStrategy::new)
-                    .config(new SkinConfig(100, 100))
-                    .translate("剥取", "Skin")
-                    .level(3)
+    // ========== 耕作（锄头）—— 数值统一在 HoeConfigs 修改 ==========
+    /** 耕作（一技能多等级：addSkills(HOE, 等级) 按等级取实际配置，Lv1 翡翠锄/ Lv2 黄玉锄/ Lv3 蓝宝石锄） */
+    public static final RegisteredDataSkill HOE =
+            skill("hoe", HoeSkill.class, HoeStrategy.class)
+                    .skill(HoeSkill::new)
+                    .strategy(HoeStrategy::new)
+                    .config(HoeConfigs.config(HoeConfigs.LEVEL_1))
+                    .configsByLevel(level -> HoeConfigs.config(HoeConfigs.level(level)))
                     .register();
-
-    public static final RegisteredDataSkill REAP =
-            skill("reap", ReapSkill.class, ReapStrategy.class)
-                    .skill(ReapSkill::new)
-                    .strategy(ReapStrategy::new)
-                    .config(new ReapConfig(
-                            50, true, ReapConfig.DEFAULT_RANGE_3X3, 
-                            ReapConfig.DEFAULT_MAX_BLOCKS_3X3, 0, 2, 
-                            ReapConfig.JADE_MATURE_CHANCE))
-                    .translate("丰收", "Reap")
-                    .level(1)
-                    .register();
-    public static final RegisteredDataSkill GREAT_REAP =
-            skill("great_reap", ReapSkill.class, ReapStrategy.class)
-                    .skill(ReapSkill::new)
-                    .strategy(ReapStrategy::new)
-                    .config(new ReapConfig(
-                            50, true, ReapConfig.DEFAULT_RANGE_3X5, 
-                            ReapConfig.DEFAULT_MAX_BLOCKS_3X5, 1, 3, 
-                            ReapConfig.TOPAZ_MATURE_CHANCE))
-                    .translate("丰收", "Reap")
-                    .level(2)
-                    .register();
-
-    public static final RegisteredDataSkill GRAND_REAP =
-            skill("grand_reap", ReapSkill.class, ReapStrategy.class)
-                    .skill(ReapSkill::new)
-                    .strategy(ReapStrategy::new)
-                    .config(new ReapConfig(
-                            50, true, ReapConfig.DEFAULT_RANGE_5X5, 
-                            ReapConfig.DEFAULT_MAX_BLOCKS_5X5, 2, 4, 
-                            ReapConfig.SAPPHIRE_MATURE_CHANCE))
-                    .translate("丰收", "Reap")
-                    .level(3)
-                    .register();
-
-    public static final RegisteredDataSkill PLANT =
-            skill("plant", PlantSkill.class, PlantStrategy.class)
-                    .skill(PlantSkill::new)
-                    .strategy(PlantStrategy::new)
-                    .config(new PlantConfig(
-                            50, PlantConfig.DEFAULT_RANGE_3X3, 
-                            PlantConfig.DEFAULT_MAX_BLOCKS_3X3))
-                    .translate("种植", "Plant")
-                    .level(1)
-                    .register();
-    public static final RegisteredDataSkill GREAT_PLANT =
-            skill("great_plant", PlantSkill.class, PlantStrategy.class)
-                    .skill(PlantSkill::new)
-                    .strategy(PlantStrategy::new)
-                    .config(new PlantConfig(
-                            50, PlantConfig.DEFAULT_RANGE_3X5, 
-                            PlantConfig.DEFAULT_MAX_BLOCKS_3X5))
-                    .translate("种植", "Plant")
-                    .level(2)
-                    .register();
-
-    public static final RegisteredDataSkill GRAND_PLANT =
-            skill("grand_plant", PlantSkill.class, PlantStrategy.class)
-                    .skill(PlantSkill::new)
-                    .strategy(PlantStrategy::new)
-                    .config(new PlantConfig(
-                            50, PlantConfig.DEFAULT_RANGE_5X5, 
-                            PlantConfig.DEFAULT_MAX_BLOCKS_5X5))
-                    .translate("种植", "Plant")
-                    .level(3)
-                    .register();
+    // 耕作 Lv4（5×7）、Lv5（7×7）为预留等级：数值已在 HoeConfigs 定义，
+    // 将来启用时 addSkills(HOE, 4/5) 即可，无需新增注册。
 
     // ========== 工具方法 ==========
+    /**
+     * 创建技能构建器。
+     *
+     * @param skillType    技能类（用于泛型推断与注册校验）
+     * @param strategyType 策略类（用于泛型推断与注册校验）
+     */
     public static <T extends ItemSkill, S extends SkillStrategy<?>> SkillBuilder<T, S> skill(
             ResourceLocation id, Class<T> skillType, Class<S> strategyType) {
-        return new SkillBuilder<>(id);
+        return new SkillBuilder<>(id, skillType, strategyType);
     }
 
     public static <T extends ItemSkill, S extends SkillStrategy<?>> SkillBuilder<T, S> skill(
             String id, Class<T> skillType, Class<S> strategyType) {
-        return new SkillBuilder<>(id);
+        return new SkillBuilder<>(id, skillType, strategyType);
     }
 
     public static ItemSkill get(ResourceLocation id) {
-        if (id == null) return null;
-        if (!SKILLS.containsKey(id)) return null;
-        return SKILLS.get(id);
+        return id == null ? null : SKILLS.getOrDefault(id, null);
+    }
+
+    /**
+     * 获取已注册技能的完整数据（含配置），用于反序列化恢复。
+     */
+    public static RegisteredDataSkill getData(ResourceLocation id) {
+        return id == null ? null : SKILL_DATA.get(id);
     }
 
     public static ResourceLocation getId(ItemSkill skill) {
-        if (skill == null) return null;
-        if (!SKILL_IDS.containsKey(skill)) return null;
-        return SKILL_IDS.get(skill);
-    }
-
-    public static <C, V> V modifier(ModifiableAttributeType<C, V> type, SkillAttributeModifierHolder holder, C context) {
-        ModifiableAttribute<V> attribute = type.create(context);
-        holder.modifier(type, attribute);
-        return attribute.getValue();
-    }
-
-    public static void register() {}
-
-    private enum SkillsTranslator implements Translator {
-        INSTANCE;
-
-        private final List<Consumer<COELangProvider.Builder>> lst = new ArrayList<>();
-
-        public void add(ItemSkill skill,
-                        @Nullable String chineseTranslate,
-                        @Nullable String englishTranslate) {
-            lst.add(builder -> builder.add(skill, chineseTranslate, englishTranslate));
-        }
-
-        @Override
-        public COELangProvider.Builder translate(COELangProvider.Builder builder) {
-            lst.forEach(c -> c.accept(builder));
-            return builder;
-        }
+        return skill == null ? null : SKILL_IDS.get(skill);
     }
 
     public static class SkillBuilder<T extends ItemSkill, S extends SkillStrategy<?>> {
         private final ResourceLocation id;
+        private final Class<T> skillType;
+        private final Class<S> strategyType;
         private Function<S, T> factory;
         private S strategy;
         private T skill;
         private CompoundTag defaultNbt;
         private SkillConfig config;
+        /** 等级 → 配置 映射（一技能多等级：addSkills(技能, 等级) 时按等级取实际配置） */
+        private Function<Integer, SkillConfig> configsByLevel;
 
-        public SkillBuilder(ResourceLocation id) {
+        public SkillBuilder(ResourceLocation id, Class<T> skillType, Class<S> strategyType) {
             this.id = id;
+            this.skillType = skillType;
+            this.strategyType = strategyType;
         }
 
-        public SkillBuilder(String id) {
-            this.id = CreateOreExpansion.modLoc(id);
+        public SkillBuilder(String id, Class<T> skillType, Class<S> strategyType) {
+            this(CreateOreExpansion.modLoc(id), skillType, strategyType);
         }
 
         public SkillBuilder<T, S> skill(Function<S, T> factory) {
@@ -309,81 +205,102 @@ public final class AllSkills {
             return setTag(c);
         }
 
+        /**
+         * 注册「等级 → 配置」映射（一技能多等级）。
+         *
+         * <p>{@code AllItems.addSkills(技能, 等级)} 时，等级参数会同时决定
+         * 显示等级与实际数值等级（从映射取对应配置）。未设置映射时等级仅用于显示。</p>
+         *
+         * @param configsByLevel 输入等级（1 起）返回该等级的实际配置
+         */
+        public SkillBuilder<T, S> configsByLevel(Function<Integer, SkillConfig> configsByLevel) {
+            this.configsByLevel = configsByLevel;
+            return this;
+        }
+
         public SkillBuilder<T, S> level(int level) {
             return setTag(nbt -> nbt.putInt("Level", level));
         }
 
-        public SkillBuilder<T, S> translate(@Nullable String chineseTranslate,
-                                            @Nullable String englishTranslate) {
-            if (factory == null) throw new NullPointerException("Factory cannot be null");
-            // 允许strategy为null，支持没有strategy的技能
-            if (skill == null) skill = factory.apply(strategy);
-            if (skill == null) throw new NullPointerException("Skill cannot be null");
-            SkillsTranslator.INSTANCE.add(skill, chineseTranslate, englishTranslate);
-            return this;
-        }
-
         public RegisteredDataSkill register() {
-            if (factory == null) throw new NullPointerException("Factory cannot be null");
-            // 允许strategy为null，支持没有strategy的技能
-            if (skill == null) skill = factory.apply(strategy);
-            if (skill == null) throw new NullPointerException("Skill cannot be null");
-            SKILLS.put(id, skill);
-            SKILL_IDS.put(skill, id);
-            // 只有在strategy不为null时才放入STRATEGIES map
-            if (strategy != null) {
-                STRATEGIES.put(skill, strategy);
-                RENDERERS.put(strategy, strategy.getRenderer());
+            T built = createSkill();
+            // 注册时校验策略类型，防止配置错误（与声明类型不符）
+            if (strategy != null && !strategyType.isInstance(strategy)) {
+                throw new IllegalArgumentException(
+                        "Strategy type mismatch for skill " + id + ": expected "
+                                + strategyType.getSimpleName() + " but got "
+                                + strategy.getClass().getSimpleName());
             }
+            SKILLS.put(id, built);
+            SKILL_IDS.put(built, id);
             RegisteredDataSkill data = (defaultNbt == null)
-                    ? new RegisteredDataSkill(skill)
-                    : new RegisteredDataSkill(skill, config, defaultNbt, skill.getCost());
+                    ? new RegisteredDataSkill(built, configsByLevel)
+                    : new RegisteredDataSkill(built, config, configsByLevel, defaultNbt);
             if (config != null) {
                 config.load(data);
+                // 将配置载入技能实例，保证 getCost() 等字段返回注册时的真实值
+                ConfigSkill.loadConfig(built, config, data);
             }
+            SKILL_DATA.put(id, data);
             return data;
+        }
+
+        private T createSkill() {
+            if (factory == null) throw new NullPointerException("Factory cannot be null");
+            // 允许strategy为null，支持没有strategy的技能
+            if (skill == null) skill = factory.apply(strategy);
+            if (skill == null) throw new NullPointerException("Skill cannot be null");
+            if (!skillType.isInstance(skill)) {
+                throw new IllegalArgumentException(
+                        "Skill type mismatch for " + id + ": expected "
+                                + skillType.getSimpleName() + " but got "
+                                + skill.getClass().getSimpleName());
+            }
+            return skill;
         }
     }
 
     public static class RegisteredDataSkill extends DataSkill {
+        /** 等级 → 配置 映射（一技能多等级；null 表示无映射） */
+        private final Function<Integer, SkillConfig> configsByLevel;
+
         public RegisteredDataSkill(ItemSkill skill) {
-            super(skill, null, new CompoundTag(), skill.getCost());
+            super(skill, null, new CompoundTag());
+            this.configsByLevel = null;
         }
 
-        public RegisteredDataSkill(ItemSkill skill, SkillConfig config, CompoundTag nbt, int cost) {
-            super(skill, config, nbt, cost);
+        public RegisteredDataSkill(ItemSkill skill, SkillConfig config, CompoundTag nbt) {
+            super(skill, config, nbt);
+            this.configsByLevel = null;
             if (config != null) {
                 config.accept(nbt);
             }
         }
 
-        public RegisteredDataSkill create() {
-            return new RegisteredDataSkill(skill, config, nbt, cost);
+        public RegisteredDataSkill(ItemSkill skill, Function<Integer, SkillConfig> configsByLevel) {
+            super(skill, null, new CompoundTag());
+            this.configsByLevel = configsByLevel;
         }
 
-        public RegisteredDataSkill addConfig(Consumer<CompoundTag> c) {
-            c.accept(nbt);
-            return this;
+        public RegisteredDataSkill(ItemSkill skill, SkillConfig config,
+                                   Function<Integer, SkillConfig> configsByLevel, CompoundTag nbt) {
+            super(skill, config, nbt);
+            this.configsByLevel = configsByLevel;
+            if (config != null) {
+                config.accept(nbt);
+            }
         }
 
-        public RegisteredDataSkill setConfig(Consumer<CompoundTag> c) {
-            nbt = new CompoundTag();
-            c.accept(nbt);
-            return this;
+        /**
+         * 按等级取该技能的实际配置（一技能多等级）。
+         *
+         * @param level 技能等级（1 起）
+         * @return 对应等级的配置；无映射时返回注册默认配置
+         */
+        public SkillConfig configForLevel(int level) {
+            if (configsByLevel == null) return config;
+            SkillConfig levelConfig = configsByLevel.apply(Math.max(1, level));
+            return levelConfig != null ? levelConfig : config;
         }
-
-        public RegisteredDataSkill config(SkillConfig config) {
-            this.config = config;
-            return setConfig(config);
-        }
-
-        public RegisteredDataSkill level(int level) {
-            return addConfig(nbt -> nbt.putInt("Level", level));
-        }
-    }
-
-    public static COELangProvider.Builder translate(COELangProvider.Builder builder) {
-        return builder
-                .add(SkillsTranslator.INSTANCE);
     }
 }

@@ -49,8 +49,6 @@ public class CreateOreExpansion {
         MOD_BUS = modEventBus;
         REGISTRATE.registerEventListeners(modEventBus);
 
-        AllSkills.register();
-
         AllCreativeModeTabs.register(modEventBus);
 
         AllDataComponents.register(modEventBus);

@@ -3,7 +3,8 @@ package com.hjmmd_8.createoreexpansion.client.tool.renderer;
 import com.google.common.collect.Lists;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
-import com.hjmmd_8.createoreexpansion.foundation.util.params.IParams;
+import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
@@ -50,7 +51,7 @@ public class EntityOutlineRenderer implements StrategyRenderer {
 
         DataSkill dataSkill = config.skill();
         ItemSkill skill = dataSkill.skill;
-        EntityStrategy strategy = (EntityStrategy) skill.getStrategy();
+        EntityStrategy strategy = (EntityStrategy) ((AbstractStrategySkill<?, ?>) skill).strategy();
         if (!strategy.shouldRender(dataSkill, world, entityTag)) return;
 
         Set<Entity> entities = strategy.calculate(dataSkill, entityTag.put("World", world));

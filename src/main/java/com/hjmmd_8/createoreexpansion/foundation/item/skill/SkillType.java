@@ -1,15 +1,18 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
 import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
-import com.hjmmd_8.createoreexpansion.data.lang.Translator;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext;
 
 import java.util.Locale;
 
+/**
+ * 技能类型 —— 决定技能由哪种上下文触发。
+ *
+ * <p>类型名称的翻译统一由语言 Provider 管理，此处只提供翻译键。</p>
+ */
 public enum SkillType {
     // 挖掘技能
     EXCAVATION_SKILL(ExcavationSkillContext.class),
@@ -29,24 +32,7 @@ public enum SkillType {
         translatable = () -> translateKey;
     }
 
-    public boolean cast(Object context) {
+    public boolean isInstance(Object context) {
         return contextClass.isInstance(context);
-    }
-
-    private enum SkillTypeTranslator implements Translator {
-        INSTANCE;
-
-        @Override
-        public COELangProvider.Builder translate(COELangProvider.Builder builder) {
-            return builder
-                    .add(EXCAVATION_SKILL.translatable, "挖掘技能", "Excavation Skill")
-                    .add(HIT_SKILL.translatable, "攻击技能", "Hit Skill")
-                    ;
-        }
-    }
-
-    public static COELangProvider.Builder translate(COELangProvider.Builder builder) {
-        return builder
-                .add(SkillTypeTranslator.INSTANCE);
     }
 }

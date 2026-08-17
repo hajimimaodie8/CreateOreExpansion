@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -8,7 +9,7 @@ public interface SkillAttributeModifierHolder {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     default <C, V> ModifiableAttribute<V> modifier(ModifiableAttributeType<C, V> type, ModifiableAttribute<V> attribute) {
-        modifiers().get(type)
+        modifiers().getOrDefault(type, Collections.emptyList())
                 .forEach(modifier -> ((SkillAttributeModifier) modifier).modify(attribute));
         return attribute;
     }

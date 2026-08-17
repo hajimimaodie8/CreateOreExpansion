@@ -40,7 +40,8 @@ public class ClientEvents {
 
     @SubscribeEvent
     public static void onItemTooltip(ItemTooltipEvent event) {
-        EnergyTooltipHandler.addEnergyTooltip(event);
-        SkillsTooltipHandler.addSkillsTooltip(event);
+        // 技能区在前（index 1 起），能量条紧跟技能区 —— 技能信息显示在能量上方
+        int index = SkillsTooltipHandler.addSkillsTooltip(event);
+        EnergyTooltipHandler.addEnergyTooltip(event, index);
     }
 }

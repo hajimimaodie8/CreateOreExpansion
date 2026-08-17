@@ -2,6 +2,8 @@ package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
+import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
+import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -30,7 +32,9 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 public enum AllRecipeTypes implements IRecipeTypeInfo, StringRepresentable {
 
-	TRANSMUTING(AllTransmutingRecipe::new);
+	TRANSMUTING(AllTransmutingRecipe::new),
+	LIGHTNING(LightningRecipe::new),
+	LIGHTNING_BLOCK(LightningBlockRecipe::new);
 
 	public static final Predicate<RecipeHolder<?>> CAN_BE_AUTOMATED = r -> !r.id()
 		.getPath()

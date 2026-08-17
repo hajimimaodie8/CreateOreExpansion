@@ -1,12 +1,16 @@
 package com.hjmmd_8.createoreexpansion.data.lang;
 
-import com.hjmmd_8.createoreexpansion.common.AllModEffects;
 import com.hjmmd_8.createoreexpansion.common.AllBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.LanguageProvider;
 
+/**
+ * 中文语言文件 —— 全模组中文翻译的唯一定义处。
+ *
+ * 包含：创造标签页、物品/方块、技能名、技能类型、技能释放键、tooltip、药水效果等全部翻译。
+ */
 public class ChineseLangProvider extends LanguageProvider {
 
     public ChineseLangProvider(PackOutput output) {
@@ -15,7 +19,11 @@ public class ChineseLangProvider extends LanguageProvider {
 
     @Override
     protected void addTranslations() {
-        COELangProvider.INSTANCE.addTranslations(this);
+        // ========== 创造标签页 ==========
+        add("itemGroup.createoreexpansion", "机械动力：矿物拓展");
+        add("createoreexpansion.mod_name", "机械动力：矿物拓展");
+
+        // ========== 物品/方块 ==========
         add(AllItems.JADE_INGOT.get(), "翡翠锭");
         add(AllItems.RAW_JADE.get(), "粗翡翠");
         add(AllItems.JADE_NUGGET.get(), "翡翠粒");
@@ -79,45 +87,62 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.STELLARSTONE_SHEET.get(), "星辉石板");
         add(AllItems.STELLARSTONE_ROD.get(), "星辉石棍");
         add(AllItems.STELLARSTONE_WIRE.get(), "星辉石线");
+        add(AllItems.STELLARSTONE_SWORD.get(), "星辉石剑");
+        add(AllItems.STELLARSTONE_PICKAXE.get(), "星辉石镐");
+        add(AllItems.STELLARSTONE_AXE.get(), "星辉石斧");
+        add(AllItems.STELLARSTONE_SHOVEL.get(), "星辉石铲");
+        add(AllItems.STELLARSTONE_HOE.get(), "星辉石锄");
         add(AllBlocks.END_STELLARSTONE_ORE.get(), "末地星辉石矿石");
         add(AllBlocks.RAW_STELLARSTONE_BLOCK.get(), "粗星辉石块");
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "星辉石块");
+        add(AllItems.JADE_TOPAZ_BOW.get(), "翠玉之弓");
 
+        // ========== 技能名（各等级共用基础键，等级由 tooltip 罗马数字显示） ==========
+        add("skill.createoreexpansion.fell", "伐树");
+        add("skill.createoreexpansion.shatter", "开岩");
+        add("skill.createoreexpansion.channel", "引渠");
+        add("skill.createoreexpansion.grade", "平场");
+        add("skill.createoreexpansion.skin", "剥取");
+        add("skill.createoreexpansion.plunder", "夺取");
+        add("skill.createoreexpansion.hoe", "耕作");
+
+        // ========== 技能类型 ==========
+        add("skillType.createoreexpansion.excavation_skill", "挖掘技能");
+        add("skillType.createoreexpansion.hit_skill", "攻击技能");
+        add("skillType.createoreexpansion.use_skill", "使用技能");
+
+        // ========== 技能释放键 ==========
+        add("createoreexpansion.keyinfo.skill_release", "技能释放");
+        add("createoreexpansion.keyinfo.skill_release_2", "技能释放 2（第二技能）");
+        add("createoreexpansion.keyinfo.skill_release_3", "技能释放 3（第三技能）");
+
+        // ========== 工具/技能 tooltip ==========
+        add("item.createoreexpansion.tool.skill_tips", "按住 [%s] 可查看技能概要");
+        add("item.createoreexpansion.tool.energy", "能量");
+
+        // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");
         add("fluid.createoreexpansion.transmutation_fluid", "嬗变液");
         add("item.createoreexpansion.transmutation_fluid_bucket", "嬗变液桶");
         add("createoreexpansion.recipe.fan_transmuting", "批量嬗化");
         add("createoreexpansion.recipe.fan_transmuting.fan", "鼓风机");
 
-//        add(AllItems.JADE_TOPAZ_BOW.get(), "翠玉之弓");
-//        add("item.createoreexpansion.tool.energy", "能量");
-//        add("item.createoreexpansion.jade_topaz_bow.tooltip.summary", "按住_左Shift_键_攻击_，箭矢造成_2倍伤害_并附加随机_负面效果_；_Shift_释放_技能A_，_Ctrl_释放_技能B_，均消耗_能量_");
-//        add("item.createoreexpansion.jade_topaz_bow.tooltip.energy", "能量");
-//        add("item.createoreexpansion.jade_pickaxe.tooltip.summary", "在使用_翡翠镐_时，按住_左Shift_键，可以_挖掘_面前_3×1范围_的方块");
-//        add("item.createoreexpansion.jade_shovel.tooltip.summary", "在使用_翡翠铲_时，按住_左Shift_键，可以_挖掘_面前至多_6块泥土、沙子_等方块");
-//        add("item.createoreexpansion.jade_axe.tooltip.summary", "在使用_翡翠斧_时，按住_左Shift_键，可以_砍伐树干_，但这需要一定的时间");
-//        add("item.createoreexpansion.topaz_pickaxe.tooltip.summary", "在使用_黄玉镐_时，按住_左Shift_键，可以_挖掘_面前_3×3范围_的方块");
-//        add("item.createoreexpansion.topaz_shovel.tooltip.summary", "在使用_黄玉铲_时，按住_左Shift_键，可以_挖掘_面前至多_9块泥土、沙子_等方块");
-//        add("item.createoreexpansion.topaz_axe.tooltip.summary", "在使用_黄玉斧_时，按住_左Shift_键，可以_砍伐_面前的_树木_，但这需要一定的时间");
-//        add("item.createoreexpansion.sapphire_pickaxe.tooltip.summary", "在使用_蓝宝石镐_时，按住_左Shift_键，可以_挖掘_面前_5×5范围_的方块");
-//        add("item.createoreexpansion.sapphire_shovel.tooltip.summary", "在使用_蓝宝石铲_时，按住_左Shift_键，可以_挖掘_底部_7×7范围_的方块泥土、沙子等方块");
-//        add("item.createoreexpansion.sapphire_axe.tooltip.summary", "在使用_蓝宝石斧_时，按住_左Shift_键，可以_快速砍伐_面前的_树木_，但这需要一定的时间");
-//        add("item.createoreexpansion.jade_sword.tooltip.summary", "在使用_翡翠剑_时，按住_左Shift_键_攻击_，会造成_额外伤害_，并有_75%%_概率使目标_主手物品掉落_");
-//        add("item.createoreexpansion.topaz_sword.tooltip.summary", "在使用_黄玉剑_时，按住_左Shift_键_攻击_，必定使目标_主手或装备掉落_，并有_50%%_概率直接_偷取至背包_");
-//        add("item.createoreexpansion.sapphire_sword.tooltip.summary", "在使用_蓝宝石剑_时，按住_左Shift_键_攻击_，会将目标_全部武器装备转移至背包_，并从目标身上_吸取4点生命_");
-        add(AllModEffects.TRANSMUTATION_DISORDER.get(), "嬗乱");
+        // ========== 药水效果 ==========
+        add("effect.createoreexpansion.transmutation_disorder", "嬗乱");
         add("item.minecraft.potion.effect.transmutation_disorder", "嬗乱药水");
         add("item.minecraft.splash_potion.effect.transmutation_disorder", "喷溅型嬗乱药水");
         add("item.minecraft.lingering_potion.effect.transmutation_disorder", "滞留型嬗乱药水");
         add("item.minecraft.tipped_arrow.effect.transmutation_disorder", "嬗乱之箭");
         add("item.minecraft.potion.effect.strong_transmutation_disorder", "强效嬗乱药水");
-        add("item.minecraft.splash_potion.effect.strong_transmutation_disorder", "喷溅型强效嬗乱药水");
-        add("item.minecraft.lingering_potion.effect.strong_transmutation_disorder", "滞留型强效嬗乱药水");
+        add("item.minecraft.splash_potion.effect.strong_transmutation_disorder", "强效喷溅型嬗乱药水");
+        add("item.minecraft.lingering_potion.effect.strong_transmutation_disorder", "强效滞留型嬗乱药水");
         add("item.minecraft.tipped_arrow.effect.strong_transmutation_disorder", "强效嬗乱之箭");
         add("item.minecraft.potion.effect.long_transmutation_disorder", "漫长的嬗乱药水");
-        add("item.minecraft.splash_potion.effect.long_transmutation_disorder", "喷溅型漫长的嬗乱药水");
-        add("item.minecraft.lingering_potion.effect.long_transmutation_disorder", "滞留型漫长的嬗乱药水");
+        add("item.minecraft.splash_potion.effect.long_transmutation_disorder", "漫长喷溅型嬗乱药水");
+        add("item.minecraft.lingering_potion.effect.long_transmutation_disorder", "漫长滞留型嬗乱药水");
         add("item.minecraft.tipped_arrow.effect.long_transmutation_disorder", "漫长的嬗乱之箭");
+
+        // ========== Create 通用 ==========
         add("create.tooltip.holdForDescription", "按住 [%1$s] 可查看概要");
         add("create.tooltip.holdForControls", "按住 [%1$s] 可查看控制方法");
         add("create.tooltip.keyShift", "Shift");

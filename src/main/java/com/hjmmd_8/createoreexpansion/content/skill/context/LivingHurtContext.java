@@ -14,7 +14,7 @@ public record LivingHurtContext(LivingIncomingDamageEvent event) implements HitS
 
     @Override
     public Player player() {
-        if (!(event.getSource().getEntity() instanceof Player player)) return null;
+        if (!(event.getSource().getDirectEntity() instanceof Player player)) return null;
         return player;
     }
 }

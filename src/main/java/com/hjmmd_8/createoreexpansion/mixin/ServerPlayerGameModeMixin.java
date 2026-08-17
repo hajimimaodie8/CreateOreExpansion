@@ -1,8 +1,11 @@
 package com.hjmmd_8.createoreexpansion.mixin;
 
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.content.skill.context.DestroyBlockContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import net.minecraft.core.BlockPos;
@@ -17,6 +20,8 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.List;
 
 @Mixin(ServerPlayerGameMode.class)
 public class ServerPlayerGameModeMixin {
@@ -45,11 +50,30 @@ public class ServerPlayerGameModeMixin {
     private void createOreExpansion$trigger(BlockPos blockPos) {
         ItemStack stack = this.player.getMainHandItem();
         SkillItemStack skillStack = SkillItemStack.of(stack);
-
-        if (!skillStack.hasSkill(SkillType.EXCAVATION_SKILL)) return;
+        SkillsComponent holder = skillStack.getSkillsHolder();
+        // 非技能物品（无 SKILLS 组件）直接忽略，避免 NPE 干扰原版挖掘
+        if (holder == null) return;
+        List<DataSkill> skills = holder.getDataSkills(SkillType.EXCAVATION_SKILL);
+        if (skills.isEmpty()) return;
 
         ExcavationSkillContext context = new DestroyBlockContext(this.level, blockPos, stack, this.player);
-        ToolEnergy.sendEnergyMessage(player, stack,
-                skillStack.getSkillsHolder().releaseSkills(skillStack, SkillType.EXCAVATION_SKILL, context));
+        boolean released = false;
+
+        // 按技能键选槽位释放（与剑类双技能一致）：
+        // 键一(Shift)→槽位0、键二(R)→槽位1、键三(G)→槽位2；未按技能键不触发
+        if (AllKeys.SKILL_RELEASE.isPressed()) {
+            released |= holder.releaseSkillAt(skillStack, SkillType.EXCAVATION_SKILL, 0, context);
+        }
+        if (AllKeys.SKILL_RELEASE_2.isPressed()) {
+            released |= holder.releaseSkillAt(skillStack, SkillType.EXCAVATION_SKILL, 1, context);
+        }
+        if (AllKeys.SKILL_RELEASE_3.isPressed()) {
+            released |= holder.releaseSkillAt(skillStack, SkillType.EXCAVATION_SKILL, 2, context);
+        }
+
+        // 释放成功（能量预检查通过）后显示剩余能量；能量不足的提示由组件/技能内部处理
+        if (released) {
+            ToolEnergy.sendRemainingEnergy(this.player, stack);
+        }
     }
 }

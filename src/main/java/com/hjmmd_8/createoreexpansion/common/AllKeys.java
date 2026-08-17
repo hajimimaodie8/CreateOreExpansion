@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.data.lang.COELangProvider;
 import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.createmod.catnip.client.ConflictSafeKeyMapping;
@@ -20,6 +19,10 @@ import java.util.function.BiConsumer;
 public enum AllKeys implements Translatable {
 
     SKILL_RELEASE("skill_release", GLFW.GLFW_KEY_LEFT_SHIFT, "Skill Release"),
+    /** 第二技能释放键（剑类双技能：键二释放第 2 个技能），默认 R，玩家可自定义 */
+    SKILL_RELEASE_2("skill_release_2", GLFW.GLFW_KEY_R, "Skill Release 2"),
+    /** 第三技能释放键（键三释放第 3 个技能），默认 G，玩家可自定义 */
+    SKILL_RELEASE_3("skill_release_3", GLFW.GLFW_KEY_G, "Skill Release 3"),
     ;
 
     public static final Translatable MOD_NAME_TRANSLATABLE = () -> "createoreexpansion.mod_name";
@@ -68,15 +71,6 @@ public enum AllKeys implements Translatable {
         }
     }
 
-    public static COELangProvider.Builder translate(COELangProvider.Builder builder) {
-        return builder
-                .add(AllKeys.MOD_NAME_TRANSLATABLE,
-                        "机械动力：矿物拓展", "Create: Ore Expansion")
-                .add(AllKeys.SKILL_RELEASE,
-                        "技能释放", "Release skill")
-                ;
-    }
-
     public KeyMapping getKeybind() {
         return keybind;
     }
@@ -84,6 +78,9 @@ public enum AllKeys implements Translatable {
     public boolean isPressed() {
         if (!modifiable)
             return isKeyDown(key);
+        // 键位只在客户端注册；服务端（keybind 为 null）视为未按下，避免 NPE
+        if (keybind == null)
+            return false;
         return keybind.isDown();
     }
 

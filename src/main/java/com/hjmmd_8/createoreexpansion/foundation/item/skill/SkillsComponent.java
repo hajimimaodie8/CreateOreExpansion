@@ -2,7 +2,10 @@ package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.*;
@@ -12,36 +15,12 @@ import java.util.stream.Collectors;
  * 技能组件 - 实现 OwnedBySkills 接口
  * 用于 ItemStack 的 SKILLS data component，直接存储和管理 ItemSkill 对象
  *
- * <p>此类是不可变的，所有方法都返回不可变视图或新实例。</p>
+ * 此类是不可变的，所有方法都返回不可变视图或新实例。
  */
 public class SkillsComponent implements OwnedBySkills {
 
     private final Map<SkillType, List<ItemSkill>> skillsMap;
     private final Map<SkillType, List<DataSkill>> dataSkills;
-
-    /**
-     * 该字段不会参与网络通信和持久化，只能用于修改dataSkills的cost值
-     */
-    private final SkillCostModifier costModifier = SkillCostModifier.DEFAULT;
-
-    /**
-     * 修改 Cost，必须搭配 {@linkplain SkillsComponent#applyModifier()} 来应用更改
-     * @param modifier Cost 修改器
-     * @see SkillsComponent#applyModifier()
-     */
-    public void modifierCost(SkillCostModifier modifier) {
-        costModifier.merge(modifier);
-    }
-
-    /**
-     * 应用 {@linkplain SkillsComponent#modifierCost(SkillCostModifier)} 的更改
-     * @see SkillsComponent#modifierCost(SkillCostModifier)
-     */
-    public void applyModifier() {
-        for (DataSkill data : getAllData()) {
-            data.modifyCost(costModifier);
-        }
-    }
 
     /**
      * 空技能组件
@@ -69,12 +48,6 @@ public class SkillsComponent implements OwnedBySkills {
             this.skillsMap  = pair.getFirst();
             this.dataSkills = pair.getSecond();
         }
-    }
-
-    public static SkillsComponent of(List<ItemSkill> skills) {
-        return new SkillsComponent(skills.stream()
-                .map(DataSkill::fromSkill)
-                .collect(Collectors.toList()));
     }
 
     /**
@@ -113,110 +86,121 @@ public class SkillsComponent implements OwnedBySkills {
 
     @Override
     public Map<SkillType, List<ItemSkill>> skills() {
-        // 返回不可变视图，确保外部无法修改
-        if (skillsMap.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        Map<SkillType, List<ItemSkill>> unmodifiableMap = new HashMap<>(skillsMap.size());
-        skillsMap.forEach((type, list) ->
-            unmodifiableMap.put(type, Collections.unmodifiableList(list))
-        );
-        return Collections.unmodifiableMap(unmodifiableMap);
+        // groupSkillsByType 已构建不可变视图，直接返回
+        return skillsMap;
     }
 
+    /**
+     * 释放指定类型的技能。
+     *
+     * 流程：
+     * <ul>
+     *     <li>只释放 {@link ItemSkill#canRelease} 通过的技能（例如锄头的收割/种植按目标方块二选一）；</li>
+     *     <li>释放前做一次总能量预检查，不足则整体放弃；</li>
+     *     <li>能量扣减由各技能在真正生效前通过 {@link ToolEnergy#tryConsume} 自行完成
+     *     （消耗以 {@link ItemSkill#getCost()} 为准，与注册配置一致）。</li>
+     * </ul>
+     *
+     * @param skillStack 技能 ItemStack
+     * @param type 技能类型
+     * @param context 技能上下文
+     * @return true=至少有一个技能被释放
+     */
     @Override
     public boolean releaseSkills(SkillItemStack skillStack, SkillType type, Object context) {
         List<DataSkill> skills = dataSkills.get(type);
         if (skills == null || skills.isEmpty()) return false;
+
         ItemStack stack = skillStack.itemStack();
+        Player player = resolvePlayer(context);
 
-        net.minecraft.world.entity.player.Player player = null;
-        boolean isCreative = false;
-        
-        if (context instanceof ExcavationSkillContext excavationContext) {
-            var entity = excavationContext.entity();
-            if (entity instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-                player = serverPlayer;
-                isCreative = serverPlayer.isCreative();
-            }
-        } else if (context instanceof com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext<?> useContext) {
-            var event = useContext.event();
-            if (event instanceof net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickItem rightClick) {
-                player = rightClick.getEntity();
-                isCreative = player.isCreative();
-            } else if (event instanceof net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent useOnBlock) {
-                player = useOnBlock.getPlayer();
-                isCreative = player.isCreative();
-            }
-        } else if (context instanceof com.hjmmd_8.createoreexpansion.content.skill.context.LivingHurtContext hurtContext) {
-            player = hurtContext.player();
-            if (player != null) {
-                isCreative = player.isCreative();
-            }
-        }
-
-        if (!isCreative) {
-            // 1. 检查技能释放条件（不满足时静默失败，不消耗能量）
-            for (DataSkill data : skills) {
-                if (!data.skill.canRelease(context, data)) {
-                    return false;
-                }
-            }
-
-            // 2. 计算能量消耗
-            int energySum = 0;
-            for (DataSkill data : skills) {
-                energySum += data.cost;
-            }
-
-            // 3. 能量检查（当前能量不足则无法释放）
-            if (energySum != 0) {
-                if (!ToolEnergy.hasEnergy(stack)) {
-                    // 需要能量但物品没有能量组件
-                    if (player != null) {
-                        ToolEnergy.sendLowEnergy(player, stack);
-                    }
-                    return false;
-                }
-                
-                int energy = ToolEnergy.getEnergy(stack);
-                
-                if (energy < energySum) {
-                    // 能量不足
-                    if (player != null) {
-                        ToolEnergy.sendLowEnergy(player, stack);
-                    }
-                    return false;
-                }
-            }
-        }
-
+        // 1. 过滤出满足释放条件的技能
+        List<DataSkill> toRelease = new ArrayList<>(skills.size());
         for (DataSkill data : skills) {
-            data.skill.release(context, data);
-            if (!isCreative && data.cost > 0) {
-                ToolEnergy.consumeForSkill(stack, data);
+            if (data.skill.canRelease(context, data)) {
+                toRelease.add(data);
             }
         }
+        if (toRelease.isEmpty()) return false;
 
-        // 技能释放成功后显示剩余能量
-        if (!isCreative && player != null && ToolEnergy.hasEnergy(stack) && ToolEnergy.getEnergy(stack) >= 0) {
-            ToolEnergy.sendRemainingEnergy(player, stack);
+        // 2. 能量预检查：能量不足以下一次（最低消耗的）技能释放时整体放弃。
+        //    无论创造模式与否都消耗能量（与 ToolEnergy.tryConsume 一致），故不做创造豁免，
+        //    否则低能量提示会被调用方的剩余能量提示覆盖。
+        int minCost = toRelease.stream()
+                .mapToInt(data -> data.skill.getCost())
+                .min()
+                .orElse(0);
+        if (!ToolEnergy.canAfford(stack, minCost)) {
+            if (player != null) ToolEnergy.sendLowEnergy(player, stack);
+            return false;
         }
 
+        // 3. 释放技能（能量由技能内部在真正生效前消耗）
+        for (DataSkill data : toRelease) {
+            data.skill.release(context, data);
+        }
         return true;
+    }
+
+    /**
+     * 按槽位释放指定类型的单个技能（剑类双技能：槽位 0=技能键一、槽位 1=技能键二）。
+     *
+     * 流程与 {@link #releaseSkills} 一致，但只释放指定槽位的技能，
+     * 且各自执行独立的能量预检查与冷却读取，两个技能互不影响。
+     *
+     * @param skillStack 技能 ItemStack
+     * @param type 技能类型
+     * @param slot 技能槽位（0=第一个技能，1=第二个技能）
+     * @param context 技能上下文
+     * @return true=该槽位技能被释放
+     */
+    public boolean releaseSkillAt(SkillItemStack skillStack, SkillType type, int slot, Object context) {
+        List<DataSkill> skills = dataSkills.get(type);
+        if (skills == null || skills.isEmpty() || slot < 0 || slot >= skills.size()) return false;
+
+        DataSkill data = skills.get(slot);
+        if (!data.skill.canRelease(context, data)) return false;
+
+        ItemStack stack = skillStack.itemStack();
+        Player player = resolvePlayer(context);
+
+        // 能量预检查：不足则整体放弃（提示由低能量逻辑统一处理）
+        if (!ToolEnergy.canAfford(stack, data.skill.getCost())) {
+            if (player != null) ToolEnergy.sendLowEnergy(player, stack);
+            return false;
+        }
+
+        // 释放（能量由技能内部在真正生效前消耗）
+        data.skill.release(context, data);
+        return true;
+    }
+
+    /**
+     * 从技能上下文中解析出玩家，用于判断创造模式与发送提示消息。
+     * 仅依赖技能上下文接口，不绑定具体事件类型。
+     */
+    private static Player resolvePlayer(Object context) {
+        if (context instanceof ExcavationSkillContext excavation) {
+            return excavation.entity() instanceof Player player ? player : null;
+        }
+        if (context instanceof UseItemContext<?> useContext) {
+            return useContext.getPlayer();
+        }
+        if (context instanceof HitSkillContext hitContext) {
+            return hitContext.player();
+        }
+        return null;
     }
 
     // ========== 实用查询方法 ==========
 
-    
-    /*
-    获取指定类型的技能数据列表
+    /**
+     * 获取指定类型的技能数据列表（顺序 = 物品绑定技能时的顺序，槽位 0 开始）。
+     * 用于剑类双技能：槽位 0=键一、槽位 1=键二。
      */
-    public List<DataSkill> getSkillsData(SkillType type) {
-        List<DataSkill> skills = dataSkills.get(type);
-        if (skills == null) return Collections.emptyList();
-        return skills;
+    public List<DataSkill> getDataSkills(SkillType type) {
+        List<DataSkill> list = dataSkills.get(type);
+        return list == null ? Collections.emptyList() : list;
     }
 
     public List<DataSkill> getAllData() {

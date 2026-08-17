@@ -2,8 +2,9 @@ package com.hjmmd_8.createoreexpansion.client.tool;
 
 import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
-import com.hjmmd_8.createoreexpansion.foundation.util.params.FrameParams;
-import com.hjmmd_8.createoreexpansion.foundation.util.params.ParamsPool;
+import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
+import com.hjmmd_8.createoreexpansion.foundation.FrameParams;
+import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -59,7 +60,11 @@ public class SkillsStrategyRenderer {
         if (player == null) player = Minecraft.getInstance().player;
 
         if (player == null) return;
-        if (!AllKeys.SKILL_RELEASE.isPressed()) return;
+        // 任一技能键（键一/键二/键三）按下即显示预览框
+        boolean key1 = AllKeys.SKILL_RELEASE.isPressed();
+        boolean key2 = AllKeys.SKILL_RELEASE_2.isPressed();
+        boolean key3 = AllKeys.SKILL_RELEASE_3.isPressed();
+        if (!key1 && !key2 && !key3) return;
 
         ItemStack stack = player.getMainHandItem();
         SkillItemStack skillStack = SkillItemStack.of(stack);
@@ -75,8 +80,15 @@ public class SkillsStrategyRenderer {
         isParamsReturned = false;
 
         for (DataSkill data : skills) {
-            if (data.skill.getStrategy() == null) continue;
+            if (!(data.skill instanceof AbstractStrategySkill<?, ?> strategySkill)) continue;
 
+            // 多技能按槽位渲染：只显示当前按下的技能键对应槽位的技能框。
+            // 槽位索引 = 同类型技能中的位置（与释放端 getDataSkills(type).index 一致）
+            int slot = slotOf(data, skills);
+            boolean selected = (slot == 0 && key1) || (slot == 1 && key2) || (slot == 2 && key3);
+            if (!selected) continue;
+
+            // 颜色来源：从技能 NBT 的 OutlineColor 读取（AllItems 注册时写入）
             SkillRendererConfig config = SkillRendererConfig.defaultConfig(data);
 
             if (data.nbt != null && data.nbt.contains("OutlineColor")) {
@@ -96,12 +108,25 @@ public class SkillsStrategyRenderer {
                 );
             }
 
-            StrategyRenderer renderer = data.skill.getStrategy().getRenderer();
+            StrategyRenderer renderer = strategySkill.strategy().getRenderer();
             SkillRendererConfig finalConfig = config;
             renderers.computeIfAbsent(renderer.getStage(), key -> new ArrayList<>())
                     .add(() -> renderer.render(
                             finalConfig, this.world, this.camera, this.poseStack, this.buffer, lastParams));
         }
+    }
+
+    /**
+     * 计算技能在同类型技能列表中的槽位索引（0 起，与释放端 getDataSkills(type) 顺序一致）。
+     * 跨类型技能各自从 0 计数，保证键一/键二/键三与槽位对应。
+     */
+    private static int slotOf(DataSkill data, List<DataSkill> skills) {
+        int slot = 0;
+        for (DataSkill other : skills) {
+            if (other == data) return slot;
+            if (other.skill.getType() == data.skill.getType()) slot++;
+        }
+        return 0;
     }
 
     public void render(RenderLevelStageEvent.Stage stage) {

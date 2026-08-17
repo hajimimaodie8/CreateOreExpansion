@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:lightning_block",
+  "ingredients": [
+    {
+      "item": "minecraft:stone"
+    }
+  ],
+  "results": [
+    {
+      "item": "minecraft:diamond_ore",
+      "count": 1
+    }
+  ]
+}

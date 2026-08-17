@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:lightning",
+  "ingredients": [
+    {
+      "item": "minecraft:iron_ingot"
+    }
+  ],
+  "results": [
+    {
+      "item": "minecraft:gold_ingot",
+      "count": 1
+    }
+  ]
+}
