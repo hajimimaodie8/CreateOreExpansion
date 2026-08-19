@@ -9,6 +9,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
@@ -52,7 +53,10 @@ public class SkillsTooltipHandler {
         return index;
     }
 
-    /** 技能行：`  [按键] 技能名 罗马数字 - 类型`（方括号保留，] 后加一个空格） */
+    /**
+     * 技能行：`  [按键] 技能名 罗马数字 - 类型`（方括号保留，] 后加一个空格）。
+     * 整行颜色按技能等级区分：Lv1 白 / Lv2 绿 / Lv3 蓝 / Lv4 紫 / Lv5 金。
+     */
     private static Component skillLine(Component key, DataSkill data) {
         return Component.literal("  [")
                 .append(key)
@@ -60,7 +64,21 @@ public class SkillsTooltipHandler {
                 .append(Component.translatable(data.skill.getTranslateKey()))
                 .append(" " + toRoman(levelOf(data)))
                 .append(" - ")
-                .append(Component.translatable(data.skill.getType().translatable.getTranslateKey()));
+                .append(Component.translatable(data.skill.getType().translatable.getTranslateKey()))
+                .withStyle(style -> style.withColor(TextColor.fromRgb(levelColor(levelOf(data)))));
+    }
+
+    /**
+     * 技能等级对应的整行颜色（ARGB）：Lv1 白 / Lv2 绿 / Lv3 蓝 / Lv4 紫 / Lv5 橙（超出用橙色）。
+     */
+    private static int levelColor(int level) {
+        return switch (level) {
+            case 1 -> 0xFFE8E8E8; // Lv1 白色
+            case 2 -> 0xFF49B85C; // Lv2 绿色
+            case 3 -> 0xFF3D88D8; // Lv3 蓝色
+            case 4 -> 0xFF994FC2; // Lv4 紫色
+            default -> 0xFFE68A27; // Lv5 橙色（及超出）
+        };
     }
 
     /** Alt 键帽组件：显示「Alt」（去掉左/右修饰），按住 Alt 时白色高亮，否则灰色（跟随外层样式） */

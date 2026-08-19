@@ -3,6 +3,12 @@ package com.hjmmd_8.createoreexpansion.common;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillOutlineColors;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.NetheriteStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.SapphireStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.StellarstoneStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.ThunderiteStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
@@ -33,9 +39,9 @@ public final class AllItems {
     // ===== 机械动力方式注册 =====
 
     // 这个变量名可以随便写，好理解就行，一般是item id的大写
-    // 这里调用了MoreCreateOre类的static field(字段) REGSITRATE。
+    // 这里调用了MoreCreateOre类的static field(字段？ REGSITRATE？
     public static final ItemEntry<Item> JADE_INGOT = CreateOreExpansion.REGISTRATE
-            // 调用方法
+            // 调用方式？
             .item("jade_ingot", Item::new)
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
@@ -112,7 +118,7 @@ public final class AllItems {
             .properties(p -> p.attributes(
                     SwordItem.createAttributes(AllTiers.JADE, 4, -2.4F)
             ))
-            // 添加 剑 的标签，不然没有横扫效果
+            // 添加横扫的标签，不然没有横扫效果
             .tag(ItemTags.SWORDS)
             .transform(skillItem())
             .addEnergy()
@@ -120,7 +126,7 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.SKIN, 1) // 剥取 Lv1（键一，一技能多等级：addSkills(SKIN,1)）
+            .addSkills(AllSkills.SKIN, 1)
             .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
@@ -139,7 +145,7 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.SHATTER, 1) // 开岩 Lv1（1×3，一技能多等级：addSkills(SHATTER,1)）
+            .addSkills(AllSkills.SHATTER, 1)
             .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
@@ -158,7 +164,7 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.FELL, 1) // 伐树 Lv1（翡翠斧，只砍树干，一技能多等级：addSkills(FELL,1)）
+            .addSkills(AllSkills.FELL, 1)
             .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
@@ -177,7 +183,7 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.CHANNEL, 1) // 引渠 Lv1（向前 4 格，一技能多等级：addSkills(CHANNEL,1)）
+            .addSkills(AllSkills.CHANNEL, 1)
             .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
             .register();
@@ -195,9 +201,23 @@ public final class AllItems {
             .maxEnergy(600)
             .color(ToolEnergyColorConfig.JADE)
             .build()
-            .addSkills(AllSkills.HOE, 1) // 耕作 Lv1（3×3，一技能多等级：addSkills(HOE,1)）
+            .addSkills(AllSkills.HOE, 1)
             .skillColor(SkillOutlineColors.JADE_GREEN)
             .build()
+            .register();
+
+    // ========== 饰品：凝能佩（Curios 项链/手饰槽位，槽位数据手写到data/curios/??==========
+    public static final ItemEntry<JadeStressMedallionItem> JADE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+            .item("jade_stress_medallion", JadeStressMedallionItem::new)
+            .properties(p -> p
+                    .component(AllDataComponents.ENERGY, 1000)
+                    .component(AllDataComponents.MAX_ENERGY, 1000)
+                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.JADE.light.getRGB())
+                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.JADE.dark.getRGB())
+                    .component(AllDataComponents.MEDALLION_MODE, false)
+                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.JADE.light.getRGB()))
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
             .register();
 
     public static final ItemEntry<Item> TOPAZ_INGOT = CreateOreExpansion.REGISTRATE
@@ -284,8 +304,8 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.SKIN, 2) // 剑技能一：剥取 Lv2（键一，一技能多等级：addSkills(SKIN,2)）
-            .addSkills(AllSkills.PLUNDER, 1) // 剑技能二：夺取 Lv1（键二，一技能多等级：addSkills(PLUNDER,1)）
+            .addSkills(AllSkills.SKIN, 2) // 剑技能一：剥取Lv2（键一，一技能多等级：addSkills(SKIN,2)）
+            .addSkills(AllSkills.PLUNDER, 1) // 剑技能二：夺取Lv1（键二，一技能多等级：addSkills(PLUNDER,1)）
             .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
@@ -304,7 +324,7 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.SHATTER, 2) // 开岩 Lv2（3×3，一技能多等级：addSkills(SHATTER,2)）
+            .addSkills(AllSkills.SHATTER, 2)
             .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
@@ -323,7 +343,7 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.CHANNEL, 2) // 引渠 Lv2（向前 6 格，一技能多等级：addSkills(CHANNEL,2)）
+            .addSkills(AllSkills.CHANNEL, 2)
             .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
@@ -342,7 +362,7 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.FELL, 2) // 伐树 Lv2（黄玉斧，连叶带干，一技能多等级：addSkills(FELL,2)）
+            .addSkills(AllSkills.FELL, 2) // 伐树Lv2（黄玉斧，连叶带干，一技能多等级：addSkills(FELL,2)）
             .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
             .register();
@@ -360,9 +380,22 @@ public final class AllItems {
             .maxEnergy(1500)
             .color(ToolEnergyColorConfig.TOPAZ)
             .build()
-            .addSkills(AllSkills.HOE, 2) // 耕作 Lv2（3×5，一技能多等级：addSkills(HOE,2)）
+            .addSkills(AllSkills.HOE, 2) // 耕作Lv2????，一技能多等级：addSkills(HOE,2)）
             .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .build()
+            .register();
+
+    public static final ItemEntry<TopazStressMedallionItem> TOPAZ_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+            .item("topaz_stress_medallion", TopazStressMedallionItem::new)
+            .properties(p -> p
+                    .component(AllDataComponents.ENERGY, 2500)
+                    .component(AllDataComponents.MAX_ENERGY, 2500)
+                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.TOPAZ.light.getRGB())
+                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.TOPAZ.dark.getRGB())
+                    .component(AllDataComponents.MEDALLION_MODE, false)
+                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.TOPAZ.light.getRGB()))
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
             .register();
 
     public static final ItemEntry<Item> SAPPHIRE_INGOT = CreateOreExpansion.REGISTRATE
@@ -449,8 +482,8 @@ public final class AllItems {
             .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.SKIN, 3) // 剑技能一：剥取 Lv3（键一，一技能多等级：addSkills(SKIN,3)）
-            .addSkills(AllSkills.PLUNDER, 2) // 剑技能二：夺取 Lv2（键二，一技能多等级：addSkills(PLUNDER,2)）
+            .addSkills(AllSkills.SKIN, 3) // 剑技能一：剥取Lv3（键一，一技能多等级：addSkills(SKIN,3)）
+            .addSkills(AllSkills.PLUNDER, 2) // 剑技能二：夺取Lv2（键二，一技能多等级：addSkills(PLUNDER,2)）
             .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
@@ -469,7 +502,7 @@ public final class AllItems {
             .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.SHATTER, 3) // 开岩 Lv3（5×3，一技能多等级：addSkills(SHATTER,3)）
+            .addSkills(AllSkills.SHATTER, 3) // 开岩Lv3????，一技能多等级：addSkills(SHATTER,3)）
             .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
@@ -488,8 +521,8 @@ public final class AllItems {
             .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.CHANNEL, 3) // 引渠 Lv3（一技能多等级：addSkills(CHANNEL,3) 自动取 CHANNEL_3 = 7 格）
-            .addSkills(AllSkills.GRADE, 1) // 平场 Lv1（5×5 平面，数值见 SkillAoeConfigs.GRADE_1）
+            .addSkills(AllSkills.CHANNEL, 3) // 引渠Lv3（一技能多等级：addSkills(CHANNEL,3) 自动（CHANNEL_3 = 7 格）
+            .addSkills(AllSkills.GRADE, 1) // 平场Lv1???? 平面，数值（SkillAoeConfigs.GRADE_1）
             .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
@@ -508,7 +541,7 @@ public final class AllItems {
             .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.FELL, 3) // 伐树 Lv3（蓝宝石斧，范围扩大，一技能多等级：addSkills(FELL,3)）
+            .addSkills(AllSkills.FELL, 3) // 伐树Lv3（蓝宝石斧，范围扩大，一技能多等级：addSkills(FELL,3)）
             .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
@@ -527,13 +560,40 @@ public final class AllItems {
             .maxEnergy(3000)
             .color(ToolEnergyColorConfig.SAPPHIRE)
             .build()
-            .addSkills(AllSkills.HOE, 3) // 耕作 Lv3（5×5，一技能多等级：addSkills(HOE,3)）
+            .addSkills(AllSkills.HOE, 3) // 耕作Lv3????，一技能多等级：addSkills(HOE,3)）
             .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
 
+    public static final ItemEntry<SapphireStressMedallionItem> SAPPHIRE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+            .item("sapphire_stress_medallion", SapphireStressMedallionItem::new)
+            .properties(p -> p
+                    .component(AllDataComponents.ENERGY, 5000)
+                    .component(AllDataComponents.MAX_ENERGY, 5000)
+                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.SAPPHIRE.light.getRGB())
+                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.SAPPHIRE.dark.getRGB())
+                    .component(AllDataComponents.MEDALLION_MODE, false)
+                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.SAPPHIRE.light.getRGB()))
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<NetheriteStressMedallionItem> NETHERITE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+            .item("netherite_stress_medallion", NetheriteStressMedallionItem::new)
+            .properties(p -> p
+                    .component(AllDataComponents.ENERGY, 5000)
+                    .component(AllDataComponents.MAX_ENERGY, 5000)
+                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.NETHERITE.light.getRGB())
+                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.NETHERITE.dark.getRGB())
+                    .component(AllDataComponents.MEDALLION_MODE, false)
+                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.NETHERITE.light.getRGB()))
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
     public static final ItemEntry<Item> STELLARSTONE_INGOT = CreateOreExpansion.REGISTRATE
             .item("stellarstone_ingot", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
             .tag(AllMetalTags.STELLARSTONE.ingots)
@@ -543,6 +603,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> RAW_STELLARSTONE = CreateOreExpansion.REGISTRATE
             .item("raw_stellarstone", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(Tags.Items.RAW_MATERIALS)
             .tag(AllMetalTags.STELLARSTONE.rawOres)
             .model((ctx, provider) ->
@@ -551,6 +612,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_NUGGET = CreateOreExpansion.REGISTRATE
             .item("stellarstone_nugget", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(Tags.Items.NUGGETS)
             .tag(AllMetalTags.STELLARSTONE.nuggets)
             .model((ctx, provider) ->
@@ -559,6 +621,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> CRUSHED_STELLARSTONE_ORE = CreateOreExpansion.REGISTRATE
             .item("crushed_stellarstone_ore", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(CRUSHED_RAW_MATERIALS.tag)
             .tag(AllMetalTags.STELLARSTONE.crushedRawOres)
             .model((ctx, provider) ->
@@ -573,12 +636,14 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_BIG_SHARD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_big_shard", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
     public static final ItemEntry<Item> STELLARSTONE_SHEET = CreateOreExpansion.REGISTRATE
             .item("stellarstone_sheet", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllMetalTags.STELLARSTONE.sheets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
@@ -586,6 +651,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_ROD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_rod", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllMetalTags.STELLARSTONE.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
             .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
@@ -595,6 +661,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_WIRE = CreateOreExpansion.REGISTRATE
             .item("stellarstone_wire", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllMetalTags.STELLARSTONE.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
             .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
@@ -604,99 +671,282 @@ public final class AllItems {
 
     public static final ItemEntry<SwordItem> STELLARSTONE_SWORD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_sword", p -> new SwordItem(AllTiers.STELLARSTONE, p))
-            .model((ctx, provider) ->
-                    provider.handheld(ctx::get))
-            .properties(p -> p.attributes(
-                    SwordItem.createAttributes(AllTiers.STELLARSTONE, 5, -2.4F)
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    SwordItem.createAttributes(AllTiers.STELLARSTONE, 4, -2.4F)
             ))
-            .tag(ItemTags.SWORDS)
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get)).tag(ItemTags.SWORDS)
             .transform(skillItem())
             .addEnergy()
             .defaultEnergy(4500)
             .maxEnergy(4500)
             .color(ToolEnergyColorConfig.STELLARSTONE)
             .build()
-            .addSkills(AllSkills.SKIN, 4) // 剑技能一：剥取 Lv4（键一，一技能多等级：addSkills(SKIN,4)）
-            .addSkills(AllSkills.PLUNDER, 3) // 剑技能二：夺取 Lv3（键二，一技能多等级：addSkills(PLUNDER,3)）
+            .addSkills(AllSkills.SKIN, 4) // 剑技能一：剥取Lv4（键一，一技能多等级：addSkills(SKIN,4)）
+            .addSkills(AllSkills.PLUNDER, 3) // 剑技能二：夺取Lv3（键二，一技能多等级：addSkills(PLUNDER,3)）
             .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
             .build()
             .register();
 
     public static final ItemEntry<PickaxeItem> STELLARSTONE_PICKAXE = CreateOreExpansion.REGISTRATE
-            .item("stellarstone_pickaxe", p -> new PickaxeItem (AllTiers.STELLARSTONE, p))
-            .model((ctx, provider) ->
-                    provider.handheld(ctx::get))
-            .properties(p -> p.attributes(
-                    PickaxeItem.createAttributes(AllTiers.STELLARSTONE, 2, -2.5F)
+            .item("stellarstone_pickaxe", p -> new PickaxeItem(AllTiers.STELLARSTONE, p))
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    PickaxeItem.createAttributes(AllTiers.STELLARSTONE, 1.5F, -2.3F)
             ))
-            .tag(ItemTags.PICKAXES)
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get)).tag(ItemTags.PICKAXES)
             .transform(skillItem())
             .addEnergy()
             .defaultEnergy(4500)
             .maxEnergy(4500)
             .color(ToolEnergyColorConfig.STELLARSTONE)
             .build()
-            .addSkills(AllSkills.SHATTER, 4) // 开岩 Lv4（5×5，一技能多等级：addSkills(SHATTER,4)）
+            .addSkills(AllSkills.SHATTER, 4) // 开岩Lv4，一技能多等级：addSkills(SHATTER,4)）
             .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
             .build()
             .register();
 
     public static final ItemEntry<ShovelItem> STELLARSTONE_SHOVEL= CreateOreExpansion.REGISTRATE
-            .item("stellarstone_shovel", p -> new ShovelItem (AllTiers.STELLARSTONE, p))
-            .model((ctx, provider) ->
-                    provider.handheld(ctx::get))
-            .properties(p -> p.attributes(
+            .item("stellarstone_shovel", p -> new ShovelItem(AllTiers.STELLARSTONE, p))
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
                     ShovelItem.createAttributes(AllTiers.STELLARSTONE, 1.5F, -2.8F)
             ))
-            .tag(ItemTags.SHOVELS)
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get)).tag(ItemTags.SHOVELS)
             .transform(skillItem())
             .addEnergy()
             .defaultEnergy(4500)
             .maxEnergy(4500)
             .color(ToolEnergyColorConfig.STELLARSTONE)
             .build()
-            .addSkills(AllSkills.CHANNEL, 4) // 引渠 Lv4（一技能多等级：addSkills(CHANNEL,4) 自动取 CHANNEL_4 = 8 格）
-            .addSkills(AllSkills.GRADE, 2) // 平场 Lv2（5×7 平面，数值见 SkillAoeConfigs.GRADE_2）
+            .addSkills(AllSkills.CHANNEL, 4) // 引渠Lv4（一技能多等级：addSkills(CHANNEL,4) 自动（CHANNEL_4 = 8 格）
+            .addSkills(AllSkills.GRADE, 2) // 平场Lv2???? 平面，数值（SkillAoeConfigs.GRADE_2）
             .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
             .build()
             .register();
 
     public static final ItemEntry<AxeItem> STELLARSTONE_AXE = CreateOreExpansion.REGISTRATE
-            .item("stellarstone_axe", p -> new AxeItem (AllTiers.STELLARSTONE, p))
-            .model((ctx, provider) ->
-                    provider.handheld(ctx::get))
-            .properties(p -> p.attributes(
-                    AxeItem.createAttributes(AllTiers.STELLARSTONE, 6.5F, -3.4F)
+            .item("stellarstone_axe", p -> new AxeItem(AllTiers.STELLARSTONE, p))
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    AxeItem.createAttributes(AllTiers.STELLARSTONE, 6.5F, -3.2F)
             ))
-            .tag(ItemTags.AXES)
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get)).tag(ItemTags.AXES)
             .transform(skillItem())
             .addEnergy()
             .defaultEnergy(4500)
             .maxEnergy(4500)
             .color(ToolEnergyColorConfig.STELLARSTONE)
             .build()
-            .addSkills(AllSkills.FELL, 4) // 伐树 Lv4（蓝宝石斧，范围扩大，一技能多等级：addSkills(FELL,4   )）
+            .addSkills(AllSkills.FELL, 4) // 伐树Lv4（蓝宝石斧，范围扩大，一技能多等级：addSkills(FELL,4   )??
             .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
             .build()
             .register();
 
     public static final ItemEntry<HoeItem> STELLARSTONE_HOE = CreateOreExpansion.REGISTRATE
             .item("stellarstone_hoe", p -> new HoeItem(AllTiers.STELLARSTONE, p))
-            .model((ctx, provider) ->
-                    provider.handheld(ctx::get))
-            .properties(p -> p.attributes(
-                    HoeItem.createAttributes(AllTiers.STELLARSTONE, -1, 0.0F)
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    HoeItem.createAttributes(AllTiers.STELLARSTONE, -1.5F, 0.0F)
             ))
-            .tag(ItemTags.HOES)
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get)).tag(ItemTags.HOES)
             .transform(skillItem())
             .addEnergy()
             .defaultEnergy(4500)
             .maxEnergy(4500)
             .color(ToolEnergyColorConfig.STELLARSTONE)
             .build()
-            .addSkills(AllSkills.HOE, 4) // 耕作 Lv4（5×7，一技能多等级：addSkills(HOE,4)）
+            .addSkills(AllSkills.HOE, 4) // 耕作Lv4????，一技能多等级：addSkills(HOE,4)）
             .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
             .build()
+            .register();
+
+    public static final ItemEntry<StellarstoneStressMedallionItem> STELLARSTONE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+            .item("stellarstone_stress_medallion", StellarstoneStressMedallionItem::new)
+            .properties(p -> p
+                    .component(AllDataComponents.ENERGY, 10000)
+                    .component(AllDataComponents.MAX_ENERGY, 10000)
+                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.STELLARSTONE.light.getRGB())
+                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.STELLARSTONE.dark.getRGB())
+                    .component(AllDataComponents.MEDALLION_MODE, false)
+                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.STELLARSTONE.light.getRGB()))
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> THUNDERITE_INGOT = CreateOreExpansion.REGISTRATE
+            .item("thunderite_ingot", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .tag(CREATE_INGOTS.tag)
+            .tag(Tags.Items.INGOTS)
+            .tag(AllMetalTags.THUNDERITE.ingots)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> THUNDERITE_SCRAP = CreateOreExpansion.REGISTRATE
+            .item("thunderite_scrap", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> THUNDERITE_SHEET = CreateOreExpansion.REGISTRATE
+            .item("thunderite_sheet", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .tag(AllMetalTags.THUNDERITE.sheets)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> THUNDERITE_ROD = CreateOreExpansion.REGISTRATE
+            .item("thunderite_rod", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .tag(AllMetalTags.THUNDERITE.rods)
+            .tag(AllTags.AllItemTags.RODS.tag)
+            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> THUNDERITE_WIRE = CreateOreExpansion.REGISTRATE
+            .item("thunderite_wire", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .tag(AllMetalTags.THUNDERITE.wires)
+            .tag(AllTags.AllItemTags.WIRES.tag)
+            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<SwordItem> THUNDERITE_SWORD = CreateOreExpansion.REGISTRATE
+            .item("thunderite_sword", p -> new SwordItem(AllTiers.THUNDERITE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    SwordItem.createAttributes(AllTiers.THUNDERITE, 4, -2.4F)
+            ))
+            .tag(ItemTags.SWORDS)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
+            .color(ToolEnergyColorConfig.THUNDERITE)
+            .build()
+            .addSkills(AllSkills.SKIN, 5) // 剑技能一：剥取Lv5（键一，一技能多等级：addSkills(SKIN,5)）
+            .addSkills(AllSkills.PLUNDER, 3) // 剑技能二：夺取Lv3（键二，一技能多等级：addSkills(PLUNDER,3)）
+            .skillColor(SkillOutlineColors.THUNDER_PURPLE)
+            .build()
+            .register();
+
+    public static final ItemEntry<PickaxeItem> THUNDERITE_PICKAXE = CreateOreExpansion.REGISTRATE
+            .item("thunderite_pickaxe", p -> new PickaxeItem(AllTiers.THUNDERITE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    PickaxeItem.createAttributes(AllTiers.THUNDERITE, 1.5F, -2.3F)
+            ))
+            .tag(ItemTags.PICKAXES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
+            .color(ToolEnergyColorConfig.THUNDERITE)
+            .build()
+            .addSkills(AllSkills.SHATTER, 5) // 开岩Lv5（一技能多等级：addSkills(SHATTER,5)）
+            .skillColor(SkillOutlineColors.THUNDER_PURPLE)
+            .build()
+            .register();
+
+    public static final ItemEntry<ShovelItem> THUNDERITE_SHOVEL = CreateOreExpansion.REGISTRATE
+            .item("thunderite_shovel", p -> new ShovelItem(AllTiers.THUNDERITE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    ShovelItem.createAttributes(AllTiers.THUNDERITE, 1.5F, -2.8F)
+            ))
+            .tag(ItemTags.SHOVELS)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
+            .color(ToolEnergyColorConfig.THUNDERITE)
+            .build()
+            .addSkills(AllSkills.CHANNEL, 5) // 引渠Lv5（一技能多等级：addSkills(CHANNEL,5)）
+            .addSkills(AllSkills.GRADE, 3) // 平场Lv3（一技能多等级：addSkills(GRADE,3)）
+            .skillColor(SkillOutlineColors.THUNDER_PURPLE)
+            .build()
+            .register();
+
+    public static final ItemEntry<AxeItem> THUNDERITE_AXE = CreateOreExpansion.REGISTRATE
+            .item("thunderite_axe", p -> new AxeItem(AllTiers.THUNDERITE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    AxeItem.createAttributes(AllTiers.THUNDERITE, 6.5F, -3.2F)
+            ))
+            .tag(ItemTags.AXES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
+            .color(ToolEnergyColorConfig.THUNDERITE)
+            .build()
+            .addSkills(AllSkills.FELL, 5) // 伐树Lv5（一技能多等级：addSkills(FELL,5)）
+            .skillColor(SkillOutlineColors.THUNDER_PURPLE)
+            .build()
+            .register();
+
+    public static final ItemEntry<HoeItem> THUNDERITE_HOE = CreateOreExpansion.REGISTRATE
+            .item("thunderite_hoe", p -> new HoeItem(AllTiers.THUNDERITE, p))
+            .model((ctx, provider) ->
+                    provider.handheld(ctx::get))
+            .properties(p -> p
+                    .rarity(Rarity.UNCOMMON)
+                    .attributes(
+                    HoeItem.createAttributes(AllTiers.THUNDERITE, -1.5F, 0.0F)
+            ))
+            .tag(ItemTags.HOES)
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(5000)
+            .maxEnergy(5000)
+            .color(ToolEnergyColorConfig.THUNDERITE)
+            .build()
+            .addSkills(AllSkills.HOE, 5) // 耕作Lv5（一技能多等级：addSkills(HOE,5)）
+            .skillColor(SkillOutlineColors.THUNDER_PURPLE)
+            .build()
+            .register();
+
+    public static final ItemEntry<ThunderiteStressMedallionItem> THUNDERITE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+            .item("thunderite_stress_medallion", ThunderiteStressMedallionItem::new)
+            .properties(p -> p
+                    .component(AllDataComponents.ENERGY, 10000)
+                    .component(AllDataComponents.MAX_ENERGY, 10000)
+                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.THUNDERITE.light.getRGB())
+                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.THUNDERITE.dark.getRGB())
+                    .component(AllDataComponents.MEDALLION_MODE, false)
+                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.THUNDERITE.light.getRGB()))
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
             .register();
 
     public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CreateOreExpansion.REGISTRATE
@@ -713,9 +963,9 @@ public final class AllItems {
         public List<DataSkill> skillData = new ArrayList<>();
 
         private final ItemBuilder<T, P> builder;
-        /** 武器技能发光颜色（延迟到 register 时注册到 SkillOutlineColors） */
+        /** 武器技能发光颜色（延迟到register 时注册到SkillOutlineColors）*/
         private SkillOutlineColors.SkillColor outlineColor;
-        /** 武器技能冷却时长（tick，延迟到 register 时注册到 SkillCooldowns；-1 表示未设置） */
+        /** 武器技能冷却时长（tick，延迟到 register 时注册到 SkillCooldowns；1 表示未设置）*/
         private int cooldownTicks = -1;
 
         public SkillItemBuilder(ItemBuilder<T, P> builder) {
@@ -732,24 +982,24 @@ public final class AllItems {
         }
 
         /**
-         * 绑定技能并指定等级 —— 等级同时决定显示等级与实际技能数值等级（一技能多等级）。
+         * 绑定技能并指定等级后，等级同时决定显示等级与实际技能数值等级（一技能多等级）。
          *
-         * 内部复制技能数据后写入等级，并按等级从注册表取出对应配置（configForLevel），
+         * 内部复制技能数据后写入等级，并按等级从注册表取出对应配置（configForLevel）。
          * 不同物品可绑同一技能但使用不同等级的实际效果。
          *
          * @param skill 技能数据（来自 AllSkills）
-         * @param level 技能等级（1~5）
+         * @param level 技能等级 1~5）。
          */
         public SkillItemBuilder<T, P> addSkills(DataSkill skill, int level) {
             DataSkill copy = skill.copy();
             copy.getOrCreateNbt().putInt("Level", level);
 
-            // 一技能多等级：按等级取实际配置并写入副本（未设置映射时退回注册默认配置）
+            // 一技能多等级：按等级取实际配置并写入副本（未设置映射时退回注册默认配置）。
             if (skill instanceof AllSkills.RegisteredDataSkill registered) {
                 SkillConfig levelConfig = registered.configForLevel(level);
                 if (levelConfig != null) {
                     copy.config = levelConfig;
-                    levelConfig.accept(copy.getOrCreateNbt()); // 配置写入 NBT，保证存档/网络恢复一致
+                    levelConfig.accept(copy.getOrCreateNbt()); // 配置写入 NBT，保证存??网络恢复一??
                 }
             }
 
@@ -758,7 +1008,7 @@ public final class AllItems {
         }
 
         /**
-         * 设置武器技能发光颜色，并注册到 {@link SkillOutlineColors}。
+         * 设置武器技能发光颜色，并注册到 {@link SkillOutlineColors}??
          *
          * 注册表为渲染端的统一颜色来源（无需依赖 NBT）。
          */
@@ -777,11 +1027,11 @@ public final class AllItems {
         }
 
         /**
-         * 设置武器技能冷却时长，并注册到 {@link SkillCooldowns}。
+         * 设置武器技能冷却时长，并注册到 {@link SkillCooldowns}??
          *
-         * 注册表为触发端的统一冷却来源。未设置时使用默认 1 秒。
+         * 注册表为触发端的统一冷却来源。未设置时使用默认值 1 秒）。
          *
-         * @param cooldownTicks 冷却时长（tick，20 tick = 1 秒）
+         * @param cooldownTicks 冷却时长（tick；20 tick = 1 秒）。
          */
         public SkillItemBuilder<T, P> skillCooldown(int cooldownTicks) {
             this.cooldownTicks = cooldownTicks;
@@ -794,7 +1044,7 @@ public final class AllItems {
 
         @Override
         public @NotNull RegistryEntry<Item, T> register() {
-            // 颜色已由 skillColor() 写入技能 NBT（渲染端直接读取），此处只需注册冷却
+            // 颜色已由skillColor() 写入技???NBT（渲染端直接读取），此处只需注册冷却
             RegistryEntry<Item, T> entry = builder.register();
             if (cooldownTicks > 0) {
                 SkillCooldowns.register(entry.get(), cooldownTicks);

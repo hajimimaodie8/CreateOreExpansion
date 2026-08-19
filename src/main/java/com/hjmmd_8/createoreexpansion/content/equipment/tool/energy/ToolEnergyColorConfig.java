@@ -7,7 +7,9 @@ public enum ToolEnergyColorConfig {
     JADE(0x55FF55, 0x2A7F2A),
     TOPAZ(0xFFFF55, 0x8A6D00),
     SAPPHIRE(0x55AAFF, 0x1F4F8A),
-    STELLARSTONE(0xDF98A7, 0x8C4D68);
+    STELLARSTONE(0xDF98A7, 0x8C4D68),
+    NETHERITE(0x6E3326, 0x3A1510),
+    THUNDERITE(0xB514FF,0x690C94);
 
     public final Color light;
     public final Color dark;

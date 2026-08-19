@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.handler;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
@@ -19,11 +20,16 @@ import java.util.List;
 
 @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
 public class HurtLivingEntityHandler {
+	/** 防重入：技能造成的后续伤害（如夺取的吸血）不得再次触发技能，否则同一 tick 内会递归释放直至能量耗尽 */
+	private static boolean releasing = false;
+
 	@SubscribeEvent
 	public static void onLivingIncomingDamage(LivingIncomingDamageEvent event) {
 		if (event.getEntity().level().isClientSide)
 			return;
 		if (!(event.getSource().getDirectEntity() instanceof Player player))
+			return;
+		if (releasing)
 			return;
 
 		boolean key1 = AllKeys.SKILL_RELEASE.isPressed();
@@ -31,19 +37,24 @@ public class HurtLivingEntityHandler {
 		boolean key3 = AllKeys.SKILL_RELEASE_3.isPressed();
 		if (!key1 && !key2 && !key3) return;
 
-		ItemStack sword = player.getMainHandItem();
-		SkillItemStack skillStack = SkillItemStack.of(sword);
-		if (!skillStack.hasSkill(SkillType.HIT_SKILL))
-			return;
+		releasing = true;
+		try {
+			ItemStack sword = player.getMainHandItem();
+			SkillItemStack skillStack = SkillItemStack.of(sword);
+			if (!skillStack.hasSkill(SkillType.HIT_SKILL))
+				return;
 
-		SkillsComponent holder = skillStack.getSkillsHolder();
-		List<DataSkill> hitSkills = holder.getDataSkills(SkillType.HIT_SKILL);
-		if (hitSkills.isEmpty()) return;
+			SkillsComponent holder = skillStack.getSkillsHolder();
+			List<DataSkill> hitSkills = holder.getDataSkills(SkillType.HIT_SKILL);
+			if (hitSkills.isEmpty()) return;
 
-		// 键一 → 槽位 0；键二 → 槽位 1；键三 → 槽位 2（可同时按，各自释放互不影响）
-		if (key1) triggerSlot(skillStack, holder, hitSkills, 0, event, sword, player);
-		if (key2) triggerSlot(skillStack, holder, hitSkills, 1, event, sword, player);
-		if (key3) triggerSlot(skillStack, holder, hitSkills, 2, event, sword, player);
+			// 键一 → 槽位 0；键二 → 槽位 1；键三 → 槽位 2（可同时按，各自释放互不影响）
+			if (key1) triggerSlot(skillStack, holder, hitSkills, 0, event, sword, player);
+			if (key2) triggerSlot(skillStack, holder, hitSkills, 1, event, sword, player);
+			if (key3) triggerSlot(skillStack, holder, hitSkills, 2, event, sword, player);
+		} finally {
+			releasing = false;
+		}
 	}
 
 	private static void triggerSlot(SkillItemStack skillStack, SkillsComponent holder,
@@ -60,10 +71,9 @@ public class HurtLivingEntityHandler {
 			return;
 
 		LivingHurtContext context = new LivingHurtContext(event);
-		// 释放成功（能量预检查通过）后显示剩余能量；能量不足的提示由组件/技能内部处理
+		// 释放成功（能量预检查通过）后进入冷却；剩余能量显示统一由 ToolEnergy.tryConsume 处理
 		if (holder.releaseSkillAt(skillStack, SkillType.HIT_SKILL, slot, context)) {
-			ToolEnergy.sendRemainingEnergy(player, sword);
-			player.getCooldowns().addCooldown(sword.getItem(), cooldownTicks);
+			player.getCooldowns().addCooldown(sword.getItem(), ToolEnchantments.reduceCooldown(sword, cooldownTicks));
 		}
 	}
 }

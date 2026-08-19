@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "createoreexpansion:jade_sword",
+    "createoreexpansion:jade_axe",
+    "createoreexpansion:topaz_sword",
+    "createoreexpansion:topaz_axe",
+    "createoreexpansion:sapphire_sword",
+    "createoreexpansion:sapphire_axe",
+    "createoreexpansion:stellarstone_sword",
+    "createoreexpansion:stellarstone_axe",
+    "createoreexpansion:thunderite_sword",
+    "createoreexpansion:thunderite_axe"
+  ]
+}

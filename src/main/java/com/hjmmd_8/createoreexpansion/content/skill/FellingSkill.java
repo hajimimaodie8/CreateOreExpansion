@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.skill;
 import com.hjmmd_8.createoreexpansion.common.AllModifiableAttributes;
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedModifiableAttribute;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;

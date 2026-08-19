@@ -24,9 +24,9 @@ public final class AllBlocks {
             .initialProperties(() -> Blocks.DIAMOND_ORE)
             // 让方块的最佳挖掘工具是镐子
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
-            // 挖掘等级        需要石质工具
-            // 二者加起来就是方块的最佳挖掘工具是镐子，且需要石质工具
-            // 就是需要石质以上的镐子挖掘
+            // 挖掘等级        需要铁质工具
+            // 二者加起来就是方块的最佳挖掘工具是镐子，且需要铁质工具
+            // 就是需要铁质以上的镐子挖掘
             .tag(BlockTags.NEEDS_IRON_TOOL)
             .tag(AllMetalTags.JADE.blockOres)
             // 注册掉落物，这里比较复杂（因为Minecraft本身的对于矿物的掉落物就是很复杂的，比如处理时运和精准采集等，概率掉落等）
@@ -305,6 +305,21 @@ public final class AllBlocks {
             .tag(AllMetalTags.STELLARSTONE.storageRawBlocks)
             .item()
             .tag(AllMetalTags.STELLARSTONE.itemStorageRawBlocks)
+            .build()
+            .register();
+
+    public static final BlockEntry<Block> THUNDERITE_BLOCK = CreateOreExpansion.REGISTRATE
+            .block("thunderite_block", Block::new)
+            .initialProperties(() -> Blocks.DIAMOND_BLOCK)
+            .properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE)
+                    .requiresCorrectToolForDrops())
+            .transform(pickaxeOnly())
+            .tag(BlockTags.NEEDS_IRON_TOOL)
+            .tag(Tags.Blocks.STORAGE_BLOCKS)
+            .tag(BlockTags.BEACON_BASE_BLOCKS)
+            .tag(AllMetalTags.THUNDERITE.storageBlocks)
+            .item()
+            .tag(AllMetalTags.THUNDERITE.itemStorageBlocks)
             .build()
             .register();
 

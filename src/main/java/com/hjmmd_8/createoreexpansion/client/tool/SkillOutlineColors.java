@@ -64,6 +64,8 @@ public final class SkillOutlineColors {
     public static final SkillColor SAPPHIRE_BLUE = new SkillColor(0.0F, 0.5F, 1.0F);
     /** 星辉石粉 */
     public static final SkillColor STELLARSTONE_PINK = new SkillColor(0.875F, 0.596F, 0.655F);
+    /** 雷鸣紫 */
+    public static final SkillColor THUNDER_PURPLE = new SkillColor(0.58F, 0.08F, 0.83F);
     /** 默认白色 */
     public static final SkillColor DEFAULT_WHITE = new SkillColor(1.0F, 1.0F, 1.0F);
 

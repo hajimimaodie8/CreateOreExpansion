@@ -1,0 +1,17 @@
+{
+  "type": "createoreexpansion:lightning",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:thunderite_stress_medallion"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:thunderite_stress_medallion",
+      "count": 1,
+      "components": {
+        "createoreexpansion:energy": 10000
+      }
+    }
+  ]
+}

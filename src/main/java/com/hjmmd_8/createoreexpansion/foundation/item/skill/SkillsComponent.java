@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
@@ -127,7 +128,7 @@ public class SkillsComponent implements OwnedBySkills {
         //    无论创造模式与否都消耗能量（与 ToolEnergy.tryConsume 一致），故不做创造豁免，
         //    否则低能量提示会被调用方的剩余能量提示覆盖。
         int minCost = toRelease.stream()
-                .mapToInt(data -> data.skill.getCost())
+                .mapToInt(data -> SkillEnergyCost.compute(stack, data.skill))
                 .min()
                 .orElse(0);
         if (!ToolEnergy.canAfford(stack, minCost)) {
@@ -165,7 +166,7 @@ public class SkillsComponent implements OwnedBySkills {
         Player player = resolvePlayer(context);
 
         // 能量预检查：不足则整体放弃（提示由低能量逻辑统一处理）
-        if (!ToolEnergy.canAfford(stack, data.skill.getCost())) {
+        if (!ToolEnergy.canAfford(stack, SkillEnergyCost.compute(stack, data.skill))) {
             if (player != null) ToolEnergy.sendLowEnergy(player, stack);
             return false;
         }

@@ -1,0 +1,17 @@
+{
+  "type": "createoreexpansion:lightning",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:thunderite_sword"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:thunderite_sword",
+      "count": 1,
+      "components": {
+        "createoreexpansion:energy": 5000
+      }
+    }
+  ]
+}

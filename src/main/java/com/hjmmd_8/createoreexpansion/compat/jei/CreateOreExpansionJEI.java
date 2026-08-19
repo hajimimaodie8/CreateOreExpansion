@@ -10,9 +10,13 @@ import org.jetbrains.annotations.NotNull;
 
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
+import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
+import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.CreateRecipeCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.CreateRecipeCategory.Factory;
+import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningBlockCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.ProcessingViaFanCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.TransmutingCategory;
 
@@ -29,6 +33,7 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.block.Blocks;
 
 @JeiPlugin
 @ParametersAreNonnullByDefault
@@ -50,6 +55,20 @@ public class CreateOreExpansionJEI implements IModPlugin {
 					"transmutation_fluid_bucket")))
 			.emptyBackground(178, 72)
 			.build("fan_transmuting", TransmutingCategory::new);
+
+		builder(LightningRecipe.class)
+			.addTypedRecipes(AllRecipeTypes.LIGHTNING)
+			.catalyst(() -> Blocks.LIGHTNING_ROD)
+			.itemIcon(Blocks.LIGHTNING_ROD)
+			.emptyBackground(178, 72)
+			.build("lightning", LightningCategory::new);
+
+		builder(LightningBlockRecipe.class)
+			.addTypedRecipes(AllRecipeTypes.LIGHTNING_BLOCK)
+			.catalyst(() -> Blocks.LIGHTNING_ROD)
+			.itemIcon(Blocks.LIGHTNING_ROD)
+			.emptyBackground(178, 72)
+			.build("lightning_block", LightningBlockCategory::new);
 	}
 
 	private <T extends Recipe<? extends RecipeInput>> CategoryBuilder<T> builder(Class<T> recipeClass) {

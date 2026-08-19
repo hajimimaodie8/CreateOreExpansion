@@ -11,7 +11,8 @@ public enum AllMetalTags {
     TOPAZ,
     SAPPHIRE,
     JADE,
-    STELLARSTONE;
+    STELLARSTONE,
+    THUNDERITE;
 
     public final String name;
     public final TagKey<Item> rawOres;

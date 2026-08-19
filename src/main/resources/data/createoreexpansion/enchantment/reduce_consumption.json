@@ -1,0 +1,21 @@
+{
+  "description": {
+    "translate": "enchantment.createoreexpansion.reduce_consumption"
+  },
+  "supported_items": "#createoreexpansion:skill_tools",
+  "weight": 5,
+  "max_level": 5,
+  "min_cost": {
+    "base": 2,
+    "per_level_above_first": 7
+  },
+  "max_cost": {
+    "base": 10,
+    "per_level_above_first": 7
+  },
+  "anvil_cost": 2,
+  "slots": [
+    "mainhand"
+  ],
+  "effects": {}
+}

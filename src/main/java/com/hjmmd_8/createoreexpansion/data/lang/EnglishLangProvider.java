@@ -95,6 +95,19 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.RAW_STELLARSTONE_BLOCK.get(), "Raw Stellarstone Block");
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
         add(AllItems.JADE_TOPAZ_BOW.get(), "Jade Topaz Bow");
+        add(AllItems.JADE_STRESS_MEDALLION.get(), "Jade Stress Medallion");
+        add(AllItems.TOPAZ_STRESS_MEDALLION.get(), "Topaz Stress Medallion");
+        add(AllItems.SAPPHIRE_STRESS_MEDALLION.get(), "Sapphire Stress Medallion");
+        add(AllItems.NETHERITE_STRESS_MEDALLION.get(), "Netherite Stress Medallion");
+        add(AllItems.STELLARSTONE_STRESS_MEDALLION.get(), "Stellarstone Stress Medallion");
+        add(AllItems.THUNDERITE_STRESS_MEDALLION.get(), "Thunderite Stress Medallion");
+
+        // ========== Medallion Shift summary ==========
+        add("item.createoreexpansion.medallion.hold_shift", "Hold [%1$s] for Summary");
+        add("item.createoreexpansion.medallion.summary", "A medallion that _stores_ stress energy to _power_ _bound_ tools.");
+        add("item.createoreexpansion.medallion.bind", "Binding: Right-click while holding this medallion with an energy tool in the other hand to _bind_, or craft with a tool; craft a bound tool alone to _unbind_, craft with another medallion to _rebind_");
+        add("item.createoreexpansion.medallion.mode", "Mode: Right-click with this medallion (no tool in other hand) to switch between _Supply_ and _Charge_ mode");
+        add("item.createoreexpansion.medallion.supply", "Supply: While worn, skill casts _drain the medallion_ first; Charge mode _refills bound tools_ after casting");
 
         // ========== 技能名（各等级共用基础键，等级由 tooltip 罗马数字显示） ==========
         add("skill.createoreexpansion.fell", "Fell");
@@ -119,11 +132,17 @@ public class EnglishLangProvider extends LanguageProvider {
         add("item.createoreexpansion.tool.skill_tips", "Hold [%s] for Skills Summary");
         add("item.createoreexpansion.tool.energy", "Energy");
 
+        // ========== Enchantments ==========
+        add("enchantment.createoreexpansion.reduce_consumption", "Reduced Consumption");
+        add("enchantment.createoreexpansion.swift_start", "Swift Start");
+
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");
         add("item.createoreexpansion.transmutation_fluid_bucket", "Transmutation Fluid Bucket");
         add("createoreexpansion.recipe.fan_transmuting", "Transmuting");
         add("createoreexpansion.recipe.fan_transmuting.fan", "Encased Fan");
+        add("createoreexpansion.recipe.lightning", "Lightning Transformation");
+        add("createoreexpansion.recipe.lightning_block", "Lightning Transformation (Block)");
 
         // ========== 药水效果 ==========
         add("effect.createoreexpansion.transmutation_disorder", "Transmutation Disorder");

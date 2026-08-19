@@ -95,7 +95,31 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllBlocks.END_STELLARSTONE_ORE.get(), "末地星辉石矿石");
         add(AllBlocks.RAW_STELLARSTONE_BLOCK.get(), "粗星辉石块");
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "星辉石块");
+        add(AllItems.THUNDERITE_SCRAP.get(), "雷鸣合金碎片");
+        add(AllItems.THUNDERITE_INGOT.get(), "雷鸣合金锭");
+        add(AllItems.THUNDERITE_SHEET.get(), "雷鸣合金板");
+        add(AllItems.THUNDERITE_ROD.get(), "雷鸣合金棍");
+        add(AllItems.THUNDERITE_WIRE.get(), "雷鸣合金线");
+        add(AllItems.THUNDERITE_SWORD.get(), "雷鸣合金剑");
+        add(AllItems.THUNDERITE_PICKAXE.get(), "雷鸣合金镐");
+        add(AllItems.THUNDERITE_AXE.get(), "雷鸣合金斧");
+        add(AllItems.THUNDERITE_SHOVEL.get(), "雷鸣合金铲");
+        add(AllItems.THUNDERITE_HOE.get(), "雷鸣合金锄");
+        add(AllBlocks.THUNDERITE_BLOCK.get(), "雷鸣合金块");
         add(AllItems.JADE_TOPAZ_BOW.get(), "翠玉之弓");
+        add(AllItems.JADE_STRESS_MEDALLION.get(), "翡翠凝能佩");
+        add(AllItems.TOPAZ_STRESS_MEDALLION.get(), "黄玉凝能佩");
+        add(AllItems.SAPPHIRE_STRESS_MEDALLION.get(), "沧蓝凝能佩");
+        add(AllItems.NETHERITE_STRESS_MEDALLION.get(), "狱红怪佩");
+        add(AllItems.STELLARSTONE_STRESS_MEDALLION.get(), "星辉凝能佩");
+        add(AllItems.THUNDERITE_STRESS_MEDALLION.get(), "雷暴凝能佩");
+
+        // ========== 凝能佩 Shift 概要 ==========
+        add("item.createoreexpansion.medallion.hold_shift", "按住 [%1$s] 查看概要");
+        add("item.createoreexpansion.medallion.summary", "凝能之佩，_储存_应力能量并为_绑定_工具_供能_。");
+        add("item.createoreexpansion.medallion.bind", "绑定：手持本佩右键（另一手为能量工具）可_绑定_，或在合成格与工具合成；已绑定工具单独合成可_解绑_，与另一枚佩合成可_换绑_");
+        add("item.createoreexpansion.medallion.mode", "模式：手持本佩右键（另一手非工具）在_供应_与_充能_模式间切换");
+        add("item.createoreexpansion.medallion.supply", "供能：_供应模式_穿戴后释放技能_优先消耗_本佩能量；_充能模式_会在释放后把_绑定工具_补满");
 
         // ========== 技能名（各等级共用基础键，等级由 tooltip 罗马数字显示） ==========
         add("skill.createoreexpansion.fell", "伐树");
@@ -120,12 +144,19 @@ public class ChineseLangProvider extends LanguageProvider {
         add("item.createoreexpansion.tool.skill_tips", "按住 [%s] 可查看技能概要");
         add("item.createoreexpansion.tool.energy", "能量");
 
+        // ========== 附魔 ==========
+        add("enchantment.createoreexpansion.reduce_consumption", "减耗");
+        add("enchantment.createoreexpansion.swift_start", "迅启");
+
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");
         add("fluid.createoreexpansion.transmutation_fluid", "嬗变液");
+        add("block.createoreexpansion.transmutation_fluid", "嬗变液");
         add("item.createoreexpansion.transmutation_fluid_bucket", "嬗变液桶");
         add("createoreexpansion.recipe.fan_transmuting", "批量嬗化");
         add("createoreexpansion.recipe.fan_transmuting.fan", "鼓风机");
+        add("createoreexpansion.recipe.lightning", "闪电转化");
+        add("createoreexpansion.recipe.lightning_block", "闪电转化·方块");
 
         // ========== 药水效果 ==========
         add("effect.createoreexpansion.transmutation_disorder", "嬗乱");

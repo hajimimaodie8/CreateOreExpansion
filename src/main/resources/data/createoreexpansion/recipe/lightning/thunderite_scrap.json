@@ -1,0 +1,23 @@
+{
+  "type": "createoreexpansion:lightning",
+  "ingredients": [
+    {
+      "item": "minecraft:gold_ingot"
+    },
+    {
+      "item": "createoreexpansion:jade_ingot"
+    },
+    {
+      "item": "createoreexpansion:sapphire_ingot"
+    },
+    {
+      "item": "minecraft:netherite_scrap"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:thunderite_scrap",
+      "count": 2
+    }
+  ]
+}

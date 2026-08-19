@@ -86,7 +86,14 @@ versionRange="[19.27.0,)"
 ordering="NONE"
 side="BOTH"
 
-[[dependencies.createoreexpansion]]
+[[dependencies."${mod_id}"]]
+modId="curios"
+type="required"
+versionRange="[9.5.1,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies."${mod_id}"]]
 modId="createaddition"
 type="required"
 versionRange="[1.5.11,)"

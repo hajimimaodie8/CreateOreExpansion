@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion;
 
 import com.hjmmd_8.createoreexpansion.common.*;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionBindingRecipe;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.foundation.item.ItemDescription;
 import com.simibubi.create.foundation.item.KineticStats;
@@ -61,6 +62,7 @@ public class CreateOreExpansion {
         AllModPotions.register(modEventBus);
         NeoForge.EVENT_BUS.addListener(AllModPotions::registerBrewingRecipes);
         AllRecipeTypes.register(modEventBus);
+        MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(CreateOreExpansion::onRegister);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, AllConfig.SPEC);

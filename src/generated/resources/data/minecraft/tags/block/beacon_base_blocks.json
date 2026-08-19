@@ -3,6 +3,7 @@
     "createoreexpansion:jade_block",
     "createoreexpansion:topaz_block",
     "createoreexpansion:sapphire_block",
-    "createoreexpansion:stellarstone_block"
+    "createoreexpansion:stellarstone_block",
+    "createoreexpansion:thunderite_block"
   ]
 }

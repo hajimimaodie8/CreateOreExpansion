@@ -14,7 +14,7 @@ public final class ToolSkillCooldown {
 
 	public static void start(Player player, ItemStack stack, int seconds) {
 		if (!stack.isEmpty())
-			player.getCooldowns().addCooldown(stack.getItem(), seconds * 20);
+			player.getCooldowns().addCooldown(stack.getItem(), ToolEnchantments.reduceCooldown(stack, seconds * 20));
 	}
 
 }

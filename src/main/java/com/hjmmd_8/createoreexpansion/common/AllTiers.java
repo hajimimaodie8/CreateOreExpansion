@@ -23,11 +23,13 @@ public enum AllTiers implements Tier {
     //                不可挖掘方块                                   修复材料
             BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllItems.JADE_INGOT.get())),
     TOPAZ(1828, 9.5F, 4.0F, 14,
-            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(AllItems.TOPAZ_INGOT.get())),
+            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllItems.TOPAZ_INGOT.get())),
     SAPPHIRE(2048, 10.0F, 4.5F, 16,
             BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(AllItems.SAPPHIRE_INGOT.get())),
     STELLARSTONE(2400, 11.0F, 5.0F, 17,
-            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(AllItems.STELLARSTONE_INGOT.get()));
+            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(AllItems.STELLARSTONE_INGOT.get())),
+    THUNDERITE(2400, 11.0F, 5.0F, 16,
+            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(AllItems.THUNDERITE_INGOT.get()));
 
     private final int uses;
     private final float speed;

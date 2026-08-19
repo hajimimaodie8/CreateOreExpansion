@@ -1,0 +1,17 @@
+{
+  "type": "createoreexpansion:lightning",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:thunderite_shovel"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:thunderite_shovel",
+      "count": 1,
+      "components": {
+        "createoreexpansion:energy": 5000
+      }
+    }
+  ]
+}

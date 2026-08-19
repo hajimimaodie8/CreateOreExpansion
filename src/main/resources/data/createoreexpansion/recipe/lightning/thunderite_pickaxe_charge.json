@@ -1,0 +1,17 @@
+{
+  "type": "createoreexpansion:lightning",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:thunderite_pickaxe"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:thunderite_pickaxe",
+      "count": 1,
+      "components": {
+        "createoreexpansion:energy": 5000
+      }
+    }
+  ]
+}

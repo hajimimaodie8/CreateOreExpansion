@@ -11,6 +11,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jetbrains.annotations.ApiStatus;
@@ -85,6 +86,23 @@ public class AllDataComponents {
             builder.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.INT));
 
     public static final DataComponentType<Integer> ENERGY_COLOR_DARK = register("energy_color_dark", builder ->
+            builder.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.INT));
+
+    /** 凝能佩：绑定的工具物品 id 列表（一枚佩可绑定多个工具） */
+    public static final DataComponentType<List<ResourceLocation>> BOUND_TOOL = register("bound_tool", builder ->
+            builder.persistent(ResourceLocation.CODEC.listOf())
+                    .networkSynchronized(ResourceLocation.STREAM_CODEC.apply(ByteBufCodecs.list())));
+
+    /** 能量工具：绑定的凝能佩物品 id（工具上存储） */
+    public static final DataComponentType<ResourceLocation> BOUND_MEDALLION = register("bound_medallion", builder ->
+            builder.persistent(ResourceLocation.CODEC).networkSynchronized(ResourceLocation.STREAM_CODEC));
+
+    /** 凝能佩模式：true=充能模式，false=供应模式 */
+    public static final DataComponentType<Boolean> MEDALLION_MODE = register("medallion_mode", builder ->
+            builder.persistent(Codec.BOOL).networkSynchronized(ByteBufCodecs.BOOL));
+
+    /** 绑定信息行颜色（工具 tooltip「绑定：xxx」行的颜色，在物品注册时自定义） */
+    public static final DataComponentType<Integer> BIND_COLOR = register("bind_color", builder ->
             builder.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.INT));
 
     private static <T> DataComponentType<T> register(String name, UnaryOperator<DataComponentType.Builder<T>> builder) {

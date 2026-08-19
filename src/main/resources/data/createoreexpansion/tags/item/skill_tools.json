@@ -1,0 +1,30 @@
+{
+  "replace": false,
+  "values": [
+    "createoreexpansion:jade_sword",
+    "createoreexpansion:jade_pickaxe",
+    "createoreexpansion:jade_shovel",
+    "createoreexpansion:jade_axe",
+    "createoreexpansion:jade_hoe",
+    "createoreexpansion:topaz_sword",
+    "createoreexpansion:topaz_pickaxe",
+    "createoreexpansion:topaz_shovel",
+    "createoreexpansion:topaz_axe",
+    "createoreexpansion:topaz_hoe",
+    "createoreexpansion:sapphire_sword",
+    "createoreexpansion:sapphire_pickaxe",
+    "createoreexpansion:sapphire_shovel",
+    "createoreexpansion:sapphire_axe",
+    "createoreexpansion:sapphire_hoe",
+    "createoreexpansion:stellarstone_sword",
+    "createoreexpansion:stellarstone_pickaxe",
+    "createoreexpansion:stellarstone_shovel",
+    "createoreexpansion:stellarstone_axe",
+    "createoreexpansion:stellarstone_hoe",
+    "createoreexpansion:thunderite_sword",
+    "createoreexpansion:thunderite_pickaxe",
+    "createoreexpansion:thunderite_shovel",
+    "createoreexpansion:thunderite_axe",
+    "createoreexpansion:thunderite_hoe"
+  ]
+}

@@ -71,9 +71,6 @@ public class ServerPlayerGameModeMixin {
             released |= holder.releaseSkillAt(skillStack, SkillType.EXCAVATION_SKILL, 2, context);
         }
 
-        // 释放成功（能量预检查通过）后显示剩余能量；能量不足的提示由组件/技能内部处理
-        if (released) {
-            ToolEnergy.sendRemainingEnergy(this.player, stack);
-        }
+        // 剩余能量显示统一由 ToolEnergy.tryConsume（消耗时）处理：工具行 + 绑定凝能佩行
     }
 }
