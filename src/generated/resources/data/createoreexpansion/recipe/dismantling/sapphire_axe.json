@@ -1,0 +1,12 @@
+{
+  "type": "createoreexpansion:dismantling",
+  "item": {
+    "count": 1,
+    "id": "createoreexpansion:sapphire_axe"
+  },
+  "materialCount": 3,
+  "result": {
+    "count": 1,
+    "id": "createoreexpansion:sapphire_ingot"
+  }
+}

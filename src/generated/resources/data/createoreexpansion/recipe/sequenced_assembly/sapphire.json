@@ -1,0 +1,73 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "createoreexpansion:raw_sapphire"
+  },
+  "loops": 2,
+  "results": [
+    {
+      "chance": 25.0,
+      "count": 3,
+      "id": "createoreexpansion:sapphire_big_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 2,
+      "id": "createoreexpansion:sapphire_big_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 3,
+      "id": "createoreexpansion:sapphire_small_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 2,
+      "id": "createoreexpansion:sapphire_small_shard"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:cutting",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_sapphire"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_sapphire"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_sapphire"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_sapphire"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:grinding",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_sapphire"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_sapphire"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "createoreexpansion:raw_sapphire"
+  }
+}

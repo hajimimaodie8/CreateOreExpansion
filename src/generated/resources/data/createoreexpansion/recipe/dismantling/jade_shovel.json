@@ -1,0 +1,12 @@
+{
+  "type": "createoreexpansion:dismantling",
+  "item": {
+    "count": 1,
+    "id": "createoreexpansion:jade_shovel"
+  },
+  "materialCount": 1,
+  "result": {
+    "count": 1,
+    "id": "createoreexpansion:jade_ingot"
+  }
+}

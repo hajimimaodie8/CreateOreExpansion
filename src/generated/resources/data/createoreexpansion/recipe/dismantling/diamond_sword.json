@@ -1,0 +1,12 @@
+{
+  "type": "createoreexpansion:dismantling",
+  "item": {
+    "count": 1,
+    "id": "minecraft:diamond_sword"
+  },
+  "materialCount": 2,
+  "result": {
+    "count": 1,
+    "id": "minecraft:diamond"
+  }
+}

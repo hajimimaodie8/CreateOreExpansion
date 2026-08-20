@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:grinding",
+  "ingredients": [
+    {
+      "item": "minecraft:diamond_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:diamond_grinding_wheel"
+    }
+  ],
+  "processingTime": 200
+}

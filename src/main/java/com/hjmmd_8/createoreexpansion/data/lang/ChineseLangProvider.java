@@ -82,7 +82,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.RAW_STELLARSTONE.get(), "粗星辉石");
         add(AllItems.STELLARSTONE_NUGGET.get(), "星辉石粒");
         add(AllItems.CRUSHED_STELLARSTONE_ORE.get(), "粉碎星辉石矿石");
-        //add(AllItems.STELLARSTONE_SMALL_SHARD.get(), "小块星辉石");
+        add(AllItems.STELLARSTONE_SMALL_SHARD.get(), "小块星辉石");
         add(AllItems.STELLARSTONE_BIG_SHARD.get(), "大块星辉石");
         add(AllItems.STELLARSTONE_SHEET.get(), "星辉石板");
         add(AllItems.STELLARSTONE_ROD.get(), "星辉石棍");
@@ -136,7 +136,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("skillType.createoreexpansion.use_skill", "使用技能");
 
         // ========== 技能释放键 ==========
-        add("createoreexpansion.keyinfo.skill_release", "技能释放");
+        add("createoreexpansion.keyinfo.skill_release", "技能释放1（第一技能）");
         add("createoreexpansion.keyinfo.skill_release_2", "技能释放 2（第二技能）");
         add("createoreexpansion.keyinfo.skill_release_3", "技能释放 3（第三技能）");
 
@@ -154,11 +154,40 @@ public class ChineseLangProvider extends LanguageProvider {
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");
         add("fluid.createoreexpansion.transmutation_fluid", "嬗变液");
         add("block.createoreexpansion.transmutation_fluid", "嬗变液");
+        add("block.createoreexpansion.power_angle_grinder", "动力角磨床");
+        add("createoreexpansion.msg.cannot_open_cover", "由于空间不足，无法开盖");
+        add("createoreexpansion.msg.need_open_cover", "需要先开盖才能安装角磨轮");
+        add(AllItems.IRON_GRINDING_WHEEL.get(), "铁角磨轮");
+        add(AllItems.JADE_GRINDING_WHEEL.get(), "翡翠角磨轮");
+        add(AllItems.DIAMOND_GRINDING_WHEEL.get(), "钻石角磨轮");
+        add(AllItems.TOPAZ_GRINDING_WHEEL.get(), "黄玉角磨轮");
+        add(AllItems.SAPPHIRE_GRINDING_WHEEL.get(), "蓝宝石角磨轮");
+        add(AllItems.STELLARSTONE_GRINDING_WHEEL.get(), "星辉石角磨轮");
         add("item.createoreexpansion.transmutation_fluid_bucket", "嬗变液桶");
         add("createoreexpansion.recipe.fan_transmuting", "批量嬗化");
         add("createoreexpansion.recipe.fan_transmuting.fan", "鼓风机");
         add("createoreexpansion.recipe.lightning", "闪电转化");
         add("createoreexpansion.recipe.lightning_block", "闪电转化·方块");
+        add("createoreexpansion.recipe.grinding", "角磨加工");
+        add("createoreexpansion.recipe.advanced_grinding", "高级角磨");
+        add("createoreexpansion.recipe.dismantling", "拆磨");
+        add("createoreexpansion.recipe.dismantling.output", "输出数量取决于装备剩余耐久");
+        add("createoreexpansion.recipe.assembly.grinding", "在动力角磨床中角磨");
+
+        // ========== 动力角磨床护目镜提示 ==========
+        add("createoreexpansion.goggles.angle_grinder", "动力角磨床");
+        add("createoreexpansion.goggles.no_wheel", "未安装角磨轮！");
+        add("createoreexpansion.goggles.installed_wheel", "角磨轮：%s");
+        add("createoreexpansion.goggles.required_speed", "所需转速：≥ %s RPM");
+        add("createoreexpansion.goggles.speed_too_low", "转速不足，无法加工！");
+        add("createoreexpansion.goggles.processing_time", "当前加工耗时：%s 秒");
+
+        // ========== 动力角磨床悬停提示（支持的加工类型） ==========
+        add("createoreexpansion.tooltip.no_wheel_type", "未安装角磨轮，无法加工");
+        add("createoreexpansion.tooltip.supported_types", "支持的加工类型：");
+        add("createoreexpansion.tooltip.type_grinding", "· 基础角磨");
+        add("createoreexpansion.tooltip.type_advanced", "· 粉碎、研磨（高级角磨）");
+        add("createoreexpansion.tooltip.type_dismantling", "· 装备/武器拆解（拆磨）");
 
         // ========== 药水效果 ==========
         add("effect.createoreexpansion.transmutation_disorder", "嬗乱");

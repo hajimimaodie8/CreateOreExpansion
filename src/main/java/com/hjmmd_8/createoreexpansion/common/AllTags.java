@@ -18,7 +18,9 @@ public class AllTags {
 		/** 有技能的工具（减耗/技能提升附魔可附） */
 		SKILL_TOOLS(CreateOreExpansion.modLoc("skill_tools")),
 		/** 释放技能有冷却的工具（迅启附魔可附） */
-		COOLDOWN_TOOLS(CreateOreExpansion.modLoc("cooldown_tools"));
+		COOLDOWN_TOOLS(CreateOreExpansion.modLoc("cooldown_tools")),
+		/** 角磨轮（动力角磨床可安装的配件） */
+		GRINDING_WHEELS(CreateOreExpansion.modLoc("grinding_wheels"));
 
 		public final TagKey<Item> tag;
 

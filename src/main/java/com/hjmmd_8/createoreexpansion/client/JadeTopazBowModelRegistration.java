@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
@@ -15,6 +16,8 @@ public class JadeTopazBowModelRegistration {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
+        // 早期触发 PartialModel 类加载，确保 Flywheel 模型烘焙前收集到部件模型
+        AllPartialModels.init();
         event.enqueueWork(() -> {
             ItemProperties.register(AllItems.JADE_TOPAZ_BOW.get(),
                 ResourceLocation.withDefaultNamespace("pull"),

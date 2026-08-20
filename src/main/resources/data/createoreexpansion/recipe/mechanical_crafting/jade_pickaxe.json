@@ -1,0 +1,30 @@
+{
+  "type": "create:mechanical_crafting",
+  "accept_mirrored": false,
+  "category": "misc",
+  "key": {
+    "A": {
+      "tag": "c:ingots/jade"
+    },
+    "B": {
+      "item": "create:precision_mechanism"
+    },
+    "C": {
+      "tag": "c:wires/jade"
+    },
+    "D": {
+      "tag": "c:rods/jade"
+    }
+  },
+  "pattern": [
+    " ABA ",
+    "AACAA",
+    "  D  ",
+    "  D  ",
+    "  D  "
+  ],
+  "result": {
+    "id": "createoreexpansion:jade_pickaxe"
+  },
+  "show_notification": false
+}

@@ -1,0 +1,73 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "createoreexpansion:raw_topaz"
+  },
+  "loops": 2,
+  "results": [
+    {
+      "chance": 25.0,
+      "count": 3,
+      "id": "createoreexpansion:topaz_big_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 2,
+      "id": "createoreexpansion:topaz_big_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 3,
+      "id": "createoreexpansion:topaz_small_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 2,
+      "id": "createoreexpansion:topaz_small_shard"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:cutting",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_topaz"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_topaz"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_topaz"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_topaz"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:grinding",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_topaz"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_topaz"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "createoreexpansion:raw_topaz"
+  }
+}

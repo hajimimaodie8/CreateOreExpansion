@@ -25,6 +25,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.*;
+import net.neoforged.neoforge.client.model.generators.ModelFile;
 import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.NotNull;
 
@@ -649,11 +650,12 @@ public final class AllItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    /*public static final ItemEntry<Item> STELLARSTONE_SMALL_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> STELLARSTONE_SMALL_SHARD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_small_shard", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
-            .register();*/
+            .register();
 
     public static final ItemEntry<Item> STELLARSTONE_BIG_SHARD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_big_shard", Item::new)
@@ -1155,4 +1157,24 @@ public final class AllItems {
     }
 
     public static void register() {}
+
+    // ========== 角磨轮（动力角磨床配件，开盖后安装） ==========
+
+    /** 注册角磨轮（物品模型指向 block/power_angle_grinder/power_angle_wheel/xxx，已含 display 变换） */
+    private static ItemEntry<Item> grindingWheel(String name) {
+        return CreateOreExpansion.REGISTRATE
+            .item(name, Item::new)
+            .tag(AllTags.AllItemTags.GRINDING_WHEELS.tag)
+            .model((ctx, prov) -> prov.getBuilder(name)
+                .parent(new ModelFile.UncheckedModelFile(
+                    "createoreexpansion:block/power_angle_grinder/power_angle_wheel/" + name)))
+            .register();
+    }
+
+    public static final ItemEntry<Item> IRON_GRINDING_WHEEL = grindingWheel("iron_grinding_wheel");
+    public static final ItemEntry<Item> JADE_GRINDING_WHEEL = grindingWheel("jade_grinding_wheel");
+    public static final ItemEntry<Item> DIAMOND_GRINDING_WHEEL = grindingWheel("diamond_grinding_wheel");
+    public static final ItemEntry<Item> TOPAZ_GRINDING_WHEEL = grindingWheel("topaz_grinding_wheel");
+    public static final ItemEntry<Item> SAPPHIRE_GRINDING_WHEEL = grindingWheel("sapphire_grinding_wheel");
+    public static final ItemEntry<Item> STELLARSTONE_GRINDING_WHEEL = grindingWheel("stellarstone_grinding_wheel");
 }

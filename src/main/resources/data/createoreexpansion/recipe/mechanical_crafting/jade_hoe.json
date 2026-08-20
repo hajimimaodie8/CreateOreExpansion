@@ -1,0 +1,29 @@
+{
+  "type": "create:mechanical_crafting",
+  "accept_mirrored": false,
+  "category": "misc",
+  "key": {
+    "A": {
+      "tag": "c:ingots/jade"
+    },
+    "B": {
+      "item": "create:precision_mechanism"
+    },
+    "C": {
+      "tag": "c:wires/jade"
+    },
+    "D": {
+      "tag": "c:rods/jade"
+    }
+  },
+  "pattern": [
+    "AAAA",
+    "  BC",
+    "  D ",
+    "  D "
+  ],
+  "result": {
+    "id": "createoreexpansion:jade_hoe"
+  },
+  "show_notification": false
+}

@@ -1,0 +1,34 @@
+{
+  "variants": {
+    "facing=east,open=false": {
+      "model": "createoreexpansion:block/power_angle_grinder/power_angle_grinde",
+      "y": 270
+    },
+    "facing=east,open=true": {
+      "model": "createoreexpansion:block/power_angle_grinder/power_angle_grinder_rotated",
+      "y": 270
+    },
+    "facing=north,open=false": {
+      "model": "createoreexpansion:block/power_angle_grinder/power_angle_grinde",
+      "y": 180
+    },
+    "facing=north,open=true": {
+      "model": "createoreexpansion:block/power_angle_grinder/power_angle_grinder_rotated",
+      "y": 180
+    },
+    "facing=south,open=false": {
+      "model": "createoreexpansion:block/power_angle_grinder/power_angle_grinde"
+    },
+    "facing=south,open=true": {
+      "model": "createoreexpansion:block/power_angle_grinder/power_angle_grinder_rotated"
+    },
+    "facing=west,open=false": {
+      "model": "createoreexpansion:block/power_angle_grinder/power_angle_grinde",
+      "y": 90
+    },
+    "facing=west,open=true": {
+      "model": "createoreexpansion:block/power_angle_grinder/power_angle_grinder_rotated",
+      "y": 90
+    }
+  }
+}

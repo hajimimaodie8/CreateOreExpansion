@@ -1,0 +1,73 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "createoreexpansion:raw_stellarstone"
+  },
+  "loops": 2,
+  "results": [
+    {
+      "chance": 25.0,
+      "count": 3,
+      "id": "createoreexpansion:stellarstone_big_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 2,
+      "id": "createoreexpansion:stellarstone_big_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 3,
+      "id": "createoreexpansion:stellarstone_small_shard"
+    },
+    {
+      "chance": 25.0,
+      "count": 2,
+      "id": "createoreexpansion:stellarstone_small_shard"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:cutting",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_stellarstone"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_stellarstone"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_stellarstone"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_stellarstone"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:grinding",
+      "ingredients": [
+        {
+          "item": "createoreexpansion:raw_stellarstone"
+        }
+      ],
+      "results": [
+        {
+          "id": "createoreexpansion:raw_stellarstone"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "createoreexpansion:raw_stellarstone"
+  }
+}

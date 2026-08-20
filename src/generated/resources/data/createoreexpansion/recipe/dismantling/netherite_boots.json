@@ -1,0 +1,12 @@
+{
+  "type": "createoreexpansion:dismantling",
+  "item": {
+    "count": 1,
+    "id": "minecraft:netherite_boots"
+  },
+  "materialCount": 4,
+  "result": {
+    "count": 1,
+    "id": "minecraft:netherite_ingot"
+  }
+}

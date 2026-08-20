@@ -25,5 +25,8 @@ public class CreateOreExpansionDatagen {
             generator.addProvider(true, new EnglishLangProvider(output));
             System.out.println("========== CreateOreExpansion EnglishLangProvider START ==========");
         }
+        if (event.includeServer()) {
+            generator.addProvider(true, new RecipeProvider(output, event.getLookupProvider()));
+        }
     }
 }

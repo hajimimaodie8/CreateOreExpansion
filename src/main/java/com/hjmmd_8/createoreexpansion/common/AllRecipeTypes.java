@@ -4,6 +4,8 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
+import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
+import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -34,11 +36,17 @@ public enum AllRecipeTypes implements IRecipeTypeInfo, StringRepresentable {
 
 	TRANSMUTING(AllTransmutingRecipe::new),
 	LIGHTNING(LightningRecipe::new),
-	LIGHTNING_BLOCK(LightningBlockRecipe::new);
+	LIGHTNING_BLOCK(LightningBlockRecipe::new),
+	GRINDING(GrindingRecipe::new),
+	DISMANTLING(() -> new DismantlingRecipe.Serializer());
 
 	public static final Predicate<RecipeHolder<?>> CAN_BE_AUTOMATED = r -> !r.id()
 		.getPath()
 		.endsWith("_manual_only");
+
+	public static boolean shouldIgnoreInAutomation(RecipeHolder<?> recipe) {
+		return !CAN_BE_AUTOMATED.test(recipe);
+	}
 
 	public final ResourceLocation id;
 	public final Supplier<RecipeSerializer<?>> serializerSupplier;

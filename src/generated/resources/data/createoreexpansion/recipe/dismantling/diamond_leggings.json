@@ -1,0 +1,12 @@
+{
+  "type": "createoreexpansion:dismantling",
+  "item": {
+    "count": 1,
+    "id": "minecraft:diamond_leggings"
+  },
+  "materialCount": 7,
+  "result": {
+    "count": 1,
+    "id": "minecraft:diamond"
+  }
+}

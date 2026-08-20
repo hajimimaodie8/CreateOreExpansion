@@ -81,7 +81,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllItems.RAW_STELLARSTONE.get(), "Raw Stellarstone");
         add(AllItems.STELLARSTONE_NUGGET.get(), "Stellarstone Nugget");
         add(AllItems.CRUSHED_STELLARSTONE_ORE.get(), "Crushed Stellarstone Ore");
-        //add(AllItems.STELLARSTONE_SMALL_SHARD.get(), "Small Stellarstone Shard");
+        add(AllItems.STELLARSTONE_SMALL_SHARD.get(), "Small Stellarstone Shard");
         add(AllItems.STELLARSTONE_BIG_SHARD.get(), "Big Stellarstone Shard");
         add(AllItems.STELLARSTONE_SHEET.get(), "Stellarstone Sheet");
         add(AllItems.STELLARSTONE_ROD.get(), "Stellarstone Rod");
@@ -94,6 +94,15 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.END_STELLARSTONE_ORE.get(), "End Stellarstone Ore");
         add(AllBlocks.RAW_STELLARSTONE_BLOCK.get(), "Raw Stellarstone Block");
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
+        add(AllBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
+        add("createoreexpansion.msg.cannot_open_cover", "Cannot open the cover: not enough space");
+        add("createoreexpansion.msg.need_open_cover", "Open the cover first to install a grinding wheel");
+        add(AllItems.IRON_GRINDING_WHEEL.get(), "Iron Grinding Wheel");
+        add(AllItems.JADE_GRINDING_WHEEL.get(), "Jade Grinding Wheel");
+        add(AllItems.DIAMOND_GRINDING_WHEEL.get(), "Diamond Grinding Wheel");
+        add(AllItems.TOPAZ_GRINDING_WHEEL.get(), "Topaz Grinding Wheel");
+        add(AllItems.SAPPHIRE_GRINDING_WHEEL.get(), "Sapphire Grinding Wheel");
+        add(AllItems.STELLARSTONE_GRINDING_WHEEL.get(), "Stellarstone Grinding Wheel");
         add(AllItems.JADE_TOPAZ_BOW.get(), "Jade Topaz Bow");
         add(AllItems.JADE_STRESS_MEDALLION.get(), "Jade Stress Medallion");
         add(AllItems.TOPAZ_STRESS_MEDALLION.get(), "Topaz Stress Medallion");
@@ -145,6 +154,26 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.fan_transmuting.fan", "Encased Fan");
         add("createoreexpansion.recipe.lightning", "Lightning Transformation");
         add("createoreexpansion.recipe.lightning_block", "Lightning Transformation (Block)");
+        add("createoreexpansion.recipe.grinding", "Grinding");
+        add("createoreexpansion.recipe.advanced_grinding", "Advanced Grinding");
+        add("createoreexpansion.recipe.dismantling", "Dismantling");
+        add("createoreexpansion.recipe.dismantling.output", "Output amount depends on remaining durability");
+        add("createoreexpansion.recipe.assembly.grinding", "Grind in a Power Angle Grinder");
+
+        // ========== Power Angle Grinder goggles ==========
+        add("createoreexpansion.goggles.angle_grinder", "Power Angle Grinder");
+        add("createoreexpansion.goggles.no_wheel", "No grinding wheel installed!");
+        add("createoreexpansion.goggles.installed_wheel", "Wheel: %s");
+        add("createoreexpansion.goggles.required_speed", "Required speed: ≥ %s RPM");
+        add("createoreexpansion.goggles.speed_too_low", "Speed too low to process!");
+        add("createoreexpansion.goggles.processing_time", "Processing time: %s s");
+
+        // ========== Power Angle Grinder hover tooltip (supported types) ==========
+        add("createoreexpansion.tooltip.no_wheel_type", "No wheel installed, cannot process");
+        add("createoreexpansion.tooltip.supported_types", "Supported processing:");
+        add("createoreexpansion.tooltip.type_grinding", "· Basic grinding");
+        add("createoreexpansion.tooltip.type_advanced", "· Crushing & Milling (Advanced)");
+        add("createoreexpansion.tooltip.type_dismantling", "· Gear/Weapon disassembly (Dismantling)");
 
         // ========== 药水效果 ==========
         add("effect.createoreexpansion.transmutation_disorder", "Transmutation Disorder");

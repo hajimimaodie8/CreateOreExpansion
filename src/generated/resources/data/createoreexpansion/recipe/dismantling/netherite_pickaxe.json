@@ -1,0 +1,12 @@
+{
+  "type": "createoreexpansion:dismantling",
+  "item": {
+    "count": 1,
+    "id": "minecraft:netherite_pickaxe"
+  },
+  "materialCount": 3,
+  "result": {
+    "count": 1,
+    "id": "minecraft:netherite_ingot"
+  }
+}
