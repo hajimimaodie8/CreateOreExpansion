@@ -28,6 +28,14 @@ public final class ToolEnchantments {
 	public static final ResourceKey<Enchantment> SWIFT_START = ResourceKey.create(
 		Registries.ENCHANTMENT, ResourceLocation.fromNamespaceAndPath("createoreexpansion", "swift_start"));
 
+	/** 技能提升附魔的注册键（data-driven，见 data/createoreexpansion/enchantment/skill_boost.json） */
+	public static final ResourceKey<Enchantment> SKILL_BOOST = ResourceKey.create(
+		Registries.ENCHANTMENT, ResourceLocation.fromNamespaceAndPath("createoreexpansion", "skill_boost"));
+
+	/** 技艺回溯（诅咒）附魔的注册键（data-driven，见 data/createoreexpansion/enchantment/skill_regression.json） */
+	public static final ResourceKey<Enchantment> SKILL_REGRESSION = ResourceKey.create(
+		Registries.ENCHANTMENT, ResourceLocation.fromNamespaceAndPath("createoreexpansion", "skill_regression"));
+
 	private ToolEnchantments() {}
 
 	/** 工具上减耗附魔的等级（0 = 未附魔） */
@@ -38,6 +46,16 @@ public final class ToolEnchantments {
 	/** 工具上迅启附魔的等级（0 = 未附魔） */
 	public static int swiftStartLevel(ItemStack stack) {
 		return level(stack, SWIFT_START);
+	}
+
+	/** 工具上技能提升附魔的等级（0/1/2，技能等级提升量） */
+	public static int skillBoostLevel(ItemStack stack) {
+		return level(stack, SKILL_BOOST);
+	}
+
+	/** 工具上技艺回溯（诅咒）附魔的等级（0/1/2，技能等级削减量） */
+	public static int skillRegressionLevel(ItemStack stack) {
+		return level(stack, SKILL_REGRESSION);
 	}
 
 	/**

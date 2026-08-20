@@ -30,6 +30,8 @@
   "createoreexpansion.recipe.lightning_block": "闪电转化·方块",
   "effect.createoreexpansion.transmutation_disorder": "嬗乱",
   "enchantment.createoreexpansion.reduce_consumption": "减耗",
+  "enchantment.createoreexpansion.skill_boost": "技艺提升",
+  "enchantment.createoreexpansion.skill_regression": "技艺回溯",
   "enchantment.createoreexpansion.swift_start": "迅启",
   "fluid.createoreexpansion.transmutation_fluid": "嬗变液",
   "fluid_type.createoreexpansion.transmutation_fluid": "嬗变液",

@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 
 import java.util.List;
 import javax.annotation.Nullable;
@@ -136,7 +137,7 @@ public class JadeTopazBowItem extends BowItem {
 		if (!wantsSkill) return "NONE";
 
 		// 检查冷却和能量
-		boolean canUseSkill = !player.getCooldowns().isOnCooldown(this)
+		boolean canUseSkill = ToolSkillCooldown.isReady(player, stack)
 				&& getEnergy(stack) >= SKILL_THRESHOLD;
 
 		if (!canUseSkill) {
@@ -150,7 +151,7 @@ public class JadeTopazBowItem extends BowItem {
 
 		// 消耗
 		setEnergy(stack, getEnergy(stack) - SKILL_COST);
-		player.getCooldowns().addCooldown(this, SKILL_COOLDOWN);
+		ToolSkillCooldown.startTicks(player, stack, SKILL_COOLDOWN);
 		setSkill(stack, skill);
 		return skill;
 	}

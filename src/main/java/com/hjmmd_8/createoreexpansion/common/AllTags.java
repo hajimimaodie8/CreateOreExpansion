@@ -14,7 +14,11 @@ public class AllTags {
 		RODS("rods"),
 		RODS_ALL_METAL("rods/all_metal"),
 		WIRES("wires"),
-		WIRES_ALL_METAL("wires/all_metal");
+		WIRES_ALL_METAL("wires/all_metal"),
+		/** 有技能的工具（减耗/技能提升附魔可附） */
+		SKILL_TOOLS(CreateOreExpansion.modLoc("skill_tools")),
+		/** 释放技能有冷却的工具（迅启附魔可附） */
+		COOLDOWN_TOOLS(CreateOreExpansion.modLoc("cooldown_tools"));
 
 		public final TagKey<Item> tag;
 

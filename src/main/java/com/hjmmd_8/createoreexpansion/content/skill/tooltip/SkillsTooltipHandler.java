@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.tooltip;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
@@ -42,12 +43,12 @@ public class SkillsTooltipHandler {
             List<DataSkill> hitSkills = skillStack.getSkillsHolder().getDataSkills(SkillType.HIT_SKILL);
             for (int slot = 0; slot < hitSkills.size(); slot++) {
                 DataSkill data = hitSkills.get(slot);
-                event.getToolTip().add(index++, skillLine(keyComponent(slot), data));
+                event.getToolTip().add(index++, skillLine(keyComponent(slot), stack, data));
             }
             List<DataSkill> all = skillStack.getSkillsHolder().getAllData();
             for (DataSkill data : all) {
                 if (data.skill.getType() == SkillType.HIT_SKILL) continue;
-                event.getToolTip().add(index++, skillLine(keyComponent(0), data));
+                event.getToolTip().add(index++, skillLine(keyComponent(0), stack, data));
             }
         }
         return index;
@@ -56,16 +57,18 @@ public class SkillsTooltipHandler {
     /**
      * 技能行：`  [按键] 技能名 罗马数字 - 类型`（方括号保留，] 后加一个空格）。
      * 整行颜色按技能等级区分：Lv1 白 / Lv2 绿 / Lv3 蓝 / Lv4 紫 / Lv5 金。
+     * 等级取有效等级（含技能提升附魔）。
      */
-    private static Component skillLine(Component key, DataSkill data) {
+    private static Component skillLine(Component key, ItemStack stack, DataSkill data) {
+        int level = SkillEnergyCost.effectiveLevel(stack, data);
         return Component.literal("  [")
                 .append(key)
                 .append("] ")
                 .append(Component.translatable(data.skill.getTranslateKey()))
-                .append(" " + toRoman(levelOf(data)))
+                .append(" " + toRoman(level))
                 .append(" - ")
                 .append(Component.translatable(data.skill.getType().translatable.getTranslateKey()))
-                .withStyle(style -> style.withColor(TextColor.fromRgb(levelColor(levelOf(data)))));
+                .withStyle(style -> style.withColor(TextColor.fromRgb(levelColor(level))));
     }
 
     /**
@@ -105,14 +108,6 @@ public class SkillsTooltipHandler {
                 ? mapping.getTranslatedKeyMessage()
                 : Component.literal(key.getBoundKey());
         return Screen.hasAltDown() ? comp.copy().withStyle(ChatFormatting.WHITE) : comp;
-    }
-
-    private static int levelOf(DataSkill data) {
-        int level = 1;
-        if (data.nbt != null) {
-            level = Math.max(level, data.nbt.getInt("Level"));
-        }
-        return level;
     }
 
     /**

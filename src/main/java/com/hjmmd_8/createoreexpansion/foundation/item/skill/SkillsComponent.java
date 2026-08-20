@@ -1,7 +1,10 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
+import com.hjmmd_8.createoreexpansion.common.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext;
@@ -124,6 +127,11 @@ public class SkillsComponent implements OwnedBySkills {
         }
         if (toRelease.isEmpty()) return false;
 
+        // 1.5 技能提升附魔：先提升技能等级（受技能满级限制），再按提升后的等级计算消耗与效果
+        for (DataSkill data : toRelease) {
+            applySkillBoost(stack, data);
+        }
+
         // 2. 能量预检查：能量不足以下一次（最低消耗的）技能释放时整体放弃。
         //    无论创造模式与否都消耗能量（与 ToolEnergy.tryConsume 一致），故不做创造豁免，
         //    否则低能量提示会被调用方的剩余能量提示覆盖。
@@ -165,6 +173,9 @@ public class SkillsComponent implements OwnedBySkills {
         ItemStack stack = skillStack.itemStack();
         Player player = resolvePlayer(context);
 
+        // 技能提升附魔：先提升技能等级（受技能满级限制），再按提升后的等级计算消耗与效果
+        applySkillBoost(stack, data);
+
         // 能量预检查：不足则整体放弃（提示由低能量逻辑统一处理）
         if (!ToolEnergy.canAfford(stack, SkillEnergyCost.compute(stack, data.skill))) {
             if (player != null) ToolEnergy.sendLowEnergy(player, stack);
@@ -174,6 +185,19 @@ public class SkillsComponent implements OwnedBySkills {
         // 释放（能量由技能内部在真正生效前消耗）
         data.skill.release(context, data);
         return true;
+    }
+
+    /**
+     * 应用技能提升附魔：按有效等级（基础等级 + 附魔提升，受技能满级限制）更新释放时的效果配置。
+     * 不写入物品 NBT——等级计算统一走 {@link SkillEnergyCost#effectiveLevel}，
+     * 已满级时有效等级不变（停留原地），移除附魔即恢复原等级。
+     */
+    private static void applySkillBoost(ItemStack stack, DataSkill data) {
+        AllSkills.RegisteredDataSkill registered = AllSkills.getData(AllSkills.getId(data.skill));
+        if (registered == null) return;
+        int effective = SkillEnergyCost.effectiveLevel(stack, data);
+        SkillConfig levelConfig = registered.configForLevel(effective);
+        if (levelConfig != null) data.config = levelConfig;
     }
 
     /**

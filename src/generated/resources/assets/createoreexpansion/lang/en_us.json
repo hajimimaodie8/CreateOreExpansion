@@ -23,6 +23,8 @@
   "createoreexpansion.recipe.lightning_block": "Lightning Transformation (Block)",
   "effect.createoreexpansion.transmutation_disorder": "Transmutation Disorder",
   "enchantment.createoreexpansion.reduce_consumption": "Reduced Consumption",
+  "enchantment.createoreexpansion.skill_boost": "Artistry Boost",
+  "enchantment.createoreexpansion.skill_regression": "Artistry Regression",
   "enchantment.createoreexpansion.swift_start": "Swift Start",
   "fluid_type.createoreexpansion.transmutation_fluid": "Transmutation Fluid",
   "item.createoreexpansion.crushed_jade_ore": "Crushed Jade Ore",

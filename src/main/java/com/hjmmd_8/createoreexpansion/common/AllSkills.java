@@ -90,6 +90,7 @@ public final class AllSkills {
                 .config(SkillAoeConfigs.aoeConfig(SkillAoeConfigs.GRADE_TAG, SkillAoeConfigs.GRADE_1))
                 .configsByLevel(level -> SkillAoeConfigs.aoeConfig(
                         SkillAoeConfigs.GRADE_TAG, SkillAoeConfigs.gradeLevel(level)))
+                .maxLevel(3)
                 .register();
     // 平场 Lv2（5×7）、Lv3（7×7）为预留等级：数值已在 SkillAoeConfigs 定义（平场仅 3 级），
     // 将来启用时 addSkills(GRADE, 2/3) 即可，无需新增注册。
@@ -173,6 +174,8 @@ public final class AllSkills {
         private SkillConfig config;
         /** 等级 → 配置 映射（一技能多等级：addSkills(技能, 等级) 时按等级取实际配置） */
         private Function<Integer, SkillConfig> configsByLevel;
+        /** 技能满级（技能提升附魔提升等级的上限；未声明默认 5） */
+        private int maxLevel = 5;
 
         public SkillBuilder(ResourceLocation id, Class<T> skillType, Class<S> strategyType) {
             this.id = id;
@@ -218,6 +221,15 @@ public final class AllSkills {
             return this;
         }
 
+        /**
+         * 声明技能满级（技能提升附魔提升等级的上限，默认 5）。
+         * 例如平场仅有 Lv1~3 配置，应声明 {@code maxLevel(3)}。
+         */
+        public SkillBuilder<T, S> maxLevel(int maxLevel) {
+            this.maxLevel = maxLevel;
+            return this;
+        }
+
         public SkillBuilder<T, S> level(int level) {
             return setTag(nbt -> nbt.putInt("Level", level));
         }
@@ -236,6 +248,7 @@ public final class AllSkills {
             RegisteredDataSkill data = (defaultNbt == null)
                     ? new RegisteredDataSkill(built, configsByLevel)
                     : new RegisteredDataSkill(built, config, configsByLevel, defaultNbt);
+            data.maxLevel = this.maxLevel;
             if (config != null) {
                 config.load(data);
                 // 将配置载入技能实例，保证 getCost() 等字段返回注册时的真实值
@@ -263,6 +276,8 @@ public final class AllSkills {
     public static class RegisteredDataSkill extends DataSkill {
         /** 等级 → 配置 映射（一技能多等级；null 表示无映射） */
         private final Function<Integer, SkillConfig> configsByLevel;
+        /** 技能满级（技能提升附魔提升等级的上限） */
+        private int maxLevel = 5;
 
         public RegisteredDataSkill(ItemSkill skill) {
             super(skill, null, new CompoundTag());
@@ -301,6 +316,11 @@ public final class AllSkills {
             if (configsByLevel == null) return config;
             SkillConfig levelConfig = configsByLevel.apply(Math.max(1, level));
             return levelConfig != null ? levelConfig : config;
+        }
+
+        /** 技能满级（技能提升附魔提升等级的上限） */
+        public int maxLevel() {
+            return maxLevel;
         }
     }
 }

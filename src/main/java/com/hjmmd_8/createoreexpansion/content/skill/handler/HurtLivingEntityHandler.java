@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.handler;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
@@ -67,13 +67,13 @@ public class HurtLivingEntityHandler {
 		int cooldownTicks = data.skill.getCooldownSeconds() > 0
 				? data.skill.getCooldownSeconds() * 20
 				: SkillCooldowns.getTicks(sword);
-		if (player.getCooldowns().isOnCooldown(sword.getItem()))
+		if (!ToolSkillCooldown.isReady(player, sword))
 			return;
 
 		LivingHurtContext context = new LivingHurtContext(event);
 		// 释放成功（能量预检查通过）后进入冷却；剩余能量显示统一由 ToolEnergy.tryConsume 处理
 		if (holder.releaseSkillAt(skillStack, SkillType.HIT_SKILL, slot, context)) {
-			player.getCooldowns().addCooldown(sword.getItem(), ToolEnchantments.reduceCooldown(sword, cooldownTicks));
+			ToolSkillCooldown.startTicks(player, sword, cooldownTicks);
 		}
 	}
 }

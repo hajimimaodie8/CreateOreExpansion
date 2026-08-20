@@ -105,6 +105,10 @@ public class AllDataComponents {
     public static final DataComponentType<Integer> BIND_COLOR = register("bind_color", builder ->
             builder.persistent(Codec.INT).networkSynchronized(ByteBufCodecs.INT));
 
+    /** 技能冷却截止游戏时刻（tick，per-stack 独立冷却；无此组件=无冷却） */
+    public static final DataComponentType<Long> SKILL_COOLDOWN_UNTIL = register("skill_cooldown_until", builder ->
+            builder.persistent(Codec.LONG).networkSynchronized(ByteBufCodecs.VAR_LONG));
+
     private static <T> DataComponentType<T> register(String name, UnaryOperator<DataComponentType.Builder<T>> builder) {
         DataComponentType<T> type = builder.apply(DataComponentType.builder()).build();
         DATA_COMPONENTS.register(name, () -> type);

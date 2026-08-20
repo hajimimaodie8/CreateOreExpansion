@@ -1,10 +1,9 @@
 {
-  "replace": false,
   "values": [
     "createoreexpansion:jade_sword",
     "createoreexpansion:jade_pickaxe",
-    "createoreexpansion:jade_shovel",
     "createoreexpansion:jade_axe",
+    "createoreexpansion:jade_shovel",
     "createoreexpansion:jade_hoe",
     "createoreexpansion:topaz_sword",
     "createoreexpansion:topaz_pickaxe",

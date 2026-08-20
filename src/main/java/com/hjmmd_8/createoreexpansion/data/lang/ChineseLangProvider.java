@@ -147,6 +147,8 @@ public class ChineseLangProvider extends LanguageProvider {
         // ========== 附魔 ==========
         add("enchantment.createoreexpansion.reduce_consumption", "减耗");
         add("enchantment.createoreexpansion.swift_start", "迅启");
+        add("enchantment.createoreexpansion.skill_boost", "技艺提升");
+        add("enchantment.createoreexpansion.skill_regression", "技艺回溯");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");

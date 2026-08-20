@@ -135,6 +135,8 @@ public class EnglishLangProvider extends LanguageProvider {
         // ========== Enchantments ==========
         add("enchantment.createoreexpansion.reduce_consumption", "Reduced Consumption");
         add("enchantment.createoreexpansion.swift_start", "Swift Start");
+        add("enchantment.createoreexpansion.skill_boost", "Artistry Boost");
+        add("enchantment.createoreexpansion.skill_regression", "Artistry Regression");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");
