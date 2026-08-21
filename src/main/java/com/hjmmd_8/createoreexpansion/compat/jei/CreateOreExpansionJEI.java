@@ -40,7 +40,7 @@ import net.minecraft.world.level.block.Blocks;
 public class CreateOreExpansionJEI implements IModPlugin {
 
 	private static final ResourceLocation ID =
-		ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "jei_plugin");
+		ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "core_jei");
 
 	private final List<CreateRecipeCategory<?>> allCategories = new ArrayList<>();
 

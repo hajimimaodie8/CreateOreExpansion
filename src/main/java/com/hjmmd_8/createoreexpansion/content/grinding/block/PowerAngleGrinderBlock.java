@@ -22,6 +22,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -192,5 +193,30 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 		}
 
 		return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+	}
+
+	// ========== 光照规则（仿 Create 机器：动力锯/冲压机等不挡光） ==========
+
+	/**
+	 * 天空光可无衰减穿透本方块（仿 Create 机器）。
+	 *
+	 * <p>Create 的冲压机/动力锯/创造马达形状均为非全方块，故默认实现的
+	 * {@code !isShapeFullBlock(getShape())} 为 true，天空光直穿、下方方块不因
+	 * 机器压顶而变暗。本类模型是近全方块形状，直接返回 true 复刻该行为。</p>
+	 */
+	@Override
+	public boolean propagatesSkylightDown(BlockState state, BlockGetter level, BlockPos pos) {
+		return true;
+	}
+
+	/**
+	 * 自身面不做环境光遮蔽变暗（仿 Create 机器）。
+	 *
+	 * <p>Create 机器碰撞形状非全方块，{@code getShadeBrightness} 默认实现返回
+	 * 1.0（面不发暗）；近全方块形状会返回 0.2。此处直接返回 1.0 保持机器观感。</p>
+	 */
+	@Override
+	public float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
+		return 1.0F;
 	}
 }

@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:stellarstone_shovel"
+    }
+  ],
+  "level": 3,
+  "results": [
+    {
+      "id": "createoreexpansion:stellarstone_shovel"
+    }
+  ]
+}

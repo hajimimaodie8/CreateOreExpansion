@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "minecraft:iron_ingot"
+    }
+  ],
+  "level": 1,
+  "results": [
+    {
+      "id": "minecraft:gold_ingot"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:grinding",
+  "ingredients": [
+    {
+      "item": "minecraft:iron_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:iron_grinding_wheel"
+    }
+  ],
+  "processingTime": 200
+}

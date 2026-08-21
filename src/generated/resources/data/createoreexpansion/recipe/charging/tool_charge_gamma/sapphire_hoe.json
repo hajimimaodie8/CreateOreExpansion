@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_hoe"
+    }
+  ],
+  "level": 3,
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_hoe"
+    }
+  ]
+}

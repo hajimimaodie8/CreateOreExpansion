@@ -95,14 +95,30 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.RAW_STELLARSTONE_BLOCK.get(), "Raw Stellarstone Block");
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
         add(AllBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
+        add(AllBlocks.JADE_CREATE_CHARGER.get(), "Jade Create Charger");
         add("createoreexpansion.msg.cannot_open_cover", "Cannot open the cover: not enough space");
         add("createoreexpansion.msg.need_open_cover", "Open the cover first to install a grinding wheel");
         add(AllItems.IRON_GRINDING_WHEEL.get(), "Iron Grinding Wheel");
+        add(AllItems.GOLD_GRINDING_WHEEL.get(), "Gold Grinding Wheel");
+        add(AllItems.BRASS_GRINDING_WHEEL.get(), "Brass Grinding Wheel");
+        add(AllItems.ZINC_GRINDING_WHEEL.get(), "Zinc Grinding Wheel");
         add(AllItems.JADE_GRINDING_WHEEL.get(), "Jade Grinding Wheel");
         add(AllItems.DIAMOND_GRINDING_WHEEL.get(), "Diamond Grinding Wheel");
         add(AllItems.TOPAZ_GRINDING_WHEEL.get(), "Topaz Grinding Wheel");
         add(AllItems.SAPPHIRE_GRINDING_WHEEL.get(), "Sapphire Grinding Wheel");
         add(AllItems.STELLARSTONE_GRINDING_WHEEL.get(), "Stellarstone Grinding Wheel");
+        add(AllItems.NETHERITE_GRINDING_WHEEL.get(), "Netherite Grinding Wheel");
+
+        // ========== Grinding wheel effects ==========
+        add("createoreexpansion.wheel_effect.gold_grinding_wheel", "Effect: 25% chance to output an extra result");
+        add("createoreexpansion.wheel_effect.brass_grinding_wheel", "Effect: Processing time reduced by 25%");
+        add("createoreexpansion.wheel_effect.zinc_grinding_wheel", "Effect: +1 to each result amount");
+        add("createoreexpansion.wheel_effect.jade_grinding_wheel", "Effect: 15% chance to double results");
+        add("createoreexpansion.wheel_effect.diamond_grinding_wheel", "Effect: Processing time reduced by 15%");
+        add("createoreexpansion.wheel_effect.topaz_grinding_wheel", "Effect: +2 to each result amount");
+        add("createoreexpansion.wheel_effect.sapphire_grinding_wheel", "Effect: 35% chance to output an extra result");
+        add("createoreexpansion.wheel_effect.stellarstone_grinding_wheel", "Effect: Processing time reduced by 30%");
+        add("createoreexpansion.wheel_effect.netherite_grinding_wheel", "Effect: +3 to each result amount");
         add(AllItems.JADE_TOPAZ_BOW.get(), "Jade Topaz Bow");
         add(AllItems.JADE_STRESS_MEDALLION.get(), "Jade Stress Medallion");
         add(AllItems.TOPAZ_STRESS_MEDALLION.get(), "Topaz Stress Medallion");
@@ -159,9 +175,23 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.dismantling", "Dismantling");
         add("createoreexpansion.recipe.dismantling.output", "Output amount depends on remaining durability");
         add("createoreexpansion.recipe.assembly.grinding", "Grind in a Power Angle Grinder");
+        add("createoreexpansion.recipe.assembly.charging", "Charge in a Jade Create Charger");
+        // Charging category title (all three levels share one category; level badge keys below)
+        add("createoreexpansion.recipe.charging", "Charging");
+        add("createoreexpansion.jei.charging.level.1", "Low Energy");
+        add("createoreexpansion.jei.charging.level.2", "High Energy");
+        add("createoreexpansion.jei.charging.level.3", "Gamma Energy");
+        add("entity.createoreexpansion.jade_charger_wave", "Charger Wave");
 
         // ========== Power Angle Grinder goggles ==========
         add("createoreexpansion.goggles.angle_grinder", "Power Angle Grinder");
+        add("createoreexpansion.goggles.jade_charger", "Jade Create Charger");
+        add("createoreexpansion.goggles.charger_idle", "No stress");
+        // Tiers scale with Create's maxRotationSpeed config (default 256);
+        // RPM range is read from config and passed in as args (%s) at runtime
+        add("createoreexpansion.goggles.charger_low", "Low Charge (1-%s RPM)");
+        add("createoreexpansion.goggles.charger_high", "High Charge (%s-%s RPM)");
+        add("createoreexpansion.goggles.charger_gamma", "Gamma Charge (%s+ RPM)");
         add("createoreexpansion.goggles.no_wheel", "No grinding wheel installed!");
         add("createoreexpansion.goggles.installed_wheel", "Wheel: %s");
         add("createoreexpansion.goggles.required_speed", "Required speed: ≥ %s RPM");

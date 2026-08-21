@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:jade_stress_medallion"
+    }
+  ],
+  "level": 3,
+  "results": [
+    {
+      "id": "createoreexpansion:jade_stress_medallion"
+    }
+  ]
+}

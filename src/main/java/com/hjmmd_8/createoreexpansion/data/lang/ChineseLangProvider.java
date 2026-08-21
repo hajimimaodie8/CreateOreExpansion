@@ -155,14 +155,30 @@ public class ChineseLangProvider extends LanguageProvider {
         add("fluid.createoreexpansion.transmutation_fluid", "嬗变液");
         add("block.createoreexpansion.transmutation_fluid", "嬗变液");
         add("block.createoreexpansion.power_angle_grinder", "动力角磨床");
+        add("block.createoreexpansion.jade_create_charger", "翡翠应力充能器");
         add("createoreexpansion.msg.cannot_open_cover", "由于空间不足，无法开盖");
         add("createoreexpansion.msg.need_open_cover", "需要先开盖才能安装角磨轮");
         add(AllItems.IRON_GRINDING_WHEEL.get(), "铁角磨轮");
+        add(AllItems.GOLD_GRINDING_WHEEL.get(), "金角磨轮");
+        add(AllItems.BRASS_GRINDING_WHEEL.get(), "黄铜角磨轮");
+        add(AllItems.ZINC_GRINDING_WHEEL.get(), "锌角磨轮");
         add(AllItems.JADE_GRINDING_WHEEL.get(), "翡翠角磨轮");
         add(AllItems.DIAMOND_GRINDING_WHEEL.get(), "钻石角磨轮");
         add(AllItems.TOPAZ_GRINDING_WHEEL.get(), "黄玉角磨轮");
         add(AllItems.SAPPHIRE_GRINDING_WHEEL.get(), "蓝宝石角磨轮");
         add(AllItems.STELLARSTONE_GRINDING_WHEEL.get(), "星辉石角磨轮");
+        add(AllItems.NETHERITE_GRINDING_WHEEL.get(), "下界合金角磨轮");
+
+        // ========== 角磨轮特殊效果 ==========
+        add("createoreexpansion.wheel_effect.gold_grinding_wheel", "效果：25% 概率额外产出一份结果");
+        add("createoreexpansion.wheel_effect.brass_grinding_wheel", "效果：加工时间减少 25%");
+        add("createoreexpansion.wheel_effect.zinc_grinding_wheel", "效果：每种产物数量 +1");
+        add("createoreexpansion.wheel_effect.jade_grinding_wheel", "效果：15% 概率产物翻倍");
+        add("createoreexpansion.wheel_effect.diamond_grinding_wheel", "效果：加工时间减少 15%");
+        add("createoreexpansion.wheel_effect.topaz_grinding_wheel", "效果：每种产物数量 +2");
+        add("createoreexpansion.wheel_effect.sapphire_grinding_wheel", "效果：35% 概率额外产出一份结果");
+        add("createoreexpansion.wheel_effect.stellarstone_grinding_wheel", "效果：加工时间减少 30%");
+        add("createoreexpansion.wheel_effect.netherite_grinding_wheel", "效果：每种产物数量 +3");
         add("item.createoreexpansion.transmutation_fluid_bucket", "嬗变液桶");
         add("createoreexpansion.recipe.fan_transmuting", "批量嬗化");
         add("createoreexpansion.recipe.fan_transmuting.fan", "鼓风机");
@@ -173,9 +189,23 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.dismantling", "拆磨");
         add("createoreexpansion.recipe.dismantling.output", "输出数量取决于装备剩余耐久");
         add("createoreexpansion.recipe.assembly.grinding", "在动力角磨床中角磨");
+        add("createoreexpansion.recipe.assembly.charging", "在翡翠应力充能器中充能");
+        // 充能分类标题（低/高/伽马三个等级共用一个分类，等级徽章见 jei.charging.level.*）
+        add("createoreexpansion.recipe.charging", "充能加工");
+        add("createoreexpansion.jei.charging.level.1", "低能量充能");
+        add("createoreexpansion.jei.charging.level.2", "高能量充能");
+        add("createoreexpansion.jei.charging.level.3", "伽马能量充能");
+        add("entity.createoreexpansion.jade_charger_wave", "充能能量波");
 
         // ========== 动力角磨床护目镜提示 ==========
         add("createoreexpansion.goggles.angle_grinder", "动力角磨床");
+        add("createoreexpansion.goggles.jade_charger", "翡翠应力充能器");
+        add("createoreexpansion.goggles.charger_idle", "未接入应力");
+        // 档位按 Create 配置的转速上限（maxRotationSpeed，默认 256）等比划分，
+        // RPM 区间由代码读取配置后作为参数传入（%s），他人修改上限时显示自动跟随
+        add("createoreexpansion.goggles.charger_low", "低充能态（1~%s RPM）");
+        add("createoreexpansion.goggles.charger_high", "高充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.charger_gamma", "伽马充能态（≥%s RPM）");
         add("createoreexpansion.goggles.no_wheel", "未安装角磨轮！");
         add("createoreexpansion.goggles.installed_wheel", "角磨轮：%s");
         add("createoreexpansion.goggles.required_speed", "所需转速：≥ %s RPM");

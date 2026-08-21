@@ -40,3 +40,5 @@ repo/
 !**/src/**/repo/
 _create_src
 markdown_output
+.tmp-ca
+net

@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:grinding",
+  "ingredients": [
+    {
+      "item": "minecraft:gold_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:gold_grinding_wheel"
+    }
+  ],
+  "processingTime": 200
+}

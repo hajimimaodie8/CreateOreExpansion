@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:topaz_pickaxe"
+    }
+  ],
+  "level": 2,
+  "results": [
+    {
+      "id": "createoreexpansion:topaz_pickaxe"
+    }
+  ]
+}

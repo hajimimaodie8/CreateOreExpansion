@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_shovel"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_shovel"
+    }
+  ]
+}

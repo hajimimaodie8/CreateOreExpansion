@@ -1,9 +1,11 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.content.charger.block.JadeCreateChargerBlock;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
+import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock;
 import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.SharedProperties;
@@ -326,6 +328,50 @@ public final class AllBlocks {
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("power_angle_grinder"))
 			.parent(new UncheckedModelFile("createoreexpansion:block/power_angle_grinder/power_angle_grinder_item")))
+		.build()
+		.register();
+
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<JadeCreateChargerBlock> JADE_CREATE_CHARGER = CreateOreExpansion.REGISTRATE
+		.block("jade_create_charger", JadeCreateChargerBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			ExistingModelFile[] models = new ExistingModelFile[4];
+			for (int i = 0; i < 4; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/jade_create_charger/jade_create_charger_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				// 模型默认正面为 +Y（发射头朝上）：竖直放置（UP）用原样，DOWN 转 180，
+				// 水平放置先绕 X 躺下（+Y→+Z）再绕 Y 转向 facing
+				int xRot = dir == Direction.UP ? 0
+					: dir == Direction.DOWN ? 180
+						: dir.getAxis()
+							.isHorizontal() ? 270 : 0;
+				int yRot = dir.getAxis()
+					.isHorizontal() ? (int) dir.toYRot() : 0;
+				for (int mode = 0; mode < 4; mode++) {
+					vb.partialState()
+						.with(DirectionalKineticBlock.FACING, dir)
+						.with(JadeCreateChargerBlock.MODE, mode)
+						.modelForState()
+						.modelFile(models[mode])
+						.rotationX(xRot)
+						.rotationY(yRot)
+						.addModel();
+				}
+			}
+		})
+		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("jade_create_charger"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/jade_create_charger/jade_create_charger_item")))
 		.build()
 		.register();
 

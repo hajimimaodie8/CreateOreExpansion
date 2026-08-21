@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:jade_axe"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:jade_axe"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:grinding",
+  "ingredients": [
+    {
+      "item": "minecraft:zinc_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:zinc_grinding_wheel"
+    }
+  ],
+  "processingTime": 200
+}

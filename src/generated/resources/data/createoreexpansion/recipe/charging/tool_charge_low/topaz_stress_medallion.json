@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:topaz_stress_medallion"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:topaz_stress_medallion"
+    }
+  ]
+}

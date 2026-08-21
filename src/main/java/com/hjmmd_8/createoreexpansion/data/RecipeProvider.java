@@ -2,10 +2,12 @@ package com.hjmmd_8.createoreexpansion.data;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
 import com.simibubi.create.content.kinetics.press.PressingRecipe;
 import com.simibubi.create.content.kinetics.saw.CuttingRecipe;
+import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
 import com.simibubi.create.content.processing.sequenced.SequencedAssemblyRecipeBuilder;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.data.PackOutput;
@@ -60,6 +62,9 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
         sequencedOre(output, AllItems.RAW_TOPAZ.get(), AllItems.TOPAZ_BIG_SHARD.get(), AllItems.TOPAZ_SMALL_SHARD.get(), "topaz");
         sequencedOre(output, AllItems.RAW_SAPPHIRE.get(), AllItems.SAPPHIRE_BIG_SHARD.get(), AllItems.SAPPHIRE_SMALL_SHARD.get(), "sapphire");
         sequencedOre(output, AllItems.RAW_STELLARSTONE.get(), AllItems.STELLARSTONE_BIG_SHARD.get(), AllItems.STELLARSTONE_SMALL_SHARD.get(), "stellarstone");
+
+        // ========== 工具充能配方：翡翠应力充能器能量波给能量工具充能（低/高/伽马 = 100/500/1000 点） ==========
+        toolCharging(output);
     }
 
     /** 一套材料：5 工具 + 4 装备的拆磨配方 */
@@ -106,6 +111,65 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
             .addOutput(new ItemStack(big, 2), 25)
             .addOutput(new ItemStack(small, 3), 25)
             .addOutput(new ItemStack(small, 2), 25)
+            .build(output);
+    }
+
+    /** 工具充能配方：翡翠应力充能器能量波给能量工具/凝能佩充能，低/高/伽马 = 100/500/1000 点。
+     * <p>每个物品 × 3 个充能等级各一条配方（31 物品 × 3 = 93 条），无产物（充能只改能量组件）。
+     * 三个等级统一放在 {@code tool_charge/} 一个文件夹下，等级由配方 JSON 的 {@code level} 字段
+     * （1=低、2=高、3=伽马）区分，文件名后缀 _low/_high/_gamma 仅用于保证三条配方 id 唯一。</p> */
+    private void toolCharging(RecipeOutput output) {
+        record EnergyItem(String name, ItemLike item) {}
+        EnergyItem[] items = {
+            new EnergyItem("jade_sword", AllItems.JADE_SWORD.get()),
+            new EnergyItem("jade_pickaxe", AllItems.JADE_PICKAXE.get()),
+            new EnergyItem("jade_axe", AllItems.JADE_AXE.get()),
+            new EnergyItem("jade_shovel", AllItems.JADE_SHOVEL.get()),
+            new EnergyItem("jade_hoe", AllItems.JADE_HOE.get()),
+            new EnergyItem("topaz_sword", AllItems.TOPAZ_SWORD.get()),
+            new EnergyItem("topaz_pickaxe", AllItems.TOPAZ_PICKAXE.get()),
+            new EnergyItem("topaz_axe", AllItems.TOPAZ_AXE.get()),
+            new EnergyItem("topaz_shovel", AllItems.TOPAZ_SHOVEL.get()),
+            new EnergyItem("topaz_hoe", AllItems.TOPAZ_HOE.get()),
+            new EnergyItem("sapphire_sword", AllItems.SAPPHIRE_SWORD.get()),
+            new EnergyItem("sapphire_pickaxe", AllItems.SAPPHIRE_PICKAXE.get()),
+            new EnergyItem("sapphire_axe", AllItems.SAPPHIRE_AXE.get()),
+            new EnergyItem("sapphire_shovel", AllItems.SAPPHIRE_SHOVEL.get()),
+            new EnergyItem("sapphire_hoe", AllItems.SAPPHIRE_HOE.get()),
+            new EnergyItem("stellarstone_sword", AllItems.STELLARSTONE_SWORD.get()),
+            new EnergyItem("stellarstone_pickaxe", AllItems.STELLARSTONE_PICKAXE.get()),
+            new EnergyItem("stellarstone_axe", AllItems.STELLARSTONE_AXE.get()),
+            new EnergyItem("stellarstone_shovel", AllItems.STELLARSTONE_SHOVEL.get()),
+            new EnergyItem("stellarstone_hoe", AllItems.STELLARSTONE_HOE.get()),
+            new EnergyItem("thunderite_sword", AllItems.THUNDERITE_SWORD.get()),
+            new EnergyItem("thunderite_pickaxe", AllItems.THUNDERITE_PICKAXE.get()),
+            new EnergyItem("thunderite_axe", AllItems.THUNDERITE_AXE.get()),
+            new EnergyItem("thunderite_shovel", AllItems.THUNDERITE_SHOVEL.get()),
+            new EnergyItem("thunderite_hoe", AllItems.THUNDERITE_HOE.get()),
+            new EnergyItem("jade_stress_medallion", AllItems.JADE_STRESS_MEDALLION.get()),
+            new EnergyItem("topaz_stress_medallion", AllItems.TOPAZ_STRESS_MEDALLION.get()),
+            new EnergyItem("sapphire_stress_medallion", AllItems.SAPPHIRE_STRESS_MEDALLION.get()),
+            new EnergyItem("netherite_stress_medallion", AllItems.NETHERITE_STRESS_MEDALLION.get()),
+            new EnergyItem("stellarstone_stress_medallion", AllItems.STELLARSTONE_STRESS_MEDALLION.get()),
+            new EnergyItem("thunderite_stress_medallion", AllItems.THUNDERITE_STRESS_MEDALLION.get()),
+        };
+
+        for (EnergyItem e : items) {
+            // 三个充能等级统一在 tool_charge/ 一个文件夹下，等级靠配方 JSON 的 level 字段区分，
+            // 文件名后缀 _low/_high/_gamma 仅保证三条配方 id 唯一（同一路径无法重复注册）
+            charging(output, e.item(), "tool_charge/" + e.name() + "_low", 1);
+            charging(output, e.item(), "tool_charge/" + e.name() + "_high", 2);
+            charging(output, e.item(), "tool_charge/" + e.name() + "_gamma", 3);
+        }
+    }
+
+    /** 单条工具充能配方：输入单个能量物品，输出=输入工具本身（充能后仍是该工具，JEI 直观显示）。
+     * @param level 配方要求的充能等级（1=低、2=高、3=伽马） */
+    private void charging(RecipeOutput output, ItemLike item, String name, int level) {
+        new StandardProcessingRecipe.Builder<>(params -> new ChargingRecipe(params, level),
+            CreateOreExpansion.modLoc(name))
+            .require(item)
+            .output(item, 1)
             .build(output);
     }
 }

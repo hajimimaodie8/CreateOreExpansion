@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:stellarstone_sword"
+    }
+  ],
+  "level": 2,
+  "results": [
+    {
+      "id": "createoreexpansion:stellarstone_sword"
+    }
+  ]
+}

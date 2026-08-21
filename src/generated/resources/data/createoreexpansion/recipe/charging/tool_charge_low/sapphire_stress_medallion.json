@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_stress_medallion"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_stress_medallion"
+    }
+  ]
+}

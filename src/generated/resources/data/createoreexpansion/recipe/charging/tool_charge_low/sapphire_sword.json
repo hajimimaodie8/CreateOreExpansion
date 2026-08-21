@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_sword"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_sword"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:thunderite_axe"
+    }
+  ],
+  "level": 3,
+  "results": [
+    {
+      "id": "createoreexpansion:thunderite_axe"
+    }
+  ]
+}

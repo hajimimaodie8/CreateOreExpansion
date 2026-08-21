@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:netherite_stress_medallion"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:netherite_stress_medallion"
+    }
+  ]
+}

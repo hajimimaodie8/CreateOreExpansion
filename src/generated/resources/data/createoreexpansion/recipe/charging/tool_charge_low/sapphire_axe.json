@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_axe"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_axe"
+    }
+  ]
+}

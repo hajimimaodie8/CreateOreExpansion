@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:grinding",
+  "ingredients": [
+    {
+      "item": "minecraft:brass_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:brass_grinding_wheel"
+    }
+  ],
+  "processingTime": 200
+}

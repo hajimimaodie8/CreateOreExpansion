@@ -1,3 +1,7 @@
 {
-  "parent": "createoreexpansion:block/power_angle_grinder/power_angle_wheel/sapphire_grinding_wheel"
+  "parent": "createoreexpansion:block/power_angle_grinder/power_angle_wheel/wheel_base",
+  "textures": {
+    "0": "createoreexpansion:block/sapphire_block",
+    "particle": "createoreexpansion:block/sapphire_block"
+  }
 }

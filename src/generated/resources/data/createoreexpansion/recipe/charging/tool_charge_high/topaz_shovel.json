@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:topaz_shovel"
+    }
+  ],
+  "level": 2,
+  "results": [
+    {
+      "id": "createoreexpansion:topaz_shovel"
+    }
+  ]
+}

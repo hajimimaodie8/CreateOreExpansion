@@ -1,3 +1,7 @@
 {
-  "parent": "createoreexpansion:block/power_angle_grinder/power_angle_wheel/jade_grinding_wheel"
+  "parent": "createoreexpansion:block/power_angle_grinder/power_angle_wheel/wheel_base",
+  "textures": {
+    "0": "createoreexpansion:block/jade_block",
+    "particle": "createoreexpansion:block/jade_block"
+  }
 }

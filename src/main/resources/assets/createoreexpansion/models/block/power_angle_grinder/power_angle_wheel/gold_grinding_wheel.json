@@ -1,0 +1,7 @@
+{
+	"parent": "createoreexpansion:block/power_angle_grinder/power_angle_wheel/wheel_base",
+	"textures": {
+		"0": "minecraft:block/gold_block",
+		"particle": "minecraft:block/gold_block"
+	}
+}

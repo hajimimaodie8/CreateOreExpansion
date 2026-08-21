@@ -6,6 +6,7 @@ import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
+import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -38,7 +39,8 @@ public enum AllRecipeTypes implements IRecipeTypeInfo, StringRepresentable {
 	LIGHTNING(LightningRecipe::new),
 	LIGHTNING_BLOCK(LightningBlockRecipe::new),
 	GRINDING(GrindingRecipe::new),
-	DISMANTLING(() -> new DismantlingRecipe.Serializer());
+	DISMANTLING(() -> new DismantlingRecipe.Serializer()),
+	CHARGING(ChargingRecipe.Serializer::new);
 
 	public static final Predicate<RecipeHolder<?>> CAN_BE_AUTOMATED = r -> !r.id()
 		.getPath()

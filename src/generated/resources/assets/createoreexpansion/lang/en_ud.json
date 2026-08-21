@@ -4,6 +4,7 @@
   "block.createoreexpansion.end_stellarstone_ore": "ǝɹO ǝuoʇsɹɐןןǝʇS puƎ",
   "block.createoreexpansion.jade_block": "ʞɔoןᗺ ǝpɐſ",
   "block.createoreexpansion.jade_casing": "buısɐƆ ǝpɐſ",
+  "block.createoreexpansion.jade_create_charger": "ɹǝbɹɐɥƆ ǝʇɐǝɹƆ ǝpɐſ",
   "block.createoreexpansion.jade_ore": "ǝɹO ǝpɐſ",
   "block.createoreexpansion.nether_sapphire_ore": "ǝɹO ǝɹıɥddɐS ɹǝɥʇǝN",
   "block.createoreexpansion.power_angle_grinder": "ɹǝpuıɹ⅁ ǝןbuⱯ ɹǝʍoԀ",
@@ -18,11 +19,13 @@
   "block.createoreexpansion.topaz_ore": "ǝɹO zɐdo⟘",
   "block.createoreexpansion.transmutation_fluid": "pınןℲ uoıʇɐʇnɯsuɐɹ⟘",
   "fluid.createoreexpansion.transmutation_fluid": "pınןℲ uoıʇɐʇnɯsuɐɹ⟘",
+  "item.createoreexpansion.brass_grinding_wheel": "ןǝǝɥM buıpuıɹ⅁ ssɐɹᗺ",
   "item.createoreexpansion.crushed_jade_ore": "ǝɹO ǝpɐſ pǝɥsnɹƆ",
   "item.createoreexpansion.crushed_sapphire_ore": "ǝɹO ǝɹıɥddɐS pǝɥsnɹƆ",
   "item.createoreexpansion.crushed_stellarstone_ore": "ǝɹO ǝuoʇsɹɐןןǝʇS pǝɥsnɹƆ",
   "item.createoreexpansion.crushed_topaz_ore": "ǝɹO zɐdo⟘ pǝɥsnɹƆ",
   "item.createoreexpansion.diamond_grinding_wheel": "ןǝǝɥM buıpuıɹ⅁ puoɯɐıᗡ",
+  "item.createoreexpansion.gold_grinding_wheel": "ןǝǝɥM buıpuıɹ⅁ pןo⅁",
   "item.createoreexpansion.iron_grinding_wheel": "ןǝǝɥM buıpuıɹ⅁ uoɹI",
   "item.createoreexpansion.jade_axe": "ǝxⱯ ǝpɐſ",
   "item.createoreexpansion.jade_big_shard": "pɹɐɥS bıᗺ ǝpɐſ",
@@ -39,6 +42,7 @@
   "item.createoreexpansion.jade_sword": "pɹoʍS ǝpɐſ",
   "item.createoreexpansion.jade_topaz_bow": "ʍoᗺ zɐdo⟘ ǝpɐſ",
   "item.createoreexpansion.jade_wire": "ǝɹıM ǝpɐſ",
+  "item.createoreexpansion.netherite_grinding_wheel": "ןǝǝɥM buıpuıɹ⅁ ǝʇıɹǝɥʇǝN",
   "item.createoreexpansion.netherite_stress_medallion": "uoıןןɐpǝW ssǝɹʇS ǝʇıɹǝɥʇǝN",
   "item.createoreexpansion.raw_jade": "ǝpɐſ ʍɐᴚ",
   "item.createoreexpansion.raw_sapphire": "ǝɹıɥddɐS ʍɐᴚ",
@@ -97,5 +101,6 @@
   "item.createoreexpansion.topaz_stress_medallion": "uoıןןɐpǝW ssǝɹʇS zɐdo⟘",
   "item.createoreexpansion.topaz_sword": "pɹoʍS zɐdo⟘",
   "item.createoreexpansion.topaz_wire": "ǝɹıM zɐdo⟘",
-  "item.createoreexpansion.transmutation_fluid_bucket": "ʇǝʞɔnᗺ pınןℲ uoıʇɐʇnɯsuɐɹ⟘"
+  "item.createoreexpansion.transmutation_fluid_bucket": "ʇǝʞɔnᗺ pınןℲ uoıʇɐʇnɯsuɐɹ⟘",
+  "item.createoreexpansion.zinc_grinding_wheel": "ןǝǝɥM buıpuıɹ⅁ ɔuıZ"
 }

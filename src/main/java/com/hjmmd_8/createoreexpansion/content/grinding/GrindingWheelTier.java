@@ -1,22 +1,33 @@
 package com.hjmmd_8.createoreexpansion.content.grinding;
 
-import net.minecraft.resources.ResourceLocation;
+import com.hjmmd_8.createoreexpansion.common.AllTags;
+
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * 角磨轮等级：决定最低工作转速与加工耗时（随转速线性插值）。
  *
- * <p>一级：铁角磨轮（最低 64 RPM，64 时 10 秒）；二级：钻石/翡翠/黄玉角磨轮（最低 96 RPM，96 时 5 秒）；
- * 三级：蓝宝石/星辉石角磨轮（最低 128 RPM，128 时 3 秒）。转速升至 256 时耗时线性降至 1 秒。</p>
+ * <p>等级参数在此集中定义为常量：一级最低 64 RPM（64 时 10 秒）、二级最低 96 RPM（96 时 5 秒）、
+ * 三级最低 128 RPM（128 时 3 秒）；转速升至 256 时耗时线性降至 1 秒。</p>
+ *
+ * <p>等级判定基于等级 tag（{@code createoreexpansion:grinding_wheels/tier_N}）而非物品 id——
+ * 拓展模组只需把自己的角磨轮加入对应等级 tag 即可获得该等级，无需改本模组代码。</p>
  */
 public enum GrindingWheelTier {
 
+	/** 一级角磨轮：最低转速 64，64 RPM 时加工耗时 10 秒 */
 	TIER_1(1, 64, 10f),
+	/** 二级角磨轮：最低转速 96，96 RPM 时加工耗时 5 秒 */
 	TIER_2(2, 96, 5f),
+	/** 三级角磨轮：最低转速 128，128 RPM 时加工耗时 3 秒 */
 	TIER_3(3, 128, 3f);
 
+	/** 等级编号（1/2/3） */
 	public final int level;
+	/** 最低工作转速（RPM），低于此转速不加工 */
 	public final int minRpm;
+	/** 最低转速下单个物品的加工耗时（秒） */
 	public final float baseTimeSeconds;
 
 	GrindingWheelTier(int level, int minRpm, float baseTimeSeconds) {
@@ -25,15 +36,14 @@ public enum GrindingWheelTier {
 		this.baseTimeSeconds = baseTimeSeconds;
 	}
 
-	/** 从角磨轮物品 id 解析等级；非角磨轮返回 null */
-	public static GrindingWheelTier from(ResourceLocation wheelId) {
-		String path = wheelId.getPath();
-		if (path.startsWith("iron_"))
-			return TIER_1;
-		if (path.startsWith("diamond_") || path.startsWith("jade_") || path.startsWith("topaz_"))
-			return TIER_2;
-		if (path.startsWith("sapphire_") || path.startsWith("stellarstone_"))
+	/** 从角磨轮物品解析等级：按等级 tag 判定；非角磨轮返回 null */
+	public static GrindingWheelTier from(ItemStack stack) {
+		if (stack.is(AllTags.AllItemTags.GRINDING_WHEELS_TIER_3.tag))
 			return TIER_3;
+		if (stack.is(AllTags.AllItemTags.GRINDING_WHEELS_TIER_2.tag))
+			return TIER_2;
+		if (stack.is(AllTags.AllItemTags.GRINDING_WHEELS_TIER_1.tag))
+			return TIER_1;
 		return null;
 	}
 

@@ -29,7 +29,7 @@ import net.minecraft.world.item.crafting.RecipeInput;
 @JeiPlugin
 public class GrindingJEI implements IModPlugin {
 
-	private static final ResourceLocation ID = CreateOreExpansion.modLoc("jei_plugin");
+	private static final ResourceLocation ID = CreateOreExpansion.modLoc("grinding_jei");
 
 	private final List<CreateRecipeCategory<?>> allCategories = new ArrayList<>();
 

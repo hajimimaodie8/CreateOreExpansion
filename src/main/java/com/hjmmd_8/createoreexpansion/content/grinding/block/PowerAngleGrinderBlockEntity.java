@@ -6,6 +6,8 @@ import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.content.grinding.GrindingWheelTier;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.GrinderInventory;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.SidedItemHandlers;
+import com.hjmmd_8.createoreexpansion.content.grinding.effect.GrindingWheelEffect;
+import com.hjmmd_8.createoreexpansion.content.grinding.effect.GrindingWheelEffects;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -75,6 +77,8 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	private int recipeIndex;
 	/** 已安装的角磨轮物品 id（null = 未安装） */
 	private ResourceLocation wheel;
+	/** 当前是否为序列装配的角磨步骤（序列加工时禁用轮子产出类效果） */
+	private boolean sequenceStep;
 
 	public PowerAngleGrinderBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
@@ -240,8 +244,8 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		if (recipeIndex >= recipes.size())
 			recipeIndex = 0;
 
-		// 加工耗时由角磨轮等级与当前转速决定（线性插值），不再使用配方 processingTime
-		time = tier.getProcessingTime(Math.abs(getSpeed())) * 20;
+		// 加工耗时由角磨轮等级与当前转速决定（线性插值）再乘轮子效果倍率，不再使用配方 processingTime
+		time = tier.getProcessingTime(Math.abs(getSpeed())) * 20 * getWheelEffect().getTimeMultiplier();
 
 		inventory.remainingTime = time;
 		inventory.recipeDuration = inventory.remainingTime;
@@ -276,6 +280,10 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		if (input.isEmpty())
 			inventory.setStackInSlot(0, ItemStack.EMPTY);
 
+		// 轮子特殊效果：额外产出/数量提升/双倍等（序列加工步骤不应用，避免序列配方产出爆炸）
+		if (!sequenceStep)
+			getWheelEffect().onProcessCompleted(input, results, level.random);
+
 		// 成品放入槽 1+（堆叠或空槽），不影响剩余输入继续加工
 		for (ItemStack result : results) {
 			insertToOutput(result);
@@ -308,8 +316,11 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 			inventory.getStackInSlot(0), AllRecipeTypes.GRINDING.getType(), GrindingRecipe.class);
 		if (assemblyRecipe.isPresent() && filtering.test(assemblyRecipe.get()
 			.value()
-			.getResultItem(level.registryAccess())))
+			.getResultItem(level.registryAccess()))) {
+			sequenceStep = true;
 			return List.of(assemblyRecipe.get());
+		}
+		sequenceStep = false;
 
 		List<RecipeHolder<? extends Recipe<?>>> recipes = new java.util.ArrayList<>();
 
@@ -383,7 +394,16 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	/** 当前安装角磨轮的等级；未安装或未知轮返回 null */
 	private GrindingWheelTier getWheelTier() {
 		ResourceLocation wheelId = getWheel();
-		return wheelId == null ? null : GrindingWheelTier.from(wheelId);
+		if (wheelId == null)
+			return null;
+		Item item = BuiltInRegistries.ITEM.get(wheelId);
+		return item != null && item != Items.AIR ? GrindingWheelTier.from(new ItemStack(item)) : null;
+	}
+
+	/** 当前安装角磨轮的特殊效果；未安装返回无效果 */
+	private GrindingWheelEffect getWheelEffect() {
+		ResourceLocation wheelId = getWheel();
+		return wheelId == null ? GrindingWheelEffect.NONE : GrindingWheelEffects.get(wheelId);
 	}
 
 	public boolean installWheel(ItemStack stack) {
@@ -454,7 +474,14 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		tooltip.add(Component.translatable("createoreexpansion.goggles.installed_wheel", wheelName)
 			.withStyle(ChatFormatting.WHITE));
 
-		GrindingWheelTier tier = GrindingWheelTier.from(wheelId);
+		// 轮子特殊效果（护目镜可见）
+		Component effectDescription = getWheelEffect().getDescription();
+		if (!effectDescription.getString()
+			.isEmpty())
+			tooltip.add(effectDescription.copy()
+				.withStyle(ChatFormatting.AQUA));
+
+		GrindingWheelTier tier = getWheelTier();
 		if (tier == null)
 			return added;
 

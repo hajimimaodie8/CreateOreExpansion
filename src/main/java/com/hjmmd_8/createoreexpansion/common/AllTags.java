@@ -19,8 +19,14 @@ public class AllTags {
 		SKILL_TOOLS(CreateOreExpansion.modLoc("skill_tools")),
 		/** 释放技能有冷却的工具（迅启附魔可附） */
 		COOLDOWN_TOOLS(CreateOreExpansion.modLoc("cooldown_tools")),
-		/** 角磨轮（动力角磨床可安装的配件） */
-		GRINDING_WHEELS(CreateOreExpansion.modLoc("grinding_wheels"));
+		/** 角磨轮（动力角磨床可安装的配件，通用安装 tag） */
+		GRINDING_WHEELS(CreateOreExpansion.modLoc("grinding_wheels")),
+		/** 一级角磨轮（铁） */
+		GRINDING_WHEELS_TIER_1(CreateOreExpansion.modLoc("grinding_wheels/tier_1")),
+		/** 二级角磨轮（钻石/翡翠/黄玉） */
+		GRINDING_WHEELS_TIER_2(CreateOreExpansion.modLoc("grinding_wheels/tier_2")),
+		/** 三级角磨轮（蓝宝石/星辉石） */
+		GRINDING_WHEELS_TIER_3(CreateOreExpansion.modLoc("grinding_wheels/tier_3"));
 
 		public final TagKey<Item> tag;
 

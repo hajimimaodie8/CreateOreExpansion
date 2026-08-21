@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:thunderite_stress_medallion"
+    }
+  ],
+  "level": 2,
+  "results": [
+    {
+      "id": "createoreexpansion:thunderite_stress_medallion"
+    }
+  ]
+}

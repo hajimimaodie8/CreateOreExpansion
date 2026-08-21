@@ -53,6 +53,7 @@ public class CreateOreExpansion {
         AllCreativeModeTabs.register(modEventBus);
 
         AllDataComponents.register(modEventBus);
+        AllEntityTypes.register(modEventBus);
         AllBlocks.register();
         AllBlockEntityTypes.register();
         AllTiers.register();

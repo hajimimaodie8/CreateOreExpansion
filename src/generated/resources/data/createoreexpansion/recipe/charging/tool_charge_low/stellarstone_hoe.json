@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:stellarstone_hoe"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:stellarstone_hoe"
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.medallion.StellarstoneSt
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.ThunderiteStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
+import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelItem;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
@@ -21,10 +22,14 @@ import com.tterrag.registrate.util.entry.RegistryEntry;
 import com.tterrag.registrate.util.nullness.NonNullFunction;
 import com.tterrag.registrate.util.nullness.NonNullSupplier;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.*;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
 import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.NotNull;
@@ -32,11 +37,13 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static com.simibubi.create.AllTags.AllItemTags.CREATE_INGOTS;
 import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
 
 public final class AllItems {
+
     // ===== 机械动力方式注册 =====
 
     // 这个变量名可以随便写，好理解就行，一般是item id的大写
@@ -991,6 +998,74 @@ public final class AllItems {
             .model((ctx, provider) -> {})
             .register();
 
+    // ========== 角磨轮（动力角磨床配件，开盖后安装） ==========
+
+    /**
+     * 组件化注册角磨轮：注册时选用「材质来源方块」与「等级 tag」。
+     * 材质方块以 Supplier 延迟取值（避免静态初始化顺序问题）；
+     * 模型由 datagen 动态生成（parent wheel_base + 方块材质），无需手写轮子模型 JSON。
+     */
+    private static ItemEntry<GrindingWheelItem> grindingWheel(String name, AllTags.AllItemTags tierTag, Supplier<Block> materialBlock) {
+        return CreateOreExpansion.REGISTRATE
+            .item(name, GrindingWheelItem::new)
+            .tag(AllTags.AllItemTags.GRINDING_WHEELS.tag)
+            .tag(tierTag.tag)
+            .model((ctx, prov) -> {
+                ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(materialBlock.get());
+                // 用 ResourceLocation 重载的 texture()（不校验纹理是否存在于 datagen 资源包，
+                // 允许引用 Create 等依赖模组的纹理）
+                ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(blockId.getNamespace(),
+                    "block/" + blockId.getPath());
+                prov.getBuilder(name)
+                    .parent(new ModelFile.UncheckedModelFile(
+                        "createoreexpansion:block/power_angle_grinder/power_angle_wheel/wheel_base"))
+                    .texture("0", texture)
+                    .texture("particle", texture);
+            })
+            .register();
+    }
+
+    public static final ItemEntry<GrindingWheelItem> IRON_GRINDING_WHEEL = grindingWheel(
+            "iron_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_1,
+            () -> Blocks.IRON_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> GOLD_GRINDING_WHEEL = grindingWheel(
+            "gold_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_1,
+            () -> Blocks.GOLD_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> BRASS_GRINDING_WHEEL = grindingWheel(
+            "brass_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_1,
+            com.simibubi.create.AllBlocks.BRASS_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> ZINC_GRINDING_WHEEL = grindingWheel(
+            "zinc_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_1,
+            com.simibubi.create.AllBlocks.ZINC_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> JADE_GRINDING_WHEEL = grindingWheel(
+            "jade_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_2,
+            AllBlocks.JADE_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> DIAMOND_GRINDING_WHEEL = grindingWheel(
+            "diamond_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_2,
+            () -> Blocks.DIAMOND_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> TOPAZ_GRINDING_WHEEL = grindingWheel(
+            "topaz_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_2,
+            AllBlocks.TOPAZ_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> SAPPHIRE_GRINDING_WHEEL = grindingWheel(
+            "sapphire_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_3,
+            AllBlocks.SAPPHIRE_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> STELLARSTONE_GRINDING_WHEEL = grindingWheel(
+            "stellarstone_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_3,
+            AllBlocks.STELLARSTONE_BLOCK);
+    public static final ItemEntry<GrindingWheelItem> NETHERITE_GRINDING_WHEEL = grindingWheel(
+            "netherite_grinding_wheel",
+            AllTags.AllItemTags.GRINDING_WHEELS_TIER_3,
+            () -> Blocks.NETHERITE_BLOCK);
+
     public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, SkillItemBuilder<T, P>> skillItem() {
         return SkillItemBuilder::new;
     }
@@ -1157,24 +1232,4 @@ public final class AllItems {
     }
 
     public static void register() {}
-
-    // ========== 角磨轮（动力角磨床配件，开盖后安装） ==========
-
-    /** 注册角磨轮（物品模型指向 block/power_angle_grinder/power_angle_wheel/xxx，已含 display 变换） */
-    private static ItemEntry<Item> grindingWheel(String name) {
-        return CreateOreExpansion.REGISTRATE
-            .item(name, Item::new)
-            .tag(AllTags.AllItemTags.GRINDING_WHEELS.tag)
-            .model((ctx, prov) -> prov.getBuilder(name)
-                .parent(new ModelFile.UncheckedModelFile(
-                    "createoreexpansion:block/power_angle_grinder/power_angle_wheel/" + name)))
-            .register();
-    }
-
-    public static final ItemEntry<Item> IRON_GRINDING_WHEEL = grindingWheel("iron_grinding_wheel");
-    public static final ItemEntry<Item> JADE_GRINDING_WHEEL = grindingWheel("jade_grinding_wheel");
-    public static final ItemEntry<Item> DIAMOND_GRINDING_WHEEL = grindingWheel("diamond_grinding_wheel");
-    public static final ItemEntry<Item> TOPAZ_GRINDING_WHEEL = grindingWheel("topaz_grinding_wheel");
-    public static final ItemEntry<Item> SAPPHIRE_GRINDING_WHEEL = grindingWheel("sapphire_grinding_wheel");
-    public static final ItemEntry<Item> STELLARSTONE_GRINDING_WHEEL = grindingWheel("stellarstone_grinding_wheel");
 }
