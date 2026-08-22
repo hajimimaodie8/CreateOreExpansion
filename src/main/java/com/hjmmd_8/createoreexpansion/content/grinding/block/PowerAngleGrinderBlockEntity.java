@@ -3,12 +3,13 @@ package com.hjmmd_8.createoreexpansion.content.grinding.block;
 import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
-import com.hjmmd_8.createoreexpansion.content.grinding.GrindingWheelTier;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.GrinderInventory;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.SidedItemHandlers;
 import com.hjmmd_8.createoreexpansion.content.grinding.effect.GrindingWheelEffect;
 import com.hjmmd_8.createoreexpansion.content.grinding.effect.GrindingWheelEffects;
+import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelTier;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
+import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrinderRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.kinetics.belt.behaviour.DirectBeltInputBehaviour;
@@ -17,6 +18,7 @@ import com.simibubi.create.content.processing.sequenced.SequencedAssemblyRecipe;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 import com.simibubi.create.foundation.item.ItemHelper;
+import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 import com.simibubi.create.foundation.recipe.RecipeConditions;
 import com.simibubi.create.foundation.recipe.RecipeFinder;
 
@@ -55,7 +57,6 @@ import net.neoforged.neoforge.items.ItemHandlerHelper;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -66,10 +67,6 @@ import java.util.stream.Collectors;
  * 完成后经漏斗引出或向输出方向抛出（方向随转速正负，从盖往轮看）。</p>
  */
 public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements Clearable {
-
-	private static final Object grindingRecipesKey = new Object();
-	private static final Object advancedGrindingRecipesKey = new Object();
-	private static final Object dismantlingRecipesKey = new Object();
 
 	public FilteringBehaviour filtering;
 	public GrinderInventory inventory;
@@ -132,13 +129,15 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 			return;
 		// 必须安装角磨轮且转速达到该等级最低要求才能加工
 		GrindingWheelTier tier = getWheelTier();
-		if (tier == null || Math.abs(getSpeed()) < tier.minRpm)
+		if (tier == null || Math.abs(getSpeed()) < tier.getMinRpm())
 			return;
 		if (getSpeed() == 0)
 			return;
 
 		if (inventory.remainingTime == -1) {
-			if (!inventory.isEmpty() && !inventory.appliedRecipe)
+			// 仅槽 0 有输入才启动加工（成品区槽 1+ 有成品不影响新输入）
+			if (!inventory.getStackInSlot(0)
+				.isEmpty() && !inventory.appliedRecipe)
 				start(inventory.getStackInSlot(0));
 			return;
 		}
@@ -158,10 +157,8 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 				inventory.remainingTime = 20;
 				sendData();
 			} else {
-				// 无匹配配方（或结果为空）：吞掉，什么都不输出
-				inventory.clear();
-				inventory.remainingTime = -1;
-				sendData();
+				// 无匹配配方（或结果为空）：消耗 1 个输入但不产出（物品一点一点减少，不瞬间消失）
+				consumeInputNoOutput();
 			}
 			return;
 		}
@@ -170,59 +167,86 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 			return;
 		inventory.remainingTime = 0;
 
-		// 加工完成：成品（槽 1+）留在库存由输出口漏斗抽取；成品抽空后继续加工槽 0 剩余输入
+		// 加工完成：成品已存入槽 1+（insertToOutput），立即重置并继续加工槽 0 剩余输入。
+		// 成品区 32 格可堆叠、漏斗可随时抽取（见 GrinderInventory.extractItem），
+		// 无需阻塞等待成品被抽走（无漏斗时也能连续加工，槽满时 insertToOutput 会掉落不丢失）
 		if (inventory.appliedRecipe) {
-			if (isOutputEmpty()) {
-				inventory.remainingTime = -1;
-				inventory.appliedRecipe = false;
-				sendData();
-			}
+			inventory.remainingTime = -1;
+			inventory.appliedRecipe = false;
+			sendData();
 			return;
 		}
 
-		// 无匹配配方（不可加工物品）：吞掉，什么都不输出
-		inventory.clear();
+		// 无匹配配方（不可加工物品）：消耗 1 个输入但不产出，保留成品区（槽 1+）
+		consumeInputNoOutput();
+	}
+
+	/** 消耗 1 个输入但不产出任何物品（无匹配配方：物品逐个减少，加工节奏/粒子正常，不瞬间消失） */
+	private void consumeInputNoOutput() {
+		ItemStack input = inventory.getStackInSlot(0);
+		input.shrink(1);
+		if (input.isEmpty())
+			inventory.setStackInSlot(0, ItemStack.EMPTY);
 		inventory.remainingTime = -1;
 		sendData();
 	}
 
-	/** 输入物品（上方丢入/漏斗/传送带） */
-	public void insertItem(ItemStack stack) {
-		if (inventory.isEmpty() && !stack.isEmpty()) {
-			inventory.clear();
-			inventory.insertItem(0, stack.copy(), false);
+	/**
+	 * 输入物品（上方丢入/漏斗/传送带/开盖放入）：仅当槽 0 空时放入（成品区有成品不影响新输入）。
+	 * @return 是否成功放入（槽 0 已有物品时返回 false，物品保留在原处不丢失）
+	 */
+	public boolean insertItem(ItemStack stack) {
+		if (inventory.getStackInSlot(0)
+			.isEmpty() && !stack.isEmpty()) {
+			inventory.setStackInSlot(0, stack.copy());
 			sendData();
+			return true;
 		}
+		return false;
 	}
 
+	/** 顶面掉落物输入：仅成功放入时才销毁物品实体（槽 0 已有物品时物品保留在掉落物，不消失） */
 	public void insertItem(ItemEntity entity) {
 		if (!entity.isAlive())
 			return;
 		if (level.isClientSide)
 			return;
-		insertItem(entity.getItem());
-		entity.discard();
+		if (insertItem(entity.getItem()))
+			entity.discard();
 	}
 
-	/** 合盖时空手右键：取出库存中全部物品交给玩家 */
+	/** 合盖时空手右键（分批取出，均批量）：
+	 * 第一次右键取成品区（槽 1+，全部加工产物）；成品区已空时再右键取原料
+	 * （槽 0，误放进去的未加工物品，整组取出）。未取出的部分不影响加工。 */
 	public void retrieveAll(Player player) {
 		if (level.isClientSide)
 			return;
-		for (int i = 0; i < inventory.getSlots(); i++) {
+		boolean taken = false;
+		// 第一次右键：优先取成品区（槽 1+）
+		for (int i = 1; i < inventory.getSlots(); i++) {
 			ItemStack stack = inventory.getStackInSlot(i);
 			if (stack.isEmpty())
 				continue;
 			ItemHandlerHelper.giveItemToPlayer(player, stack);
 			inventory.setStackInSlot(i, ItemStack.EMPTY);
+			taken = true;
 		}
-		inventory.remainingTime = -1;
-		inventory.appliedRecipe = false;
+		// 成品区已空：第二次右键取原料（槽 0，整组）
+		if (!taken) {
+			ItemStack stack = inventory.getStackInSlot(0);
+			if (!stack.isEmpty()) {
+				ItemHandlerHelper.giveItemToPlayer(player, stack);
+				inventory.setStackInSlot(0, ItemStack.EMPTY);
+			}
+		}
 		sendData();
 	}
 
 	/** 开始加工（匹配角磨配方；未安装角磨轮时不加工） */
 	public void start(ItemStack inserted) {
-		if (inventory.isEmpty())
+		// 仅槽 0 有输入才启动（成品区槽 1+ 有成品不影响新输入，避免空转误清成品）
+		if (inventory.getStackInSlot(0)
+			.isEmpty())
 			return;
 		GrindingWheelTier tier = getWheelTier();
 		if (tier == null)
@@ -231,10 +255,12 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 			return;
 
 		List<RecipeHolder<? extends Recipe<?>>> recipes = getRecipes();
-		float time = 50;
+		// 加工耗时由角磨轮等级与当前转速决定（线性插值）再乘轮子效果倍率
+		float time = tier.getProcessingTime(Math.abs(getSpeed())) * 20 * getWheelEffect().getTimeMultiplier();
 
 		if (recipes.isEmpty()) {
-			inventory.remainingTime = inventory.recipeDuration = 10;
+			// 无匹配配方：仍按正常节奏加工（有粒子、逐个消耗），只是不产出任何物品
+			inventory.remainingTime = inventory.recipeDuration = time;
 			inventory.appliedRecipe = false;
 			sendData();
 			return;
@@ -243,9 +269,6 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		recipeIndex++;
 		if (recipeIndex >= recipes.size())
 			recipeIndex = 0;
-
-		// 加工耗时由角磨轮等级与当前转速决定（线性插值）再乘轮子效果倍率，不再使用配方 processingTime
-		time = tier.getProcessingTime(Math.abs(getSpeed())) * 20 * getWheelEffect().getTimeMultiplier();
 
 		inventory.remainingTime = time;
 		inventory.recipeDuration = inventory.remainingTime;
@@ -284,30 +307,61 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		if (!sequenceStep)
 			getWheelEffect().onProcessCompleted(input, results, level.random);
 
-		// 成品放入槽 1+（堆叠或空槽），不影响剩余输入继续加工
+		// 成品统一存入库存（槽 1+）：有输出漏斗由漏斗抽取，无漏斗时玩家空手右键取出
+		// （机器本质是容器；手动放入与漏斗输入走同一套输出逻辑，行为一致）
 		for (ItemStack result : results) {
 			insertToOutput(result);
 		}
 		return true;
 	}
 
-	/** 成品插入槽 1+（堆叠或空槽）；全部槽满时剩余部分丢弃（输出槽 32 格，一般不会满） */
-	private void insertToOutput(ItemStack stack) {
-		for (int slot = 1; slot < inventory.getSlots(); slot++) {
-			ItemStack left = inventory.insertItem(slot, stack, false);
-			if (left.isEmpty())
-				return;
-			stack = left;
+	/** 待渲染的物品（仿置物台显示）：未加工（槽 0）优先；槽 0 空时取成品区（槽 1+）第一格。
+	 * 多个物品（未加工 + 已加工）时只渲染未加工；只有一种物品（无论未加工/已加工）时渲染该种。 */
+	public ItemStack getRenderedItem() {
+		ItemStack stack = inventory.getStackInSlot(0);
+		if (!stack.isEmpty())
+			return stack;
+		for (int i = 1; i < inventory.getSlots(); i++) {
+			stack = inventory.getStackInSlot(i);
+			if (!stack.isEmpty())
+				return stack;
 		}
+		return ItemStack.EMPTY;
 	}
 
-	/** 成品区（槽 1+）是否已空 */
-	private boolean isOutputEmpty() {
-		for (int slot = 1; slot < inventory.getSlots(); slot++)
-			if (!inventory.getStackInSlot(slot)
-				.isEmpty())
-				return false;
-		return true;
+	/** 成品插入槽 1+（堆叠或空槽）；全部槽满时剩余部分掉落到机器上方，不再静默丢失。
+	 *
+	 * <p>用 {@code setStackInSlot} 直接存入：父类 {@code ProcessingInventory.isItemValid}
+	 * 只允许物品插入槽 0（输入区），走 {@code insertItem} 到成品区会被拒绝并返回原物品，
+	 * 导致成品静默消失；直接设置槽位绕过该输入验证（成品区为内部输出，外部漏斗
+	 * 的插入通道仍受 isItemValid 限制，不会污染输出槽）。</p> */
+	private void insertToOutput(ItemStack stack) {
+		for (int slot = 1; slot < inventory.getSlots(); slot++) {
+			ItemStack existing = inventory.getStackInSlot(slot);
+			if (existing.isEmpty()) {
+				inventory.setStackInSlot(slot, stack);
+				return;
+			}
+			if (ItemStack.isSameItemSameComponents(existing, stack)) {
+				int space = existing.getMaxStackSize() - existing.getCount();
+				if (stack.getCount() <= space) {
+					existing.grow(stack.getCount());
+					inventory.setStackInSlot(slot, existing);
+					return;
+				}
+				existing.grow(space);
+				inventory.setStackInSlot(slot, existing);
+				stack = stack.copy();
+				stack.shrink(space);
+			}
+		}
+		// 全部槽满：剩余部分掉落到机器上方（不静默丢失）
+		if (!stack.isEmpty()) {
+			ItemEntity drop = new ItemEntity(level, worldPosition.getX() + .5, worldPosition.getY() + 1,
+				worldPosition.getZ() + .5, stack);
+			drop.setDeltaMovement(Vec3.ZERO);
+			level.addFreshEntity(drop);
+		}
 	}
 
 	private List<RecipeHolder<? extends Recipe<?>>> getRecipes() {
@@ -324,23 +378,16 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 
 		List<RecipeHolder<? extends Recipe<?>>> recipes = new java.util.ArrayList<>();
 
-		// 基础角磨配方（全部等级可用）
-		recipes.addAll(RecipeFinder.get(grindingRecipesKey, level,
-			RecipeConditions.isOfType(AllRecipeTypes.GRINDING.getType())));
-
-		// 高级角磨（≥2 级轮）：可执行 Create 粉碎轮/石磨的全部配方
+		// 按角磨轮等级遍历配方类型注册表（开闭：新增配方类型只需 GrinderRecipeTypes.register，
+		// 本方法不感知具体类型；1 级=GRINDING，2 级+=CRUSHING/MILLING，3 级+=DISMANTLING）
 		GrindingWheelTier tier = getWheelTier();
-		if (tier != null && tier.level >= 2) {
-			Predicate<RecipeHolder<? extends Recipe<?>>> advanced = RecipeConditions
-				.isOfType(com.simibubi.create.AllRecipeTypes.CRUSHING.getType())
-				.or(RecipeConditions.isOfType(com.simibubi.create.AllRecipeTypes.MILLING.getType()));
-			recipes.addAll(RecipeFinder.get(advancedGrindingRecipesKey, level, advanced));
-		}
-
-		// 拆磨（≥3 级轮）：装备/武器/马鞍拆解
-		if (tier != null && tier.level >= 3) {
-			recipes.addAll(RecipeFinder.get(dismantlingRecipesKey, level,
-				RecipeConditions.isOfType(AllRecipeTypes.DISMANTLING.getType())));
+		if (tier != null) {
+			for (IRecipeTypeInfo typeInfo : GrinderRecipeTypes.getFor(tier.level)) {
+				// key 用 typeInfo 对象本身（枚举常量，对象身份唯一稳定）：
+				// RecipeFinder 缓存按 key 全局缓存，用 ResourceLocation 作 key 可能与其他代码缓存冲突
+				recipes.addAll(RecipeFinder.get(typeInfo, level,
+					RecipeConditions.isOfType(typeInfo.getType())));
+			}
 		}
 
 		return recipes.stream()
@@ -350,39 +397,60 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 			.collect(Collectors.toList());
 	}
 
-	/** 物品移动方向：横向（垂直于轮轴），方向随转速正负（从盖往轮看） */
-	public Vec3 getItemMovementVec() {
-		Direction facing = getBlockState().getValue(PowerAngleGrinderBlock.HORIZONTAL_FACING);
-		boolean facingZ = facing.getAxis() == Direction.Axis.Z;
-		int offset = getSpeed() < 0 ? -1 : 1;
-		return new Vec3(offset * (facingZ ? 1 : 0), 0, offset * (facingZ ? 0 : 1));
-	}
-
-	/** 加工粒子（物品在轮上缓慢移动的视觉，仿动力锯） */
+	/**
+	 * 加工粒子（细腻化）：碎屑沿角磨轮<b>切向</b>飞溅，方向跟随轮子旋转。
+	 *
+	 * <p>Create 转速约定：{@code getSpeed() > 0} = 从轴正方向（FACING）看<b>逆时针</b>
+	 * （渲染 angle = time×speed 绕轴正方向旋转）。玩家从盖板（FACING 对面）看时，
+	 * {@code getSpeed() < 0} 为<b>顺时针</b>，此时粒子切向 = {@code radial × axis}；
+	 * 反之（逆时针）切向 = {@code axis × radial} —— 粒子始终与轮子同向飞溅。</p>
+	 *
+	 * <p>每 tick 生成 2~3 个碎屑：位置在轮缘附近（轮心=方块中心，轮半径 4px→0.25 格），
+	 * 速度以切向为主（随转速增强）并加随机散布模拟飞溅扩散。</p>
+	 */
 	protected void spawnParticles(ItemStack stack) {
 		if (stack == null || stack.isEmpty())
 			return;
 
 		ParticleOptions particleData = null;
-		float speed = 1;
 		if (stack.getItem() instanceof BlockItem)
 			particleData = new BlockParticleOption(ParticleTypes.BLOCK, ((BlockItem) stack.getItem()).getBlock()
 				.defaultBlockState());
-		else {
+		else
 			particleData = new ItemParticleOption(ParticleTypes.ITEM, stack);
-			speed = .125f;
-		}
 
 		RandomSource r = level.random;
-		Vec3 vec = getItemMovementVec();
-		Vec3 pos = VecHelper.getCenterOf(this.worldPosition);
-		float offset = inventory.recipeDuration != 0 ? (float) (inventory.remainingTime) / inventory.recipeDuration : 0;
-		offset /= 2;
-		if (inventory.appliedRecipe)
-			offset -= .5f;
-		// y 基准取轮位置（模型底座一致，一般无需调整）
-		level.addParticle(particleData, pos.x() + -vec.x * offset, pos.y() + .45f, pos.z() + -vec.z * offset,
-			-vec.x * speed, r.nextFloat() * speed, -vec.z * speed);
+		Direction facing = getBlockState().getValue(PowerAngleGrinderBlock.HORIZONTAL_FACING);
+		boolean axisZ = facing.getAxis() == Direction.Axis.Z;
+		Vec3 axis = Vec3.atLowerCornerOf(facing.getNormal()); // 轮轴（FACING 方向）
+		Vec3 center = VecHelper.getCenterOf(this.worldPosition); // 轮心（轮模型中心≈方块中心）
+		float radius = 0.25f; // 轮半径 4px → 0.25 格
+		float spin = Math.abs(getSpeed());
+		// 飞溅速度随转速增强：0.12 ~ 0.35 格/秒
+		float base = 0.12f + Math.min(spin / 256f, 1f) * 0.23f;
+
+		// 每 tick 2~3 个碎屑
+		int count = 2 + r.nextInt(2);
+		for (int i = 0; i < count; i++) {
+			// 轮面内随机径向（轮缘附近 75%~100% 半径）
+			double a = r.nextDouble() * Math.PI * 2;
+			double rr = radius * (0.75 + r.nextDouble() * 0.25);
+			Vec3 radial = axisZ ? new Vec3(Math.cos(a) * rr, Math.sin(a) * rr, 0)
+				: new Vec3(0, Math.cos(a) * rr, Math.sin(a) * rr);
+
+			// 切向：getSpeed<0（从盖看顺时针）→ radial×axis，否则（逆时针）→ axis×radial
+			Vec3 tangent = getSpeed() < 0 ? radial.cross(axis) : axis.cross(radial);
+
+			// 粒子位置：轮心 + 径向 + 少量轴向散布（轮厚 4px）
+			Vec3 spawn = center.add(radial)
+				.add(axis.scale((r.nextDouble() - 0.5) * 0.25));
+
+			// 速度：切向为主 + 随机散布（飞溅扩散）
+			double vx = tangent.x * base + r.nextGaussian() * 0.03;
+			double vy = tangent.y * base + r.nextGaussian() * 0.03;
+			double vz = tangent.z * base + r.nextGaussian() * 0.03;
+			level.addParticle(particleData, spawn.x, spawn.y, spawn.z, vx, vy, vz);
+		}
 	}
 
 	// ========== 角磨轮 ==========
@@ -485,11 +553,11 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		if (tier == null)
 			return added;
 
-		tooltip.add(Component.translatable("createoreexpansion.goggles.required_speed", tier.minRpm)
+		tooltip.add(Component.translatable("createoreexpansion.goggles.required_speed", tier.getMinRpm())
 			.withStyle(ChatFormatting.GOLD));
 
 		float speed = Math.abs(getSpeed());
-		if (speed < tier.minRpm) {
+		if (speed < tier.getMinRpm()) {
 			tooltip.add(Component.translatable("createoreexpansion.goggles.speed_too_low")
 				.withStyle(ChatFormatting.RED));
 		} else {

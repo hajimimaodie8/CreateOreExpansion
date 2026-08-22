@@ -2,7 +2,7 @@
   "type": "createoreexpansion:grinding",
   "ingredients": [
     {
-      "item": "minecraft:zinc_block"
+      "item": "create:zinc_block"
     }
   ],
   "results": [

@@ -28,6 +28,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 /**
@@ -42,9 +44,20 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 	/** 开盖状态：false=关盖，true=开盖（对应开盖模型 power_angle_grinder_rotated） */
 	public static final BooleanProperty OPEN = BooleanProperty.create("open");
 
+	/** 非全方块形状（x/z 内缩 0.5px，仿 Create 机器）。
+	 * <p>碰撞形状若是全方块，AO 遮蔽判定（isCollisionShapeFullBlock）会把本方块当遮蔽物，
+	 * 导致盖板等面在紧邻方块时整面发黑（开盖后更严重）。内缩后 isCollisionShapeFullBlock=false，
+	 * 与 Create 机器（形状均非全方块）行为一致：不遮蔽自己、不遮蔽相邻方块。</p> */
+	private static final VoxelShape SHAPE = box(0.5, 0, 0.5, 15.5, 16, 15.5);
+
 	public PowerAngleGrinderBlock(Properties properties) {
 		super(properties);
 		registerDefaultState(defaultBlockState().setValue(OPEN, false));
+	}
+
+	@Override
+	public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return SHAPE;
 	}
 
 	@Override
@@ -154,10 +167,19 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 		if (com.simibubi.create.AllItems.WRENCH.isIn(stack))
 			return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
 
-		// 开盖：空手取出角磨轮；手持物品放入机器（手动加工）
+		// 开盖：空手右键优先取物品（成品 → 原料，分批批量，同合盖逻辑）；
+		// 机器内无物品时取角磨轮；手持物品放入机器（手动加工）
 		if (open) {
 			return onBlockEntityUseItemOn(level, pos, be -> {
 				if (stack.isEmpty()) {
+					// 有物品：优先取出（成品区 → 原料，分批）
+					if (!be.inventory.isEmpty()) {
+						if (!level.isClientSide && player != null) {
+							be.retrieveAll(player);
+						}
+						return ItemInteractionResult.SUCCESS;
+					}
+					// 无物品：取出角磨轮
 					if (be.getWheel() == null)
 						return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
 					if (!level.isClientSide) {
@@ -169,10 +191,9 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 					}
 					return ItemInteractionResult.SUCCESS;
 				}
-				// 手持物品：放入机器（合盖后自动加工）
+				// 手持物品：放入机器（合盖后自动加工）；槽 0 已有物品时放入失败，物品保留在玩家手中
 				if (!level.isClientSide && player != null) {
-					be.insertItem(stack.copy());
-					if (!player.isCreative()) {
+					if (be.insertItem(stack.copy()) && !player.isCreative()) {
 						stack.shrink(1);
 					}
 				}

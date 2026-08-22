@@ -172,7 +172,9 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		// 能量工具/凝能佩：充能（封顶到最大能量），不消耗物品
 		if (ToolEnergy.hasEnergy(stack)) {
 			ToolEnergy.setEnergy(stack, ToolEnergy.getEnergy(stack) + ChargingRecipe.energyForLevel(waveLevel));
-			item.setItem(stack);
+			// setItem 传副本（新引用）：ItemEntity.setItem 内部按引用判断是否更新，
+			// 原地修改 + setItem(同引用) 不会触发数据刷新，导致 Jade 等外部读取显示旧能量
+			item.setItem(stack.copy());
 			return;
 		}
 
@@ -208,7 +210,8 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 				if (extracted.isEmpty())
 					return false;
 				ToolEnergy.setEnergy(extracted, ToolEnergy.getEnergy(extracted) + ChargingRecipe.energyForLevel(waveLevel));
-				ItemStack remainder = handler.insertItem(slot, extracted, false);
+				// insert 传副本（新引用）：与 setItem 同理，确保容器/外部显示（Jade 等）刷新
+				ItemStack remainder = handler.insertItem(slot, extracted.copy(), false);
 				if (!remainder.isEmpty()) {
 					// 放回失败（槽满等）：掉落在地，不吞物品
 					ItemEntity drop = new ItemEntity(level(), getX(), getY(), getZ(), remainder);
@@ -268,8 +271,8 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		}
 	}
 
-	/** 移动速度（格/秒）：低 2、高 4、伽马 6 */
-	private double getSpeedBlocks() {
+	/** 移动速度（格/秒）：低 2、高 4、伽马 6 —— 子类可覆写定制（如雷鸣波更快） */
+	protected double getSpeedBlocks() {
 		return switch (waveLevel) {
 			case 2 -> 4;
 			case 3 -> 6;
@@ -277,8 +280,8 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		};
 	}
 
-	/** 命中伤害：低 4、高 6、伽马 10 */
-	private float getDamage() {
+	/** 命中伤害：低 4、高 6、伽马 10 —— 子类可覆写定制（如雷鸣波更高） */
+	protected float getDamage() {
 		return switch (waveLevel) {
 			case 2 -> 6f;
 			case 3 -> 10f;

@@ -1,0 +1,20 @@
+{
+  "type": "createoreexpansion:grinding",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:raw_jade"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:jade_small_shard",
+      "count": 2
+    },
+    {
+      "id": "createoreexpansion:jade_small_shard",
+      "count": 1,
+      "chance": 0.5
+    }
+  ],
+  "processingTime": 200
+}

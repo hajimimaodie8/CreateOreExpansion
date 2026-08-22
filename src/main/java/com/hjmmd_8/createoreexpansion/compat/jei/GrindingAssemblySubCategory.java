@@ -30,8 +30,8 @@ public class GrindingAssemblySubCategory extends SequencedAssemblySubCategory {
 		PoseStack ms = graphics.pose();
 		grinder.offset = index;
 		ms.pushPose();
-		// 整体下移，与动力锯（AssemblyCutting）的机器位置对齐
-		ms.translate(-5, 68, 0);
+		// 整体下移，与动力锯（AssemblyCutting）的机器位置对齐（y=71，比之前下移 3px）
+		ms.translate(-5, 71, 0);
 		ms.scale(.6f, .6f, .6f);
 		grinder.draw(graphics, getWidth() / 2, 0);
 		ms.popPose();

@@ -1,0 +1,20 @@
+{
+  "type": "createoreexpansion:grinding",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:raw_sapphire"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_small_shard",
+      "count": 2
+    },
+    {
+      "id": "createoreexpansion:sapphire_small_shard",
+      "count": 1,
+      "chance": 0.5
+    }
+  ],
+  "processingTime": 200
+}

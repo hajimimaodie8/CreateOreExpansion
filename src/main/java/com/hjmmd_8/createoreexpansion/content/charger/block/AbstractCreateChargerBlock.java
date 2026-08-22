@@ -12,6 +12,8 @@ import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * 应力充能器抽象基类：六向应力机器（可水平/竖直放置）。
@@ -22,16 +24,27 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
  * <p>光照规则（仿 Create 机器，如动力锯/冲压机）：机器方块不阻挡光照——
  * 天空光可无衰减穿透（{@link #propagatesSkylightDown} = true），自身面不发暗
  * （{@link #getShadeBrightness} = 1.0）。配合注册时的 noOcclusion()，
- * getLightBlock 自动为 0，与 Create 机器光照行为完全一致。</p>
+ * getLightBlock 自动为 0，与 Create 机器光照行为完全一致。
+ * 另：{@link #getShape} 返回非全方块形状，避免 AO 遮蔽判定把本机器当遮蔽物导致面发黑。</p>
  */
 public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock {
 
 	/** 模式：0=未接入应力（展示），1/2/3=蓄力阶段（低/高/伽马） */
 	public static final IntegerProperty MODE = IntegerProperty.create("mode", 0, 3);
 
+	/** 非全方块形状（x/z 内缩 0.5px，仿 Create 机器）。
+	 * <p>碰撞形状若是全方块，AO 遮蔽判定（isCollisionShapeFullBlock）会把本方块当遮蔽物，
+	 * 导致机器面在紧邻方块时整面发黑。内缩后 isCollisionShapeFullBlock=false，行为与 Create 机器一致。</p> */
+	private static final VoxelShape SHAPE = box(0.5, 0, 0.5, 15.5, 16, 15.5);
+
 	protected AbstractCreateChargerBlock(Properties properties) {
 		super(properties);
 		registerDefaultState(defaultBlockState().setValue(MODE, 0));
+	}
+
+	@Override
+	public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+		return SHAPE;
 	}
 
 	@Override

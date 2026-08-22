@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillOutlineColors;
+import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.NetheriteStressMedallionItem;
@@ -234,6 +235,7 @@ public final class AllItems {
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
+    static { ChargingRecipeTools.register(JADE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
     public static final ItemEntry<Item> TOPAZ_INGOT = CreateOreExpansion.REGISTRATE
             .item("topaz_ingot", Item::new)
@@ -419,6 +421,7 @@ public final class AllItems {
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
+    static { ChargingRecipeTools.register(TOPAZ_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
     public static final ItemEntry<Item> SAPPHIRE_INGOT = CreateOreExpansion.REGISTRATE
             .item("sapphire_ingot", Item::new)
@@ -606,6 +609,7 @@ public final class AllItems {
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
+    static { ChargingRecipeTools.register(SAPPHIRE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
     public static final ItemEntry<NetheriteStressMedallionItem> NETHERITE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
             .item("netherite_stress_medallion", NetheriteStressMedallionItem::new)
@@ -619,6 +623,7 @@ public final class AllItems {
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
+    static { ChargingRecipeTools.register(NETHERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
     public static final ItemEntry<Item> STELLARSTONE_INGOT = CreateOreExpansion.REGISTRATE
             .item("stellarstone_ingot", Item::new)
@@ -820,6 +825,7 @@ public final class AllItems {
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
+    static { ChargingRecipeTools.register(STELLARSTONE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
     public static final ItemEntry<Item> THUNDERITE_INGOT = CreateOreExpansion.REGISTRATE
             .item("thunderite_ingot", Item::new)
@@ -992,6 +998,7 @@ public final class AllItems {
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
+    static { ChargingRecipeTools.register(THUNDERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
     public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CreateOreExpansion.REGISTRATE
             .item("jade_topaz_bow", JadeTopazBowItem::new)
@@ -1079,6 +1086,8 @@ public final class AllItems {
         private SkillOutlineColors.SkillColor outlineColor;
         /** 武器技能冷却时长（tick，延迟到 register 时注册到 SkillCooldowns；1 表示未设置）*/
         private int cooldownTicks = -1;
+        /** 是否为能量物品（调用了 addEnergy()）：注册后自动加入工具充能配方 */
+        private boolean energyItem;
 
         public SkillItemBuilder(ItemBuilder<T, P> builder) {
             this.builder = builder;
@@ -1156,7 +1165,8 @@ public final class AllItems {
 
         @Override
         public @NotNull RegistryEntry<Item, T> register() {
-            // 颜色已由skillColor() 写入技???NBT（渲染端直接读取），此处只需注册冷却
+            // 颜色已由skillColor() 写入技能NBT（渲染端直接读取），此处只需注册冷却；
+            // 能量工具的充电配方挂接在 build() 的 onRegister（链末尾 .register() 是 ItemBuilder 的）
             RegistryEntry<Item, T> entry = builder.register();
             if (cooldownTicks > 0) {
                 SkillCooldowns.register(entry.get(), cooldownTicks);
@@ -1191,6 +1201,12 @@ public final class AllItems {
 
         public @NotNull ItemBuilder<T, P> build() {
             builder.properties(p -> p.component(AllDataComponents.SKILLS, new SkillsComponent(skillData)));
+            // 能量工具（调用了 addEnergy）：物品实际注册时加入工具充能配方（单一数据源）。
+            // 注意：链末尾的 .register() 是 ItemBuilder 的（build() 返回 builder），
+            // 所以在这里用 onRegister 挂接，而不是本类 register()
+            if (energyItem) {
+                builder.onRegister(item -> ChargingRecipeTools.register(item));
+            }
             return builder;
         }
 
@@ -1203,6 +1219,8 @@ public final class AllItems {
 
             public EnergyItemBuilder(SkillItemBuilder<T, P> builder) {
                 this.builder = builder;
+                // 标记为能量物品（可被充能器充能，注册时加入工具充能配方）
+                builder.energyItem = true;
             }
 
             public EnergyItemBuilder<T, P> defaultEnergy(int energy) {

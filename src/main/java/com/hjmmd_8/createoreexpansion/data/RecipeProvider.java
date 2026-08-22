@@ -3,13 +3,11 @@ package com.hjmmd_8.createoreexpansion.data;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
+import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
-import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
-import com.simibubi.create.content.kinetics.press.PressingRecipe;
-import com.simibubi.create.content.kinetics.saw.CuttingRecipe;
 import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
-import com.simibubi.create.content.processing.sequenced.SequencedAssemblyRecipeBuilder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.item.ItemStack;
@@ -21,7 +19,14 @@ import net.neoforged.neoforge.common.conditions.ICondition;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 配方生成器：生成角磨床的衍生配方（拆磨配方 + 粗矿序列加工配方）。
+ * 配方生成器：只生成<b>重复性/机械化</b>的批量配方，其余（合成表、序列加工、特殊配方等）手写 JSON：
+ * <ul>
+ *     <li>拆磨配方（61 条：原版 4 组装备 + 本模组 5 组工具）——三级角磨轮专属；</li>
+ *     <li>工具充能（31 物品 × 3 等级 = 93 条）——翡翠应力充能器。</li>
+ * </ul>
+ * 粗矿序列加工配方（切割 → 压片 → 角磨）手写在 {@code resources/data}（不走生成器）；
+ * 高级角磨（≥2 级轮执行 Create 粉碎轮/石磨配方）是<b>代码动态匹配</b>（{@code GrinderRecipeTypes}
+ * 注册表），不在此生成——加入其他模组（同类型或自行注册的类型）自动生效。
  */
 public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
     public RecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> registries) {
@@ -30,7 +35,7 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
 
     @Override
     protected void buildRecipes(RecipeOutput output) {
-        // ========== 原版装备/武器（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
+        // ========== 原版装备/武器拆磨（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
         dismantleSet(output, Items.DIAMOND, "diamond",
                 Items.DIAMOND_SWORD, Items.DIAMOND_PICKAXE, Items.DIAMOND_AXE, Items.DIAMOND_SHOVEL, Items.DIAMOND_HOE,
                 Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.DIAMOND_LEGGINGS, Items.DIAMOND_BOOTS);
@@ -44,7 +49,7 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
                 Items.NETHERITE_SWORD, Items.NETHERITE_PICKAXE, Items.NETHERITE_AXE, Items.NETHERITE_SHOVEL, Items.NETHERITE_HOE,
                 Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS);
 
-        // ========== 本模组工具（动力合成产出，均有合成表） ==========
+        // ========== 本模组工具拆磨（5 组 × 5 工具） ==========
         dismantleTools(output, AllItems.JADE_INGOT.get(), "jade",
                 AllItems.JADE_SWORD.get(), AllItems.JADE_PICKAXE.get(), AllItems.JADE_AXE.get(), AllItems.JADE_SHOVEL.get(), AllItems.JADE_HOE.get());
         dismantleTools(output, AllItems.TOPAZ_INGOT.get(), "topaz",
@@ -56,14 +61,7 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
         dismantleTools(output, AllItems.THUNDERITE_INGOT.get(), "thunderite",
                 AllItems.THUNDERITE_SWORD.get(), AllItems.THUNDERITE_PICKAXE.get(), AllItems.THUNDERITE_AXE.get(), AllItems.THUNDERITE_SHOVEL.get(), AllItems.THUNDERITE_HOE.get());
 
-        // ========== 粗矿序列加工：切割 → 压片 → 角磨，循环 2 遍，产出大块/小块碎片（加权 25% 各） ==========
-        // 注：createaddition 的 RollingRecipe 未实现 IAssemblyRecipe 无法作序列步骤，以 Create 原生压片（PressingRecipe）代替棍压
-        sequencedOre(output, AllItems.RAW_JADE.get(), AllItems.JADE_BIG_SHARD.get(), AllItems.JADE_SMALL_SHARD.get(), "jade");
-        sequencedOre(output, AllItems.RAW_TOPAZ.get(), AllItems.TOPAZ_BIG_SHARD.get(), AllItems.TOPAZ_SMALL_SHARD.get(), "topaz");
-        sequencedOre(output, AllItems.RAW_SAPPHIRE.get(), AllItems.SAPPHIRE_BIG_SHARD.get(), AllItems.SAPPHIRE_SMALL_SHARD.get(), "sapphire");
-        sequencedOre(output, AllItems.RAW_STELLARSTONE.get(), AllItems.STELLARSTONE_BIG_SHARD.get(), AllItems.STELLARSTONE_SMALL_SHARD.get(), "stellarstone");
-
-        // ========== 工具充能配方：翡翠应力充能器能量波给能量工具充能（低/高/伽马 = 100/500/1000 点） ==========
+        // ========== 工具充能配方：翡翠应力充能器能量波给能量工具/凝能佩充能 ==========
         toolCharging(output);
     }
 
@@ -98,68 +96,23 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
         output.accept(CreateOreExpansion.modLoc("dismantling/" + name), recipe, null, new ICondition[0]);
     }
 
-    /** 粗矿序列配方：切割 → 压片 → 角磨，整个流程循环 2 遍，过渡物为粗矿本身，结果池 4 项各 25% */
-    private void sequencedOre(RecipeOutput output, ItemLike raw, ItemLike big, ItemLike small, String name) {
-        new SequencedAssemblyRecipeBuilder(CreateOreExpansion.modLoc(name))
-            .require(raw)
-            .transitionTo(raw)
-            .loops(2)
-            .addStep(CuttingRecipe::new, rb -> rb)
-            .addStep(PressingRecipe::new, rb -> rb)
-            .addStep(GrindingRecipe::new, rb -> rb)
-            .addOutput(new ItemStack(big, 3), 25)
-            .addOutput(new ItemStack(big, 2), 25)
-            .addOutput(new ItemStack(small, 3), 25)
-            .addOutput(new ItemStack(small, 2), 25)
-            .build(output);
-    }
+    /** 粗矿序列配方：切割 → 压片 → 角磨，整个流程循环 2 遍，过渡物为粗矿本身，结果池 4 项各 25%。
+     * 手写在 resources/data（不走生成器），此处不再生成 */
 
     /** 工具充能配方：翡翠应力充能器能量波给能量工具/凝能佩充能，低/高/伽马 = 100/500/1000 点。
-     * <p>每个物品 × 3 个充能等级各一条配方（31 物品 × 3 = 93 条），无产物（充能只改能量组件）。
-     * 三个等级统一放在 {@code tool_charge/} 一个文件夹下，等级由配方 JSON 的 {@code level} 字段
-     * （1=低、2=高、3=伽马）区分，文件名后缀 _low/_high/_gamma 仅用于保证三条配方 id 唯一。</p> */
+     * <p>物品来源为 {@link ChargingRecipeTools}（在 AllItems 注册处统一挂接，单一数据源）。
+     * 每个物品 × 3 个充能等级各一条配方，等级由配方 JSON 的 {@code level} 字段（1/2/3）区分，
+     * 统一放在 {@code tool_charge/} 一个文件夹下，文件名后缀 _low/_high/_gamma 仅保证 id 唯一。</p> */
     private void toolCharging(RecipeOutput output) {
-        record EnergyItem(String name, ItemLike item) {}
-        EnergyItem[] items = {
-            new EnergyItem("jade_sword", AllItems.JADE_SWORD.get()),
-            new EnergyItem("jade_pickaxe", AllItems.JADE_PICKAXE.get()),
-            new EnergyItem("jade_axe", AllItems.JADE_AXE.get()),
-            new EnergyItem("jade_shovel", AllItems.JADE_SHOVEL.get()),
-            new EnergyItem("jade_hoe", AllItems.JADE_HOE.get()),
-            new EnergyItem("topaz_sword", AllItems.TOPAZ_SWORD.get()),
-            new EnergyItem("topaz_pickaxe", AllItems.TOPAZ_PICKAXE.get()),
-            new EnergyItem("topaz_axe", AllItems.TOPAZ_AXE.get()),
-            new EnergyItem("topaz_shovel", AllItems.TOPAZ_SHOVEL.get()),
-            new EnergyItem("topaz_hoe", AllItems.TOPAZ_HOE.get()),
-            new EnergyItem("sapphire_sword", AllItems.SAPPHIRE_SWORD.get()),
-            new EnergyItem("sapphire_pickaxe", AllItems.SAPPHIRE_PICKAXE.get()),
-            new EnergyItem("sapphire_axe", AllItems.SAPPHIRE_AXE.get()),
-            new EnergyItem("sapphire_shovel", AllItems.SAPPHIRE_SHOVEL.get()),
-            new EnergyItem("sapphire_hoe", AllItems.SAPPHIRE_HOE.get()),
-            new EnergyItem("stellarstone_sword", AllItems.STELLARSTONE_SWORD.get()),
-            new EnergyItem("stellarstone_pickaxe", AllItems.STELLARSTONE_PICKAXE.get()),
-            new EnergyItem("stellarstone_axe", AllItems.STELLARSTONE_AXE.get()),
-            new EnergyItem("stellarstone_shovel", AllItems.STELLARSTONE_SHOVEL.get()),
-            new EnergyItem("stellarstone_hoe", AllItems.STELLARSTONE_HOE.get()),
-            new EnergyItem("thunderite_sword", AllItems.THUNDERITE_SWORD.get()),
-            new EnergyItem("thunderite_pickaxe", AllItems.THUNDERITE_PICKAXE.get()),
-            new EnergyItem("thunderite_axe", AllItems.THUNDERITE_AXE.get()),
-            new EnergyItem("thunderite_shovel", AllItems.THUNDERITE_SHOVEL.get()),
-            new EnergyItem("thunderite_hoe", AllItems.THUNDERITE_HOE.get()),
-            new EnergyItem("jade_stress_medallion", AllItems.JADE_STRESS_MEDALLION.get()),
-            new EnergyItem("topaz_stress_medallion", AllItems.TOPAZ_STRESS_MEDALLION.get()),
-            new EnergyItem("sapphire_stress_medallion", AllItems.SAPPHIRE_STRESS_MEDALLION.get()),
-            new EnergyItem("netherite_stress_medallion", AllItems.NETHERITE_STRESS_MEDALLION.get()),
-            new EnergyItem("stellarstone_stress_medallion", AllItems.STELLARSTONE_STRESS_MEDALLION.get()),
-            new EnergyItem("thunderite_stress_medallion", AllItems.THUNDERITE_STRESS_MEDALLION.get()),
-        };
-
-        for (EnergyItem e : items) {
-            // 三个充能等级统一在 tool_charge/ 一个文件夹下，等级靠配方 JSON 的 level 字段区分，
-            // 文件名后缀 _low/_high/_gamma 仅保证三条配方 id 唯一（同一路径无法重复注册）
-            charging(output, e.item(), "tool_charge/" + e.name() + "_low", 1);
-            charging(output, e.item(), "tool_charge/" + e.name() + "_high", 2);
-            charging(output, e.item(), "tool_charge/" + e.name() + "_gamma", 3);
+        // 触发 AllItems 类加载（能量工具/凝能佩经其静态初始化注册进 ChargingRecipeTools），
+        // 避免 data gen 时注册器为空导致配方生成 0 条
+        AllItems.register();
+        for (ItemLike item : ChargingRecipeTools.getTools()) {
+            String name = BuiltInRegistries.ITEM.getKey(item.asItem())
+                .getPath();
+            charging(output, item, "tool_charge/" + name + "_low", 1);
+            charging(output, item, "tool_charge/" + name + "_high", 2);
+            charging(output, item, "tool_charge/" + name + "_gamma", 3);
         }
     }
 
