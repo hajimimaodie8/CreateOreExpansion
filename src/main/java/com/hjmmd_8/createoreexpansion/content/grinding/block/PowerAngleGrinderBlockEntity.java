@@ -259,7 +259,15 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		float time = tier.getProcessingTime(Math.abs(getSpeed())) * 20 * getWheelEffect().getTimeMultiplier();
 
 		if (recipes.isEmpty()) {
-			// 无匹配配方：仍按正常节奏加工（有粒子、逐个消耗），只是不产出任何物品
+			// 有配方过滤器：物品无匹配配方（输出不匹配过滤器）→ 拒绝加工，物品保留在槽 0
+			// （如过滤器设为小块矿石，钻石等无对应输出配方的物品不会被磨掉）
+			if (!filtering.getFilter()
+				.isEmpty()) {
+				inventory.remainingTime = -1;
+				sendData();
+				return;
+			}
+			// 无过滤器：仍按正常节奏加工（有粒子、逐个消耗），只是不产出任何物品
 			inventory.remainingTime = inventory.recipeDuration = time;
 			inventory.appliedRecipe = false;
 			sendData();

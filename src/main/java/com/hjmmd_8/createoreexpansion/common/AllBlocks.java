@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.common;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.charger.block.JadeCreateChargerBlock;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
+import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
@@ -23,6 +24,7 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.functions.ApplyBonusCount;
@@ -372,6 +374,44 @@ public final class AllBlocks {
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("jade_create_charger"))
 			.parent(new UncheckedModelFile("createoreexpansion:block/jade_create_charger/jade_create_charger_item")))
+		.build()
+		.register();
+
+	/** 强化避雷针：继承原版 LightningRodBlock（全部原版行为保留），叠加伽马能量波充能；
+	 * 加入原版 lightning_rods tag（三叉戟引雷、铁砧工艺等交互正常作用）。 */
+	public static final BlockEntry<ReinforcedLightningRodBlock> REINFORCED_LIGHTNING_ROD = CreateOreExpansion.REGISTRATE
+		.block("reinforced_lightning_rod", ReinforcedLightningRodBlock::new)
+		.initialProperties(SharedProperties::copperMetal)
+		.properties(p -> p.requiresCorrectToolForDrops())
+		// 原版 lightning_rods tag（BlockTags 无此常量，用 create 显式创建）
+		.tag(BlockTags.create(ResourceLocation.withDefaultNamespace("lightning_rods")))
+		.blockstate((ctx, prov) -> {
+			// 仿原版避雷针 blockstate：facing 六向 + powered 两态，模型普通/强化各一
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				for (boolean powered : new boolean[] { false, true }) {
+					int xRot = dir == Direction.DOWN ? 180 : dir == Direction.UP ? 0 : 90;
+					int yRot = switch (dir) {
+						case NORTH -> 0;
+						case SOUTH -> 180;
+						case WEST -> 270;
+						case EAST -> 90;
+						default -> 0;
+					};
+					String name = powered ? "reinforced_lightning_rod_powered" : "reinforced_lightning_rod";
+					vb.partialState()
+						.with(BlockStateProperties.FACING, dir)
+						.with(BlockStateProperties.POWERED, powered)
+						.modelForState()
+						.modelFile(prov.models()
+							.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion", "block/" + name)))
+						.rotationX(xRot)
+						.rotationY(yRot)
+						.addModel();
+				}
+			}
+		})
+		.item()
 		.build()
 		.register();
 

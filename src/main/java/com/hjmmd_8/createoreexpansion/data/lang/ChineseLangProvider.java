@@ -156,6 +156,11 @@ public class ChineseLangProvider extends LanguageProvider {
         add("block.createoreexpansion.transmutation_fluid", "嬗变液");
         add("block.createoreexpansion.power_angle_grinder", "动力角磨床");
         add("block.createoreexpansion.jade_create_charger", "翡翠应力充能器");
+        add("block.createoreexpansion.reinforced_lightning_rod", "强化避雷针");
+        // JEI 提示：两种获取引雷能力的途径
+        add("createoreexpansion.jei.lightning_rod.ways", "引雷能力获取途径：① 被真实自然闪电击中；② 接收伽马能量波攒满进度（10/10）");
+        add("createoreexpansion.tooltip.lightning_rod.charge", "伽马充能进度：");
+        add("createoreexpansion.tooltip.lightning_rod.ready", "引雷充能就绪！右键释放闪电");
         add("createoreexpansion.msg.cannot_open_cover", "由于空间不足，无法开盖");
         add("createoreexpansion.msg.need_open_cover", "需要先开盖才能安装角磨轮");
         add(AllItems.IRON_GRINDING_WHEEL.get(), "铁角磨轮");
@@ -169,16 +174,11 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.STELLARSTONE_GRINDING_WHEEL.get(), "星辉石角磨轮");
         add(AllItems.NETHERITE_GRINDING_WHEEL.get(), "下界合金角磨轮");
 
-        // ========== 角磨轮特殊效果 ==========
-        add("createoreexpansion.wheel_effect.gold_grinding_wheel", "效果：25% 概率额外产出一份结果");
-        add("createoreexpansion.wheel_effect.brass_grinding_wheel", "效果：加工时间减少 25%");
-        add("createoreexpansion.wheel_effect.zinc_grinding_wheel", "效果：每种产物数量 +1");
-        add("createoreexpansion.wheel_effect.jade_grinding_wheel", "效果：15% 概率产物翻倍");
-        add("createoreexpansion.wheel_effect.diamond_grinding_wheel", "效果：加工时间减少 15%");
-        add("createoreexpansion.wheel_effect.topaz_grinding_wheel", "效果：每种产物数量 +2");
-        add("createoreexpansion.wheel_effect.sapphire_grinding_wheel", "效果：35% 概率额外产出一份结果");
-        add("createoreexpansion.wheel_effect.stellarstone_grinding_wheel", "效果：加工时间减少 30%");
-        add("createoreexpansion.wheel_effect.netherite_grinding_wheel", "效果：每种产物数量 +3");
+        // ========== 角磨轮特殊效果（参数化模板：%s 由效果类按数值填充，改数值无需动翻译） ==========
+        add("createoreexpansion.wheel_effect.bonus", "效果：%s%% 概率额外产出一份结果");
+        add("createoreexpansion.wheel_effect.speed", "效果：加工时间减少 %s%%");
+        add("createoreexpansion.wheel_effect.quantity", "效果：每种产物数量 +%s");
+        add("createoreexpansion.wheel_effect.double", "效果：%s%% 概率产物翻倍");
         add("item.createoreexpansion.transmutation_fluid_bucket", "嬗变液桶");
         add("createoreexpansion.recipe.fan_transmuting", "批量嬗化");
         add("createoreexpansion.recipe.fan_transmuting.fan", "鼓风机");

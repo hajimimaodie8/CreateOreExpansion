@@ -5,6 +5,7 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -118,6 +119,14 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 			BlockState state = level().getBlockState(pos);
 			if (state.isAir())
 				continue;
+			// 伽马能量波（3 级）命中强化避雷针：充能进度 +1，波消散（低/高波不充能，按撞墙消散）
+			if (level().getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
+				if (waveLevel == 3)
+					rod.onGammaWaveHit();
+				burst();
+				discard();
+				return;
+			}
 			IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
 			if (handler != null) {
 				if (chargeInHandler(handler)) {
@@ -125,7 +134,10 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 					discard();
 					return;
 				}
-				continue; // 有物品槽但无匹配物品：穿过
+				// 有物品槽但无匹配物品：同样视为撞墙，波在此消散（不穿过置物台/工作台）
+				burst();
+				discard();
+				return;
 			}
 			hitSolid = true;
 		}

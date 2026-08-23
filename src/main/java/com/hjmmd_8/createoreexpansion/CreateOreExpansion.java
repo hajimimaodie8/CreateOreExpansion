@@ -64,6 +64,7 @@ public class CreateOreExpansion {
         AllModPotions.register(modEventBus);
         NeoForge.EVENT_BUS.addListener(AllModPotions::registerBrewingRecipes);
         AllRecipeTypes.register(modEventBus);
+        AllStructureProcessors.register(modEventBus);
         MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
         modEventBus.addListener(CreateOreExpansion::onRegister);

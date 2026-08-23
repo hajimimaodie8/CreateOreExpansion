@@ -1,0 +1,31 @@
+{
+  "replace": false,
+  "entries": [
+    "createoreexpansion:chests/jade_ingot_dungeon",
+    "createoreexpansion:chests/jade_ingot_mineshaft",
+    "createoreexpansion:chests/jade_ingot_village",
+    "createoreexpansion:chests/jade_ingot_temple",
+    "createoreexpansion:chests/jade_ingot_buried",
+    "createoreexpansion:chests/jade_ingot_nether_end",
+    "createoreexpansion:chests/topaz_ingot_dungeon",
+    "createoreexpansion:chests/topaz_ingot_mineshaft",
+    "createoreexpansion:chests/topaz_ingot_village",
+    "createoreexpansion:chests/topaz_ingot_temple",
+    "createoreexpansion:chests/topaz_ingot_buried",
+    "createoreexpansion:chests/topaz_ingot_nether_end",
+    "createoreexpansion:chests/sapphire_ingot_bastion_treasure",
+    "createoreexpansion:chests/sapphire_ingot_bastion_rooms",
+    "createoreexpansion:chests/sapphire_ingot_nether_bridge",
+    "createoreexpansion:chests/sapphire_ingot_buried",
+    "createoreexpansion:chests/sapphire_ingot_end_city",
+    "createoreexpansion:chests/stellarstone_ingot_end_city",
+    "createoreexpansion:chests/jade_topaz_tools_end_city",
+    "createoreexpansion:chests/sapphire_tools_end_city",
+    "createoreexpansion:chests/ancient_city_treasures",
+    "createoreexpansion:chests/jade_topaz_tools_mansion",
+    "createoreexpansion:chests/jade_topaz_tools_bastion",
+    "createoreexpansion:entities/guardian_sapphire",
+    "createoreexpansion:entities/elder_guardian_sapphire",
+    "createoreexpansion:gameplay/sapphire_barter"
+  ]
+}

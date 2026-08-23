@@ -4,7 +4,9 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "LanguageProviderAccessor",
-    "ServerPlayerGameModeMixin"
+    "PoiTypesMixin",
+    "ServerPlayerGameModeMixin",
+    "TemplateStructurePieceMixin"
   ],
   "injectors": {
     "defaultRequire": 1

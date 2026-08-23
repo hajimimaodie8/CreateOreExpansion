@@ -96,6 +96,11 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
         add(AllBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
         add(AllBlocks.JADE_CREATE_CHARGER.get(), "Jade Create Charger");
+        add(AllBlocks.REINFORCED_LIGHTNING_ROD.get(), "Reinforced Lightning Rod");
+        // JEI tooltip: two ways to obtain a lightning strike
+        add("createoreexpansion.jei.lightning_rod.ways", "Ways to gain a lightning strike: ① Be struck by a real natural lightning bolt; ② Absorb Gamma energy waves to fill the progress (10/10)");
+        add("createoreexpansion.tooltip.lightning_rod.charge", "Gamma Charge: ");
+        add("createoreexpansion.tooltip.lightning_rod.ready", "Lightning ready! Right-click to release");
         add("createoreexpansion.msg.cannot_open_cover", "Cannot open the cover: not enough space");
         add("createoreexpansion.msg.need_open_cover", "Open the cover first to install a grinding wheel");
         add(AllItems.IRON_GRINDING_WHEEL.get(), "Iron Grinding Wheel");
@@ -109,16 +114,11 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllItems.STELLARSTONE_GRINDING_WHEEL.get(), "Stellarstone Grinding Wheel");
         add(AllItems.NETHERITE_GRINDING_WHEEL.get(), "Netherite Grinding Wheel");
 
-        // ========== Grinding wheel effects ==========
-        add("createoreexpansion.wheel_effect.gold_grinding_wheel", "Effect: 25% chance to output an extra result");
-        add("createoreexpansion.wheel_effect.brass_grinding_wheel", "Effect: Processing time reduced by 25%");
-        add("createoreexpansion.wheel_effect.zinc_grinding_wheel", "Effect: +1 to each result amount");
-        add("createoreexpansion.wheel_effect.jade_grinding_wheel", "Effect: 15% chance to double results");
-        add("createoreexpansion.wheel_effect.diamond_grinding_wheel", "Effect: Processing time reduced by 15%");
-        add("createoreexpansion.wheel_effect.topaz_grinding_wheel", "Effect: +2 to each result amount");
-        add("createoreexpansion.wheel_effect.sapphire_grinding_wheel", "Effect: 35% chance to output an extra result");
-        add("createoreexpansion.wheel_effect.stellarstone_grinding_wheel", "Effect: Processing time reduced by 30%");
-        add("createoreexpansion.wheel_effect.netherite_grinding_wheel", "Effect: +3 to each result amount");
+        // ========== Grinding wheel effects (parametrized: %s filled by effect class, no translation change needed) ==========
+        add("createoreexpansion.wheel_effect.bonus", "Effect: %s%% chance to output an extra result");
+        add("createoreexpansion.wheel_effect.speed", "Effect: Processing time reduced by %s%%");
+        add("createoreexpansion.wheel_effect.quantity", "Effect: +%s to each result amount");
+        add("createoreexpansion.wheel_effect.double", "Effect: %s%% chance to double results");
         add(AllItems.JADE_TOPAZ_BOW.get(), "Jade Topaz Bow");
         add(AllItems.JADE_STRESS_MEDALLION.get(), "Jade Stress Medallion");
         add(AllItems.TOPAZ_STRESS_MEDALLION.get(), "Topaz Stress Medallion");

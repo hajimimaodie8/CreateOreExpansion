@@ -23,18 +23,10 @@ public final class AllConfig {
     }
 
     public static class Common {
-        // 添加Config配置项
-        public final ModConfigSpec.BooleanValue TEST_CONFIG;
         /** 角磨床配置（角磨轮等级 / 转速） */
         public final Grinding GRINDING;
 
         public Common(ModConfigSpec.Builder builder) {
-            // 使用builder添加配置项
-            TEST_CONFIG = builder
-                    // 类似于注释
-                    .comment("A Test Config")
-                    // 实际的名字和默认值
-                    .define("test", false);
             GRINDING = new Grinding(builder);
         }
     }
@@ -74,7 +66,6 @@ public final class AllConfig {
     }
 
     // 声明对应缓存
-    public static boolean testConfig;
     public static int tier1MinRpm;
     public static float tier1Time;
     public static int tier2MinRpm;
@@ -85,7 +76,6 @@ public final class AllConfig {
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
         // 在加载Config后填充缓存
-        testConfig = COMMON.TEST_CONFIG.get();
         tier1MinRpm = COMMON.GRINDING.tier1MinRpm.get();
         tier1Time = COMMON.GRINDING.tier1Time.get().floatValue();
         tier2MinRpm = COMMON.GRINDING.tier2MinRpm.get();
