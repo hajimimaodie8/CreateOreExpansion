@@ -57,6 +57,13 @@ public class EnergyTooltipHandler {
             fillColor = new Color(color % 0xFFFFFF);
         }
 
+        // 翠玉之弓（传说武器）：能量条从左（绿）到右（黄）渐变，其余工具保持单色
+        if (stack.getItem() instanceof com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem) {
+            event.getToolTip().add(index, BarTooltipRender.energyGradient(
+                    energy, max, BAR_SLOTS, new Color(0x55FF55), new Color(0xFFFF55)));
+            return index + 1;
+        }
+
         event.getToolTip().add(index, BarTooltipRender.energy(energy, max, BAR_SLOTS, fillColor));
         return index + 1;
     }

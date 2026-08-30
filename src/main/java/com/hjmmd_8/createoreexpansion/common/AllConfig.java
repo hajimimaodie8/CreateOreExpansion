@@ -65,6 +65,8 @@ public final class AllConfig {
         }
     }
 
+    /** 可生长水晶生长参数已迁至 {@code content.crystal.CrystalGrowthConfigs}（模组内统一修改点）。 */
+
     // 声明对应缓存
     public static int tier1MinRpm;
     public static float tier1Time;

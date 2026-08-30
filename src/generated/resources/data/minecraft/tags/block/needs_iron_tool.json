@@ -10,6 +10,8 @@
     "createoreexpansion:raw_sapphire_block",
     "createoreexpansion:stellarstone_block",
     "createoreexpansion:raw_stellarstone_block",
-    "createoreexpansion:thunderite_block"
+    "createoreexpansion:thunderite_block",
+    "createoreexpansion:ruby_block",
+    "createoreexpansion:sanctstone_block"
   ]
 }

@@ -1,12 +1,16 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
 
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
+import java.awt.Color;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.world.entity.player.Player;
@@ -162,8 +166,7 @@ public final class ToolEnergy {
 			return;
 		int toolEnergy = getEnergy(tool);
 		int toolMax = getMaxEnergy(tool);
-		Component toolLine = Component.literal(tool.getHoverName().getString() + "：" + toolEnergy + "/" + toolMax)
-			.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(getEnergyColor(tool))));
+		Component toolLine = toolLineComponent(tool, toolEnergy, toolMax);
 		if (medallion.isEmpty()) {
 			player.displayClientMessage(toolLine, true);
 			return;
@@ -179,6 +182,42 @@ public final class ToolEnergy {
 			.append(Component.literal("；").withStyle(Style.EMPTY.withColor(ChatFormatting.GRAY)))
 			.append(toolLine);
 		player.displayClientMessage(msg, true);
+	}
+
+	/**
+	 * 工具行的剩余能量文案。翠玉之弓（传说武器）做黄→绿渐变，其余工具保持单色（工具能量色）。
+	 * 仅对弓生效：其它工具显示不受影响。
+	 */
+	private static Component toolLineComponent(ItemStack tool, int energy, int max) {
+		String text = tool.getHoverName().getString() + "：" + energy + "/" + max;
+		if (tool.getItem() instanceof JadeTopazBowItem) {
+			// 黄（起点）→ 绿（终点）逐字符渐变
+			return gradientText(text, new Color(0xFFFF55), new Color(0x55FF55));
+		}
+		return Component.literal(text)
+			.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(getEnergyColor(tool))));
+	}
+
+	/** 将文本逐字符做从 startColor 到 endColor 的线性渐变 */
+	private static Component gradientText(String text, Color startColor, Color endColor) {
+		MutableComponent result = Component.empty();
+		int len = text.length();
+		if (len == 0)
+			return result;
+		for (int i = 0; i < len; i++) {
+			float t = (float) i / (len - 1);
+			int rgb = lerpColor(startColor, endColor, t).getRGB() & 0xFFFFFF;
+			result.append(Component.literal(String.valueOf(text.charAt(i)))
+				.withStyle(Style.EMPTY.withColor(rgb)));
+		}
+		return result;
+	}
+
+	private static Color lerpColor(Color a, Color b, float t) {
+		int r = (int) (a.getRed()   + (b.getRed()   - a.getRed())   * t);
+		int g = (int) (a.getGreen() + (b.getGreen() - a.getGreen()) * t);
+		int bl = (int) (a.getBlue() + (b.getBlue()  - a.getBlue())  * t);
+		return new Color(r, g, bl);
 	}
 
 	/**

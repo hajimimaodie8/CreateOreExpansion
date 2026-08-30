@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "createoreexpansion:block/topaz_medium_bud"
+  }
+}

@@ -188,16 +188,23 @@ public class SkillsComponent implements OwnedBySkills {
     }
 
     /**
-     * 应用技能提升附魔：按有效等级（基础等级 + 附魔提升，受技能满级限制）更新释放时的效果配置。
-     * 不写入物品 NBT——等级计算统一走 {@link SkillEnergyCost#effectiveLevel}，
-     * 已满级时有效等级不变（停留原地），移除附魔即恢复原等级。
+     * 按有效等级（基础等级 + 技能提升附魔，受技能满级限制）更新技能配置并加载到技能实例。
+     *
+     * <p>供技能释放与调用方（如弓箭技能的冷却读取）使用：先把配置更新到
+     * {@link DataSkill#config}，再通过 {@link ConfigSkill#loadConfig} 加载进技能实例，
+     * 保证 {@link ItemSkill#getCost()} / {@link ItemSkill#getCooldownSeconds()} 等
+     * 字段返回提升后等级的真实值。不写入物品 NBT。</p>
      */
-    private static void applySkillBoost(ItemStack stack, DataSkill data) {
+    public static void applySkillBoost(ItemStack stack, DataSkill data) {
         AllSkills.RegisteredDataSkill registered = AllSkills.getData(AllSkills.getId(data.skill));
         if (registered == null) return;
         int effective = SkillEnergyCost.effectiveLevel(stack, data);
         SkillConfig levelConfig = registered.configForLevel(effective);
-        if (levelConfig != null) data.config = levelConfig;
+        if (levelConfig != null) {
+            data.config = levelConfig;
+            // 同步加载进技能实例，等级提升对消耗/冷却等字段立即生效
+            ConfigSkill.loadConfig(data.skill, levelConfig, data);
+        }
     }
 
     /**

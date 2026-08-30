@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_sheet"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:ruby_sheet",
+      "count": 1
+    }
+  ]
+}

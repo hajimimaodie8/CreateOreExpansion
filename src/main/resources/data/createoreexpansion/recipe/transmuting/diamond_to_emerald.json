@@ -14,11 +14,6 @@
       "id": "minecraft:emerald",
       "count": 1,
       "chance": 0.25
-    },
-    {
-      "id": "createoreexpansion:jade_small_shard",
-      "count": 1,
-      "chance": 0.25
     }
   ]
 }

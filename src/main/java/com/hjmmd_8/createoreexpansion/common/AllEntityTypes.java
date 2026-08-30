@@ -21,7 +21,9 @@ public final class AllEntityTypes {
 	public static final DeferredHolder<EntityType<?>, EntityType<JadeChargerWaveEntity>> JADE_CHARGER_WAVE =
 		ENTITY_TYPES.register("jade_charger_wave",
 			() -> EntityType.Builder.<JadeChargerWaveEntity>of(JadeChargerWaveEntity::new, MobCategory.MISC)
-				.sized(0.6f, 0.6f)
+				// 小碰撞盒（0.2）：波是粒子状实体。0.6 盒 + setPos 底部基准会让负方向
+				// 穿过调级器时外推不足（碰撞盒仍伸入方块 0.1 格）→ 二次判定湮灭
+				.sized(0.2f, 0.2f)
 				.noSummon()
 				.noSave()
 				.build("jade_charger_wave"));

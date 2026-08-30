@@ -33,6 +33,10 @@ public class UseItemHandler {
 
     private static void releaseSkills(Player player, ItemStack stack, UseItemContext<?> context) {
         if (player.level().isClientSide()) return;
+        // 弓类武器技能由弓自身在松手射击（releaseUsing）时释放：右键拉弓瞬间不触发，
+        // 否则会在蓄力开始时就消耗能量/进入冷却（USE_SKILL 触发时机不匹配）。
+        if (stack.getItem() instanceof com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem)
+            return;
         SkillItemStack skillStack = SkillItemStack.of(stack);
         SkillsComponent holder = skillStack.getSkillsHolder();
         // 非技能物品（无 SKILLS 组件）直接忽略，避免 NPE 干扰原版交互（如放置方块）

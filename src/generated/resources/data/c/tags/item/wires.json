@@ -3,7 +3,9 @@
     "createoreexpansion:jade_wire",
     "createoreexpansion:topaz_wire",
     "createoreexpansion:sapphire_wire",
+    "createoreexpansion:ruby_wire",
     "createoreexpansion:stellarstone_wire",
+    "createoreexpansion:sanctstone_wire",
     "createoreexpansion:thunderite_wire"
   ]
 }

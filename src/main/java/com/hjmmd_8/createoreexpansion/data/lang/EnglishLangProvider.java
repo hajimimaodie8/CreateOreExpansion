@@ -65,18 +65,41 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.DEEPSLATE_JADE_ORE.get(), "Deepslate Jade Ore");
         add(AllBlocks.RAW_JADE_BLOCK.get(), "Raw Jade Block");
         add(AllBlocks.JADE_BLOCK.get(), "Jade Block");
+        // Jade growable crystal
+        add(AllBlocks.JADE_BUDDING_BLOCK.get(), "Jade Crystal Budding Block");
+        add(AllBlocks.JADE_SMALL_BUD.get(), "Small Jade Crystal Bud");
+        add(AllBlocks.JADE_MEDIUM_BUD.get(), "Medium Jade Crystal Bud");
+        add(AllBlocks.JADE_LARGE_BUD.get(), "Large Jade Crystal Bud");
+        add(AllBlocks.JADE_CLUSTER.get(), "Jade Crystal Cluster");
         add(AllBlocks.TOPAZ_ORE.get(), "Topaz Ore");
         add(AllBlocks.DEEPSLATE_TOPAZ_ORE.get(), "Deepslate Topaz Ore");
         add(AllBlocks.RAW_TOPAZ_BLOCK.get(), "Raw Topaz Block");
         add(AllBlocks.TOPAZ_BLOCK.get(), "Topaz Block");
+        // Topaz growable crystal
+        add(AllBlocks.TOPAZ_BUDDING_BLOCK.get(), "Topaz Crystal Budding Block");
+        add(AllBlocks.TOPAZ_SMALL_BUD.get(), "Small Topaz Crystal Bud");
+        add(AllBlocks.TOPAZ_MEDIUM_BUD.get(), "Medium Topaz Crystal Bud");
+        add(AllBlocks.TOPAZ_LARGE_BUD.get(), "Large Topaz Crystal Bud");
+        add(AllBlocks.TOPAZ_CLUSTER.get(), "Topaz Crystal Cluster");
         add(AllBlocks.NETHER_SAPPHIRE_ORE.get(), "Nether Sapphire Ore");
         add(AllBlocks.RAW_SAPPHIRE_BLOCK.get(), "Raw Sapphire Block");
         add(AllBlocks.SAPPHIRE_BLOCK.get(), "Sapphire Block");
+        // Sapphire growable crystal
+        add(AllBlocks.SAPPHIRE_BUDDING_BLOCK.get(), "Sapphire Crystal Budding Block");
+        add(AllBlocks.SAPPHIRE_SMALL_BUD.get(), "Small Sapphire Crystal Bud");
+        add(AllBlocks.SAPPHIRE_MEDIUM_BUD.get(), "Medium Sapphire Crystal Bud");
+        add(AllBlocks.SAPPHIRE_LARGE_BUD.get(), "Large Sapphire Crystal Bud");
+        add(AllBlocks.SAPPHIRE_CLUSTER.get(), "Sapphire Crystal Cluster");
         add(AllItems.SAPPHIRE_SWORD.get(), "Sapphire Sword");
         add(AllItems.SAPPHIRE_PICKAXE.get(), "Sapphire Pickaxe");
         add(AllItems.SAPPHIRE_AXE.get(), "Sapphire Axe");
         add(AllItems.SAPPHIRE_SHOVEL.get(), "Sapphire Shovel");
         add(AllItems.SAPPHIRE_HOE.get(), "Sapphire Hoe");
+        add(AllItems.SANCTSTONE_INGOT.get(), "Sanctstone Ingot");
+        add(AllItems.SANCTSTONE_SHEET.get(), "Sanctstone Sheet");
+        add(AllItems.SANCTSTONE_ROD.get(), "Sanctstone Rod");
+        add(AllItems.SANCTSTONE_WIRE.get(), "Sanctstone Wire");
+        add(AllBlocks.SANCTSTONE_BLOCK.get(), "Sanctstone Block");
         add(AllItems.STELLARSTONE_INGOT.get(), "Stellarstone Ingot");
         add(AllItems.RAW_STELLARSTONE.get(), "Raw Stellarstone");
         add(AllItems.STELLARSTONE_NUGGET.get(), "Stellarstone Nugget");
@@ -94,9 +117,26 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.END_STELLARSTONE_ORE.get(), "End Stellarstone Ore");
         add(AllBlocks.RAW_STELLARSTONE_BLOCK.get(), "Raw Stellarstone Block");
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
+        // Stellarstone growable crystal
+        add(AllBlocks.STELLARSTONE_BUDDING_BLOCK.get(), "Stellarstone Crystal Budding Block");
+        add(AllBlocks.STELLARSTONE_SMALL_BUD.get(), "Small Stellarstone Crystal Bud");
+        add(AllBlocks.STELLARSTONE_MEDIUM_BUD.get(), "Medium Stellarstone Crystal Bud");
+        add(AllBlocks.STELLARSTONE_LARGE_BUD.get(), "Large Stellarstone Crystal Bud");
+        add(AllBlocks.STELLARSTONE_CLUSTER.get(), "Stellarstone Crystal Cluster");
         add(AllBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
         add(AllBlocks.JADE_CREATE_CHARGER.get(), "Jade Create Charger");
+        add(AllBlocks.ENERGY_WAVE_REGULATOR.get(), "Energy Wave Regulator");
         add(AllBlocks.REINFORCED_LIGHTNING_ROD.get(), "Reinforced Lightning Rod");
+        add(AllItems.RUBY_INGOT.get(), "Ruby Ingot");
+        add(AllItems.RUBY_SHEET.get(), "Ruby Sheet");
+        add(AllItems.RUBY_ROD.get(), "Ruby Rod");
+        add(AllItems.RUBY_WIRE.get(), "Ruby Wire");
+        add(AllBlocks.RUBY_BLOCK.get(), "Ruby Block");
+        // ========== Mechanism ==========
+        add(AllItems.ENERGY_MECHANISM.get(), "Energy Mechanism");
+        add(AllItems.INCOMPLETE_ENERGY_MECHANISM.get(), "Incomplete Energy Mechanism");
+        add(AllItems.TRANSMUTE_MECHANISM.get(), "Transmute Mechanism");
+        add(AllItems.INCOMPLETE_TRANSMUTE_MECHANISM.get(), "Incomplete Transmute Mechanism");
         // JEI tooltip: two ways to obtain a lightning strike
         add("createoreexpansion.jei.lightning_rod.ways", "Ways to gain a lightning strike: ① Be struck by a real natural lightning bolt; ② Absorb Gamma energy waves to fill the progress (10/10)");
         add("createoreexpansion.tooltip.lightning_rod.charge", "Gamma Charge: ");
@@ -142,6 +182,8 @@ public class EnglishLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.skin", "Skin");
         add("skill.createoreexpansion.plunder", "Plunder");
         add("skill.createoreexpansion.hoe", "Tend");
+        add("skill.createoreexpansion.bow_curse", "Wither Curse");
+        add("skill.createoreexpansion.bow_disarm", "Disarm Storm");
 
         // ========== 技能类型 ==========
         add("skillType.createoreexpansion.excavation_skill", "Excavation Skill");
@@ -176,6 +218,8 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.dismantling.output", "Output amount depends on remaining durability");
         add("createoreexpansion.recipe.assembly.grinding", "Grind in a Power Angle Grinder");
         add("createoreexpansion.recipe.assembly.charging", "Charge in a Jade Create Charger");
+        add("createoreexpansion.recipe.assembly.charging_hover", "Charge in a Jade Create Charger: %s");
+        add("createoreexpansion.recipe.assembly.cca_charging", "Charge in a Tesla Coil or Strike by Lightning");
         // Charging category title (all three levels share one category; level badge keys below)
         add("createoreexpansion.recipe.charging", "Charging");
         add("createoreexpansion.jei.charging.level.1", "Low Energy");

@@ -36,7 +36,7 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>子类（翡翠充能器/雷鸣充能器）只需覆写：</p>
  * <ul>
- *     <li>{@link #createWave(Level, Vec3, Direction, int)} —— 发射各自的能量波实体；</li>
+ *     <li>{reateWave(Level, Vec3, Direction, int)} —— 发射各自的能量波实体；</li>
  *     <li>{@link #getWaveColor(int)} —— 三档充能态对应粒子颜色（子类各自配色）；</li>
  *     <li>{@link #getMachineName()} —— 护目镜标题；</li>
  *     <li>{@link #getGoggleColor(int)} —— 护目镜状态行颜色（默认跟随粒子颜色）。</li>

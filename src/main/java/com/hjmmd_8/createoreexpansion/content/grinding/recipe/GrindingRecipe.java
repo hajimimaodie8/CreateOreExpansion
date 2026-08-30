@@ -6,7 +6,7 @@ import java.util.function.Supplier;
 
 import com.hjmmd_8.createoreexpansion.common.AllBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
-import com.hjmmd_8.createoreexpansion.compat.jei.GrindingAssemblySubCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.subcategory.GrindingAssemblySubCategory;
 import com.simibubi.create.compat.jei.category.sequencedAssembly.SequencedAssemblySubCategory;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipeParams;
 import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;

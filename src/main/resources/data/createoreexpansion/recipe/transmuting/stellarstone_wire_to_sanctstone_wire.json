@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:stellarstone_wire"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sanctstone_wire",
+      "count": 1
+    }
+  ]
+}

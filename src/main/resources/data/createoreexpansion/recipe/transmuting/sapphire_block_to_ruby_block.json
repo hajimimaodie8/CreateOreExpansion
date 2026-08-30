@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:ruby_block",
+      "count": 1
+    }
+  ]
+}

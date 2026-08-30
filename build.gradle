@@ -143,6 +143,8 @@ dependencies {
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
     // at runtime, use the full JEI jar for NeoForge
     runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+    // CC&A (Create Crafts & Additions)：编译期需要其 ChargingRecipe/TeslaCoil 类（Mixin 注入 IAssemblyRecipe），运行期可选
+    compileOnly("curse.maven:createaddition-439890:8083378")
     runtimeOnly("curse.maven:createaddition-439890:8083378")
     compileOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api"
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1"

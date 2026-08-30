@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_ingot"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:ruby_ingot",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:stellarstone_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sanctstone_block",
+      "count": 1
+    }
+  ]
+}

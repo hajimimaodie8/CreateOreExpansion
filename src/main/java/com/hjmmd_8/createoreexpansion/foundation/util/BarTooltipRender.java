@@ -83,22 +83,34 @@ public class BarTooltipRender {
         return bar;
     }
 
-    private static String toHex(Color color) {
-        return String.format("#%02X%02X%02X", color.getRed(), color.getGreen(), color.getBlue());
-    }
+    /**
+     * 渐变能量条：已填充段内从左（startColor）到右（endColor）线性渐变，未填充段深灰。
+     *
+     * @param current    当前能量
+     * @param max        最大能量
+     * @param total      总格数
+     * @param startColor 渐变起点（最左格）颜色
+     * @param endColor   渐变终点（最右已填充格）颜色
+     */
+    public static Component energyGradient(int current, int max, int total, Color startColor, Color endColor) {
+        float ratio = max > 0 ? (float) current / max : 0;
+        float clamped = Math.clamp(ratio, 0f, 1f);
+        int filled = (int) (clamped * total);
+        int emptyRgb = 0x333333;
 
-    public static Component gradientBar(float progress, int total, Color startColor, Color endColor) {
-        StringBuilder sb = new StringBuilder();
-        int current = (int) (progress * total);
-
+        MutableComponent bar = Component.empty();
         for (int i = 0; i < total; i++) {
-            float t = (float) i / total;
-            Color c = lerpColor(startColor, endColor, t);
-            sb.append("§").append(toHex(c));
-            sb.append("|");
+            int rgb;
+            if (i < filled) {
+                // 已填充段：按格子在已填充区内的相对位置插值（单格填充时为起点色）
+                float t = filled <= 1 ? 0f : (float) i / (filled - 1);
+                rgb = lerpColor(startColor, endColor, t).getRGB() & 0xFFFFFF;
+            } else {
+                rgb = emptyRgb;
+            }
+            bar.append(Component.literal("|").withStyle(Style.EMPTY.withColor(rgb)));
         }
-
-        return Component.literal(sb.toString());
+        return bar;
     }
 
     private static Color lerpColor(Color a, Color b, float t) {

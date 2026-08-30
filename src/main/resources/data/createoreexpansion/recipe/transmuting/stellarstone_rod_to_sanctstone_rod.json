@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:stellarstone_rod"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sanctstone_rod",
+      "count": 1
+    }
+  ]
+}

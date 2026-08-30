@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_wire"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:ruby_wire",
+      "count": 1
+    }
+  ]
+}

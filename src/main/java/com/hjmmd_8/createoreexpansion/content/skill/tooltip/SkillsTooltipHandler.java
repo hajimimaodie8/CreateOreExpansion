@@ -39,15 +39,22 @@ public class SkillsTooltipHandler {
                 .withStyle(ChatFormatting.GRAY));
 
         if (Screen.hasAltDown()) {
-            // 剑类 HIT_SKILL 按槽位显示对应按键；其余技能类型默认键一
+            // 攻击类（HIT_SKILL）与使用类（USE_SKILL）技能均按槽位显示对应按键（键一/键二/键三）
             List<DataSkill> hitSkills = skillStack.getSkillsHolder().getDataSkills(SkillType.HIT_SKILL);
             for (int slot = 0; slot < hitSkills.size(); slot++) {
                 DataSkill data = hitSkills.get(slot);
                 event.getToolTip().add(index++, skillLine(keyComponent(slot), stack, data));
             }
+            List<DataSkill> useSkills = skillStack.getSkillsHolder().getDataSkills(SkillType.USE_SKILL);
+            for (int slot = 0; slot < useSkills.size(); slot++) {
+                DataSkill data = useSkills.get(slot);
+                event.getToolTip().add(index++, skillLine(keyComponent(slot), stack, data));
+            }
+            // 其余类型（如挖掘类）统一键一
             List<DataSkill> all = skillStack.getSkillsHolder().getAllData();
             for (DataSkill data : all) {
                 if (data.skill.getType() == SkillType.HIT_SKILL) continue;
+                if (data.skill.getType() == SkillType.USE_SKILL) continue;
                 event.getToolTip().add(index++, skillLine(keyComponent(0), stack, data));
             }
         }
@@ -55,7 +62,7 @@ public class SkillsTooltipHandler {
     }
 
     /**
-     * 技能行：`  [按键] 技能名 罗马数字 - 类型`（方括号保留，] 后加一个空格）。
+     * 技能行：`  [按键] 技能名 罗马数字 - 类型`。
      * 整行颜色按技能等级区分：Lv1 白 / Lv2 绿 / Lv3 蓝 / Lv4 紫 / Lv5 金。
      * 等级取有效等级（含技能提升附魔）。
      */

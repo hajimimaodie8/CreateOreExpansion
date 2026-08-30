@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "createoreexpansion:block/jade_cluster",
+      "x": 180
+    },
+    "facing=east": {
+      "model": "createoreexpansion:block/jade_cluster",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north": {
+      "model": "createoreexpansion:block/jade_cluster",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "createoreexpansion:block/jade_cluster",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up": {
+      "model": "createoreexpansion:block/jade_cluster"
+    },
+    "facing=west": {
+      "model": "createoreexpansion:block/jade_cluster",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

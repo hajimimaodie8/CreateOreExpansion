@@ -1,0 +1,42 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {"item": "createoreexpansion:stellarstone_sheet"},
+  "transitional_item": {"id": "createoreexpansion:incomplete_transmute_mechanism"},
+  "loops": 3,
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        { "item": "createoreexpansion:stellarstone_sheet" },
+        { "item": "createoreexpansion:sapphire_nugget" }
+      ],
+      "results": [ { "id": "createoreexpansion:stellarstone_sheet" } ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        { "item": "createoreexpansion:stellarstone_sheet" },
+        { "item": "create:cogwheel" }
+      ],
+      "results": [ { "id": "createoreexpansion:stellarstone_sheet" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 3,
+      "ingredients": [ { "item": "createoreexpansion:stellarstone_sheet" } ],
+      "results": [ { "id": "createoreexpansion:stellarstone_sheet" } ]
+    },
+    {
+      "type": "create:filling",
+      "ingredients": [ { "item": "createoreexpansion:stellarstone_sheet" },
+        {"type": "neoforge:single", "amount": 500, "fluid": "minecraft:lava"}],
+      "results": [ { "id": "createoreexpansion:stellarstone_sheet" } ]
+    }
+  ],
+  "results": [
+    {"id": "createoreexpansion:transmute_mechanism", "count": 1, "chance": 0.95},
+    {"id": "createoreexpansion:stellarstone_sheet", "count": 1, "chance": 0.02},
+    {"id": "create:cogwheel", "count": 1, "chance": 0.01},
+    {"id": "createoreexpansion:sapphire_nugget", "count": 1, "chance": 0.02}
+  ]
+}

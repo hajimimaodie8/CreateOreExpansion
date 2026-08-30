@@ -3,10 +3,14 @@ package com.hjmmd_8.createoreexpansion.common;
 import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.BowCurseSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.BowDisarmSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.HoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.PlunderSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.SkinSkill;
+import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfigs;
@@ -130,6 +134,26 @@ public final class AllSkills {
                     .register();
     // 耕作 Lv4（5×7）、Lv5（7×7）为预留等级：数值已在 HoeConfigs 定义，
     // 将来启用时 addSkills(HOE, 4/5) 即可，无需新增注册。
+
+    // ========== 翠玉之弓技能（传说武器：能量上限 2000，一技能多等级，数值统一在 BowCurseConfigs/BowDisarmConfigs 修改） ==========
+    /** 凋零诅咒（弓技能一：命中附加凋零+缓慢+药水云） */
+    public static final RegisteredDataSkill BOW_CURSE =
+            skill("bow_curse", BowCurseSkill.class, SkillStrategy.class)
+                    .skill(s -> new BowCurseSkill())
+                    .config(BowCurseConfigs.config(BowCurseConfigs.LEVEL_1))
+                    .configsByLevel(level -> BowCurseConfigs.config(BowCurseConfigs.level(level)))
+                    .register();
+    // 凋零诅咒 Lv4/Lv5 为预留等级：数值已在 BowCurseConfigs 定义，
+    // 将来启用时 addSkills(BOW_CURSE, 4/5) 即可，无需新增注册。
+    /** 缴械风暴（弓技能二：范围缴械+怪物扒装备） */
+    public static final RegisteredDataSkill BOW_DISARM =
+            skill("bow_disarm", BowDisarmSkill.class, SkillStrategy.class)
+                    .skill(s -> new BowDisarmSkill())
+                    .config(BowDisarmConfigs.config(BowDisarmConfigs.LEVEL_1))
+                    .configsByLevel(level -> BowDisarmConfigs.config(BowDisarmConfigs.level(level)))
+                    .register();
+    // 缴械风暴 Lv4/Lv5 为预留等级：数值已在 BowDisarmConfigs 定义，
+    // 将来启用时 addSkills(BOW_DISARM, 4/5) 即可，无需新增注册。
 
     // ========== 工具方法 ==========
     /**

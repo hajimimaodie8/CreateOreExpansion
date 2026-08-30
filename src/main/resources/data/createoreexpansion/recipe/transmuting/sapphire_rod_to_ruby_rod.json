@@ -1,0 +1,14 @@
+{
+  "type": "createoreexpansion:transmuting",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_rod"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:ruby_rod",
+      "count": 1
+    }
+  ]
+}

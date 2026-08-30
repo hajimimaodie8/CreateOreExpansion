@@ -6,7 +6,7 @@ import java.util.function.Supplier;
 
 import com.hjmmd_8.createoreexpansion.common.AllBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
-import com.hjmmd_8.createoreexpansion.compat.jei.ChargingAssemblySubCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.subcategory.ChargingAssemblySubCategory;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -131,7 +131,13 @@ public class ChargingRecipe extends StandardProcessingRecipe<SingleRecipeInput> 
 	@Override
 	@OnlyIn(Dist.CLIENT)
 	public Component getDescriptionForAssembly() {
-		return Component.translatable("createoreexpansion.recipe.assembly.charging");
+		// 悬停序列充能步骤时显示：在翡翠应力充能器进行「低/高/伽马能量充能」
+		Component level = switch (getLevel()) {
+			case 2 -> Component.translatable("createoreexpansion.jei.charging.level.2");
+			case 3 -> Component.translatable("createoreexpansion.jei.charging.level.3");
+			default -> Component.translatable("createoreexpansion.jei.charging.level.1");
+		};
+		return Component.translatable("createoreexpansion.recipe.assembly.charging_hover", level);
 	}
 
 	@Override

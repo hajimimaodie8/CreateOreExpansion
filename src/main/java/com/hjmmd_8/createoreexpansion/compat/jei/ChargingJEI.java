@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.compat.jei.category.ChargingCategory;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
 

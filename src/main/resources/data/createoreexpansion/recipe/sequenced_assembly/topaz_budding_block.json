@@ -1,0 +1,52 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": { "item": "minecraft:stone" },
+  "transitional_item": { "id": "minecraft:stone" },
+  "loops": 4,
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        { "item": "minecraft:stone" },
+        { "item": "createoreexpansion:topaz_big_shard" }
+      ],
+      "results": [ { "id": "minecraft:stone" } ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        { "item": "minecraft:stone" },
+        { "item": "createoreexpansion:topaz_ingot" }
+      ],
+      "results": [ { "id": "minecraft:stone" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 1,
+      "ingredients": [ { "item": "minecraft:stone" } ],
+      "results": [ { "id": "minecraft:stone" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 2,
+      "ingredients": [ { "item": "minecraft:stone" } ],
+      "results": [ { "id": "minecraft:stone" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 3,
+      "ingredients": [ { "item": "minecraft:stone" } ],
+      "results": [ { "id": "minecraft:stone" } ]
+    },
+    {
+      "type": "createaddition:charging",
+      "energy": 1000,
+      "max_charge_rate": 200,
+      "ingredients": [ { "item": "minecraft:stone" } ],
+      "results": [ { "id": "minecraft:stone" } ]
+    }
+  ],
+  "results": [
+    { "id": "createoreexpansion:topaz_budding_block", "chance": 1.0 }
+  ]
+}

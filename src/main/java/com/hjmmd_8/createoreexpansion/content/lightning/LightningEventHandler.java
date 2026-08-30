@@ -20,6 +20,7 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
@@ -33,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
@@ -164,7 +166,12 @@ public final class LightningEventHandler {
 
         ServerLevel level = (ServerLevel) itemEntity.level();
 
-        var recipeOpt = AllRecipeTypes.LIGHTNING.find(LightningInput.of(stack.copyWithCount(1)), level);
+        // 优先本模组 lightning 配方；未命中且 CC&A 已加载时，尝试其充电配方（自动适用雷击转化）
+        Optional<RecipeHolder<? extends Recipe<?>>> recipeOpt = AllRecipeTypes.LIGHTNING
+            .find(LightningInput.of(stack.copyWithCount(1)), level)
+            .map(holder -> holder);
+        if (recipeOpt.isEmpty())
+            recipeOpt = findCcaCharging(level, stack);
         if (recipeOpt.isEmpty())
             return;
 
@@ -181,6 +188,68 @@ public final class LightningEventHandler {
             outputEntity.getPersistentData().putBoolean(LIGHTNING_PROCESSED_TAG, true);
             level.addFreshEntity(outputEntity);
         });
+    }
+
+    /**
+     * 在 CC&amp;A 充电配方中查找匹配当前物品的配方（雷击转化自动适用 CC&amp;A 充电配方）。
+     * <p>匹配语义与本模组 lightning 配方一致：单物品输入，按充电配方的首个 ingredient 测试。
+     * CC&amp;A 未安装时返回空。</p>
+     */
+    private static Optional<RecipeHolder<? extends Recipe<?>>> findCcaCharging(ServerLevel level, ItemStack stack) {
+        if (!isCreateAdditionLoaded())
+            return Optional.empty();
+        try {
+            var chargingType = com.mrh0.createaddition.index.CARecipes.CHARGING_TYPE.get();
+            for (RecipeHolder<?> holder : level.getRecipeManager().getAllRecipesFor(chargingType)) {
+                var recipe = holder.value();
+                if (recipe instanceof com.mrh0.createaddition.recipe.charging.ChargingRecipe charging
+                    && !charging.getIngredients().isEmpty()
+                    && charging.getIngredients().get(0).test(stack))
+                    return Optional.of(holder);
+            }
+        } catch (Throwable ignored) {
+            // CC&A 异常/缺失时静默降级为本模组配方
+        }
+        return Optional.empty();
+    }
+
+    /** CC&amp;A（Create Crafts &amp; Additions）是否已加载 */
+    private static boolean isCreateAdditionLoaded() {
+        return net.neoforged.fml.ModList.get() != null
+            && net.neoforged.fml.ModList.get().isLoaded("createaddition");
+    }
+
+    /**
+     * 统一匹配闪电输入：本模组配方走自身 matches；CC&amp;A 充电配方按贪心多槽匹配
+     * （每个 ingredient 需在输入池中找到可消耗物品）。
+     */
+    private static boolean matchesLightning(Recipe<?> recipe, LightningInput input, Level level) {
+        if (recipe instanceof LightningRecipe lightningRecipe)
+            return lightningRecipe.matches(input, level);
+        if (recipe instanceof com.mrh0.createaddition.recipe.charging.ChargingRecipe charging) {
+            if (input.isEmpty())
+                return false;
+            List<ItemStack> pool = new ArrayList<>();
+            for (int i = 0; i < input.size(); i++) {
+                ItemStack stack = input.getItem(i);
+                if (!stack.isEmpty())
+                    pool.add(stack.copy());
+            }
+            for (Ingredient ingredient : charging.getIngredients()) {
+                boolean found = false;
+                for (ItemStack stack : pool) {
+                    if (ingredient.test(stack)) {
+                        stack.shrink(1);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -228,8 +297,17 @@ public final class LightningEventHandler {
         // ---- 循环匹配加工（多输入配方优先），直到无配方可匹配 ----
         List<ItemStack> outputs = new ArrayList<>();
         boolean processed = false;
-        List<RecipeHolder<LightningRecipe>> allRecipes =
-            level.getRecipeManager().getAllRecipesFor(AllRecipeTypes.LIGHTNING.getType());
+        // 候选配方：本模组 lightning 配方 + CC&A 充电配方（若已加载，自动适用于雷击转化）
+        List<RecipeHolder<? extends Recipe<?>>> allRecipes = new ArrayList<>(
+            level.getRecipeManager().getAllRecipesFor(AllRecipeTypes.LIGHTNING.getType()));
+        if (isCreateAdditionLoaded()) {
+            try {
+                allRecipes.addAll(
+                    level.getRecipeManager().getAllRecipesFor(com.mrh0.createaddition.index.CARecipes.CHARGING_TYPE.get()));
+            } catch (Throwable ignored) {
+                // CC&A 异常/缺失时静默降级为本模组配方
+            }
+        }
 
         while (true) {
             LightningInput input =
@@ -237,13 +315,14 @@ public final class LightningEventHandler {
             if (input.isEmpty())
                 break;
 
-            LightningRecipe best = null;
+            Recipe<?> best = null;
             int bestIngredientCount = -1;
-            for (RecipeHolder<LightningRecipe> holder : allRecipes) {
-                LightningRecipe recipe = holder.value();
-                if (recipe.matches(input, level) && recipe.getIngredients().size() > bestIngredientCount) {
+            for (RecipeHolder<? extends Recipe<?>> holder : allRecipes) {
+                Recipe<?> recipe = holder.value();
+                int ingredientCount = recipe.getIngredients().size();
+                if (ingredientCount > bestIngredientCount && matchesLightning(recipe, input, level)) {
                     best = recipe;
-                    bestIngredientCount = recipe.getIngredients().size();
+                    bestIngredientCount = ingredientCount;
                 }
             }
             if (best == null)
@@ -260,8 +339,14 @@ public final class LightningEventHandler {
                 }
             }
 
-            for (ItemStack result : best.rollResults(level.random)) {
-                mergeIntoList(outputs, result);
+            if (best instanceof LightningRecipe lightningRecipe) {
+                for (ItemStack result : lightningRecipe.rollResults(level.random)) {
+                    mergeIntoList(outputs, result);
+                }
+            } else if (best instanceof com.mrh0.createaddition.recipe.charging.ChargingRecipe chargingRecipe) {
+                for (ItemStack result : chargingRecipe.rollResults(level.random)) {
+                    mergeIntoList(outputs, result);
+                }
             }
             processed = true;
         }

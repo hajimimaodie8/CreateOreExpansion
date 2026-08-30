@@ -2,7 +2,9 @@
   "required": true,
   "package": "com.hjmmd_8.createoreexpansion.mixin",
   "compatibilityLevel": "JAVA_21",
+  "plugin": "com.hjmmd_8.createoreexpansion.mixin.COEMixinConfigPlugin",
   "mixins": [
+    "ChargingRecipeAssemblyMixin",
     "LanguageProviderAccessor",
     "PoiTypesMixin",
     "ServerPlayerGameModeMixin",

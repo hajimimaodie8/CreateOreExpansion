@@ -10,8 +10,10 @@ import net.minecraft.world.level.block.Block;
 public enum AllMetalTags {
     TOPAZ,
     SAPPHIRE,
+    RUBY,
     JADE,
     STELLARSTONE,
+    SANCTSTONE,
     THUNDERITE;
 
     public final String name;

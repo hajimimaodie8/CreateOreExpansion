@@ -62,17 +62,40 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.SAPPHIRE_SHEET.get(), "蓝宝石板");
         add(AllItems.SAPPHIRE_ROD.get(), "蓝宝石棍");
         add(AllItems.SAPPHIRE_WIRE.get(), "蓝宝石线");
+        add(AllItems.RUBY_INGOT.get(), "红宝石锭");
+        add(AllItems.RUBY_SHEET.get(), "红宝石板");
+        add(AllItems.RUBY_ROD.get(), "红宝石棍");
+        add(AllItems.RUBY_WIRE.get(), "红宝石线");
+        add(AllBlocks.RUBY_BLOCK.get(), "红宝石块");
         add(AllBlocks.JADE_ORE.get(), "翡翠矿石");
         add(AllBlocks.DEEPSLATE_JADE_ORE.get(), "深层翡翠矿石");
         add(AllBlocks.RAW_JADE_BLOCK.get(), "粗翡翠块");
         add(AllBlocks.JADE_BLOCK.get(), "翡翠块");
+        // 翡翠可生长水晶
+        add(AllBlocks.JADE_BUDDING_BLOCK.get(), "翡翠水晶芽床");
+        add(AllBlocks.JADE_SMALL_BUD.get(), "翡翠水晶小芽");
+        add(AllBlocks.JADE_MEDIUM_BUD.get(), "翡翠水晶中芽");
+        add(AllBlocks.JADE_LARGE_BUD.get(), "翡翠水晶大芽");
+        add(AllBlocks.JADE_CLUSTER.get(), "翡翠水晶簇");
         add(AllBlocks.TOPAZ_ORE.get(), "黄玉矿石");
         add(AllBlocks.DEEPSLATE_TOPAZ_ORE.get(), "深层黄玉矿石");
         add(AllBlocks.RAW_TOPAZ_BLOCK.get(), "粗黄玉块");
         add(AllBlocks.TOPAZ_BLOCK.get(), "黄玉块");
+        // 黄玉可生长水晶
+        add(AllBlocks.TOPAZ_BUDDING_BLOCK.get(), "黄玉水晶芽床");
+        add(AllBlocks.TOPAZ_SMALL_BUD.get(), "黄玉水晶小芽");
+        add(AllBlocks.TOPAZ_MEDIUM_BUD.get(), "黄玉水晶中芽");
+        add(AllBlocks.TOPAZ_LARGE_BUD.get(), "黄玉水晶大芽");
+        add(AllBlocks.TOPAZ_CLUSTER.get(), "黄玉水晶簇");
         add(AllBlocks.NETHER_SAPPHIRE_ORE.get(), "下界蓝宝石矿石");
         add(AllBlocks.RAW_SAPPHIRE_BLOCK.get(), "粗蓝宝石块");
         add(AllBlocks.SAPPHIRE_BLOCK.get(), "蓝宝石块");
+        // 蓝宝石可生长水晶
+        add(AllBlocks.SAPPHIRE_BUDDING_BLOCK.get(), "蓝宝石水晶芽床");
+        add(AllBlocks.SAPPHIRE_SMALL_BUD.get(), "蓝宝石水晶小芽");
+        add(AllBlocks.SAPPHIRE_MEDIUM_BUD.get(), "蓝宝石水晶中芽");
+        add(AllBlocks.SAPPHIRE_LARGE_BUD.get(), "蓝宝石水晶大芽");
+        add(AllBlocks.SAPPHIRE_CLUSTER.get(), "蓝宝石水晶簇");
         add(AllItems.SAPPHIRE_SWORD.get(), "蓝宝石剑");
         add(AllItems.SAPPHIRE_PICKAXE.get(), "蓝宝石镐");
         add(AllItems.SAPPHIRE_AXE.get(), "蓝宝石斧");
@@ -87,6 +110,11 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.STELLARSTONE_SHEET.get(), "星辉石板");
         add(AllItems.STELLARSTONE_ROD.get(), "星辉石棍");
         add(AllItems.STELLARSTONE_WIRE.get(), "星辉石线");
+        add(AllItems.SANCTSTONE_INGOT.get(), "星芒石锭");
+        add(AllItems.SANCTSTONE_SHEET.get(), "星芒石板");
+        add(AllItems.SANCTSTONE_ROD.get(), "星芒石棍");
+        add(AllItems.SANCTSTONE_WIRE.get(), "星芒石线");
+        add(AllBlocks.SANCTSTONE_BLOCK.get(), "星芒石块");
         add(AllItems.STELLARSTONE_SWORD.get(), "星辉石剑");
         add(AllItems.STELLARSTONE_PICKAXE.get(), "星辉石镐");
         add(AllItems.STELLARSTONE_AXE.get(), "星辉石斧");
@@ -95,6 +123,12 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllBlocks.END_STELLARSTONE_ORE.get(), "末地星辉石矿石");
         add(AllBlocks.RAW_STELLARSTONE_BLOCK.get(), "粗星辉石块");
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "星辉石块");
+        // 星辉石可生长水晶
+        add(AllBlocks.STELLARSTONE_BUDDING_BLOCK.get(), "星辉石水晶芽床");
+        add(AllBlocks.STELLARSTONE_SMALL_BUD.get(), "星辉石水晶小芽");
+        add(AllBlocks.STELLARSTONE_MEDIUM_BUD.get(), "星辉石水晶中芽");
+        add(AllBlocks.STELLARSTONE_LARGE_BUD.get(), "星辉石水晶大芽");
+        add(AllBlocks.STELLARSTONE_CLUSTER.get(), "星辉石水晶簇");
         add(AllItems.THUNDERITE_SCRAP.get(), "雷鸣合金碎片");
         add(AllItems.THUNDERITE_INGOT.get(), "雷鸣合金锭");
         add(AllItems.THUNDERITE_SHEET.get(), "雷鸣合金板");
@@ -114,6 +148,12 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.STELLARSTONE_STRESS_MEDALLION.get(), "星辉凝能佩");
         add(AllItems.THUNDERITE_STRESS_MEDALLION.get(), "雷暴凝能佩");
 
+        // ========== 构件 ==========
+        add(AllItems.ENERGY_MECHANISM.get(), "能量构件");
+        add(AllItems.INCOMPLETE_ENERGY_MECHANISM.get(), "未完成的能量构件");
+        add(AllItems.TRANSMUTE_MECHANISM.get(), "嬗化构件");
+        add(AllItems.INCOMPLETE_TRANSMUTE_MECHANISM.get(), "未完成的嬗化构件");
+
         // ========== 凝能佩 Shift 概要 ==========
         add("item.createoreexpansion.medallion.hold_shift", "按住 [%1$s] 查看概要");
         add("item.createoreexpansion.medallion.summary", "凝能之佩，_储存_应力能量并为_绑定_工具_供能_。");
@@ -129,6 +169,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.skin", "剥取");
         add("skill.createoreexpansion.plunder", "夺取");
         add("skill.createoreexpansion.hoe", "耕作");
+        add("skill.createoreexpansion.bow_curse", "凋零诅咒");
+        add("skill.createoreexpansion.bow_disarm", "缴械风暴");
 
         // ========== 技能类型 ==========
         add("skillType.createoreexpansion.excavation_skill", "挖掘技能");
@@ -156,6 +198,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("block.createoreexpansion.transmutation_fluid", "嬗变液");
         add("block.createoreexpansion.power_angle_grinder", "动力角磨床");
         add("block.createoreexpansion.jade_create_charger", "翡翠应力充能器");
+        add("block.createoreexpansion.energy_wave_regulator", "能量调级器");
         add("block.createoreexpansion.reinforced_lightning_rod", "强化避雷针");
         // JEI 提示：两种获取引雷能力的途径
         add("createoreexpansion.jei.lightning_rod.ways", "引雷能力获取途径：① 被真实自然闪电击中；② 接收伽马能量波攒满进度（10/10）");
@@ -190,6 +233,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.dismantling.output", "输出数量取决于装备剩余耐久");
         add("createoreexpansion.recipe.assembly.grinding", "在动力角磨床中角磨");
         add("createoreexpansion.recipe.assembly.charging", "在翡翠应力充能器中充能");
+        add("createoreexpansion.recipe.assembly.charging_hover", "在翡翠应力充能器进行%s");
+        add("createoreexpansion.recipe.assembly.cca_charging", "在特斯拉线圈中充能或雷击");
         // 充能分类标题（低/高/伽马三个等级共用一个分类，等级徽章见 jei.charging.level.*）
         add("createoreexpansion.recipe.charging", "充能加工");
         add("createoreexpansion.jei.charging.level.1", "低能量充能");

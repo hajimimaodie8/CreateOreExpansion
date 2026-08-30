@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "createoreexpansion:block/sapphire_medium_bud",
+      "x": 180
+    },
+    "facing=east": {
+      "model": "createoreexpansion:block/sapphire_medium_bud",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north": {
+      "model": "createoreexpansion:block/sapphire_medium_bud",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "createoreexpansion:block/sapphire_medium_bud",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up": {
+      "model": "createoreexpansion:block/sapphire_medium_bud"
+    },
+    "facing=west": {
+      "model": "createoreexpansion:block/sapphire_medium_bud",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

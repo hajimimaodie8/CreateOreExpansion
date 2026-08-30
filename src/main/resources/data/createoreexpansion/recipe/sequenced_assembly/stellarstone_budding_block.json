@@ -1,0 +1,52 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": { "item": "minecraft:end_stone" },
+  "transitional_item": { "id": "minecraft:end_stone" },
+  "loops": 4,
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        { "item": "minecraft:end_stone" },
+        { "item": "createoreexpansion:stellarstone_big_shard" }
+      ],
+      "results": [ { "id": "minecraft:end_stone" } ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        { "item": "minecraft:end_stone" },
+        { "item": "createoreexpansion:stellarstone_ingot" }
+      ],
+      "results": [ { "id": "minecraft:end_stone" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 1,
+      "ingredients": [ { "item": "minecraft:end_stone" } ],
+      "results": [ { "id": "minecraft:end_stone" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 2,
+      "ingredients": [ { "item": "minecraft:end_stone" } ],
+      "results": [ { "id": "minecraft:end_stone" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 3,
+      "ingredients": [ { "item": "minecraft:end_stone" } ],
+      "results": [ { "id": "minecraft:end_stone" } ]
+    },
+    {
+      "type": "createaddition:charging",
+      "energy": 1000,
+      "max_charge_rate": 200,
+      "ingredients": [ { "item": "minecraft:end_stone" } ],
+      "results": [ { "id": "minecraft:end_stone" } ]
+    }
+  ],
+  "results": [
+    { "id": "createoreexpansion:stellarstone_budding_block", "chance": 1.0 }
+  ]
+}

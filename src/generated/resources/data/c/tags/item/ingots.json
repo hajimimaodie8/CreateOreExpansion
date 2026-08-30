@@ -3,7 +3,9 @@
     "createoreexpansion:jade_ingot",
     "createoreexpansion:topaz_ingot",
     "createoreexpansion:sapphire_ingot",
+    "createoreexpansion:ruby_ingot",
     "createoreexpansion:stellarstone_ingot",
+    "createoreexpansion:sanctstone_ingot",
     "createoreexpansion:thunderite_ingot"
   ]
 }

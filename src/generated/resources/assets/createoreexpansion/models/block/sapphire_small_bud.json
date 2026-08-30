@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "createoreexpansion:block/sapphire_small_bud"
+  }
+}

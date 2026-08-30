@@ -24,7 +24,13 @@ public class JadeChargerWaveEntity extends AbstractChargerWaveEntity {
 	/** 能量波颜色（RGB 0-1）：低=黄、高=绿、伽马=蓝 */
 	@Override
 	protected Vec3 getWaveColor() {
-		return switch (waveLevel) {
+		return getWaveColorForLevel(waveLevel);
+	}
+
+	/** 指定等级的能量波颜色：低=黄、高=绿、伽马=蓝（供调级器渐变提前取下一等级色） */
+	@Override
+	protected Vec3 getWaveColorForLevel(int level) {
+		return switch (level) {
 			case 2 -> new Vec3(0, 1, 0);
 			case 3 -> new Vec3(0, 0.5f, 1);
 			default -> new Vec3(1, 1, 0);

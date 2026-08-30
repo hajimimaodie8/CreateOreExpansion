@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "tag": "c:storage_blocks/sanctstone"
+    }
+  ],
+  "result": {
+    "count": 9,
+    "id": "createoreexpansion:sanctstone_ingot"
+  }
+}

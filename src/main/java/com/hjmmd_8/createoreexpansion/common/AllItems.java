@@ -625,6 +625,40 @@ public final class AllItems {
             .register();
     static { ChargingRecipeTools.register(NETHERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
+    public static final ItemEntry<Item> RUBY_INGOT = CreateOreExpansion.REGISTRATE
+            .item("ruby_ingot", Item::new)
+            .tag(CREATE_INGOTS.tag)
+            .tag(Tags.Items.INGOTS)
+            .tag(AllMetalTags.RUBY.ingots)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> RUBY_SHEET = CreateOreExpansion.REGISTRATE
+            .item("ruby_sheet", Item::new)
+            .tag(AllMetalTags.RUBY.sheets)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> RUBY_ROD = CreateOreExpansion.REGISTRATE
+            .item("ruby_rod", Item::new)
+            .tag(AllMetalTags.RUBY.rods)
+            .tag(AllTags.AllItemTags.RODS.tag)
+            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> RUBY_WIRE = CreateOreExpansion.REGISTRATE
+            .item("ruby_wire", Item::new)
+            .tag(AllMetalTags.RUBY.wires)
+            .tag(AllTags.AllItemTags.WIRES.tag)
+            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
     public static final ItemEntry<Item> STELLARSTONE_INGOT = CreateOreExpansion.REGISTRATE
             .item("stellarstone_ingot", Item::new)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -827,6 +861,45 @@ public final class AllItems {
             .register();
     static { ChargingRecipeTools.register(STELLARSTONE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
+
+    public static final ItemEntry<Item> SANCTSTONE_INGOT = CreateOreExpansion.REGISTRATE
+            .item("sanctstone_ingot", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .tag(CREATE_INGOTS.tag)
+            .tag(Tags.Items.INGOTS)
+            .tag(AllMetalTags.SANCTSTONE.ingots)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> SANCTSTONE_SHEET = CreateOreExpansion.REGISTRATE
+            .item("sanctstone_sheet", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .tag(AllMetalTags.SANCTSTONE.sheets)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> SANCTSTONE_ROD = CreateOreExpansion.REGISTRATE
+            .item("sanctstone_rod", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .tag(AllMetalTags.SANCTSTONE.rods)
+            .tag(AllTags.AllItemTags.RODS.tag)
+            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> SANCTSTONE_WIRE = CreateOreExpansion.REGISTRATE
+            .item("sanctstone_wire", Item::new)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .tag(AllMetalTags.SANCTSTONE.wires)
+            .tag(AllTags.AllItemTags.WIRES.tag)
+            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
     public static final ItemEntry<Item> THUNDERITE_INGOT = CreateOreExpansion.REGISTRATE
             .item("thunderite_ingot", Item::new)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -1000,9 +1073,48 @@ public final class AllItems {
             .register();
     static { ChargingRecipeTools.register(THUNDERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
+    public static final ItemEntry<Item> TRANSMUTE_MECHANISM = CreateOreExpansion.REGISTRATE
+            .item("transmute_mechanism", Item::new)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> INCOMPLETE_TRANSMUTE_MECHANISM = CreateOreExpansion.REGISTRATE
+            .item("incomplete_transmute_mechanism", Item::new)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .removeTab(AllCreativeModeTabs.BASE_TAB.key())
+            .register();
+
+    public static final ItemEntry<Item> ENERGY_MECHANISM = CreateOreExpansion.REGISTRATE
+            .item("energy_mechanism", Item::new)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
+    public static final ItemEntry<Item> INCOMPLETE_ENERGY_MECHANISM = CreateOreExpansion.REGISTRATE
+            .item("incomplete_energy_mechanism", Item::new)
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .removeTab(AllCreativeModeTabs.BASE_TAB.key())
+            .register();
+
     public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CreateOreExpansion.REGISTRATE
             .item("jade_topaz_bow", JadeTopazBowItem::new)
+            .tag(AllTags.AllItemTags.SKILL_TOOLS.tag)
+            .tag(AllTags.AllItemTags.COOLDOWN_TOOLS.tag)
             .model((ctx, provider) -> {})
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(2000)
+            .maxEnergy(2000)
+            .color(ToolEnergyColorConfig.TOPAZ)
+            .build()
+            .addSkills(AllSkills.BOW_CURSE, 1)
+            .addSkills(AllSkills.BOW_DISARM, 1)
+            .skillColor(SkillOutlineColors.TOPAZ_GOLD)
+            .skillCooldown(5 * 20)
+            .build()
             .register();
 
     // ========== 角磨轮（动力角磨床配件，开盖后安装） ==========

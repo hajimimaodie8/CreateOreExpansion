@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "createoreexpansion:block/stellarstone_medium_bud"
+  }
+}
