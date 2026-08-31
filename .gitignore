@@ -42,3 +42,6 @@ _create_src
 markdown_output
 .tmp-ca
 net
+verify_combo.py
+verify_combo2.py
+package-lock.json
