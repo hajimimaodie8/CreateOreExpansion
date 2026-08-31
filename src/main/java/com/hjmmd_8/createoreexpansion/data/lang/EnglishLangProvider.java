@@ -127,6 +127,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.JADE_CREATE_CHARGER.get(), "Jade Create Charger");
         add(AllBlocks.ENERGY_WAVE_REGULATOR.get(), "Energy Wave Regulator");
         add(AllBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");
+        add(AllBlocks.SIX_FACE_DISPERSER.get(), "Six-Face Energy Wave Disperser");
         add(AllBlocks.REINFORCED_LIGHTNING_ROD.get(), "Reinforced Lightning Rod");
         add(AllItems.RUBY_INGOT.get(), "Ruby Ingot");
         add(AllItems.RUBY_SHEET.get(), "Ruby Sheet");
@@ -134,6 +135,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllItems.RUBY_WIRE.get(), "Ruby Wire");
         add(AllBlocks.RUBY_BLOCK.get(), "Ruby Block");
         // ========== Mechanism ==========
+        add(AllItems.LUCKY_DUST.get(), "Lucky Dust");
         add(AllItems.ENERGY_MECHANISM.get(), "Energy Mechanism");
         add(AllItems.INCOMPLETE_ENERGY_MECHANISM.get(), "Incomplete Energy Mechanism");
         add(AllItems.TRANSMUTE_MECHANISM.get(), "Transmute Mechanism");

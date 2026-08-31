@@ -1,0 +1,32 @@
+{
+	"credit": "Made with Blockbench",
+	"textures": {
+		"0": "createoreexpansion:block/energy_wave_machine/light",
+		"particle": "createoreexpansion:block/energy_wave_machine/light"
+	},
+	"elements": [
+		{
+			"from": [
+				16,
+				7,
+				13
+			],
+			"to": [
+				16.02,
+				9,
+				15
+			],
+			"faces": {
+				"east": {
+					"uv": [
+						13,
+						7,
+						15,
+						9
+					],
+					"texture": "#0"
+				}
+			}
+		}
+	]
+}

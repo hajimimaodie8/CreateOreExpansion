@@ -6,8 +6,10 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.EnergyWaveDispersal;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.EnergyWaveRegulation;
+import com.hjmmd_8.createoreexpansion.content.wave.regulation.SixFaceDispersal;
 
 import net.createmod.catnip.levelWrappers.SchematicLevel;
 
@@ -269,6 +271,19 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 				setPos(Vec3.atCenterOf(pos).add(movement.scale(1.0d)));
 				return;
 			}
+			// 六面能量波差器：无朝向，6 面独立开关（1 遣返 / 2 穿过 / 3-4 降一级均摊 / 5-6 降二级均摊）
+			if (state.getBlock() instanceof SixFaceDisperserBlock) {
+				boolean vanish = handleSixFaceDisperser(state, pos);
+				if (vanish) {
+					burst();
+					discard();
+					return;
+				}
+				if (!isAlive())
+					return; // 分裂：母波静默消散
+				setPos(Vec3.atCenterOf(pos).add(movement.scale(1.0d)));
+				return;
+			}
 			IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
 			if (handler != null) {
 				if (processor.processBlockHandler(handler, pos)) {
@@ -516,6 +531,49 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	 * @return 新波实体；null 则放弃发射
 	 */
 	protected abstract AbstractChargerWaveEntity createChildWave(Vec3 pos, Direction facing, int level);
+
+	/**
+	 * 六面能量波差器处理：无朝向，入口 = 运动反方向世界面（6 面皆可开口）。
+	 * 规则：入口关闭→撞墙消失；1 开口→反弹；2 开口→拐弯；3-4 开口→其余开口各发降一级子波；
+	 * 5-6 开口→其余开口各发降二级子波（新增）。
+	 *
+	 * @return true = 波应撞墙湮灭；false = 波继续（调用方推出方块外；分裂时本波已静默 discard）
+	 */
+	private boolean handleSixFaceDisperser(BlockState state, BlockPos pos) {
+		SixFaceDispersal.Result result = SixFaceDispersal.handle(state, movement, waveLevel);
+		switch (result) {
+			case VANISH -> {
+				return true; // 入口关闭 / 波级不足分裂 → 撞墙湮灭
+			}
+			case BOUNCE -> {
+				// 单开口：原路遣返（反弹），等级不变
+				movement = movement.scale(-1);
+				return false;
+			}
+			case TURN -> {
+				// 双开口：从入口进、从另一开口出（拐弯），等级不变
+				Direction worldOut = SixFaceDispersal.exitsOf(state, movement).get(0);
+				movement = Vec3.atLowerCornerOf(worldOut.getNormal());
+				return false;
+			}
+			case SPLIT -> {
+				// 3-4 开口降一级、5-6 开口降二级：其余每个开口均摊发射子波
+				int childLevel = waveLevel - SixFaceDispersal.decrementOf(state);
+				Vec3 center = Vec3.atCenterOf(pos);
+				for (Direction worldOut : SixFaceDispersal.exitsOf(state, movement)) {
+					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
+					AbstractChargerWaveEntity child = createChildWave(
+						center.add(Vec3.atLowerCornerOf(worldOut.getNormal())), worldOut, childLevel);
+					if (child != null)
+						level().addFreshEntity(child);
+				}
+				// 母波静默消失（能量已均摊分发到子波）
+				this.discard();
+				return false;
+			}
+		}
+		return false;
+	}
 
 	@Override
 	public void remove(RemovalReason reason) {

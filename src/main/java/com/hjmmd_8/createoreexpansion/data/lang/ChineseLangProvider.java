@@ -148,7 +148,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.STELLARSTONE_STRESS_MEDALLION.get(), "星辉凝能佩");
         add(AllItems.THUNDERITE_STRESS_MEDALLION.get(), "雷暴凝能佩");
 
-        // ========== 构件 ==========
+        // ========== 构件与杂项 ==========
+        add(AllItems.LUCKY_DUST.get(), "幸运之尘");
         add(AllItems.ENERGY_MECHANISM.get(), "能量构件");
         add(AllItems.INCOMPLETE_ENERGY_MECHANISM.get(), "未完成的能量构件");
         add(AllItems.TRANSMUTE_MECHANISM.get(), "嬗化构件");
@@ -200,6 +201,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("block.createoreexpansion.jade_create_charger", "翡翠应力充能器");
         add("block.createoreexpansion.energy_wave_regulator", "能量调级器");
         add("block.createoreexpansion.energy_wave_disperser", "能量波差器");
+        add("block.createoreexpansion.six_face_disperser", "六面能量波差器");
         add("block.createoreexpansion.reinforced_lightning_rod", "强化避雷针");
         // JEI 提示：两种获取引雷能力的途径
         add("createoreexpansion.jei.lightning_rod.ways", "引雷能力获取途径：① 被真实自然闪电击中；② 接收伽马能量波攒满进度（10/10）");

@@ -8,7 +8,7 @@
       "type": "create:deploying",
       "ingredients": [
         { "item": "minecraft:netherrack" },
-        { "item": "createoreexpansion:sapphire_big_shard" }
+        { "item": "createoreexpansion:lucky_dust" }
       ],
       "results": [ { "id": "minecraft:netherrack" } ]
     },

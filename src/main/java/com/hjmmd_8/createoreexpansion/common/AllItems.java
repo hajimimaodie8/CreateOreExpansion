@@ -1073,6 +1073,14 @@ public final class AllItems {
             .register();
     static { ChargingRecipeTools.register(THUNDERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
+    public static final ItemEntry<Item> LUCKY_DUST = CreateOreExpansion.REGISTRATE
+            .item("lucky_dust", Item::new)
+            .tag(AllTags.AllItemTags.DUSTS.tag)
+            .properties(p -> p.rarity(Rarity.UNCOMMON))
+            .model((ctx, provider) ->
+                    provider.basicItem(ctx.get()))
+            .register();
+
     public static final ItemEntry<Item> TRANSMUTE_MECHANISM = CreateOreExpansion.REGISTRATE
             .item("transmute_mechanism", Item::new)
             .model((ctx, provider) ->

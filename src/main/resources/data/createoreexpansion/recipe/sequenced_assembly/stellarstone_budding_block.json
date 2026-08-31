@@ -8,7 +8,7 @@
       "type": "create:deploying",
       "ingredients": [
         { "item": "minecraft:end_stone" },
-        { "item": "createoreexpansion:stellarstone_big_shard" }
+        { "item": "createoreexpansion:lucky_dust" }
       ],
       "results": [ { "id": "minecraft:end_stone" } ]
     },

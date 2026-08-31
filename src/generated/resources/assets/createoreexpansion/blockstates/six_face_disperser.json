@@ -1,0 +1,196 @@
+{
+  "variants": {
+    "open_down=false,open_east=false,open_north=false,open_south=false,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_0"
+    },
+    "open_down=false,open_east=false,open_north=false,open_south=false,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_32"
+    },
+    "open_down=false,open_east=false,open_north=false,open_south=false,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_1"
+    },
+    "open_down=false,open_east=false,open_north=false,open_south=false,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_33"
+    },
+    "open_down=false,open_east=false,open_north=false,open_south=true,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_16"
+    },
+    "open_down=false,open_east=false,open_north=false,open_south=true,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_48"
+    },
+    "open_down=false,open_east=false,open_north=false,open_south=true,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_17"
+    },
+    "open_down=false,open_east=false,open_north=false,open_south=true,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_49"
+    },
+    "open_down=false,open_east=false,open_north=true,open_south=false,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_4"
+    },
+    "open_down=false,open_east=false,open_north=true,open_south=false,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_36"
+    },
+    "open_down=false,open_east=false,open_north=true,open_south=false,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_5"
+    },
+    "open_down=false,open_east=false,open_north=true,open_south=false,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_37"
+    },
+    "open_down=false,open_east=false,open_north=true,open_south=true,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_20"
+    },
+    "open_down=false,open_east=false,open_north=true,open_south=true,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_52"
+    },
+    "open_down=false,open_east=false,open_north=true,open_south=true,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_21"
+    },
+    "open_down=false,open_east=false,open_north=true,open_south=true,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_53"
+    },
+    "open_down=false,open_east=true,open_north=false,open_south=false,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_8"
+    },
+    "open_down=false,open_east=true,open_north=false,open_south=false,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_40"
+    },
+    "open_down=false,open_east=true,open_north=false,open_south=false,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_9"
+    },
+    "open_down=false,open_east=true,open_north=false,open_south=false,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_41"
+    },
+    "open_down=false,open_east=true,open_north=false,open_south=true,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_24"
+    },
+    "open_down=false,open_east=true,open_north=false,open_south=true,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_56"
+    },
+    "open_down=false,open_east=true,open_north=false,open_south=true,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_25"
+    },
+    "open_down=false,open_east=true,open_north=false,open_south=true,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_57"
+    },
+    "open_down=false,open_east=true,open_north=true,open_south=false,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_12"
+    },
+    "open_down=false,open_east=true,open_north=true,open_south=false,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_44"
+    },
+    "open_down=false,open_east=true,open_north=true,open_south=false,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_13"
+    },
+    "open_down=false,open_east=true,open_north=true,open_south=false,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_45"
+    },
+    "open_down=false,open_east=true,open_north=true,open_south=true,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_28"
+    },
+    "open_down=false,open_east=true,open_north=true,open_south=true,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_60"
+    },
+    "open_down=false,open_east=true,open_north=true,open_south=true,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_29"
+    },
+    "open_down=false,open_east=true,open_north=true,open_south=true,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_61"
+    },
+    "open_down=true,open_east=false,open_north=false,open_south=false,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_2"
+    },
+    "open_down=true,open_east=false,open_north=false,open_south=false,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_34"
+    },
+    "open_down=true,open_east=false,open_north=false,open_south=false,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_3"
+    },
+    "open_down=true,open_east=false,open_north=false,open_south=false,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_35"
+    },
+    "open_down=true,open_east=false,open_north=false,open_south=true,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_18"
+    },
+    "open_down=true,open_east=false,open_north=false,open_south=true,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_50"
+    },
+    "open_down=true,open_east=false,open_north=false,open_south=true,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_19"
+    },
+    "open_down=true,open_east=false,open_north=false,open_south=true,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_51"
+    },
+    "open_down=true,open_east=false,open_north=true,open_south=false,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_6"
+    },
+    "open_down=true,open_east=false,open_north=true,open_south=false,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_38"
+    },
+    "open_down=true,open_east=false,open_north=true,open_south=false,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_7"
+    },
+    "open_down=true,open_east=false,open_north=true,open_south=false,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_39"
+    },
+    "open_down=true,open_east=false,open_north=true,open_south=true,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_22"
+    },
+    "open_down=true,open_east=false,open_north=true,open_south=true,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_54"
+    },
+    "open_down=true,open_east=false,open_north=true,open_south=true,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_23"
+    },
+    "open_down=true,open_east=false,open_north=true,open_south=true,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_55"
+    },
+    "open_down=true,open_east=true,open_north=false,open_south=false,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_10"
+    },
+    "open_down=true,open_east=true,open_north=false,open_south=false,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_42"
+    },
+    "open_down=true,open_east=true,open_north=false,open_south=false,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_11"
+    },
+    "open_down=true,open_east=true,open_north=false,open_south=false,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_43"
+    },
+    "open_down=true,open_east=true,open_north=false,open_south=true,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_26"
+    },
+    "open_down=true,open_east=true,open_north=false,open_south=true,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_58"
+    },
+    "open_down=true,open_east=true,open_north=false,open_south=true,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_27"
+    },
+    "open_down=true,open_east=true,open_north=false,open_south=true,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_59"
+    },
+    "open_down=true,open_east=true,open_north=true,open_south=false,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_14"
+    },
+    "open_down=true,open_east=true,open_north=true,open_south=false,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_46"
+    },
+    "open_down=true,open_east=true,open_north=true,open_south=false,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_15"
+    },
+    "open_down=true,open_east=true,open_north=true,open_south=false,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_47"
+    },
+    "open_down=true,open_east=true,open_north=true,open_south=true,open_up=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_30"
+    },
+    "open_down=true,open_east=true,open_north=true,open_south=true,open_up=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_62"
+    },
+    "open_down=true,open_east=true,open_north=true,open_south=true,open_up=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_31"
+    },
+    "open_down=true,open_east=true,open_north=true,open_south=true,open_up=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/six_face_disperser_63"
+    }
+  }
+}

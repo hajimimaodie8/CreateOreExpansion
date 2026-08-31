@@ -8,7 +8,7 @@
       "type": "create:deploying",
       "ingredients": [
         { "item": "minecraft:stone" },
-        { "item": "createoreexpansion:topaz_big_shard" }
+        { "item": "createoreexpansion:lucky_dust" }
       ],
       "results": [ { "id": "minecraft:stone" } ]
     },

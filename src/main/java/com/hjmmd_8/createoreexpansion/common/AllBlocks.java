@@ -9,6 +9,7 @@ import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBl
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
@@ -484,6 +485,8 @@ public final class AllBlocks {
 		.transform(TagGen.axeOrPickaxe())
 		.blockstate((ctx, prov) -> {
 			// 4 侧面开口独立开关 → 16 个变体模型（索引 = north*1 + east*2 + south*4 + west*8）；
+			// 变体负责 4 侧面的 wave_receiver_close/open 纹理切换；灯盘（up/down）纹理统一
+			// 为 disperser_lamp_0（全灭底纹），亮灯位由方块实体渲染器按状态叠加 light.png。
 			// 六向 FACING 旋转（与调级器同款）：模型默认正面为 +Y——UP 原样、DOWN 转 180、水平躺倒再转向
 			ExistingModelFile[] models = new ExistingModelFile[16];
 			for (int i = 0; i < 16; i++)
@@ -522,6 +525,55 @@ public final class AllBlocks {
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_wave_disperser"))
 			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/energy_wave_disperser_item")))
+		.build()
+		.register();
+
+	/** 六面能量波差器：无朝向固定机器，6 面全部为能量接收面板（wave_receiver close/open）独立开关；
+	 * 5/6 面开口时波分裂为降二级子波（判定见 SixFaceDispersal）。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<SixFaceDisperserBlock> SIX_FACE_DISPERSER = CreateOreExpansion.REGISTRATE
+		.block("six_face_disperser", SixFaceDisperserBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 6 面开口独立开关 → 64 个变体模型（索引 = up*1 + down*2 + north*4 + east*8 + south*16 + west*32）；
+			// 每个变体 6 面直接 close/open 纹理（同四面差波器方案，整面切换，无需渲染器）
+			ExistingModelFile[] models = new ExistingModelFile[64];
+			for (int i = 0; i < 64; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/energy_wave_machine/six_face_disperser_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (int u = 0; u < 2; u++) {
+				for (int d = 0; d < 2; d++) {
+					for (int n = 0; n < 2; n++) {
+						for (int e = 0; e < 2; e++) {
+							for (int s = 0; s < 2; s++) {
+								for (int w = 0; w < 2; w++) {
+									vb.partialState()
+										.with(SixFaceDisperserBlock.UP, u == 1)
+										.with(SixFaceDisperserBlock.DOWN, d == 1)
+										.with(SixFaceDisperserBlock.NORTH, n == 1)
+										.with(SixFaceDisperserBlock.EAST, e == 1)
+										.with(SixFaceDisperserBlock.SOUTH, s == 1)
+										.with(SixFaceDisperserBlock.WEST, w == 1)
+										.modelForState()
+										.modelFile(models[u * 1 + d * 2 + n * 4 + e * 8 + s * 16 + w * 32])
+										.addModel();
+								}
+							}
+						}
+					}
+				}
+			}
+		})
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("six_face_disperser"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/six_face_disperser")))
 		.build()
 		.register();
 

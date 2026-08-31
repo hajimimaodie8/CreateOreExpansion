@@ -13,6 +13,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
@@ -21,6 +22,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -136,39 +138,26 @@ public class EnergyWaveRegulatorBlock extends DirectionalKineticBlock
 			.getOpposite();
 	}
 
-	// ========== 扳手交互：顶/底面板切换 open/close，齿轮 4 侧面旋转朝向 ==========
+	// ========== 扳手交互：侧面分区切换顶/底面板，机壳面直接切换 ==========
 
 	@Override
 	public InteractionResult onWrenched(BlockState state, net.minecraft.world.item.context.UseOnContext context) {
 		Level level = context.getLevel();
 		BlockPos pos = context.getClickedPos();
-		// 顶/底两个能量接收面板响应开关切换；齿轮 4 个侧面响应扳手旋转朝向（与 Create 机器一致）。
-		// 面板方向跟随方块朝向：blockstate 旋转把模型 up 面（顶面板）转到 FACING 方向——
-		//   FACING=UP   → 顶面板朝上、底面板朝下
-		//   FACING=DOWN → 模型 xRot=180 翻转，顶面板朝下、底面板朝上
-		//   FACING=水平 → 模型 xRot=270 躺倒 + yRot 转向，顶面板朝 FACING、底面板朝 FACING 对面
+		// 调级器只有顶/底两个开口方向（顶面板朝 FACING、底面板朝 FACING 对面）。
+		// 点击 4 个侧面（base_side 贴图面）：按点击位置上下分区——上半 → 顶口、下半 → 底口
+		// （侧面永不紧贴、易点选，解决了顶/底被遮挡时无法开口的问题）；
+		// 点击机壳面（顶面板方向或底面板方向）：直接切换该侧面板。
 		Direction facing = state.getValue(FACING);
-		Direction topDir = facing;
-		Direction bottomDir = facing.getOpposite();
-
 		Direction clicked = context.getClickedFace();
+
 		BooleanProperty property;
-		if (clicked == topDir)
-			property = RECEIVER_TOP;
-		else if (clicked == bottomDir)
-			property = RECEIVER_BOTTOM;
-		else {
-			// 齿轮 4 个侧面：扳手旋转朝向（Create 标准：绕点击面轴旋转 FACING）
-			// 本类经 DirectionalKineticBlock 继承链已实现 IWrenchable，直接复用其默认旋转。
-			// （IWrenchable.super 语法在本继承结构下不可用，等价逻辑在此内联）
-			BlockState rotated = getRotatedBlockState(state, clicked);
-			if (rotated.canSurvive(level, pos)) {
-				EnergyWaveRegulatorBlockEntity.switchToBlockState(level, pos,
-					Block.updateFromNeighbourShapes(rotated, level, pos));
-				if (!level.isClientSide)
-					AllSoundEvents.WRENCH_ROTATE.playOnServer(level, pos, 1, level.random.nextFloat() + .5f);
-			}
-			return InteractionResult.SUCCESS;
+		if (clicked.getAxis() == facing.getAxis()) {
+			// 机壳面（顶面板方向 FACING 或其对面）：直接切换该侧面板
+			property = clicked == facing ? RECEIVER_TOP : RECEIVER_BOTTOM;
+		} else {
+			// 齿轮 4 个侧面：按点击位置上下分区（偏向 FACING 一侧=上 → 顶口；偏向 FACING 对面=下 → 底口）
+			property = sideForPanelClick(state, context);
 		}
 
 		boolean open = state.getValue(property);
@@ -178,6 +167,23 @@ public class EnergyWaveRegulatorBlock extends DirectionalKineticBlock
 			AllSoundEvents.WRENCH_ROTATE.playOnServer(level, pos, 1, level.random.nextFloat() + .5f);
 		}
 		return InteractionResult.SUCCESS;
+	}
+
+	/**
+	 * 侧面分区点击：以方块中心为原点，点击位置沿<b>FACING 轴</b>方向的上下分区——
+	 * 偏向 FACING 一侧（模型 up 面所在方向）= 顶口；偏向 FACING 对面 = 底口。
+	 * <p>实测校准：竖直放置（FACING=UP）时，点击侧面<b>视觉上半</b>（rel.y&gt;0）
+	 * 即"偏向 FACING 一侧"，应开<b>顶口</b>（朝上、用户视觉上半的口）；点视觉下半开底口。</p>
+	 *
+	 * @return 命中的面板属性（RECEIVER_TOP / RECEIVER_BOTTOM）
+	 */
+	private BooleanProperty sideForPanelClick(BlockState state, UseOnContext context) {
+		Vec3 hit = context.getClickLocation();
+		Vec3 rel = hit.subtract(Vec3.atCenterOf(context.getClickedPos()));
+		Direction facing = state.getValue(FACING);
+		// 相对中心沿 FACING 方向的偏移：正 = 偏向 FACING 一侧（视觉上半）→ 顶口
+		double along = rel.dot(Vec3.atLowerCornerOf(facing.getNormal()));
+		return along >= 0 ? RECEIVER_TOP : RECEIVER_BOTTOM;
 	}
 
 	// ========== 光照规则（仿 Create 机器） ==========

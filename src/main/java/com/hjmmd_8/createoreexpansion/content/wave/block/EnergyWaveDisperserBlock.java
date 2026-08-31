@@ -1,8 +1,10 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
+import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
+import com.simibubi.create.foundation.block.IBE;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -12,6 +14,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -38,8 +41,11 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  *
  * <p><b>扳手交互</b>：点击 4 个侧面切换该侧开/关；点击机壳面（顶/底）旋转朝向。
  * 实现 {@link IWrenchable}，与 Create 机器交互一致。</p>
+ *
+ * <p><b>方块实体</b>：实现 {@link IBE} 绑定 {@link EnergyWaveDisperserBlockEntity}——
+ * 纯静态无数据，仅承载客户端渲染器（按 4 侧开闭状态在顶/底灯盘叠加灯位）。</p>
  */
-public class EnergyWaveDisperserBlock extends Block implements IWrenchable {
+public class EnergyWaveDisperserBlock extends Block implements IWrenchable, IBE<EnergyWaveDisperserBlockEntity> {
 
 	/** 六向朝向（同 BlockStateProperties.FACING，与 Create DirectionalKineticBlock.FACING 同一实例） */
 	public static final DirectionProperty FACING = BlockStateProperties.FACING;
@@ -64,6 +70,16 @@ public class EnergyWaveDisperserBlock extends Block implements IWrenchable {
 			.setValue(EAST, false)
 			.setValue(SOUTH, false)
 			.setValue(WEST, false));
+	}
+
+	@Override
+	public Class<EnergyWaveDisperserBlockEntity> getBlockEntityClass() {
+		return EnergyWaveDisperserBlockEntity.class;
+	}
+
+	@Override
+	public BlockEntityType<? extends EnergyWaveDisperserBlockEntity> getBlockEntityType() {
+		return AllBlockEntityTypes.ENERGY_WAVE_DISPERSER.get();
 	}
 
 	@Override
