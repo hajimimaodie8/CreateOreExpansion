@@ -2,8 +2,11 @@ package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
 import java.util.List;
 
+import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.regulation.EnergyWaveDispersal;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.EnergyWaveRegulation;
 
 import net.createmod.catnip.levelWrappers.SchematicLevel;
@@ -243,6 +246,29 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 				setPos(Vec3.atCenterOf(pos).add(movement.scale(1.0d)));
 				return;
 			}
+			// 能量波差器：多开口均摊分发（1 开口遣返 / 2 开口穿过 / ≥3 开口均摊降级），见 handleDisperser
+			if (state.getBlock() instanceof EnergyWaveDisperserBlock) {
+				CreateOreExpansion.LOGGER.info("[DisperserDebug] tick={} wavePos={} mv={} lvl={} stateFacing={} openN={} openE={} openS={} openW={}",
+					tickCount, position(), movement, waveLevel,
+					state.getValue(EnergyWaveDisperserBlock.FACING),
+					state.getValue(EnergyWaveDisperserBlock.NORTH),
+					state.getValue(EnergyWaveDisperserBlock.EAST),
+					state.getValue(EnergyWaveDisperserBlock.SOUTH),
+					state.getValue(EnergyWaveDisperserBlock.WEST));
+				boolean vanish = handleDisperser(state, pos);
+				CreateOreExpansion.LOGGER.info("[DisperserDebug] tick={} result={} mvAfter={}",
+					tickCount, vanish ? "VANISH" : "CONTINUE", movement);
+				if (vanish) {
+					burst();
+					discard();
+					return;
+				}
+				// 分裂：母波已在 handleDisperser 内静默 discard（无撞墙特效），直接结束本 tick
+				if (!isAlive())
+					return;
+				setPos(Vec3.atCenterOf(pos).add(movement.scale(1.0d)));
+				return;
+			}
 			IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
 			if (handler != null) {
 				if (processor.processBlockHandler(handler, pos)) {
@@ -429,9 +455,67 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	}
 
 	/**
-	 * 核心加工逻辑（配方匹配/消耗/产出）已抽取至 {@link ChargerWaveProcessor}，
-	 * 能量波实体仅保留飞行与命中调度。
+	 * 处理一次能量波差器判定（多开口均摊分发）。
+	 *
+	 * <p>判定逻辑（入口映射、开口统计、决策）已抽取至 {@link EnergyWaveDispersal}，
+	 * 此处仅执行结果：反弹 / 拐弯 / 均摊分裂 / 撞墙湮灭。</p>
+	 *
+	 * @param state 差器方块状态（4 开口属性）
+	 * @param pos   差器方块位置
+	 * @return true = 波应撞墙湮灭（调用方负责 burst + discard）；false = 波继续（反弹/拐弯，
+	 *         调用方负责推出方块外；若本波已被静默 discard——分裂场景——调用方检测 isAlive()==false 直接结束）
 	 */
+	private boolean handleDisperser(BlockState state, BlockPos pos) {
+		EnergyWaveDispersal.Result result = EnergyWaveDispersal.handle(state, movement, waveLevel);
+		Direction facing = state.getValue(EnergyWaveDisperserBlock.FACING);
+
+		switch (result) {
+			case VANISH -> {
+				// 机壳面 / 入口关闭 / 1 级波分裂降级无路可降 → 撞墙湮灭
+				return true;
+			}
+			case BOUNCE -> {
+				// 单开口：原路遣返（反弹），等级不变
+				movement = movement.scale(-1);
+				return false;
+			}
+			case TURN -> {
+				// 双开口：从入口进、从另一开口出（拐弯），等级不变
+				Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing,
+					EnergyWaveDispersal.exitsOf(state, movement).get(0));
+				movement = Vec3.atLowerCornerOf(worldOut.getNormal());
+				return false;
+			}
+			case SPLIT -> {
+				// ≥3 开口：其余每个开口均摊发射降一级的波
+				int childLevel = waveLevel - 1;
+				Vec3 center = Vec3.atCenterOf(pos);
+				for (Direction modelSide : EnergyWaveDispersal.exitsOf(state, movement)) {
+					Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, modelSide);
+					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
+					AbstractChargerWaveEntity child = createChildWave(
+						center.add(Vec3.atLowerCornerOf(worldOut.getNormal())), worldOut, childLevel);
+					if (child != null)
+						level().addFreshEntity(child);
+				}
+				// 母波静默消失（能量已均摊分发到子波；不触发撞墙湮灭特效，
+				// 调用方见 isAlive()==false 直接结束）
+				this.discard();
+				return false;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * 创建降一级的"子波"（供差器均摊分发）。子类实现为各自能量波类型的新实例。
+	 *
+	 * @param pos     出生位置（已外推到差器外）
+	 * @param facing  发射方向（出口开口朝向）
+	 * @param level   子波等级（= 原波等级 - 1）
+	 * @return 新波实体；null 则放弃发射
+	 */
+	protected abstract AbstractChargerWaveEntity createChildWave(Vec3 pos, Direction facing, int level);
 
 	@Override
 	public void remove(RemovalReason reason) {

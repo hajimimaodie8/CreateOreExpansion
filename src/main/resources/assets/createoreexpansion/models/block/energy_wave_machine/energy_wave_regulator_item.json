@@ -3,9 +3,9 @@
 	"parent": "block/block",
 	"textures": {
 		"0": "create:block/cogwheel",
-		"1": "createoreexpansion:block/energy_wave_regulator/energy_wave_regulator_base_side",
+		"1": "createoreexpansion:block/energy_wave_machine/energy_wave_regulator_base_side",
 		"2": "createoreexpansion:block/jade_casing",
-		"3": "createoreexpansion:block/energy_wave_regulator/wave_receiver_close",
+		"3": "createoreexpansion:block/energy_wave_machine/wave_receiver_close",
 		"particle": "create:block/cogwheel"
 	},
 	"elements": [

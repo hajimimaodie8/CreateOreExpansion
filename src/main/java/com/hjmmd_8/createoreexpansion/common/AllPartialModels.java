@@ -66,9 +66,9 @@ public final class AllPartialModels {
 	public static final PartialModel CHARGER_AXIS = PartialModel.of(
 		CreateOreExpansion.modLoc("block/jade_create_charger/charger_axis"));
 
-	/** 能量调级器齿轮（models/block/energy_wave_regulator/cogwheel.json，随应力绕 FACING 轴旋转） */
+	/** 能量调级器齿轮（models/block/energy_wave_machine/cogwheel.json，随应力绕 FACING 轴旋转） */
 	public static final PartialModel WAVE_REGULATOR_COGWHEEL = PartialModel.of(
-		CreateOreExpansion.modLoc("block/energy_wave_regulator/cogwheel"));
+		CreateOreExpansion.modLoc("block/energy_wave_machine/cogwheel"));
 
 	/** 角磨轮物品 id → PartialModel */
 	public static final Map<ResourceLocation, PartialModel> GRINDING_WHEELS = Map.ofEntries(

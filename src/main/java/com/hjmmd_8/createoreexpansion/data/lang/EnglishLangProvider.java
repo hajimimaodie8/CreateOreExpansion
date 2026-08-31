@@ -126,6 +126,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
         add(AllBlocks.JADE_CREATE_CHARGER.get(), "Jade Create Charger");
         add(AllBlocks.ENERGY_WAVE_REGULATOR.get(), "Energy Wave Regulator");
+        add(AllBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");
         add(AllBlocks.REINFORCED_LIGHTNING_ROD.get(), "Reinforced Lightning Rod");
         add(AllItems.RUBY_INGOT.get(), "Ruby Ingot");
         add(AllItems.RUBY_SHEET.get(), "Ruby Sheet");

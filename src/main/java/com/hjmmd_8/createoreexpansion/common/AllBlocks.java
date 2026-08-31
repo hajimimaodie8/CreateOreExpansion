@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.content.crystal.CrystalClusterBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalGrowthConfigs;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlock;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
@@ -439,7 +440,7 @@ public final class AllBlocks {
 			for (int i = 0; i < 4; i++)
 				models[i] = prov.models()
 					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-						"block/energy_wave_regulator/energy_wave_regulator_" + i));
+						"block/energy_wave_machine/energy_wave_regulator_" + i));
 			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
 			for (Direction dir : Direction.values()) {
 				int xRot = dir == Direction.UP ? 0
@@ -466,7 +467,61 @@ public final class AllBlocks {
 		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_wave_regulator"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_regulator/energy_wave_regulator_item")))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/energy_wave_regulator_item")))
+		.build()
+		.register();
+
+	/** 能量波差器：无应力被动机器，模型上下翡翠机壳、四面能量接收面关闭材质；
+	 * 六向 FACING 旋转（三种朝向与调级器一致），4 侧面开口可独立开关，无需方块实体/渲染器。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<EnergyWaveDisperserBlock> ENERGY_WAVE_DISPERSER = CreateOreExpansion.REGISTRATE
+		.block("energy_wave_disperser", EnergyWaveDisperserBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 4 侧面开口独立开关 → 16 个变体模型（索引 = north*1 + east*2 + south*4 + west*8）；
+			// 六向 FACING 旋转（与调级器同款）：模型默认正面为 +Y——UP 原样、DOWN 转 180、水平躺倒再转向
+			ExistingModelFile[] models = new ExistingModelFile[16];
+			for (int i = 0; i < 16; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/energy_wave_machine/energy_wave_disperser_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				int xRot = dir == Direction.UP ? 0
+					: dir == Direction.DOWN ? 180
+						: dir.getAxis()
+							.isHorizontal() ? 270 : 0;
+				int yRot = dir.getAxis()
+					.isHorizontal() ? (int) dir.toYRot() : 0;
+				for (int n = 0; n < 2; n++) {
+					for (int e = 0; e < 2; e++) {
+						for (int s = 0; s < 2; s++) {
+							for (int w = 0; w < 2; w++) {
+								vb.partialState()
+									.with(EnergyWaveDisperserBlock.FACING, dir)
+									.with(EnergyWaveDisperserBlock.NORTH, n == 1)
+									.with(EnergyWaveDisperserBlock.EAST, e == 1)
+									.with(EnergyWaveDisperserBlock.SOUTH, s == 1)
+									.with(EnergyWaveDisperserBlock.WEST, w == 1)
+									.modelForState()
+									.modelFile(models[n * 1 + e * 2 + s * 4 + w * 8])
+									.rotationX(xRot)
+									.rotationY(yRot)
+									.addModel();
+							}
+						}
+					}
+				}
+			}
+		})
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_wave_disperser"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/energy_wave_disperser_item")))
 		.build()
 		.register();
 
@@ -497,7 +552,8 @@ public final class AllBlocks {
 						.with(BlockStateProperties.POWERED, powered)
 						.modelForState()
 						.modelFile(prov.models()
-							.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion", "block/" + name)))
+							.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+								"block/reinforced_lightning_rod/" + name)))
 						.rotationX(xRot)
 						.rotationY(yRot)
 						.addModel();
@@ -505,6 +561,8 @@ public final class AllBlocks {
 			}
 		})
 		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("reinforced_lightning_rod"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/reinforced_lightning_rod/reinforced_lightning_rod")))
 		.build()
 		.register();
 

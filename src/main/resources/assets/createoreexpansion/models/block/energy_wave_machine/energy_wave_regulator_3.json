@@ -1,12 +1,12 @@
-﻿{
+{
     "format_version":  "1.9.0",
     "credit":  "Made with Blockbench",
     "ambientocclusion":  false,
     "textures":  {
-                     "1":  "createoreexpansion:block/energy_wave_regulator/energy_wave_regulator_base_side",
+                     "1":  "createoreexpansion:block/energy_wave_machine/energy_wave_regulator_base_side",
                      "2":  "createoreexpansion:block/jade_casing",
-                     "3":  "createoreexpansion:block/energy_wave_regulator/wave_receiver_close",
-                     "4":  "createoreexpansion:block/energy_wave_regulator/wave_receiver_open",
+                     "3":  "createoreexpansion:block/energy_wave_machine/wave_receiver_open",
+                     "4":  "createoreexpansion:block/energy_wave_machine/wave_receiver_open",
                      "particle":  "create:block/cogwheel"
                  },
     "elements":  [

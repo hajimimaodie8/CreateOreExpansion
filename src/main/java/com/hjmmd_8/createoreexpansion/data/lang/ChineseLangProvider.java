@@ -199,6 +199,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("block.createoreexpansion.power_angle_grinder", "动力角磨床");
         add("block.createoreexpansion.jade_create_charger", "翡翠应力充能器");
         add("block.createoreexpansion.energy_wave_regulator", "能量调级器");
+        add("block.createoreexpansion.energy_wave_disperser", "能量波差器");
         add("block.createoreexpansion.reinforced_lightning_rod", "强化避雷针");
         // JEI 提示：两种获取引雷能力的途径
         add("createoreexpansion.jei.lightning_rod.ways", "引雷能力获取途径：① 被真实自然闪电击中；② 接收伽马能量波攒满进度（10/10）");

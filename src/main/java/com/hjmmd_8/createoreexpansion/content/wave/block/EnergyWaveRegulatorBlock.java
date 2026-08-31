@@ -16,6 +16,7 @@ import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -135,13 +136,13 @@ public class EnergyWaveRegulatorBlock extends DirectionalKineticBlock
 			.getOpposite();
 	}
 
-	// ========== 扳手切换能量接收面板（open/close） ==========
+	// ========== 扳手交互：顶/底面板切换 open/close，齿轮 4 侧面旋转朝向 ==========
 
 	@Override
 	public InteractionResult onWrenched(BlockState state, net.minecraft.world.item.context.UseOnContext context) {
 		Level level = context.getLevel();
 		BlockPos pos = context.getClickedPos();
-		// 仅顶/底两个能量接收面板响应（齿轮 4 个侧面完全不响应：无声、无切换）。
+		// 顶/底两个能量接收面板响应开关切换；齿轮 4 个侧面响应扳手旋转朝向（与 Create 机器一致）。
 		// 面板方向跟随方块朝向：blockstate 旋转把模型 up 面（顶面板）转到 FACING 方向——
 		//   FACING=UP   → 顶面板朝上、底面板朝下
 		//   FACING=DOWN → 模型 xRot=180 翻转，顶面板朝下、底面板朝上
@@ -156,8 +157,19 @@ public class EnergyWaveRegulatorBlock extends DirectionalKineticBlock
 			property = RECEIVER_TOP;
 		else if (clicked == bottomDir)
 			property = RECEIVER_BOTTOM;
-		else
-			return InteractionResult.PASS; // 齿轮 4 个侧面：无声、无切换
+		else {
+			// 齿轮 4 个侧面：扳手旋转朝向（Create 标准：绕点击面轴旋转 FACING）
+			// 本类经 DirectionalKineticBlock 继承链已实现 IWrenchable，直接复用其默认旋转。
+			// （IWrenchable.super 语法在本继承结构下不可用，等价逻辑在此内联）
+			BlockState rotated = getRotatedBlockState(state, clicked);
+			if (rotated.canSurvive(level, pos)) {
+				EnergyWaveRegulatorBlockEntity.switchToBlockState(level, pos,
+					Block.updateFromNeighbourShapes(rotated, level, pos));
+				if (!level.isClientSide)
+					AllSoundEvents.WRENCH_ROTATE.playOnServer(level, pos, 1, level.random.nextFloat() + .5f);
+			}
+			return InteractionResult.SUCCESS;
+		}
 
 		boolean open = state.getValue(property);
 		EnergyWaveRegulatorBlockEntity.switchToBlockState(level, pos,
