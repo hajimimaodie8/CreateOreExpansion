@@ -4,7 +4,6 @@ import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.JadeChargerWaveEntity;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -22,8 +21,8 @@ public class JadeCreateChargerBlockEntity extends AbstractCreateChargerBlockEnti
 	}
 
 	@Override
-	protected JadeChargerWaveEntity createWave(Level level, Vec3 start, Direction facing, int mode) {
-		return new JadeChargerWaveEntity(level, start, facing, mode);
+	protected JadeChargerWaveEntity createWave(Level level, Vec3 start, Vec3 movementDir, int mode) {
+		return new JadeChargerWaveEntity(level, start, movementDir, mode);
 	}
 
 	/** 翡翠充能波颜色（RGB 0-1）：低=黄、高=绿、伽马=蓝 */

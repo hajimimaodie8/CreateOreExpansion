@@ -118,9 +118,11 @@ public class EnergyWaveDisperserBlock extends Block implements IWrenchable, IBE<
 		// 4 个侧面（模型 north/east/south/west）：切换该侧开口开关（世界方向先映射到模型面）
 		if (modelSide != null) {
 			boolean open = state.getValue(propertyFor(modelSide));
-			level.setBlock(pos, state.setValue(propertyFor(modelSide), !open), Block.UPDATE_CLIENTS);
-			if (!level.isClientSide)
+			// 状态修改只在服务端执行（客户端由同步包更新，避免多人下双端不一致）
+			if (!level.isClientSide) {
+				level.setBlock(pos, state.setValue(propertyFor(modelSide), !open), Block.UPDATE_CLIENTS);
 				AllSoundEvents.WRENCH_ROTATE.playOnServer(level, pos, 1, level.random.nextFloat() + .5f);
+			}
 			return InteractionResult.SUCCESS;
 		}
 
@@ -129,9 +131,11 @@ public class EnergyWaveDisperserBlock extends Block implements IWrenchable, IBE<
 		Direction target = sideForShellClick(state, context);
 		if (target != null) {
 			boolean open = state.getValue(propertyFor(target));
-			level.setBlock(pos, state.setValue(propertyFor(target), !open), Block.UPDATE_CLIENTS);
-			if (!level.isClientSide)
+			// 状态修改只在服务端执行（客户端由同步包更新）
+			if (!level.isClientSide) {
+				level.setBlock(pos, state.setValue(propertyFor(target), !open), Block.UPDATE_CLIENTS);
 				AllSoundEvents.WRENCH_ROTATE.playOnServer(level, pos, 1, level.random.nextFloat() + .5f);
+			}
 			return InteractionResult.SUCCESS;
 		}
 

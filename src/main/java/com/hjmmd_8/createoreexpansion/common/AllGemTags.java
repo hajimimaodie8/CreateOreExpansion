@@ -7,7 +7,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 
-public enum AllMetalTags {
+public enum AllGemTags {
     TOPAZ,
     SAPPHIRE,
     RUBY,
@@ -32,7 +32,7 @@ public enum AllMetalTags {
     public final TagKey<Block> storageRawBlocks;
     public final TagKey<Block> storageBlocks;
 
-    AllMetalTags() {
+    AllGemTags() {
         name = Lang.asId(name());
 
         rawOres = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "raw_materials/" + name));

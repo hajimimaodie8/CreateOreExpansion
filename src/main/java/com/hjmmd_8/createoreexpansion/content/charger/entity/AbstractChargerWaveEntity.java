@@ -3,25 +3,26 @@ package com.hjmmd_8.createoreexpansion.content.charger.entity;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.block.EnergySensingLampBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.WaveSpeedRegulatorBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.EnergyWaveDispersal;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.EnergyWaveRegulation;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.SixFaceDispersal;
+import com.hjmmd_8.createoreexpansion.content.wave.regulation.WaveSpeedRegulation;
 
 import net.createmod.catnip.levelWrappers.SchematicLevel;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
@@ -35,8 +36,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-
-import org.joml.Vector3f;
 
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
@@ -70,11 +69,25 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	protected int waveLevel;
 	protected Vec3 movement = Vec3.ZERO;
 
+	/**
+	 * 速度修正值（格/秒，可正可负）：由波速调节器按转速分档叠加施加。
+	 * <ul>
+	 *   <li><b>叠加语义</b>：每次过波速调节器在此值上 +/− 档位量（多次叠加累积）；</li>
+	 *   <li><b>继承</b>：差波器分裂出的子波、拐弯/反弹后的波均保持同一修正值
+	 *       （实际速度 = 等级基础速度 + 此值，受上下限约束）；</li>
+	 *   <li>与等级解耦：等级基础速度（2/4/6）不变，此值仅为额外叠加层。</li>
+	 * </ul>
+	 */
+	protected double speedOffset;
+
 	/** 出生点：用于计算飞行距离上限。 */
 	private Vec3 spawnPos;
 
 	/** 已与另一波碰撞（防同 tick 双方各触发一次爆炸）。 */
 	private boolean collided;
+
+	/** 调试：sub-level 判定日志节流（每 40 tick 打一次，避免刷屏） */
+	private int lastSubLevelLogTick = -999;
 
 	/**
 	 * 调级器增强延迟（格）：穿过能量调级器（顺基准）后还需飞行 0.5 格
@@ -101,18 +114,39 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		this.renderColor = getWaveColor();
 	}
 
-	protected AbstractChargerWaveEntity(EntityType<?> type, Level level, Vec3 pos, Direction facing, int waveLevel) {
+	/**
+	 * 主构造：以任意方向向量出生（支持 Sable 物理结构旋转后的任意朝向）。
+	 *
+	 * @param type        实体类型
+	 * @param level       出生世界（主世界；结构场景由调用方转换好世界坐标后传入）
+	 * @param pos         出生位置（世界坐标）
+	 * @param movementDir 飞行方向（任意向量，无需单位化，内部 normalize）
+	 * @param waveLevel   波等级（1=低，2=高，3=伽马）
+	 */
+	protected AbstractChargerWaveEntity(EntityType<?> type, Level level, Vec3 pos, Vec3 movementDir, int waveLevel) {
 		this(type, level);
 		this.waveLevel = waveLevel;
 		this.processor = new ChargerWaveProcessor(level, waveLevel);
-		this.movement = Vec3.atLowerCornerOf(facing.getNormal());
+		this.movement = movementDir.normalize();
 		this.renderColor = getWaveColor();
 		this.spawnPos = pos;
 		setPos(pos);
+		// 服务端/客户端实例都写入同步数据（Jade 等客户端读取需要）
+		this.entityData.set(WAVE_LEVEL, waveLevel);
+		this.entityData.set(SPEED_OFFSET, 0f);
 	}
+
+	/** 等级同步 key（客户端 Jade 显示用） */
+	private static final net.minecraft.network.syncher.EntityDataAccessor<Integer> WAVE_LEVEL =
+		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.INT);
+	/** 速度修正同步 key（客户端 Jade 显示用；double 无序列化器，用 FLOAT 精度足够） */
+	private static final net.minecraft.network.syncher.EntityDataAccessor<Float> SPEED_OFFSET =
+		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.FLOAT);
 
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		builder.define(WAVE_LEVEL, 0);
+		builder.define(SPEED_OFFSET, 0f);
 	}
 
 	@Override
@@ -157,13 +191,13 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		// 飞行拖尾粒子（密集，沿移动方向散布）——每 tick 6 个（用户反馈 3 个隔 tick 太稀疏，恢复原密度）
 		if (level() instanceof ServerLevel server) {
 			Vec3 color = renderColor;
-			server.sendParticles(getWaveParticle(color, 0.45f), getX(), getY(), getZ(), 6,
+			server.sendParticles(ChargerWaveFx.waveParticle(color, 0.45f), getX(), getY(), getZ(), 6,
 				movement.x * 0.12, movement.y * 0.12, movement.z * 0.12, 0.03);
 		} else if (ponderScene) {
 			// Ponder 场景：客户端粒子（PonderLevel.addParticle 已实现，会渲染在场景中）
 			Vec3 color = renderColor;
 			for (int i = 0; i < 6; i++) {
-				level().addParticle(getWaveParticle(color, 0.45f), getX(), getY(), getZ(),
+				level().addParticle(ChargerWaveFx.waveParticle(color, 0.45f), getX(), getY(), getZ(),
 					movement.x * 0.12, movement.y * 0.12, movement.z * 0.12);
 			}
 		}
@@ -193,7 +227,7 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 				target.hurt(level().damageSources()
 					.indirectMagic(this, null), getDamage());
 			}
-			burst();
+			ChargerWaveFx.burst(level(), position(), renderColor);
 			discard();
 			return;
 		}
@@ -205,7 +239,7 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		if (!items.isEmpty()) {
 			// 核心加工逻辑已抽取至 ChargerWaveProcessor（配方匹配 → 消耗输入 → 产出结果）
 			if (processor.processItemEntity(items.get(0))) {
-				burst();
+				ChargerWaveFx.burst(level(), position(), renderColor);
 				discard();
 			}
 			return;
@@ -219,6 +253,14 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	 * 方块碰撞检测：遍历碰撞盒覆盖的方块，按优先级处理
 	 * 避雷针 → 能量调级器 → 置物台/工作台（有物品槽）→ 撞墙。
 	 * 命中即 {@code burst + discard}；调级器穿过/遣返则推出方块外继续飞行。
+	 *
+	 * <p><b>两阶段判定</b>（主世界优先，结构补充，互不劫持）：</p>
+	 * <ol>
+	 *   <li><b>主世界判定</b>：遍历波碰撞盒覆盖的主世界方块（机器/地形），命中即处理；</li>
+	 *   <li><b>结构判定</b>：主世界无命中（波在空旷处或物理结构区域——结构方块已从主世界
+	 *       搬入 Sable 虚拟子世界，主世界读不到）时，若波中心落在某结构 plot 内，
+	 *       切换到结构本地坐标系判定结构上的机器。</li>
+	 * </ol>
 	 */
 	private void handleBlockCollisions() {
 		boolean hitSolid = false;
@@ -232,19 +274,29 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 			if (level().getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 				if (waveLevel == 3)
 					rod.onGammaWaveHit();
-				burst();
+				ChargerWaveFx.burst(level(), position(), renderColor);
 				discard();
 				return;
 			}
 			// 能量调级器：面板通道 + 应力波级调制（齿轮旋转方向 + 面板开闭），判定逻辑见 EnergyWaveRegulation
 			if (level().getBlockEntity(pos) instanceof EnergyWaveRegulatorBlockEntity regulator) {
-				if (handleRegulator(regulator, pos)) {
-					burst();
+				if (handleRegulator(regulator, pos, getBoundingBox().getCenter())) {
+					ChargerWaveFx.burst(level(), position(), renderColor);
 					discard();
 					return;
 				}
 				// 穿过/遣返：把波从调级器方块中心推出方块外，确保碰撞盒完全离开，
 				// 避免下一 tick 仍在方块内触发二次判定（二次判定会让降级波按 1 级消失、升级延迟被反复重置）
+				setPos(Vec3.atCenterOf(pos).add(movement.scale(1.0d)));
+				return;
+			}
+			// 波速调节器：面板通道 + 应力速度调制（按转速分档加速/减速，反弹不改速），见 handleWaveSpeedRegulator
+			if (level().getBlockEntity(pos) instanceof WaveSpeedRegulatorBlockEntity speedRegulator) {
+				if (handleWaveSpeedRegulator(speedRegulator, pos, getBoundingBox().getCenter())) {
+					ChargerWaveFx.burst(level(), position(), renderColor);
+					discard();
+					return;
+				}
 				setPos(Vec3.atCenterOf(pos).add(movement.scale(1.0d)));
 				return;
 			}
@@ -257,11 +309,11 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 					state.getValue(EnergyWaveDisperserBlock.EAST),
 					state.getValue(EnergyWaveDisperserBlock.SOUTH),
 					state.getValue(EnergyWaveDisperserBlock.WEST));
-				boolean vanish = handleDisperser(state, pos);
+				boolean vanish = handleDisperser(state, pos, getBoundingBox().getCenter(), null);
 				CreateOreExpansion.LOGGER.info("[DisperserDebug] tick={} result={} mvAfter={}",
 					tickCount, vanish ? "VANISH" : "CONTINUE", movement);
 				if (vanish) {
-					burst();
+					ChargerWaveFx.burst(level(), position(), renderColor);
 					discard();
 					return;
 				}
@@ -273,9 +325,9 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 			}
 			// 六面能量波差器：无朝向，6 面独立开关（1 遣返 / 2 穿过 / 3-4 降一级均摊 / 5-6 降二级均摊）
 			if (state.getBlock() instanceof SixFaceDisperserBlock) {
-				boolean vanish = handleSixFaceDisperser(state, pos);
+				boolean vanish = handleSixFaceDisperser(state, pos, getBoundingBox().getCenter(), null);
 				if (vanish) {
-					burst();
+					ChargerWaveFx.burst(level(), position(), renderColor);
 					discard();
 					return;
 				}
@@ -284,24 +336,175 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 				setPos(Vec3.atCenterOf(pos).add(movement.scale(1.0d)));
 				return;
 			}
+			// 能量感应灯：被波击中切换为对应波级的亮态（黄/绿/蓝，光照15 + 红石信号），
+			// 亮态持续一段时间后自动熄灭（计时在 BE），波消散
+			if (state.getBlock() instanceof EnergySensingLampBlock) {
+				EnergySensingLampBlock.onWaveHit(level(), pos, waveLevel);
+				ChargerWaveFx.burst(level(), position(), renderColor);
+				discard();
+				return;
+			}
 			IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
 			if (handler != null) {
 				if (processor.processBlockHandler(handler, pos)) {
-					burst();
+					ChargerWaveFx.burst(level(), position(), renderColor);
 					discard();
 					return;
 				}
 				// 有物品槽但无匹配物品：同样视为撞墙，波在此消散（不穿过置物台/工作台）
-				burst();
+				ChargerWaveFx.burst(level(), position(), renderColor);
 				discard();
 				return;
 			}
 			hitSolid = true;
 		}
 		if (hitSolid) {
-			burst();
+			ChargerWaveFx.burst(level(), position(), renderColor);
+			discard();
+			return;
+		}
+
+		// 阶段 2：结构判定（补充，不劫持主世界）——主世界无命中时，若波中心落在
+		// 某物理结构（Sable sub-level）的 plot 内，切换到结构本地坐标系判定结构上的机器。
+		SubLevelBridge bridge = SableBridges.get();
+		if (bridge != null) {
+			SubLevelBridge.Hit hit = bridge.query(level(), getBoundingBox().getCenter());
+			if (hit != null) {
+				// 调试日志（节流）：进入结构本地判定
+				if (tickCount - lastSubLevelLogTick > 40) {
+					lastSubLevelLogTick = tickCount;
+					CreateOreExpansion.LOGGER.info("[Sable] 波@{} 世界中心 {} → 结构本地 {}",
+						position(), getBoundingBox().getCenter(), bridge.toLocal(hit, getBoundingBox().getCenter()));
+				}
+				handleSubLevelBlockCollisions(bridge, hit);
+			}
+		}
+	}
+
+	/** 调试：描述结构上某位置的机器类型（用于定位差波器等判定失效） */
+	private static String machineKindOf(SubLevelBridge bridge, SubLevelBridge.Hit hit, BlockPos pos, BlockState state) {
+		if (bridge.getBlockEntity(hit, pos) instanceof ReinforcedLightningRodBlockEntity)
+			return "强化避雷针";
+		if (bridge.getBlockEntity(hit, pos) instanceof EnergyWaveRegulatorBlockEntity)
+			return "能量调级器";
+		if (bridge.getBlockEntity(hit, pos) instanceof WaveSpeedRegulatorBlockEntity)
+			return "波速调节器";
+		if (state.getBlock() instanceof EnergyWaveDisperserBlock)
+			return "能量波差器";
+		if (state.getBlock() instanceof SixFaceDisperserBlock)
+			return "六面能量波差器";
+		if (state.getBlock() instanceof EnergySensingLampBlock)
+			return "能量感应灯";
+		return "普通方块(" + state.getBlock()
+			.getDescriptionId() + ")";
+	}
+
+	/**
+	 * 波在物理结构（Sable sub-level）上的碰撞判定：以结构本地坐标系遍历波覆盖的方块，
+	 * 命中结构上的机器（避雷针/调级器/波速调节器/差波器）时执行与主世界相同的判定。
+	 *
+	 * <p><b>坐标约定</b>：波实体本身始终在主世界（位置/渲染/粒子用世界坐标）；本方法内
+	 * {@code movement} 临时切换为结构本地方向参与判定（判定函数读写 {@code this.movement}），
+	 * 判定结束后经位姿矩阵转回世界方向；推出方块、分裂子波等产出位置同样转回世界。</p>
+	 *
+	 * <p>波闸的 4×4 入口中心判定在本地坐标系天然正确：BE 的 pos/FACING 是本地，波中心
+	 * 换算成本地后，{@code StaticWaveGateFrame} 用本地 FACING 与本地坐标判定面内偏移。</p>
+	 *
+	 * @return true = 本 tick 已在结构上处理完毕（穿过/反弹/湮灭），无需再走主世界判定
+	 */
+	private boolean handleSubLevelBlockCollisions(SubLevelBridge bridge, SubLevelBridge.Hit hit) {
+		Vec3 localCenter = bridge.toLocal(hit, getBoundingBox().getCenter());
+		Vec3 localMove = bridge.toLocalDir(hit, movement);
+		double h = 0.1; // 波盒半宽（sized 0.2）
+		AABB localBox = new AABB(localCenter.x - h, localCenter.y - h, localCenter.z - h,
+			localCenter.x + h, localCenter.y + h, localCenter.z + h);
+
+		boolean hitSolid = false;
+		for (BlockPos pos : BlockPos.betweenClosed(
+			Mth.floor(localBox.minX), Mth.floor(localBox.minY), Mth.floor(localBox.minZ),
+			Mth.floor(localBox.maxX), Mth.floor(localBox.maxY), Mth.floor(localBox.maxZ))) {
+			BlockState state = bridge.getBlockState(hit, pos);
+			if (state.isAir())
+				continue;
+
+			// 调试日志（节流）：结构上命中的非空气方块
+			if (tickCount - lastSubLevelLogTick > 40) {
+				lastSubLevelLogTick = tickCount;
+				CreateOreExpansion.LOGGER.info("[Sable] 结构判定：本地方块 {} = {}，机器类型：{}",
+					pos, state, machineKindOf(bridge, hit, pos, state));
+			}
+
+			// 判定前：把波方向临时切换为结构本地方向（判定函数读写 this.movement）
+			movement = localMove;
+			try {
+				// 波前中心（结构本地坐标，与 pos 同坐标系——4×4 入口判定依赖）
+				Vec3 localWavePos = bridge.toLocal(hit, getBoundingBox().getCenter());
+				// 伽马波命中强化避雷针：充能 +1，波消散
+				if (bridge.getBlockEntity(hit, pos) instanceof ReinforcedLightningRodBlockEntity rod) {
+					if (waveLevel == 3)
+						rod.onGammaWaveHit();
+					ChargerWaveFx.burst(level(), position(), renderColor);
+					discard();
+					return true;
+				}
+				// 能量调级器：面板通道 + 等级调制
+				if (bridge.getBlockEntity(hit, pos) instanceof EnergyWaveRegulatorBlockEntity regulator) {
+					if (handleRegulator(regulator, pos, localWavePos)) {
+						ChargerWaveFx.burst(level(), position(), renderColor);
+						discard();
+						return true;
+					}
+					setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos).add(movement.scale(1.0d))));
+					return true;
+				}
+				// 波速调节器：面板通道 + 速度调制（反弹不改速）
+				if (bridge.getBlockEntity(hit, pos) instanceof WaveSpeedRegulatorBlockEntity speedRegulator) {
+					if (handleWaveSpeedRegulator(speedRegulator, pos, localWavePos)) {
+						ChargerWaveFx.burst(level(), position(), renderColor);
+						discard();
+						return true;
+					}
+					setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos).add(movement.scale(1.0d))));
+					return true;
+				}
+				// 能量波差器：反弹/拐弯/分裂（分裂子波在结构本地出生，经 frame 转回世界后加入主世界）
+				if (state.getBlock() instanceof EnergyWaveDisperserBlock) {
+					boolean vanish = handleDisperser(state, pos, localWavePos, hit);
+					if (vanish) {
+						ChargerWaveFx.burst(level(), position(), renderColor);
+						discard();
+						return true;
+					}
+					if (!isAlive())
+						return true; // 分裂：母波静默消散
+					setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos).add(movement.scale(1.0d))));
+					return true;
+				}
+				// 六面能量波差器
+				if (state.getBlock() instanceof SixFaceDisperserBlock) {
+					boolean vanish = handleSixFaceDisperser(state, pos, localWavePos, hit);
+					if (vanish) {
+						ChargerWaveFx.burst(level(), position(), renderColor);
+						discard();
+						return true;
+					}
+					if (!isAlive())
+						return true;
+					setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos).add(movement.scale(1.0d))));
+					return true;
+				}
+				// 结构上的其它方块（含能量感应灯/置物台——本地无 Capability 查询入口）→ 视为撞墙
+				hitSolid = true;
+			} finally {
+				// 判定结果（反弹/穿出方向）从本地方向转回世界方向
+				movement = bridge.toWorldDir(hit, movement);
+			}
+		}
+		if (hitSolid) {
+			ChargerWaveFx.burst(level(), position(), renderColor);
 			discard();
 		}
+		return true;
 	}
 
 	/**
@@ -326,92 +529,13 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		Vec3 center = position().add(other.position()).scale(0.5);
 
 		// 1. 范围爆炸：粒子 + 音效 + 区域效果
-		triggerBoom(boomLevel, center, renderColor, other.renderColor);
+		ChargerWaveFx.triggerBoom(level(), this, center, renderColor, other.renderColor, boomLevel);
 
 		// 2. 两波相互湮灭（标记防对方同 tick 重复触发）
 		this.collided = true;
 		other.collided = true;
 		other.discard();
 		discard();
-	}
-
-	/**
-	 * 触发一次范围能量爆炸（不破坏地形）：
-	 * <ul>
-	 *   <li><b>爆炸等级</b>决定水平正方形范围半径（1→3×3、2→5×5、3→7×7）；</li>
-	 *   <li>区域内生物受该等级撞击伤害（低 4 / 高 6 / 伽马 10）；</li>
-	 *   <li>区域内掉落物 / 置物台物品按该等级直接充能加工；</li>
-	 *   <li><b>伽马爆炸（等级 3）</b>额外给范围内强化避雷针 +1 伽马充能；</li>
-	 *   <li>密集粒子扩散（比撞墙 30 个更密）+ 爆炸音效。</li>
-	 * </ul>
-	 *
-	 * @param boomLevel 爆炸等级（1/2/3）
-	 * @param center    爆炸中心（世界坐标）
-	 * @param color     主粒子颜色（可选第二色混合，null 则单色）
-	 */
-	private void triggerBoom(int boomLevel, Vec3 center, Vec3 color, Vec3 color2) {
-		if (level() instanceof ServerLevel server) {
-			// 密集球面扩散粒子（等级越高越密）
-			int count = 30 + boomLevel * 25; // 55 / 80 / 105 个
-			server.sendParticles(getWaveParticle(color, 0.7f), center.x, center.y, center.z, count,
-				1.2, 1.2, 1.2, 0.15);
-			if (color2 != null) {
-				// 混合第二色，增强视觉层次
-				server.sendParticles(getWaveParticle(color2, 0.5f), center.x, center.y, center.z, count / 2,
-					1.0, 1.0, 1.0, 0.12);
-			}
-			// 能量冲击音效（不破坏地形，仅声光效果）
-			server.playSound(null, center.x, center.y, center.z, SoundEvents.GENERIC_EXPLODE,
-				SoundSource.BLOCKS, 1.0F, 1.0F);
-		}
-
-		// 水平正方形范围（半径 = 爆炸等级），按等级处理生物伤害与物品加工
-		double r = boomLevel;
-		AABB area = new AABB(center.x - r, center.y - 0.5, center.z - r,
-			center.x + r, center.y + 0.5, center.z + r);
-		ChargerWaveProcessor boomProcessor = new ChargerWaveProcessor(level(), boomLevel);
-
-		// 范围内生物：受到该等级波对应的撞击伤害（低 4 / 高 6 / 伽马 10）
-		for (LivingEntity target : level().getEntitiesOfClass(LivingEntity.class, area, e -> e.isAlive())) {
-			if (!(target instanceof Player player) || !player.isCreative()) {
-				target.hurt(level().damageSources()
-					.indirectMagic(this, null), damageForLevel(boomLevel));
-			}
-		}
-
-		// 范围内掉落物：按爆炸等级直接加工
-		for (ItemEntity item : level().getEntitiesOfClass(ItemEntity.class, area, e -> e.isAlive())) {
-			boomProcessor.processItemEntity(item);
-		}
-
-		// 范围内方块（置物台/工作台等有物品槽者）：按爆炸等级直接加工
-		int minX = Mth.floor(center.x - r);
-		int maxX = Mth.floor(center.x + r);
-		int minZ = Mth.floor(center.z - r);
-		int maxZ = Mth.floor(center.z + r);
-		int y = Mth.floor(center.y);
-		for (int x = minX; x <= maxX; x++) {
-			for (int z = minZ; z <= maxZ; z++) {
-				BlockPos pos = new BlockPos(x, y, z);
-				// 伽马爆炸（等级 3）：范围内强化避雷针获得 1 次伽马充能
-				if (boomLevel == 3
-					&& level().getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
-					rod.onGammaWaveHit();
-				}
-				IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-				if (handler != null)
-					boomProcessor.processBlockHandler(handler, pos);
-			}
-		}
-	}
-
-	/** 按等级取命中伤害（低 4 / 高 6 / 伽马 10），供范围爆炸生物伤害复用 */
-	private static float damageForLevel(int level) {
-		return switch (level) {
-			case 2 -> 6f;
-			case 3 -> 10f;
-			default -> 4f;
-		};
 	}
 
 	/**
@@ -424,12 +548,14 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	 * 处理一次调级器判定。
 	 *
 	 * @param regulator 调级器方块实体
-	 * @param pos       调级器方块位置
+	 * @param pos       调级器方块位置（与 wavePos 同坐标系：主世界=世界坐标，结构=本地坐标）
+	 * @param wavePos   波前中心（必须与 pos 同坐标系——结构场景传本地坐标，否则 4×4 入口判定失真）
 	 * @return true = 波应在原地湮灭（调用方负责 burst + discard）；false = 波继续（已按结果
 	 *         升级/降级/反转 movement，调用方负责推出方块外）
 	 */
-	private boolean handleRegulator(EnergyWaveRegulatorBlockEntity regulator, BlockPos pos) {
-		EnergyWaveRegulation.Result result = EnergyWaveRegulation.handle(regulator, movement, waveLevel);
+	private boolean handleRegulator(EnergyWaveRegulatorBlockEntity regulator, BlockPos pos, Vec3 wavePos) {
+		EnergyWaveRegulation.Result result = EnergyWaveRegulation.get()
+			.resolve(regulator, wavePos, movement, waveLevel);
 		switch (result) {
 			case VANISH -> {
 				// 齿轮端/入口关闭：如撞墙消失，无爆炸
@@ -437,12 +563,12 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 			}
 			case VANISH_GAMMA_BOOM -> {
 				// 伽马波（3级）顺基准升级无路可升 → 3 级伽马爆炸后湮灭
-				triggerBoom(3, position(), renderColor, null);
+				ChargerWaveFx.triggerBoom(level(), this, position(), renderColor, null, 3);
 				return true;
 			}
 			case VANISH_LOW_BOOM -> {
 				// 1 级波逆基准降级无路可降 → 1 级小范围爆炸后湮灭
-				triggerBoom(1, position(), renderColor, null);
+				ChargerWaveFx.triggerBoom(level(), this, position(), renderColor, null, 1);
 				return true;
 			}
 			case PASS_UNCHANGED -> {
@@ -470,18 +596,66 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	}
 
 	/**
+	 * 处理一次波速调节器判定。
+	 * <ul>
+	 *   <li><b>VANISH</b>：齿轮端/入口关闭 → 撞墙湮灭；</li>
+	 *   <li><b>BOUNCE</b>：单开口 → 纯折返（速度不变）；</li>
+	 *   <li><b>PASS_UNCHANGED</b>：无应力双开口 → 速度不变穿过；</li>
+	 *   <li><b>PASS_SPEED_UP/DOWN</b>：有应力双开口 → 按转速分档对 {@code speedOffset}
+	 *       叠加加速/减速量（叠加语义，可多次累积），速度保持穿过。</li>
+	 * </ul>
+	 *
+	 * @param speedRegulator 波速调节器方块实体
+	 * @param pos            波速调节器方块位置
+	 * @return true = 波应撞墙湮灭（调用方负责 burst + discard）；false = 波继续
+	 */
+	private boolean handleWaveSpeedRegulator(WaveSpeedRegulatorBlockEntity speedRegulator, BlockPos pos, Vec3 wavePos) {
+		WaveSpeedRegulation.Result result = WaveSpeedRegulation.get()
+			.resolve(speedRegulator, wavePos, movement);
+		switch (result) {
+			case VANISH -> {
+				return true; // 齿轮端/入口关闭：撞墙湮灭
+			}
+			case BOUNCE -> {
+				// 单开口：纯折返，速度不变
+				movement = movement.scale(-1);
+				return false;
+			}
+			case PASS_UNCHANGED -> {
+				// 无应力双开口：速度不变穿过
+				return false;
+			}
+			case PASS_SPEED_UP -> {
+				// 顺基准：加速（按转速分档叠加）
+				float amount = WaveSpeedRegulation.offsetForSpeed(speedRegulator.getSpeed());
+				addSpeedOffset(amount);
+				return false;
+			}
+			case PASS_SPEED_DOWN -> {
+				// 逆基准：减速（按转速分档叠加）
+				float amount = WaveSpeedRegulation.offsetForSpeed(speedRegulator.getSpeed());
+				addSpeedOffset(-amount);
+				return false;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * 处理一次能量波差器判定（多开口均摊分发）。
 	 *
 	 * <p>判定逻辑（入口映射、开口统计、决策）已抽取至 {@link EnergyWaveDispersal}，
 	 * 此处仅执行结果：反弹 / 拐弯 / 均摊分裂 / 撞墙湮灭。</p>
 	 *
-	 * @param state 差器方块状态（4 开口属性）
-	 * @param pos   差器方块位置
+	 * @param state   差器方块状态（FACING + 4 开口属性）
+	 * @param pos     差器方块位置（与 wavePos 同坐标系）
+	 * @param wavePos 波前中心（结构场景为本地坐标，用于 4×4 入口判定）
+	 * @param frame   波所在 sub-level（结构本地坐标系，分裂子波转回世界用）；null = 主世界
 	 * @return true = 波应撞墙湮灭（调用方负责 burst + discard）；false = 波继续（反弹/拐弯，
 	 *         调用方负责推出方块外；若本波已被静默 discard——分裂场景——调用方检测 isAlive()==false 直接结束）
 	 */
-	private boolean handleDisperser(BlockState state, BlockPos pos) {
-		EnergyWaveDispersal.Result result = EnergyWaveDispersal.handle(state, movement, waveLevel);
+	private boolean handleDisperser(BlockState state, BlockPos pos, Vec3 wavePos, SubLevelBridge.Hit frame) {
+		EnergyWaveDispersal.Result result = EnergyWaveDispersal.handle(state, movement, wavePos, pos, waveLevel);
 		Direction facing = state.getValue(EnergyWaveDisperserBlock.FACING);
 
 		switch (result) {
@@ -510,8 +684,21 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
 					AbstractChargerWaveEntity child = createChildWave(
 						center.add(Vec3.atLowerCornerOf(worldOut.getNormal())), worldOut, childLevel);
-					if (child != null)
+					if (child != null) {
+						if (frame != null) {
+							// 结构本地出生 → 转回世界坐标/方向（波必须出生在真实世界）；
+							// spawnPos 同步修正，否则距离上限检查会把子波当"飞太远"立即消散
+							SubLevelBridge b = SableBridges.get();
+							if (b != null) {
+								child.setPos(b.toWorld(frame, child.position()));
+								child.spawnPos = b.toWorld(frame, child.spawnPos);
+								child.movement = b.toWorldDir(frame, child.movement);
+							}
+						}
+						// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
+						child.addSpeedOffset(this.speedOffset);
 						level().addFreshEntity(child);
+					}
 				}
 				// 母波静默消失（能量已均摊分发到子波；不触发撞墙湮灭特效，
 				// 调用方见 isAlive()==false 直接结束）
@@ -537,10 +724,13 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	 * 规则：入口关闭→撞墙消失；1 开口→反弹；2 开口→拐弯；3-4 开口→其余开口各发降一级子波；
 	 * 5-6 开口→其余开口各发降二级子波（新增）。
 	 *
+	 * @param pos   差器方块位置（与 wavePos 同坐标系）
+	 * @param wavePos 波前中心（结构场景为本地坐标，用于 4×4 入口判定）
+	 * @param frame 波所在 sub-level（结构本地坐标系，分裂子波转回世界用）；null = 主世界
 	 * @return true = 波应撞墙湮灭；false = 波继续（调用方推出方块外；分裂时本波已静默 discard）
 	 */
-	private boolean handleSixFaceDisperser(BlockState state, BlockPos pos) {
-		SixFaceDispersal.Result result = SixFaceDispersal.handle(state, movement, waveLevel);
+	private boolean handleSixFaceDisperser(BlockState state, BlockPos pos, Vec3 wavePos, SubLevelBridge.Hit frame) {
+		SixFaceDispersal.Result result = SixFaceDispersal.handle(state, movement, wavePos, pos, waveLevel);
 		switch (result) {
 			case VANISH -> {
 				return true; // 入口关闭 / 波级不足分裂 → 撞墙湮灭
@@ -564,8 +754,21 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
 					AbstractChargerWaveEntity child = createChildWave(
 						center.add(Vec3.atLowerCornerOf(worldOut.getNormal())), worldOut, childLevel);
-					if (child != null)
+					if (child != null) {
+						if (frame != null) {
+							// 结构本地出生 → 转回世界坐标/方向（波必须出生在真实世界）；
+							// spawnPos 同步修正，否则距离上限检查会把子波当"飞太远"立即消散
+							SubLevelBridge b = SableBridges.get();
+							if (b != null) {
+								child.setPos(b.toWorld(frame, child.position()));
+								child.spawnPos = b.toWorld(frame, child.spawnPos);
+								child.movement = b.toWorldDir(frame, child.movement);
+							}
+						}
+						// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
+						child.addSpeedOffset(this.speedOffset);
 						level().addFreshEntity(child);
+					}
 				}
 				// 母波静默消失（能量已均摊分发到子波）
 				this.discard();
@@ -579,41 +782,65 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	public void remove(RemovalReason reason) {
 		// 客户端在实体消散时补充球面均匀扩散绽放
 		if (reason == RemovalReason.DISCARDED && level().isClientSide) {
-			burstParticles();
+			ChargerWaveFx.burstParticles(level(), position(), renderColor);
 		}
 		super.remove(reason);
 	}
 
-	/** 服务端命中绽放：对应颜色向外扩散的染色粒子（大散布 + 速度，近似球面扩散）+ 加工完成音效（紫水晶共鸣） */
-	private void burst() {
-		if (!(level() instanceof ServerLevel server))
-			return;
-		Vec3 color = renderColor;
-		server.sendParticles(getWaveParticle(color, 0.6f), getX(), getY(), getZ(), 30,
-			0.5, 0.5, 0.5, 0.3);
-		server.playSound(null, getX(), getY(), getZ(), SoundEvents.AMETHYST_BLOCK_RESONATE,
-			SoundSource.BLOCKS, 1.0F, 1.0F);
-	}
+	/** 速度下限（格/秒）：减速不能低于此值。 */
+	protected static final double MIN_SPEED = 0.5d;
+	/** 速度上限（格/秒）：加速不能超过此值。 */
+	protected static final double MAX_SPEED = 10.0d;
 
-	/** 客户端球面均匀扩散绽放（对应颜色） */
-	private void burstParticles() {
-		Vec3 color = renderColor;
-		RandomSource random = level().random;
-		for (int i = 0; i < 30; i++) {
-			Vec3 dir = new Vec3(random.nextGaussian(), random.nextGaussian(), random.nextGaussian())
-				.normalize();
-			level().addParticle(getWaveParticle(color, 0.5f), getX(), getY(), getZ(),
-				dir.x * 0.35, dir.y * 0.35, dir.z * 0.35);
-		}
-	}
-
-	/** 移动速度（格/秒）：低 2、高 4、伽马 6 —— 子类可覆写定制（如雷鸣波更快） */
+	/**
+	 * 移动速度（格/秒）：等级基础速度（低 2、高 4、伽马 6）+ 速度修正值
+	 * （波速调节器叠加），夹在 {@link #MIN_SPEED} ~ {@link #MAX_SPEED} 之间。
+	 * 子类可覆写基础速度（如雷鸣波更快）。
+	 */
 	protected double getSpeedBlocks() {
-		return switch (waveLevel) {
+		double base = switch (waveLevel) {
 			case 2 -> 4;
 			case 3 -> 6;
 			default -> 2;
 		};
+		return Math.max(MIN_SPEED, Math.min(MAX_SPEED, base + speedOffset));
+	}
+
+	/** 施加一次速度修正（叠加语义：在此值上增加 amount，可正可负）。 */
+	protected void addSpeedOffset(double amount) {
+		this.speedOffset += amount;
+		// 同步到客户端（Jade 速度显示）
+		this.entityData.set(SPEED_OFFSET, (float) this.speedOffset);
+	}
+
+	// ========== 公开只读访问（供 Jade 等外部显示） ==========
+	// 注意：Jade 在客户端运行，读到的是客户端实体实例——普通字段（waveLevel/speedOffset）
+	// 不会同步，必须从 SynchedEntityData（WAVE_LEVEL/SPEED_OFFSET）读取。
+
+	/** 波等级（1=低、2=高、3=伽马）。 */
+	public int getWaveLevel() {
+		return this.entityData.get(WAVE_LEVEL);
+	}
+
+	/** 实际运行速度（格/秒，含波速调节器修正）。 */
+	public double getWaveSpeed() {
+		int level = getWaveLevel();
+		double base = switch (level) {
+			case 2 -> 4;
+			case 3 -> 6;
+			default -> 2;
+		};
+		return Math.max(MIN_SPEED, Math.min(MAX_SPEED, base + this.entityData.get(SPEED_OFFSET)));
+	}
+	/** 剩余寿命（tick）：距自动消散还剩多少 tick（负数/0 = 即将消散）。 */
+	public int getRemainingLifetime() {
+		return MAX_LIFETIME_TICKS - tickCount;
+	}
+
+	/** 当前渲染颜色（RGB 0-1，随波等级/种类）。
+	 * 客户端实例的 {@code renderColor} 字段不同步，这里按等级取静态色（Jade 显示用）。 */
+	public Vec3 getWaveRenderColor() {
+		return getWaveColorForLevel(getWaveLevel());
 	}
 
 	/**
@@ -623,6 +850,8 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 	protected void setWaveLevel(int level) {
 		this.waveLevel = level;
 		this.processor = new ChargerWaveProcessor(level(), level);
+		// 同步到客户端（Jade 等级显示）
+		this.entityData.set(WAVE_LEVEL, level);
 	}
 
 	/** 命中伤害：低 4、高 6、伽马 10 —— 子类可覆写定制（如雷鸣波更高） */
@@ -642,21 +871,19 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		return getWaveColor();
 	}
 
-	/** 能量波粒子数据：原版染色粒子（可配 RGB，客户端无需任何注册） */
-	protected ParticleOptions getWaveParticle(Vec3 color, float scale) {
-		return new DustParticleOptions(
-			new Vector3f((float) color.x, (float) color.y, (float) color.z), scale);
-	}
-
 	@Override
 	protected void readAdditionalSaveData(CompoundTag tag) {
 		waveLevel = tag.getInt("WaveLevel");
 		movement = new Vec3(tag.getDouble("MoveX"), tag.getDouble("MoveY"), tag.getDouble("MoveZ"));
 		boostRemaining = tag.getFloat("BoostRemaining");
+		speedOffset = tag.getDouble("SpeedOffset");
 		if (tag.contains("SpawnX"))
 			spawnPos = new Vec3(tag.getDouble("SpawnX"), tag.getDouble("SpawnY"), tag.getDouble("SpawnZ"));
 		// 服务端从 NBT 恢复等级后，同步核心加工逻辑的等级（决定可匹配配方上限）
 		processor = new ChargerWaveProcessor(level(), waveLevel);
+		// 同步数据写回（供客户端 Jade 显示）
+		this.entityData.set(WAVE_LEVEL, waveLevel);
+		this.entityData.set(SPEED_OFFSET, (float) speedOffset);
 	}
 
 	@Override
@@ -666,6 +893,7 @@ public abstract class AbstractChargerWaveEntity extends Entity {
 		tag.putDouble("MoveY", movement.y);
 		tag.putDouble("MoveZ", movement.z);
 		tag.putFloat("BoostRemaining", boostRemaining);
+		tag.putDouble("SpeedOffset", speedOffset);
 		if (spawnPos != null) {
 			tag.putDouble("SpawnX", spawnPos.x);
 			tag.putDouble("SpawnY", spawnPos.y);

@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -45,14 +46,19 @@ public final class SixFaceDispersal {
 	 * 对命中六面差器的能量波执行一次判定。
 	 *
 	 * @param state     方块状态（6 个 open_* 属性）
-	 * @param movement  波的飞行方向（单位向量，运动方向）
+	 * @param movement  波的飞行方向（单位向量，运动方向；与 state 同坐标系）
+	 * @param wavePos   波前中心（与 state 同坐标系，用于 4×4 入口中心判定）
+	 * @param pos       差器方块位置（与 state 同坐标系）
 	 * @param waveLevel 波的当前等级（1=低，2=高，3=伽马）
 	 * @return 判定结果；TURN/SPLIT 的出口面列表见 {@link #exitsOf(BlockState, Vec3)}
 	 */
-	public static Result handle(BlockState state, Vec3 movement, int waveLevel) {
+	public static Result handle(BlockState state, Vec3 movement, Vec3 wavePos, BlockPos pos, int waveLevel) {
 		Direction entry = entryOf(movement);
 		if (!SixFaceDisperserBlock.isOpen(state, entry))
 			return Result.VANISH; // 入口开口关闭 → 撞墙消失
+		// 4×4 入口中心判定（同四面差波器）
+		if (!inEntryCenter(movement, wavePos, pos))
+			return Result.VANISH;
 
 		int openCount = countOpen(state);
 		if (openCount <= 1)
@@ -62,6 +68,27 @@ public final class SixFaceDispersal {
 		// 3-4 开口：降一级；5-6 开口：降二级
 		int decrement = openCount >= 5 ? 2 : 1;
 		return waveLevel <= decrement ? Result.VANISH : Result.SPLIT;
+	}
+
+	/**
+	 * 4×4 入口中心判定（与 {@link EnergyWaveDispersal} 一致）：波前中心相对差波器方块中心，
+	 * 在入口面内的偏移超限 → 斜射/偏移射擦边，撞墙消失。
+	 */
+	private static boolean inEntryCenter(Vec3 movement, Vec3 wavePos, BlockPos pos) {
+		Direction entry = entryOf(movement);
+		Vec3 rel = wavePos.subtract(Vec3.atCenterOf(pos));
+		Vec3 a1;
+		Vec3 a2;
+		if (entry.getAxis().isHorizontal()) {
+			a1 = Vec3.atLowerCornerOf(entry.getClockWise()
+				.getNormal());
+			a2 = Vec3.atLowerCornerOf(Direction.UP.getNormal());
+		} else {
+			a1 = Vec3.atLowerCornerOf(Direction.NORTH.getNormal());
+			a2 = Vec3.atLowerCornerOf(Direction.EAST.getNormal());
+		}
+		double half = AbstractWaveGateRegulation.ENTRY_CENTER_HALF;
+		return Math.abs(rel.dot(a1)) <= half && Math.abs(rel.dot(a2)) <= half;
 	}
 
 	/**

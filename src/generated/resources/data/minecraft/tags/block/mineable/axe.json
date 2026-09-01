@@ -4,7 +4,9 @@
     "createoreexpansion:power_angle_grinder",
     "createoreexpansion:jade_create_charger",
     "createoreexpansion:energy_wave_regulator",
+    "createoreexpansion:wave_speed_regulator",
     "createoreexpansion:energy_wave_disperser",
-    "createoreexpansion:six_face_disperser"
+    "createoreexpansion:six_face_disperser",
+    "createoreexpansion:energy_sensing_lamp"
   ]
 }

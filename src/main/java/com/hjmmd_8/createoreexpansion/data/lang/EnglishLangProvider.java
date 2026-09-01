@@ -126,8 +126,18 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
         add(AllBlocks.JADE_CREATE_CHARGER.get(), "Jade Create Charger");
         add(AllBlocks.ENERGY_WAVE_REGULATOR.get(), "Energy Wave Regulator");
+        add(AllBlocks.WAVE_SPEED_REGULATOR.get(), "Wave Speed Regulator");
+        add("createoreexpansion.goggles.wave_speed_regulator", "Wave Speed Regulator");
+        add("createoreexpansion.goggles.speed_regulator_tier", "Speed Tier: %s");
+        add("createoreexpansion.goggles.speed_regulator_amount", "Speed Change: ±%s blocks/s");
+        // Jade wave entity info
+        add("config.jade.plugin_createoreexpansion.wave", "Wave Information");
+        add("createoreexpansion.jade.wave_level", "Wave Level: %s");
+        add("createoreexpansion.jade.wave_speed", "Speed: %s blocks/s");
+        add("createoreexpansion.jade.wave_lifetime", "Lifetime: %s s");
         add(AllBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");
         add(AllBlocks.SIX_FACE_DISPERSER.get(), "Six-Face Energy Wave Disperser");
+        add(AllBlocks.ENERGY_SENSING_LAMP.get(), "Energy Sensing Lamp");
         add(AllBlocks.REINFORCED_LIGHTNING_ROD.get(), "Reinforced Lightning Rod");
         add(AllItems.RUBY_INGOT.get(), "Ruby Ingot");
         add(AllItems.RUBY_SHEET.get(), "Ruby Sheet");

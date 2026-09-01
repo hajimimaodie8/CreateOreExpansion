@@ -5,7 +5,6 @@ import com.hjmmd_8.createoreexpansion.foundation.IParams;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockSearch;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -36,7 +35,7 @@ public class FellingStrategy extends ConfigStrategy<BlockPos, FellingConfig> imp
     }
 
     @Override
-    public boolean shouldRender(FellingConfig config, ClientLevel world, IParams params) {
+    public boolean shouldRender(FellingConfig config, Level world, IParams params) {
         BlockState state = params.get("CenterState", BlockState.class);
         return FellingConfig.BlockPredicate.IS_LOG.test(state);
     }

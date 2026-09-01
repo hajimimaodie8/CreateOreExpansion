@@ -130,9 +130,11 @@ public class SixFaceDisperserBlock extends Block implements IWrenchable, IBE<Six
 
 		BooleanProperty property = propertyFor(target);
 		boolean open = state.getValue(property);
-		level.setBlock(pos, state.setValue(property, !open), Block.UPDATE_CLIENTS);
-		if (!level.isClientSide)
+		// 状态修改只在服务端执行（客户端由同步包更新，避免多人下双端不一致）
+		if (!level.isClientSide) {
+			level.setBlock(pos, state.setValue(property, !open), Block.UPDATE_CLIENTS);
 			AllSoundEvents.WRENCH_ROTATE.playOnServer(level, pos, 1, level.random.nextFloat() + .5f);
+		}
 		return InteractionResult.SUCCESS;
 	}
 

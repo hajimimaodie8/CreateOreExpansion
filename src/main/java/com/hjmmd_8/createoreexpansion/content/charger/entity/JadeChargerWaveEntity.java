@@ -17,14 +17,14 @@ public class JadeChargerWaveEntity extends AbstractChargerWaveEntity {
 		super(type, level);
 	}
 
-	public JadeChargerWaveEntity(Level level, Vec3 pos, Direction facing, int waveLevel) {
-		super(AllEntityTypes.JADE_CHARGER_WAVE.get(), level, pos, facing, waveLevel);
+	public JadeChargerWaveEntity(Level level, Vec3 pos, Vec3 movementDir, int waveLevel) {
+		super(AllEntityTypes.JADE_CHARGER_WAVE.get(), level, pos, movementDir, waveLevel);
 	}
 
-	/** 差器均摊分发：创建同类型的降级子波 */
+	/** 差器均摊分发：创建同类型的降级子波（出口为模型面轴向） */
 	@Override
 	protected AbstractChargerWaveEntity createChildWave(Vec3 pos, Direction facing, int level) {
-		return new JadeChargerWaveEntity(level(), pos, facing, level);
+		return new JadeChargerWaveEntity(level(), pos, Vec3.atLowerCornerOf(facing.getNormal()), level);
 	}
 
 	/** 能量波颜色（RGB 0-1）：低=黄、高=绿、伽马=蓝 */

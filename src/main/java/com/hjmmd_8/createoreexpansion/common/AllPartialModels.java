@@ -70,6 +70,24 @@ public final class AllPartialModels {
 	public static final PartialModel WAVE_REGULATOR_COGWHEEL = PartialModel.of(
 		CreateOreExpansion.modLoc("block/energy_wave_machine/cogwheel"));
 
+	/** 波闸侧面指示灯（models/block/energy_wave_machine/wave_gate_lamp_{side}_{pos}.json，
+	 * 4 侧面 × 上下：顶面板 open + 转速达标 → 各侧面顶部灯位亮；底面板 open → 各侧面底部灯位亮。
+	 * 自发光渲染；跟随 FACING 旋转（partialFacingVertical）。） */
+	public static final Map<String, PartialModel> WAVE_GATE_LAMPS = buildWaveGateLamps();
+
+	private static Map<String, PartialModel> buildWaveGateLamps() {
+		java.util.Map<String, PartialModel> map = new java.util.HashMap<>();
+		String[] sides = { "north", "east", "south", "west" };
+		String[] pos = { "top", "bottom" };
+		for (String side : sides) {
+			for (String p : pos) {
+				map.put(side + "_" + p, PartialModel.of(CreateOreExpansion.modLoc(
+					"block/energy_wave_machine/wave_gate_lamp_" + side + "_" + p)));
+			}
+		}
+		return java.util.Map.copyOf(map);
+	}
+
 	/** 能量波差器灯位（models/block/energy_wave_machine/disperser_lamp_{north,east,south,west}.json，
 	 * 从 light.png 剪切 2×2 灯位，顶/底灯盘双面；随 4 侧面开闭状态动态叠加） */
 	public static final PartialModel DISPERSER_LAMP_NORTH = PartialModel.of(

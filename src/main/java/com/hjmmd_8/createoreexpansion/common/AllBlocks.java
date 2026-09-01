@@ -9,7 +9,9 @@ import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBl
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.EnergySensingLampBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.WaveSpeedRegulatorBlock;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
@@ -61,7 +63,7 @@ public final class AllBlocks {
 		.initialProperties(() -> Blocks.DIAMOND_ORE)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
 		.tag(BlockTags.NEEDS_IRON_TOOL)
-		.tag(AllMetalTags.JADE.blockOres)
+		.tag(AllGemTags.JADE.blockOres)
 		.loot((lt, block) -> {
 			RegistryLookup<Enchantment> ench = lt.getRegistries()
 				.lookupOrThrow(Registries.ENCHANTMENT);
@@ -71,7 +73,7 @@ public final class AllBlocks {
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
-		.tag(AllMetalTags.JADE.itemOres)
+		.tag(AllGemTags.JADE.itemOres)
 		.build()
 		.register();
 
@@ -80,7 +82,7 @@ public final class AllBlocks {
 		.initialProperties(() -> Blocks.DEEPSLATE_DIAMOND_ORE)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
 		.tag(BlockTags.NEEDS_IRON_TOOL)
-		.tag(AllMetalTags.JADE.blockOres)
+		.tag(AllGemTags.JADE.blockOres)
 		.loot((lt, block) -> {
 			RegistryLookup<Enchantment> ench = lt.getRegistries()
 				.lookupOrThrow(Registries.ENCHANTMENT);
@@ -90,7 +92,7 @@ public final class AllBlocks {
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
-		.tag(AllMetalTags.JADE.itemOres)
+		.tag(AllGemTags.JADE.itemOres)
 		.build()
 		.register();
 
@@ -103,9 +105,9 @@ public final class AllBlocks {
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
-		.tag(AllMetalTags.JADE.storageBlocks)
+		.tag(AllGemTags.JADE.storageBlocks)
 		.item()
-		.tag(AllMetalTags.JADE.itemStorageBlocks)
+		.tag(AllGemTags.JADE.itemStorageBlocks)
 		.build()
 		.register();
 
@@ -117,9 +119,9 @@ public final class AllBlocks {
 		.transform(TagGen.pickaxeOnly())
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.NEEDS_IRON_TOOL)
-		.tag(AllMetalTags.JADE.storageRawBlocks)
+		.tag(AllGemTags.JADE.storageRawBlocks)
 		.item()
-		.tag(AllMetalTags.JADE.itemStorageRawBlocks)
+		.tag(AllGemTags.JADE.itemStorageRawBlocks)
 		.build()
 		.register();
 
@@ -134,7 +136,7 @@ public final class AllBlocks {
 		.initialProperties(() -> Blocks.DIAMOND_ORE)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
 		.tag(BlockTags.NEEDS_DIAMOND_TOOL)
-		.tag(AllMetalTags.TOPAZ.blockOres)
+		.tag(AllGemTags.TOPAZ.blockOres)
 		.loot((lt, block) -> {
 			RegistryLookup<Enchantment> ench = lt.getRegistries()
 				.lookupOrThrow(Registries.ENCHANTMENT);
@@ -144,7 +146,7 @@ public final class AllBlocks {
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
-		.tag(AllMetalTags.TOPAZ.itemOres)
+		.tag(AllGemTags.TOPAZ.itemOres)
 		.build()
 		.register();
 
@@ -153,7 +155,7 @@ public final class AllBlocks {
 		.initialProperties(() -> Blocks.DEEPSLATE_DIAMOND_ORE)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
 		.tag(BlockTags.NEEDS_DIAMOND_TOOL)
-		.tag(AllMetalTags.TOPAZ.blockOres)
+		.tag(AllGemTags.TOPAZ.blockOres)
 		.loot((lt, block) -> {
 			RegistryLookup<Enchantment> ench = lt.getRegistries()
 				.lookupOrThrow(Registries.ENCHANTMENT);
@@ -163,7 +165,7 @@ public final class AllBlocks {
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
-		.tag(AllMetalTags.TOPAZ.itemOres)
+		.tag(AllGemTags.TOPAZ.itemOres)
 		.build()
 		.register();
 
@@ -176,9 +178,9 @@ public final class AllBlocks {
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
-		.tag(AllMetalTags.TOPAZ.storageBlocks)
+		.tag(AllGemTags.TOPAZ.storageBlocks)
 		.item()
-		.tag(AllMetalTags.TOPAZ.itemStorageBlocks)
+		.tag(AllGemTags.TOPAZ.itemStorageBlocks)
 		.build()
 		.register();
 
@@ -190,9 +192,9 @@ public final class AllBlocks {
 		.transform(TagGen.pickaxeOnly())
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.NEEDS_IRON_TOOL)
-		.tag(AllMetalTags.TOPAZ.storageRawBlocks)
+		.tag(AllGemTags.TOPAZ.storageRawBlocks)
 		.item()
-		.tag(AllMetalTags.TOPAZ.itemStorageRawBlocks)
+		.tag(AllGemTags.TOPAZ.itemStorageRawBlocks)
 		.build()
 		.register();
 
@@ -201,7 +203,7 @@ public final class AllBlocks {
 		.initialProperties(() -> Blocks.ANCIENT_DEBRIS)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
 		.tag(BlockTags.NEEDS_DIAMOND_TOOL)
-		.tag(AllMetalTags.SAPPHIRE.blockOres)
+		.tag(AllGemTags.SAPPHIRE.blockOres)
 		.loot((lt, block) -> {
 			RegistryLookup<Enchantment> ench = lt.getRegistries()
 				.lookupOrThrow(Registries.ENCHANTMENT);
@@ -211,7 +213,7 @@ public final class AllBlocks {
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
-		.tag(AllMetalTags.SAPPHIRE.itemOres)
+		.tag(AllGemTags.SAPPHIRE.itemOres)
 		.build()
 		.register();
 
@@ -224,9 +226,9 @@ public final class AllBlocks {
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
-		.tag(AllMetalTags.SAPPHIRE.storageBlocks)
+		.tag(AllGemTags.SAPPHIRE.storageBlocks)
 		.item()
-		.tag(AllMetalTags.SAPPHIRE.itemStorageBlocks)
+		.tag(AllGemTags.SAPPHIRE.itemStorageBlocks)
 		.build()
 		.register();
 
@@ -238,9 +240,9 @@ public final class AllBlocks {
 		.transform(TagGen.pickaxeOnly())
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.NEEDS_IRON_TOOL)
-		.tag(AllMetalTags.SAPPHIRE.storageRawBlocks)
+		.tag(AllGemTags.SAPPHIRE.storageRawBlocks)
 		.item()
-		.tag(AllMetalTags.SAPPHIRE.itemStorageRawBlocks)
+		.tag(AllGemTags.SAPPHIRE.itemStorageRawBlocks)
 		.build()
 		.register();
 
@@ -249,7 +251,7 @@ public final class AllBlocks {
 		.initialProperties(() -> Blocks.ANCIENT_DEBRIS)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
 		.tag(BlockTags.NEEDS_DIAMOND_TOOL)
-		.tag(AllMetalTags.STELLARSTONE.blockOres)
+		.tag(AllGemTags.STELLARSTONE.blockOres)
 		.loot((lt, block) -> {
 			RegistryLookup<Enchantment> ench = lt.getRegistries()
 				.lookupOrThrow(Registries.ENCHANTMENT);
@@ -259,7 +261,7 @@ public final class AllBlocks {
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
-		.tag(AllMetalTags.STELLARSTONE.itemOres)
+		.tag(AllGemTags.STELLARSTONE.itemOres)
 		.build()
 		.register();
 
@@ -272,9 +274,9 @@ public final class AllBlocks {
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
-		.tag(AllMetalTags.STELLARSTONE.storageBlocks)
+		.tag(AllGemTags.STELLARSTONE.storageBlocks)
 		.item()
-		.tag(AllMetalTags.STELLARSTONE.itemStorageBlocks)
+		.tag(AllGemTags.STELLARSTONE.itemStorageBlocks)
 		.build()
 		.register();
 
@@ -286,9 +288,9 @@ public final class AllBlocks {
 		.transform(TagGen.pickaxeOnly())
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.NEEDS_IRON_TOOL)
-		.tag(AllMetalTags.STELLARSTONE.storageRawBlocks)
+		.tag(AllGemTags.STELLARSTONE.storageRawBlocks)
 		.item()
-		.tag(AllMetalTags.STELLARSTONE.itemStorageRawBlocks)
+		.tag(AllGemTags.STELLARSTONE.itemStorageRawBlocks)
 		.build()
 		.register();
 
@@ -301,9 +303,9 @@ public final class AllBlocks {
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
-		.tag(AllMetalTags.THUNDERITE.storageBlocks)
+		.tag(AllGemTags.THUNDERITE.storageBlocks)
 		.item()
-		.tag(AllMetalTags.THUNDERITE.itemStorageBlocks)
+		.tag(AllGemTags.THUNDERITE.itemStorageBlocks)
 		.build()
 		.register();
 
@@ -316,9 +318,9 @@ public final class AllBlocks {
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
-		.tag(AllMetalTags.RUBY.storageBlocks)
+		.tag(AllGemTags.RUBY.storageBlocks)
 		.item()
-		.tag(AllMetalTags.RUBY.itemStorageBlocks)
+		.tag(AllGemTags.RUBY.itemStorageBlocks)
 		.build()
 		.register();
 
@@ -331,9 +333,9 @@ public final class AllBlocks {
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
-		.tag(AllMetalTags.SANCTSTONE.storageBlocks)
+		.tag(AllGemTags.SANCTSTONE.storageBlocks)
 		.item()
-		.tag(AllMetalTags.SANCTSTONE.itemStorageBlocks)
+		.tag(AllGemTags.SANCTSTONE.itemStorageBlocks)
 		.build()
 		.register();
 
@@ -472,6 +474,54 @@ public final class AllBlocks {
 		.build()
 		.register();
 
+	/** 波速调节器：与能量调级器同构（模型/旋转/面板交互一致，仅侧面贴图暂为复制占位），
+	 * 应力速度调制：按转速分档加速/减速（100~256 RPM 分 4 档 ±0.5/1/1.5/2 格/秒），反弹不改速。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<WaveSpeedRegulatorBlock> WAVE_SPEED_REGULATOR = CreateOreExpansion.REGISTRATE
+		.block("wave_speed_regulator", WaveSpeedRegulatorBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 与调级器同款：机座模型按顶/底面板 open/close 选 4 变体，六向 FACING 旋转
+			ExistingModelFile[] models = new ExistingModelFile[4];
+			for (int i = 0; i < 4; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/energy_wave_machine/wave_speed_regulator_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				int xRot = dir == Direction.UP ? 0
+					: dir == Direction.DOWN ? 180
+						: dir.getAxis()
+							.isHorizontal() ? 270 : 0;
+				int yRot = dir.getAxis()
+					.isHorizontal() ? (int) dir.toYRot() : 0;
+				for (int top = 0; top < 2; top++) {
+					for (int bottom = 0; bottom < 2; bottom++) {
+						vb.partialState()
+							.with(DirectionalKineticBlock.FACING, dir)
+							.with(WaveSpeedRegulatorBlock.RECEIVER_TOP, top == 1)
+							.with(WaveSpeedRegulatorBlock.RECEIVER_BOTTOM, bottom == 1)
+							.modelForState()
+							.modelFile(models[top * 2 + bottom])
+							.rotationX(xRot)
+							.rotationY(yRot)
+							.addModel();
+					}
+				}
+			}
+		})
+		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("wave_speed_regulator"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/wave_speed_regulator_item")))
+		.build()
+		.register();
+
 	/** 能量波差器：无应力被动机器，模型上下翡翠机壳、四面能量接收面关闭材质；
 	 * 六向 FACING 旋转（三种朝向与调级器一致），4 侧面开口可独立开关，无需方块实体/渲染器。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
@@ -574,6 +624,39 @@ public final class AllBlocks {
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("six_face_disperser"))
 			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/six_face_disperser")))
+		.build()
+		.register();
+
+	/** 能量感应灯：被能量波击中切换亮态（黄/绿/蓝，光照15 + 红石信号5/10/15），
+	 * 4 个 blockstate 变体模型按 lamp_state 切换贴图，纯方块无 BE。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<EnergySensingLampBlock> ENERGY_SENSING_LAMP = CreateOreExpansion.REGISTRATE
+		.block("energy_sensing_lamp", EnergySensingLampBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.COLOR_YELLOW))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 4 个变体模型（0=灭、1=黄、2=绿、3=蓝），按 lamp_state 切换
+			ExistingModelFile[] models = new ExistingModelFile[4];
+			for (int i = 0; i < 4; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/energy_wave_machine/energy_sensing_lamp_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (int s = 0; s < 4; s++) {
+				vb.partialState()
+					.with(EnergySensingLampBlock.LAMP_STATE, s)
+					.modelForState()
+					.modelFile(models[s])
+					.addModel();
+			}
+		})
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_sensing_lamp"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/energy_sensing_lamp_0")))
 		.build()
 		.register();
 

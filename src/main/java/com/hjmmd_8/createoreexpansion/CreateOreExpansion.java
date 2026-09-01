@@ -58,7 +58,7 @@ public class CreateOreExpansion {
         AllBlockEntityTypes.register();
         AllTiers.register();
         AllItems.register();
-        AllMetalTags.register();
+        AllGemTags.register();
         AllFluids.register();
         AllModEffects.register(modEventBus);
         AllModPotions.register(modEventBus);
@@ -68,6 +68,30 @@ public class CreateOreExpansion {
         MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
         modEventBus.addListener(CreateOreExpansion::onRegister);
+
+        // Jade 可选集成：仅当 Jade 已安装时才反射加载插件类（未安装时绝不触碰 Jade 类，
+        // 避免"标注 optional 仍硬编码调用导致崩溃"——见 compat.jade.WaveJadePlugin 注释）
+        if (net.neoforged.fml.ModList.get().isLoaded("jade")) {
+            try {
+                Class.forName("com.hjmmd_8.createoreexpansion.compat.jade.WaveJadePlugin");
+                LOGGER.info("[Jade] 能量波信息显示插件已加载");
+            } catch (Throwable t) {
+                LOGGER.warn("[Jade] 能量波信息显示插件加载失败（不影响游戏运行）", t);
+            }
+        }
+
+        // Sable 可选集成：仅当 Sable（航空学物理结构库）已安装时才反射加载桥接实现，
+        // 让能量波与物理结构上的机器（充能器/波闸/差波器）通过位姿矩阵勾连（世界↔本地坐标）。
+        // 未装 Sable 时绝不触碰 Sable 类（compat.sable.SableSubLevelBridge 直接引用 Sable 类型）。
+        // 桥接注册与物理属性验证均在 SableSubLevelBridge 静态块内完成（Class.forName 触发）。
+        if (net.neoforged.fml.ModList.get().isLoaded("sable")) {
+            try {
+                Class.forName("com.hjmmd_8.createoreexpansion.compat.sable.SableSubLevelBridge");
+                LOGGER.info("[Sable] 能量波↔物理结构坐标桥接已加载");
+            } catch (Throwable t) {
+                LOGGER.warn("[Sable] 能量波物理结构桥接加载失败（不影响游戏运行）", t);
+            }
+        }
 
         modContainer.registerConfig(ModConfig.Type.COMMON, AllConfig.SPEC);
     }

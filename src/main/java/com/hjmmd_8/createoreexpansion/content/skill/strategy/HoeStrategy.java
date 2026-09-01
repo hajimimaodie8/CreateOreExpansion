@@ -5,9 +5,9 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrateg
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.util.FarmlandHelper;
 import com.hjmmd_8.createoreexpansion.foundation.IParams;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.HashSet;
@@ -25,7 +25,7 @@ public class HoeStrategy extends ConfigStrategy<BlockPos, HoeConfig> implements 
     }
 
     @Override
-    public boolean shouldRender(HoeConfig config, ClientLevel world, IParams params) {
+    public boolean shouldRender(HoeConfig config, Level world, IParams params) {
         BlockState state = params.get("CenterState", BlockState.class);
         // 目标为成熟作物 / 耕地 / 可犁地时展示预览
         return FarmlandHelper.resolvePriority(state) != 0;

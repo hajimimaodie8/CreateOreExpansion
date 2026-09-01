@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "lamp_state=0": {
+      "model": "createoreexpansion:block/energy_wave_machine/energy_sensing_lamp_0"
+    },
+    "lamp_state=1": {
+      "model": "createoreexpansion:block/energy_wave_machine/energy_sensing_lamp_1"
+    },
+    "lamp_state=2": {
+      "model": "createoreexpansion:block/energy_wave_machine/energy_sensing_lamp_2"
+    },
+    "lamp_state=3": {
+      "model": "createoreexpansion:block/energy_wave_machine/energy_sensing_lamp_3"
+    }
+  }
+}

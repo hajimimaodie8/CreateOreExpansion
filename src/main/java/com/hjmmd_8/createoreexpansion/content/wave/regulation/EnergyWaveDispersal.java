@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -44,16 +45,23 @@ public final class EnergyWaveDispersal {
 	 * 对命中差器的能量波执行一次判定。
 	 *
 	 * @param state     差器方块状态（FACING + 4 开口属性）
-	 * @param movement  波的飞行方向（单位向量，运动方向）
+	 * @param movement  波的飞行方向（单位向量，运动方向；与 state 同坐标系）
+	 * @param wavePos   波前中心（与 state 同坐标系：主世界=世界坐标，结构=本地坐标，
+	 *                  用于 4×4 入口中心判定）
+	 * @param pos       差器方块位置（与 state 同坐标系）
 	 * @param waveLevel 波的当前等级（1=低，2=高，3=伽马）
 	 * @return 判定结果；TURN/SPLIT 的出口模型面列表见 {@link #exitsOf(BlockState, Vec3)}
 	 */
-	public static Result handle(BlockState state, Vec3 movement, int waveLevel) {
+	public static Result handle(BlockState state, Vec3 movement, Vec3 wavePos, BlockPos pos, int waveLevel) {
 		Direction entry = entryOf(state, movement);
 		if (entry == null)
 			return Result.VANISH; // 撞机壳面（模型顶/底无开口）
 		if (!EnergyWaveDisperserBlock.isOpen(state, entry))
 			return Result.VANISH; // 入口开口关闭
+		// 4×4 入口中心判定：波前中心相对差波器中心在入口面内的偏移超限（斜射/偏移射擦边）
+		// → 如撞正常方块，波消失（与波闸的 ENTRY_CENTER_HALF 一致）
+		if (!inEntryCenter(movement, wavePos, pos))
+			return Result.VANISH;
 
 		int openCount = countOpen(state);
 		if (openCount <= 1)
@@ -61,6 +69,30 @@ public final class EnergyWaveDispersal {
 		if (openCount == 2)
 			return Result.TURN;
 		return waveLevel <= 1 ? Result.VANISH : Result.SPLIT;
+	}
+
+	/**
+	 * 4×4 入口中心判定：波前中心相对差波器方块中心，在入口面（运动反方向侧面）内的
+	 * 面内偏移（|轴1|、|轴2|）任一超过 {@link AbstractWaveGateRegulation#ENTRY_CENTER_HALF}
+	 * → 视为斜射/偏移射擦边，不触发入口（撞墙消失）。
+	 */
+	private static boolean inEntryCenter(Vec3 movement, Vec3 wavePos, BlockPos pos) {
+		Direction entry = Direction.getNearest(movement.x, movement.y, movement.z)
+			.getOpposite();
+		Vec3 center = Vec3.atCenterOf(pos);
+		Vec3 rel = wavePos.subtract(center);
+		Vec3 a1;
+		Vec3 a2;
+		if (entry.getAxis().isHorizontal()) {
+			a1 = Vec3.atLowerCornerOf(entry.getClockWise()
+				.getNormal());
+			a2 = Vec3.atLowerCornerOf(Direction.UP.getNormal());
+		} else {
+			a1 = Vec3.atLowerCornerOf(Direction.NORTH.getNormal());
+			a2 = Vec3.atLowerCornerOf(Direction.EAST.getNormal());
+		}
+		double half = AbstractWaveGateRegulation.ENTRY_CENTER_HALF;
+		return Math.abs(rel.dot(a1)) <= half && Math.abs(rel.dot(a2)) <= half;
 	}
 
 	/**

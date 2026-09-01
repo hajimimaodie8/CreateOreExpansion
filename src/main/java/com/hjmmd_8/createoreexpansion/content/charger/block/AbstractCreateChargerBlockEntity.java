@@ -3,6 +3,9 @@ package com.hjmmd_8.createoreexpansion.content.charger.block;
 import java.awt.Color;
 import java.util.List;
 
+import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
@@ -17,6 +20,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
@@ -131,16 +135,41 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 		Vec3 start = Vec3.atCenterOf(worldPosition)
 			.add(Vec3.atLowerCornerOf(facing.getNormal())
 				.scale(1.0));
-		level.addFreshEntity(createWave(level, start, facing, mode));
+		Level targetLevel = level;
+		// 飞行方向保留任意角度（结构旋转后随旋转，不再 Direction.getNearest 量化成轴向）
+		Vec3 worldDir = Vec3.atLowerCornerOf(facing.getNormal());
+		Vec3 soundPos = Vec3.atCenterOf(worldPosition);
+
+		// Sable 物理结构适配：充能器在结构（sub-level）上时，BE 的 worldPosition/FACING 是
+		// 结构本地坐标，而能量波实体必须出生在真实世界——经 sub-level 位姿矩阵换算到世界坐标后
+		// 把波加到主世界（否则波会出生在虚拟子世界，主世界看不到 = "不发射"）。
+		SubLevelBridge bridge = SableBridges.get();
+		if (bridge != null) {
+			SubLevelBridge.Hit hit = bridge.ofBlockEntity(this);
+			if (hit != null) {
+				start = bridge.toWorld(hit, start);
+				// 本地方向 → 世界方向（Pose 四元数旋转，保留任意角度）
+				worldDir = bridge.toWorldDir(hit, Vec3.atLowerCornerOf(facing.getNormal()));
+				targetLevel = bridge.worldLevel(hit);
+				soundPos = bridge.toWorld(hit, Vec3.atCenterOf(worldPosition));
+				CreateOreExpansion.LOGGER.info("[Sable] 充能器@{} 在物理结构上：本地起点 {} → 世界 {}，方向 {} → {}",
+					worldPosition, Vec3.atCenterOf(worldPosition).add(Vec3.atLowerCornerOf(facing.getNormal())
+						.scale(1.0)), start, facing, worldDir);
+			}
+		}
+
+		targetLevel.addFreshEntity(createWave(targetLevel, start, worldDir, mode));
 		// 发射音效：音符盒钟声（清脆响亮、金属机械感，非菜单/UI 声）
-		level.playSound(null, worldPosition, SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.BLOCKS, 1.0F, 1.0F);
+		targetLevel.playSound(null, soundPos.x, soundPos.y, soundPos.z, SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.BLOCKS, 1.0F, 1.0F);
 	}
 
 	/**
 	 * 创建能量波实体（子类实现：发射各自的波实体，构造传入本方块实体以读取颜色/等级）。
+	 *
+	 * @param movementDir 世界空间飞行方向（任意角度向量，无需单位化）
 	 */
 	protected abstract AbstractChargerWaveEntity createWave(net.minecraft.world.level.Level level, Vec3 start,
-		Direction facing, int mode);
+		Vec3 movementDir, int mode);
 
 	/** 发射头（shutter）沿 FACING 方向的偏移量（格，正=发射方向），供渲染器做蓄力/弹出动画。
 	 * <p>单位均为像素（1 格 = 16 像素）。蓄力期间向传动轴方向（-FACING）线性收缩 1.5 像素；

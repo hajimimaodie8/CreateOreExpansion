@@ -42,6 +42,8 @@ _create_src
 markdown_output
 .tmp-ca
 net
+# 本地依赖目录：从 bundled jar 提取的航空学编译期 jar 等（不提交，重新提取即可）
+libs/
 verify_combo.py
 verify_combo2.py
 package-lock.json
