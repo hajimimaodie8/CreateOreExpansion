@@ -55,56 +55,83 @@ public final class AllPartialModels {
 	public static final PartialModel NETHERITE_GRINDING_WHEEL = PartialModel.of(
 		CreateOreExpansion.modLoc("block/power_angle_grinder/power_angle_wheel/netherite_grinding_wheel"));
 
-	/** 翡翠应力充能器发射头（models/block/jade_create_charger/shutter.json，蓄力时向传动轴方向位移） */
+	/** 翡翠应力充能器发射头（models/block/jade_stress_charger/jade_shutter.json，蓄力时向传动轴方向位移） */
 	public static final PartialModel CHARGER_SHUTTER = PartialModel.of(
-		CreateOreExpansion.modLoc("block/jade_create_charger/shutter"));
+		CreateOreExpansion.modLoc("block/jade_stress_charger/jade_shutter"));
 
-	/** 翡翠应力充能器传动轴短轴（models/block/jade_create_charger/charger_axis.json，沿 Y、长度 4）。
+	/** 翡翠应力充能器传动轴短轴（models/block/jade_stress_charger/jade_charger_axis.json，沿 Y、长度 4）。
 	 * <p>JEI 展示用短轴替代 Create 全尺寸 shaft（16px）防止穿模；
 	 * 模型坐标 y 12~16（xz 中心与 Create shaft 同为 0.5/0.5），在 FACING=DOWN 翻转后的
 	 * 机身（绕方块中心旋转，接口落在 y=16）下方伸出 —— 轴从机身底部接口下方伸出。</p> */
 	public static final PartialModel CHARGER_AXIS = PartialModel.of(
-		CreateOreExpansion.modLoc("block/jade_create_charger/charger_axis"));
+		CreateOreExpansion.modLoc("block/jade_stress_charger/jade_charger_axis"));
 
-	/** 能量调级器齿轮（models/block/energy_wave_machine/cogwheel.json，随应力绕 FACING 轴旋转） */
+	/** 蓝宝石应力充能器发射头（models/block/sapphire_stress_charger/sapphire_shutter.json）——JEI 4/5 级动画用 */
+	public static final PartialModel SAPPHIRE_CHARGER_SHUTTER = PartialModel.of(
+		CreateOreExpansion.modLoc("block/sapphire_stress_charger/sapphire_shutter"));
+
+	/** 蓝宝石应力充能器传动轴短轴（models/block/sapphire_stress_charger/sapphire_charger_axis.json，
+	 * 同翡翠 4px 短轴布局）——JEI 4/5 级动画用 */
+	public static final PartialModel SAPPHIRE_CHARGER_AXIS = PartialModel.of(
+		CreateOreExpansion.modLoc("block/sapphire_stress_charger/sapphire_charger_axis"));
+
+	/** 能量调级器齿轮（models/block/energy_wave_machine/jade_cogwheel.json，随应力绕 FACING 轴旋转） */
 	public static final PartialModel WAVE_REGULATOR_COGWHEEL = PartialModel.of(
-		CreateOreExpansion.modLoc("block/energy_wave_machine/cogwheel"));
+		CreateOreExpansion.modLoc("block/energy_wave_machine/jade_cogwheel"));
 
-	/** 波闸侧面指示灯（models/block/energy_wave_machine/wave_gate_lamp_{side}_{pos}.json，
+	/** 波闸侧面指示灯（models/block/energy_wave_machine/{机型}_wave_gate_lamp_{side}_{pos}.json，
 	 * 4 侧面 × 上下：顶面板 open + 转速达标 → 各侧面顶部灯位亮；底面板 open → 各侧面底部灯位亮。
-	 * 自发光渲染；跟随 FACING 旋转（partialFacingVertical）。） */
-	public static final Map<String, PartialModel> WAVE_GATE_LAMPS = buildWaveGateLamps();
+	 * 自发光渲染；跟随 FACING 旋转（partialFacingVertical）。
+	 * 机型前缀：jade = 翡翠灯（jade_light.png）、sapphire = 蓝宝石灯（sapphire_light.png）。） */
+	public static final Map<String, PartialModel> WAVE_GATE_LAMPS = buildWaveGateLamps("jade");
+	/** 蓝宝石波闸侧面指示灯（sapphire_wave_gate_lamp_{side}_{pos}.json，贴 sapphire_light.png） */
+	public static final Map<String, PartialModel> SAPPHIRE_WAVE_GATE_LAMPS = buildWaveGateLamps("sapphire");
 
-	private static Map<String, PartialModel> buildWaveGateLamps() {
+	private static Map<String, PartialModel> buildWaveGateLamps(String prefix) {
 		java.util.Map<String, PartialModel> map = new java.util.HashMap<>();
 		String[] sides = { "north", "east", "south", "west" };
 		String[] pos = { "top", "bottom" };
 		for (String side : sides) {
 			for (String p : pos) {
 				map.put(side + "_" + p, PartialModel.of(CreateOreExpansion.modLoc(
-					"block/energy_wave_machine/wave_gate_lamp_" + side + "_" + p)));
+					"block/energy_wave_machine/" + prefix + "_wave_gate_lamp_" + side + "_" + p)));
 			}
 		}
 		return java.util.Map.copyOf(map);
 	}
 
-	/** 能量波差器灯位（models/block/energy_wave_machine/disperser_lamp_{north,east,south,west}.json，
+	/** 能量波差器灯位（models/block/energy_wave_machine/jade_disperser_lamp_{north,east,south,west}.json，
 	 * 从 light.png 剪切 2×2 灯位，顶/底灯盘双面；随 4 侧面开闭状态动态叠加） */
 	public static final PartialModel DISPERSER_LAMP_NORTH = PartialModel.of(
-		CreateOreExpansion.modLoc("block/energy_wave_machine/disperser_lamp_north"));
+		CreateOreExpansion.modLoc("block/energy_wave_machine/jade_disperser_lamp_north"));
 	/** 东灯位 */
 	public static final PartialModel DISPERSER_LAMP_EAST = PartialModel.of(
-		CreateOreExpansion.modLoc("block/energy_wave_machine/disperser_lamp_east"));
+		CreateOreExpansion.modLoc("block/energy_wave_machine/jade_disperser_lamp_east"));
 	/** 南灯位 */
 	public static final PartialModel DISPERSER_LAMP_SOUTH = PartialModel.of(
-		CreateOreExpansion.modLoc("block/energy_wave_machine/disperser_lamp_south"));
+		CreateOreExpansion.modLoc("block/energy_wave_machine/jade_disperser_lamp_south"));
 	/** 西灯位 */
 	public static final PartialModel DISPERSER_LAMP_WEST = PartialModel.of(
-		CreateOreExpansion.modLoc("block/energy_wave_machine/disperser_lamp_west"));
+		CreateOreExpansion.modLoc("block/energy_wave_machine/jade_disperser_lamp_west"));
 
-	/** 六面差波器指示灯（models/block/energy_wave_machine/six_face_lamp_{face}_{pos}.json，
+	/** 六面差波器指示灯（models/block/energy_wave_machine/jade_six_face_lamp_{face}_{pos}.json，
 	 * 6 面 × 4 方向 up/down/left/right，贴 light.png 光点，按相邻面开闭状态亮/灭） */
 	public static final Map<String, PartialModel> SIX_FACE_LAMPS = buildSixFaceLamps();
+
+	/** 八面差波器指示灯（models/block/octa_energy_wave_differencer/octa_energy_wave_differencer_lamp_{dir}.json，
+	 * 8 方向 × 顶/底两片，贴 special_light.png，开口方向灯亮。
+	 * 必须在此注册（类加载时创建 PartialModel）供烘焙收集，否则开口渲染会整块紫黑缺失方块。 */
+	public static final Map<String, PartialModel> OCTA_ENERGY_WAVE_DIFFERENCER_LAMPS = buildOctaLamps();
+
+	private static Map<String, PartialModel> buildOctaLamps() {
+		java.util.Map<String, PartialModel> map = new java.util.HashMap<>();
+		String[] dirs = { "n", "ne", "e", "se", "s", "sw", "w", "nw" };
+		for (String dir : dirs) {
+			map.put(dir, PartialModel.of(CreateOreExpansion.modLoc(
+				"block/octa_energy_wave_differencer/octa_energy_wave_differencer_lamp_" + dir)));
+		}
+		return java.util.Map.copyOf(map);
+	}
 
 	private static Map<String, PartialModel> buildSixFaceLamps() {
 		java.util.Map<String, PartialModel> map = new java.util.HashMap<>();
@@ -113,7 +140,7 @@ public final class AllPartialModels {
 		for (String face : faces) {
 			for (String p : pos) {
 				map.put(face + "_" + p, PartialModel.of(CreateOreExpansion.modLoc(
-					"block/energy_wave_machine/six_face_lamp_" + face + "_" + p)));
+					"block/energy_wave_machine/jade_six_face_lamp_" + face + "_" + p)));
 			}
 		}
 		return java.util.Map.copyOf(map);

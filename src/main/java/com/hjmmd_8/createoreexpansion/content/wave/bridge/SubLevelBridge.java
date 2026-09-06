@@ -70,4 +70,12 @@ public interface SubLevelBridge {
 
 	/** sub-level 对应的主世界 Level（波出生/飞行所在）。 */
 	Level worldLevel(Hit hit);
+
+	/**
+	 * 枚举某主世界维度下全部 sub-level（结构句柄列表，用于"主世界波 × 结构"的
+	 * 世界坐标↔本地坐标判定，如结构场作用 / 特斯拉线圈放电；无结构返回空表）。
+	 */
+	default java.util.List<Object> subLevels(net.minecraft.server.level.ServerLevel worldLevel) {
+		return java.util.List.of();
+	}
 }

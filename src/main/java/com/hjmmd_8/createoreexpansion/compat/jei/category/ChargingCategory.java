@@ -5,6 +5,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedJadeCharger;
+import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedSapphireCharger;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
 import com.simibubi.create.content.processing.recipe.ProcessingOutput;
@@ -32,7 +33,9 @@ import net.minecraft.network.chat.Component;
 @ParametersAreNonnullByDefault
 public class ChargingCategory extends CreateRecipeCategory<ChargingRecipe> {
 
-	private final AnimatedJadeCharger charger = new AnimatedJadeCharger();
+	/** 充能器动画：1~3 级用翡翠、4/5 级用蓝宝石（只有蓝宝石机能产出 4/5 级波） */
+	private final AnimatedJadeCharger jadeCharger = new AnimatedJadeCharger();
+	private final AnimatedSapphireCharger sapphireCharger = new AnimatedSapphireCharger();
 
 	public ChargingCategory(Info<ChargingRecipe> info) {
 		super(info);
@@ -67,7 +70,10 @@ public class ChargingCategory extends CreateRecipeCategory<ChargingRecipe> {
 		AllGuiTextures.JEI_SHADOW.render(graphics, 62, 57);
 		AllGuiTextures.JEI_DOWN_ARROW.render(graphics, 126, 29);
 
-		// 充能器方块状态随配方等级切换（1=低/2=高/3=伽马），与等级徽章/能量波颜色一致
+		// 充能器方块状态随配方等级切换（1=低/2=高/3=伽马/4=超载/5=终极），与等级徽章/能量波颜色一致；
+		// 4/5 级为蓝宝石专属，动画换成蓝宝石充能器
+		AnimatedJadeCharger charger = recipe.getLevel() >= com.hjmmd_8.createoreexpansion.content.wave.WaveLevels.EPSILON
+			? sapphireCharger : jadeCharger;
 		charger.mode = recipe.getLevel();
 		charger.draw(graphics, getBackground().getWidth() / 2 - 13, 22);
 
@@ -81,6 +87,8 @@ public class ChargingCategory extends CreateRecipeCategory<ChargingRecipe> {
 		Component label = switch (level) {
 			case 2 -> Component.translatable("createoreexpansion.jei.charging.level.2");
 			case 3 -> Component.translatable("createoreexpansion.jei.charging.level.3");
+			case 4 -> Component.translatable("createoreexpansion.jei.charging.level.4");
+			case 5 -> Component.translatable("createoreexpansion.jei.charging.level.5");
 			default -> Component.translatable("createoreexpansion.jei.charging.level.1");
 		};
 
@@ -95,11 +103,13 @@ public class ChargingCategory extends CreateRecipeCategory<ChargingRecipe> {
 
 	/** 发射粒子已移除：严格仿照注液分类，不画能量波粒子动画 */
 
-	/** 能量波颜色（按配方等级）：低=黄、高=绿、伽马=蓝（与充能器蓄力态配色一致） */
+	/** 能量波颜色（按配方等级）：低=黄、高=绿、伽马=蓝、伊普西龙=紫粉、欧米伽=玫红（与各充能器蓄力态配色一致） */
 	private int getWaveColor(ChargingRecipe recipe) {
 		return switch (recipe.getLevel()) {
 			case 2 -> 0x55FF55;
 			case 3 -> 0x5555FF;
+			case 4 -> 0xFF66E0;
+			case 5 -> 0xFF4073; // 欧米伽：玫红（主体红，偏粉紫）
 			default -> 0xFFFF55;
 		};
 	}

@@ -2,11 +2,12 @@ package com.hjmmd_8.createoreexpansion.compat.jei.animation;
 
 import com.hjmmd_8.createoreexpansion.common.AllBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
-import com.hjmmd_8.createoreexpansion.content.charger.block.JadeCreateChargerBlock;
+import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlock;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.simibubi.create.compat.jei.category.animations.AnimatedKinetics;
 
+import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 import net.createmod.catnip.animation.AnimationTickHolder;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.Direction;
@@ -17,6 +18,9 @@ import net.minecraft.world.level.block.state.BlockState;
  *
  * <p>布局仿冲压机（AnimatedPress）：传动轴 + 机身 + 发射头（shutter）三层；
  * 发射头在蓄力期缓慢向机身内收缩，发射瞬间弹簧式弹出，随后开始下一轮循环。</p>
+ *
+ * <p>机型可覆写（{@link #machineState()}/{@link #axisModel()}/{@link #shutterModel()}）：
+ * 蓝宝石充能器（{@link AnimatedSapphireCharger}）用于 4/5 级（超载/终极）配方动画。</p>
  *
  * <p><b>传动轴渲染铁律（已踩坑，勿再改）</b>：</p>
  * <ul>
@@ -47,6 +51,23 @@ public class AnimatedJadeCharger extends AnimatedKinetics {
 	 * 按配方充能等级设置，默认 3（伽马，蓝色）。 */
 	public int mode = 3;
 
+	/** 机身方块状态（本机 = 翡翠充能器；蓝宝石子类覆写换机型）。 */
+	protected BlockState machineState() {
+		return AllBlocks.JADE_STRESS_CHARGER.getDefaultState()
+			.setValue(JadeStressChargerBlock.FACING, Direction.DOWN)
+			.setValue(JadeStressChargerBlock.MODE, mode);
+	}
+
+	/** 传动轴短轴 partial（本机 = 翡翠；蓝宝石子类覆写）。 */
+	protected PartialModel axisModel() {
+		return AllPartialModels.CHARGER_AXIS;
+	}
+
+	/** 发射头 shutter partial（本机 = 翡翠；蓝宝石子类覆写）。 */
+	protected PartialModel shutterModel() {
+		return AllPartialModels.CHARGER_SHUTTER;
+	}
+
 	@Override
 	public void draw(GuiGraphics graphics, int xOffset, int yOffset) {
 		PoseStack matrixStack = graphics.pose();
@@ -60,23 +81,20 @@ public class AnimatedJadeCharger extends AnimatedKinetics {
 		// 传动轴：短轴（沿 Y、4px，模型 y 12~16，接口 y=16 下方），从机身底部接口下方伸出 —— 与真实放置一致。
 		// 旋转规则与 Create AnimatedPress 的 shaft(Axis.Z)+rotateBlock(0,0,angle) 完全对称，旋转绝对正确；
 		// 用短轴替代全尺寸 shaft（16px）防止传动轴过长穿模
-		blockElement(AllPartialModels.CHARGER_AXIS)
+		blockElement(axisModel())
 			.rotateBlock(0, getCurrentAngle(), 0)
 			.scale(scale)
 			.render(graphics);
 
 		// 机身：发射头朝下（FACING=DOWN，blockstate 模型自带 xRot=180 翻转，绕方块中心旋转，
 		// 翻转后机身占据模型 y 3~16、传动轴接口在 y=16 —— 轴模型 y 16~20 正好从接口伸出）
-		BlockState machine = AllBlocks.JADE_CREATE_CHARGER.getDefaultState()
-			.setValue(JadeCreateChargerBlock.FACING, Direction.DOWN)
-			.setValue(JadeCreateChargerBlock.MODE, mode);
-		blockElement(machine)
+		blockElement(machineState())
 			.scale(scale)
 			.render(graphics);
 
 		// 发射头（shutter）：顶面模型翻转朝下，蓄力期向上收缩、发射瞬间向下弹出。
 		// 静态上移 0.5px（atLocal 正 Y=屏幕向下，负值=上移），让发射头与粒子轨迹更好对齐
-		blockElement(AllPartialModels.CHARGER_SHUTTER)
+		blockElement(shutterModel())
 			.rotateBlock(180, 0, 0)
 			.atLocal(0, getShutterOffset() - 0.5f / 16f, 0)
 			.scale(scale)

@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceKey;
@@ -38,8 +39,14 @@ public class EnergyTooltipHandler {
         int max = ToolEnergy.getMaxEnergy(stack);
 
         int index = startIndex;
+        List<Component> tip = event.getToolTip();
 
-        event.getToolTip().add(index++, Component.translatable(ENERGY_TRANSLATE_KEY)
+        // Create 分块风格：前面已有信息块（如技能区）时，能量区前留一空行分隔
+        // （能量标题、能量条本身的内容与样式一律不动）
+        if (index > 1)
+            tip.add(index++, CommonComponents.EMPTY);
+
+        tip.add(index++, Component.translatable(ENERGY_TRANSLATE_KEY)
                 .append(":")
                 .withStyle(ChatFormatting.GRAY));
 
@@ -59,12 +66,12 @@ public class EnergyTooltipHandler {
 
         // 翠玉之弓（传说武器）：能量条从左（绿）到右（黄）渐变，其余工具保持单色
         if (stack.getItem() instanceof com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem) {
-            event.getToolTip().add(index, BarTooltipRender.energyGradient(
+            tip.add(index, BarTooltipRender.energyGradient(
                     energy, max, BAR_SLOTS, new Color(0x55FF55), new Color(0xFFFF55)));
             return index + 1;
         }
 
-        event.getToolTip().add(index, BarTooltipRender.energy(energy, max, BAR_SLOTS, fillColor));
+        tip.add(index, BarTooltipRender.energy(energy, max, BAR_SLOTS, fillColor));
         return index + 1;
     }
 

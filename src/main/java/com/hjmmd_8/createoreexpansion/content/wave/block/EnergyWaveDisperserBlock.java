@@ -180,7 +180,7 @@ public class EnergyWaveDisperserBlock extends Block implements IWrenchable, IBE<
 		return modelFaceOf(facing, worldDir);
 	}
 
-	private static BooleanProperty propertyFor(Direction modelSide) {
+	public static BooleanProperty propertyFor(Direction modelSide) {
 		return switch (modelSide) {
 			case NORTH -> NORTH;
 			case EAST -> EAST;

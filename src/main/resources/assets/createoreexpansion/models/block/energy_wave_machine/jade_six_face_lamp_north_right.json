@@ -1,0 +1,32 @@
+{
+	"credit": "Made with Blockbench",
+	"textures": {
+		"0": "createoreexpansion:block/energy_wave_machine/jade_light",
+		"particle": "createoreexpansion:block/energy_wave_machine/jade_light"
+	},
+	"elements": [
+		{
+			"from": [
+				13,
+				7,
+				-0.02
+			],
+			"to": [
+				15,
+				9,
+				0
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						13,
+						7,
+						15,
+						9
+					],
+					"texture": "#0"
+				}
+			}
+		}
+	]
+}

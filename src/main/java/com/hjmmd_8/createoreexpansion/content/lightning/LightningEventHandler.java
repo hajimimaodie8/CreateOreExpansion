@@ -19,7 +19,6 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -397,7 +396,7 @@ public final class LightningEventHandler {
             return null;
 
         ItemStack blockAsItem = state.getBlock().asItem().getDefaultInstance();
-        var recipeOpt = AllRecipeTypes.LIGHTNING_BLOCK.find(new SingleRecipeInput(blockAsItem), level);
+        var recipeOpt = AllRecipeTypes.LIGHTNING_BLOCK.find(AllRecipeTypes.wrap(blockAsItem), level);
         if (recipeOpt.isEmpty())
             return null;
 

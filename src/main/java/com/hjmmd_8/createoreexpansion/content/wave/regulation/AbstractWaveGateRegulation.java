@@ -5,7 +5,9 @@ import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEn
 import com.hjmmd_8.createoreexpansion.content.wave.frame.WaveGateFrame;
 import com.simibubi.create.content.kinetics.base.IRotate;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -105,13 +107,27 @@ public abstract class AbstractWaveGateRegulation {
 	/**
 	 * 对命中波闸的能量波执行一次通道 + 调制方向判定。
 	 *
-	 * @param be       波闸方块实体（用于取应力/转速与面板状态）
-	 * @param wavePos  波前中心（世界坐标，通常为波实体碰撞盒中心）：用于入口中心区域判定
+	 * <p><b>状态参数化</b>：判定只依赖方块状态/位置/转速，不直接依赖 BE 实例——
+	 * 便于 Create 动态结构（contraption）上无 BE 实例时复用（传 state + 转速 0）。</p>
+	 *
+	 * @param state    波闸方块状态（面板开闭/朝向）
+	 * @param pos      波闸方块位置（与 wavePos 同坐标系）
+	 * @param speed    当前转速（绝对值，0 = 无应力/未调制）
+	 * @param wavePos  波前中心（与 pos 同坐标系）：用于入口中心区域判定
 	 * @param movement 波的飞行方向（单位向量）
 	 * @return 结构化结果：通道动作 + 是否调制 + 调制方向
 	 */
-	public Result handle(AbstractWaveGateBlockEntity be, Vec3 wavePos, Vec3 movement) {
-		var state = be.getBlockState();
+	public Result handle(BlockState state, BlockPos pos, float speed, Vec3 wavePos, Vec3 movement) {
+		return handle(state, pos, speed, IRotate.SpeedLevel.FAST.getSpeedValue(), wavePos, movement);
+	}
+
+	/**
+	 * 带机型最低调制转速的判定（翡翠 = FAST 100；蓝宝石 = 64）。
+	 *
+	 * @param threshold 该机型的最低调制转速（RPM），由 BE 机型参数提供；
+	 *                  纯 state 场景（contraption，speed=0）传任意值不影响（0 转速永不达标）
+	 */
+	public Result handle(BlockState state, BlockPos pos, float speed, float threshold, Vec3 wavePos, Vec3 movement) {
 		Direction facing = state.getValue(AbstractWaveGateBlock.FACING);
 		boolean topOpen = state.getValue(AbstractWaveGateBlock.RECEIVER_TOP);
 		boolean bottomOpen = state.getValue(AbstractWaveGateBlock.RECEIVER_BOTTOM);
@@ -128,7 +144,7 @@ public abstract class AbstractWaveGateRegulation {
 		// 2. 入口位置判定：波前中心必须落在入口面板的中心 4×4 区域。
 		//    把波位置换算到机器本地坐标（静态 = FACING 推导；动态结构 = 矩阵实现），
 		//    本地 X/Y 为面板面内偏移——超限的斜射/偏移射按撞墙消失，不触发入口。
-		WaveGateFrame frame = WaveGateFrame.staticFrame(be.getBlockPos(), facing);
+		WaveGateFrame frame = WaveGateFrame.staticFrame(pos, facing);
 		Vec3 local = frame.toLocal(wavePos);
 		if (Math.abs(local.x) > ENTRY_CENTER_HALF || Math.abs(local.y) > ENTRY_CENTER_HALF) {
 			return Result.vanish();
@@ -149,31 +165,30 @@ public abstract class AbstractWaveGateRegulation {
 
 		// 4. 双开口：正常通道 / 应力调制方向判定。
 		if (exitOpen) {
-			if (!isFastEnough(be.getSpeed())) {
-				// 未接入应力或转速不足（< FAST，默认 100 RPM）：
+			if (!isFastEnough(speed, threshold)) {
+				// 未接入应力或转速不足（低于机型门槛）：
 				// 机器只是普通能量波通道，无调制（护目镜会显示转速不足提示）。
 				return Result.pass();
 			}
 			// 从波前方看齿轮：
 			//   顺时针（增强） ⟺ movement·FACING 与 speed 同号（dot * speed > 0）
-			boolean boost = dot * be.getSpeed() > 0d;
+			boolean boost = dot * speed > 0d;
 			return Result.passModulated(boost);
 		}
 
 		// 5. 单开口：无应力或转速不足 → 纯反弹；有应力且达标 → 反弹 + 调制方向。
-		if (!isFastEnough(be.getSpeed())) {
+		if (!isFastEnough(speed, threshold)) {
 			return Result.bounce();
 		}
-		boolean boost = dot * be.getSpeed() > 0d;
+		boolean boost = dot * speed > 0d;
 		return Result.bounceModulated(boost);
 	}
 
 	/**
-	 * 转速是否达标：|speed| ≥ FAST 门槛（默认 100 RPM，跟随 Create 配置 fastSpeed）。
-	 * 与 {@code AbstractWaveGateBlock#getMinimumRequiredSpeedLevel()} 保持一致。
+	 * 转速是否达标：|speed| ≥ threshold（RPM）。
+	 * 翡翠默认 FAST（100）；蓝宝石机型 64（由 BE 机型参数传入）。
 	 */
-	protected static boolean isFastEnough(float speed) {
-		float required = IRotate.SpeedLevel.FAST.getSpeedValue();
-		return Math.abs(speed) >= required;
+	protected static boolean isFastEnough(float speed, float threshold) {
+		return Math.abs(speed) >= threshold;
 	}
 }

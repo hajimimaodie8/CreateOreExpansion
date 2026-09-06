@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion;
 
+import com.hjmmd_8.createoreexpansion.client.ChargerKineticTooltip;
 import com.hjmmd_8.createoreexpansion.common.*;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionBindingRecipe;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -35,7 +36,9 @@ public class CreateOreExpansion {
         // 为 Registrate 添加机械动力的应力条显示等等
         REGISTRATE.setTooltipModifierFactory(item -> {
             TooltipModifier modifier = new ItemDescription.Modifier(item, FontHelper.Palette.STANDARD_CREATE)
-                    .andThen(TooltipModifier.mapNull(KineticStats.create(item)));
+                    .andThen(TooltipModifier.mapNull(KineticStats.create(item)))
+                    // 充能器：三实心方块 + 自定义区间应力提示（隐藏 Create 默认静态行，见 ChargerKineticTooltip）
+                    .andThen(TooltipModifier.mapNull(ChargerKineticTooltip.create(item)));
             return modifier;
         });
 
@@ -67,6 +70,7 @@ public class CreateOreExpansion {
         AllStructureProcessors.register(modEventBus);
         MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
+        modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload::registerPayloads);
         modEventBus.addListener(CreateOreExpansion::onRegister);
 
         // Jade 可选集成：仅当 Jade 已安装时才反射加载插件类（未安装时绝不触碰 Jade 类，

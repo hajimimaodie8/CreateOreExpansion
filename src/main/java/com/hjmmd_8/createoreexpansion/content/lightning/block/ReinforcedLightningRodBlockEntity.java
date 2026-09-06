@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
+import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 
 import net.minecraft.ChatFormatting;
@@ -118,19 +119,17 @@ public class ReinforcedLightningRodBlockEntity extends BlockEntity implements IH
 
 	@Override
 	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
-		// 标题行前加 4 空格缩进（护目镜物品图标画在 tooltip 左上角，会盖住第一行开头；
-		// Create 惯例 forGoggles 同样缩进 4 格）
-		tooltip.add(Component.literal("    ")
-			.append(Component.translatable("block.createoreexpansion.reinforced_lightning_rod"))
+		// 行排版统一缩进（GoggleUtil，同充能器/波闸/角磨床）
+		GoggleUtil.forGoggles(tooltip, Component.translatable("block.createoreexpansion.reinforced_lightning_rod")
 			.withStyle(ChatFormatting.GRAY));
 		// 伽马充能进度：冒号后直接跟竖线进度条（金色）
 		// 注意：withStyle 必须在 append 之前调用，否则会把进度条也染成白色
-		tooltip.add(Component.translatable("createoreexpansion.tooltip.lightning_rod.charge")
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.lightning_rod.charge")
 			.withStyle(ChatFormatting.WHITE)
 			.append(BarTooltipRender.energy(gammaChargeProgress, MAX_CHARGE, MAX_CHARGE, new Color(0xFFD700))));
 		// 引雷就绪提示：进度满格才显示（避免旧存档残留的累积 readyCharges 造成"没满就就绪"）
 		if (gammaChargeProgress >= MAX_CHARGE) {
-			tooltip.add(Component.translatable("createoreexpansion.tooltip.lightning_rod.ready")
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.lightning_rod.ready")
 				.withStyle(ChatFormatting.GOLD));
 		}
 		return true;

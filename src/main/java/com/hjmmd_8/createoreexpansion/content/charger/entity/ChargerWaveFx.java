@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -63,10 +64,12 @@ final class ChargerWaveFx {
 	/**
 	 * 触发一次范围能量爆炸（不破坏地形）：
 	 * <ul>
-	 *   <li><b>爆炸等级</b>决定水平正方形范围半径（1→3×3、2→5×5、3→7×7）；</li>
-	 *   <li>区域内生物受该等级撞击伤害（低 4 / 高 6 / 伽马 10）；</li>
+	 *   <li><b>爆炸半径 = 爆炸等级（格）</b>：水平正方形范围半径（1→3×3、2→5×5、3→7×7、
+	 *       4→9×9、5→11×11）——4 级伊普西龙波爆炸 4 格、5 级欧米伽波爆炸 5 格；</li>
+	 *   <li>区域内生物受该等级撞击伤害（查 {@link net.minecraft.world.damagesource.DamageSource} 前
+	 *       见 {@link #damageForLevel}：4/6/8/10/12）；</li>
 	 *   <li>区域内掉落物 / 置物台物品按该等级直接充能加工；</li>
-	 *   <li><b>伽马爆炸（等级 3）</b>额外给范围内强化避雷针 +1 伽马充能；</li>
+	 *   <li><b>≥3 级爆炸</b>额外给范围内强化避雷针 +1 伽马充能；</li>
 	 *   <li>密集粒子扩散（比撞墙 30 个更密）+ 爆炸音效。</li>
 	 * </ul>
 	 *
@@ -75,7 +78,7 @@ final class ChargerWaveFx {
 	 * @param center    爆炸中心（世界坐标）
 	 * @param color     主粒子颜色（可选第二色混合，null 则单色）
 	 * @param color2    第二粒子颜色（null = 单色）
-	 * @param boomLevel 爆炸等级（1/2/3）
+	 * @param boomLevel 爆炸等级（1~5；两波碰撞取较低等级）
 	 */
 	static void triggerBoom(Level level, Entity source, Vec3 center, Vec3 color, Vec3 color2, int boomLevel) {
 		if (level instanceof ServerLevel server) {
@@ -99,7 +102,7 @@ final class ChargerWaveFx {
 			center.x + r, center.y + 0.5, center.z + r);
 		ChargerWaveProcessor boomProcessor = new ChargerWaveProcessor(level, boomLevel);
 
-		// 范围内生物：受到该等级波对应的撞击伤害（低 4 / 高 6 / 伽马 10）
+		// 范围内生物：受到该等级波对应的撞击伤害（低 4 / 高 6 / 伽马 8 / 伊普西龙 10 / 欧米伽 12）
 		for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, area, e -> e.isAlive())) {
 			if (!(target instanceof Player player) || !player.isCreative()) {
 				target.hurt(level.damageSources()
@@ -121,8 +124,8 @@ final class ChargerWaveFx {
 		for (int x = minX; x <= maxX; x++) {
 			for (int z = minZ; z <= maxZ; z++) {
 				BlockPos pos = new BlockPos(x, y, z);
-				// 伽马爆炸（等级 3）：范围内强化避雷针获得 1 次伽马充能
-				if (boomLevel == 3
+				// 伽马能量加工（等级 ≥3）：范围内强化避雷针获得 1 次伽马充能
+				if (boomLevel >= 3
 					&& level.getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 					rod.onGammaWaveHit();
 				}
@@ -133,13 +136,9 @@ final class ChargerWaveFx {
 		}
 	}
 
-	/** 按等级取命中伤害（低 4 / 高 6 / 伽马 10）。 */
+	/** 按等级取命中伤害（低 4 / 高 6 / 伽马 8 / 伊普西龙 10 / 欧米伽 12）。 */
 	static float damageForLevel(int level) {
-		return switch (level) {
-			case 2 -> 6f;
-			case 3 -> 10f;
-			default -> 4f;
-		};
+		return WaveLevels.damage(level);
 	}
 
 	/** 能量波粒子数据：原版染色粒子（可配 RGB，客户端无需任何注册）。 */

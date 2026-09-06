@@ -1,418 +1,418 @@
 {
   "variants": {
     "facing=down,open_east=false,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_0",
       "x": 180
     },
     "facing=down,open_east=false,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_8",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_8",
       "x": 180
     },
     "facing=down,open_east=false,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_4",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_4",
       "x": 180
     },
     "facing=down,open_east=false,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_12",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_12",
       "x": 180
     },
     "facing=down,open_east=false,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_1",
       "x": 180
     },
     "facing=down,open_east=false,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_9",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_9",
       "x": 180
     },
     "facing=down,open_east=false,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_5",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_5",
       "x": 180
     },
     "facing=down,open_east=false,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_13",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_13",
       "x": 180
     },
     "facing=down,open_east=true,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_2",
       "x": 180
     },
     "facing=down,open_east=true,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_10",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_10",
       "x": 180
     },
     "facing=down,open_east=true,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_6",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_6",
       "x": 180
     },
     "facing=down,open_east=true,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_14",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_14",
       "x": 180
     },
     "facing=down,open_east=true,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_3",
       "x": 180
     },
     "facing=down,open_east=true,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_11",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_11",
       "x": 180
     },
     "facing=down,open_east=true,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_7",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_7",
       "x": 180
     },
     "facing=down,open_east=true,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_15",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_15",
       "x": 180
     },
     "facing=east,open_east=false,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_0",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=false,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_8",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_8",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=false,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_4",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_4",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=false,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_12",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_12",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=false,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_1",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=false,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_9",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_9",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=false,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_5",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_5",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=false,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_13",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_13",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=true,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_2",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=true,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_10",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_10",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=true,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_6",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_6",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=true,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_14",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_14",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=true,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_3",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=true,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_11",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_11",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=true,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_7",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_7",
       "x": 270,
       "y": 270
     },
     "facing=east,open_east=true,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_15",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_15",
       "x": 270,
       "y": 270
     },
     "facing=north,open_east=false,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_0",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=false,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_8",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_8",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=false,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_4",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_4",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=false,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_12",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_12",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=false,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_1",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=false,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_9",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_9",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=false,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_5",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_5",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=false,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_13",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_13",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=true,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_2",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=true,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_10",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_10",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=true,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_6",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_6",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=true,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_14",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_14",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=true,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_3",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=true,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_11",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_11",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=true,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_7",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_7",
       "x": 270,
       "y": 180
     },
     "facing=north,open_east=true,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_15",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_15",
       "x": 270,
       "y": 180
     },
     "facing=south,open_east=false,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_0",
       "x": 270
     },
     "facing=south,open_east=false,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_8",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_8",
       "x": 270
     },
     "facing=south,open_east=false,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_4",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_4",
       "x": 270
     },
     "facing=south,open_east=false,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_12",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_12",
       "x": 270
     },
     "facing=south,open_east=false,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_1",
       "x": 270
     },
     "facing=south,open_east=false,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_9",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_9",
       "x": 270
     },
     "facing=south,open_east=false,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_5",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_5",
       "x": 270
     },
     "facing=south,open_east=false,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_13",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_13",
       "x": 270
     },
     "facing=south,open_east=true,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_2",
       "x": 270
     },
     "facing=south,open_east=true,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_10",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_10",
       "x": 270
     },
     "facing=south,open_east=true,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_6",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_6",
       "x": 270
     },
     "facing=south,open_east=true,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_14",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_14",
       "x": 270
     },
     "facing=south,open_east=true,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_3",
       "x": 270
     },
     "facing=south,open_east=true,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_11",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_11",
       "x": 270
     },
     "facing=south,open_east=true,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_7",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_7",
       "x": 270
     },
     "facing=south,open_east=true,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_15",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_15",
       "x": 270
     },
     "facing=up,open_east=false,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_0"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_0"
     },
     "facing=up,open_east=false,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_8"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_8"
     },
     "facing=up,open_east=false,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_4"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_4"
     },
     "facing=up,open_east=false,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_12"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_12"
     },
     "facing=up,open_east=false,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_1"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_1"
     },
     "facing=up,open_east=false,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_9"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_9"
     },
     "facing=up,open_east=false,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_5"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_5"
     },
     "facing=up,open_east=false,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_13"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_13"
     },
     "facing=up,open_east=true,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_2"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_2"
     },
     "facing=up,open_east=true,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_10"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_10"
     },
     "facing=up,open_east=true,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_6"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_6"
     },
     "facing=up,open_east=true,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_14"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_14"
     },
     "facing=up,open_east=true,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_3"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_3"
     },
     "facing=up,open_east=true,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_11"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_11"
     },
     "facing=up,open_east=true,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_7"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_7"
     },
     "facing=up,open_east=true,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_15"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_15"
     },
     "facing=west,open_east=false,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_0",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=false,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_8",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_8",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=false,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_4",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_4",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=false,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_12",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_12",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=false,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_1",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=false,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_9",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_9",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=false,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_5",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_5",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=false,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_13",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_13",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=true,open_north=false,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_2",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=true,open_north=false,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_10",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_10",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=true,open_north=false,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_6",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_6",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=true,open_north=false,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_14",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_14",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=true,open_north=true,open_south=false,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_3",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=true,open_north=true,open_south=false,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_11",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_11",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=true,open_north=true,open_south=true,open_west=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_7",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_7",
       "x": 270,
       "y": 90
     },
     "facing=west,open_east=true,open_north=true,open_south=true,open_west=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/energy_wave_disperser_15",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_15",
       "x": 270,
       "y": 90
     }

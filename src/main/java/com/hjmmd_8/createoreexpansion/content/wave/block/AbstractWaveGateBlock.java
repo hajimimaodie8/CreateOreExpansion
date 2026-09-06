@@ -73,6 +73,15 @@ public abstract class AbstractWaveGateBlock<T extends AbstractWaveGateBlockEntit
 			.setValue(RECEIVER_BOTTOM, false));
 	}
 
+	/**
+	 * 是否"能量调级器"（对波做<b>等级</b>调制）——翡翠/蓝宝石调级器返回 true；
+	 * 波速调节器（对波做<b>速度</b>调制）返回 false。
+	 * <p>供波碰撞判定区分两类 gate 机器（等级调制 vs 速度调制走不同处理）。</p>
+	 */
+	public boolean modulatesWaveLevel() {
+		return false; // 默认：波速调节器语义（速度调制）
+	}
+
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
 		builder.add(RECEIVER_TOP, RECEIVER_BOTTOM);

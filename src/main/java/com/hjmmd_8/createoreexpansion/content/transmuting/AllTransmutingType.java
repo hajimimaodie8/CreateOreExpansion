@@ -22,7 +22,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.Vec3;
@@ -42,14 +41,14 @@ public class AllTransmutingType implements FanProcessingType {
 
 	@Override
 	public boolean canProcess(ItemStack stack, Level level) {
-		return AllRecipeTypes.TRANSMUTING.find(new SingleRecipeInput(stack), level)
+		return AllRecipeTypes.TRANSMUTING.find(AllRecipeTypes.wrap(stack), level)
 			.isPresent();
 	}
 
 	@Override
 	@Nullable
 	public List<ItemStack> process(ItemStack stack, Level level) {
-		return AllRecipeTypes.TRANSMUTING.find(new SingleRecipeInput(stack), level)
+		return AllRecipeTypes.TRANSMUTING.find(AllRecipeTypes.wrap(stack), level)
 			.map(RecipeHolder::value)
 			.map(r -> RecipeApplier.applyRecipeOn(level, stack, r, true))
 			.orElse(null);

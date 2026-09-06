@@ -53,6 +53,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.TOPAZ_AXE.get(), "黄玉斧");
         add(AllItems.TOPAZ_SHOVEL.get(), "黄玉铲");
         add(AllItems.TOPAZ_HOE.get(), "黄玉锄");
+        add(AllBlocks.SAPPHIRE_CASING.get(), "蓝宝石机壳");
         add(AllItems.SAPPHIRE_INGOT.get(), "蓝宝石锭");
         add(AllItems.RAW_SAPPHIRE.get(), "粗蓝宝石");
         add(AllItems.SAPPHIRE_NUGGET.get(), "蓝宝石粒");
@@ -198,10 +199,29 @@ public class ChineseLangProvider extends LanguageProvider {
         add("fluid.createoreexpansion.transmutation_fluid", "嬗变液");
         add("block.createoreexpansion.transmutation_fluid", "嬗变液");
         add("block.createoreexpansion.power_angle_grinder", "动力角磨床");
-        add("block.createoreexpansion.jade_create_charger", "翡翠应力充能器");
-        add("block.createoreexpansion.energy_wave_regulator", "能量调级器");
-        add("block.createoreexpansion.wave_speed_regulator", "波速调节器");
-        add("createoreexpansion.goggles.wave_speed_regulator", "波速调节器");
+        add("block.createoreexpansion.jade_stress_charger", "翡翠应力充能器");
+        add("block.createoreexpansion.sapphire_stress_charger", "蓝宝石应力充能器");
+        add("block.createoreexpansion.energy_field_controller", "能量场控制器");
+        add("block.createoreexpansion.sapphire_wave_regulator", "蓝宝石能量调级器");
+        add("block.createoreexpansion.sapphire_speed_regulator", "蓝宝石波速调节器");
+        add("createoreexpansion.goggles.sapphire_speed_regulator", "蓝宝石波速调节器");
+        add("createoreexpansion.goggles.sapphire_charger_normal", "模式：普通（连续发射）");
+        add("createoreexpansion.goggles.sapphire_charger_storing", "模式：储存（满后点击/红石触发簇射）");
+        add("createoreexpansion.charger.mode", "充能模式");
+        add("createoreexpansion.charger_mode.normal", "普通");
+        add("createoreexpansion.charger_mode.store", "储存");
+        add("createoreexpansion.goggles.sapphire_charger_store_progress", "能量储备：%s%%");
+        add("createoreexpansion.goggles.sapphire_charger_store_layers", "充能层数：%s/%s");
+        add("createoreexpansion.goggles.sapphire_charger_store_full", "已满：右键释放");
+        add("createoreexpansion.goggles.sapphire_charger_store_line", "本层进度：%s/%s");
+        add("createoreexpansion.goggles.sapphire_charger_1", "低充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.sapphire_charger_2", "高充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.sapphire_charger_3", "伽马充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.sapphire_charger_4", "超载充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.sapphire_charger_5", "终极充能态（≥%s RPM）");
+        add("block.createoreexpansion.energy_wave_regulator", "翡翠能量调级器");
+        add("block.createoreexpansion.wave_speed_regulator", "翡翠波速调节器");
+        add("createoreexpansion.goggles.wave_speed_regulator", "翡翠波速调节器");
         add("createoreexpansion.goggles.speed_regulator_tier", "变速等级：%s");
         add("createoreexpansion.goggles.speed_regulator_amount", "调速量：±%s 格/秒");
         // Jade 波实体信息
@@ -209,9 +229,13 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.jade.wave_level", "波等级：%s");
         add("createoreexpansion.jade.wave_speed", "运行速度：%s 格/秒");
         add("createoreexpansion.jade.wave_lifetime", "剩余寿命：%s 秒");
+        add("createoreexpansion.jade.wave_charge", "电荷：%s");
+        add("createoreexpansion.jade.wave_charge_none", "电荷：未带电");
+        add("createoreexpansion.jade.charge_positive", "正电荷");
+        add("createoreexpansion.jade.charge_negative", "负电荷");
         add("block.createoreexpansion.energy_wave_disperser", "能量波差器");
         add("block.createoreexpansion.six_face_disperser", "六面能量波差器");
-        add("block.createoreexpansion.energy_sensing_lamp", "能量感应灯");
+        add("block.createoreexpansion.octa_energy_wave_differencer", "八面能量波差器");
         add("block.createoreexpansion.reinforced_lightning_rod", "强化避雷针");
         // JEI 提示：两种获取引雷能力的途径
         add("createoreexpansion.jei.lightning_rod.ways", "引雷能力获取途径：① 被真实自然闪电击中；② 接收伽马能量波攒满进度（10/10）");
@@ -247,18 +271,38 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.assembly.grinding", "在动力角磨床中角磨");
         add("createoreexpansion.recipe.assembly.charging", "在翡翠应力充能器中充能");
         add("createoreexpansion.recipe.assembly.charging_hover", "在翡翠应力充能器进行%s");
+        add("createoreexpansion.recipe.assembly.charging_hover_sapphire", "在蓝宝石应力充能器进行%s");
         add("createoreexpansion.recipe.assembly.cca_charging", "在特斯拉线圈中充能或雷击");
         // 充能分类标题（低/高/伽马三个等级共用一个分类，等级徽章见 jei.charging.level.*）
         add("createoreexpansion.recipe.charging", "充能加工");
         add("createoreexpansion.jei.charging.level.1", "低能量充能");
         add("createoreexpansion.jei.charging.level.2", "高能量充能");
         add("createoreexpansion.jei.charging.level.3", "伽马能量充能");
+        add("createoreexpansion.jei.charging.level.4", "超载能量充能");
+        add("createoreexpansion.jei.charging.level.5", "终极能量充能");
+        add("entity.createoreexpansion.charger_wave", "充能能量波");
         add("entity.createoreexpansion.jade_charger_wave", "充能能量波");
 
         // ========== 动力角磨床护目镜提示 ==========
         add("createoreexpansion.goggles.angle_grinder", "动力角磨床");
         add("createoreexpansion.goggles.jade_charger", "翡翠应力充能器");
+        add("createoreexpansion.goggles.sapphire_charger", "蓝宝石应力充能器");
         add("createoreexpansion.goggles.charger_idle", "未接入应力");
+        add("createoreexpansion.goggles.field_controller", "能量场控制器");
+        add("createoreexpansion.goggles.field_controller_idle", "未接入应力（无法产生能量场）");
+        add("createoreexpansion.goggles.field_controller_polarity", "接口极性：%s");
+        add("createoreexpansion.goggles.field_controller_polarity_pos", "正极");
+        add("createoreexpansion.goggles.field_controller_polarity_neg", "负极");
+        add("createoreexpansion.goggles.field_controller_polarity_none", "无（未接入应力）");
+        add("createoreexpansion.goggles.field_controller_tier", "场强档位：%s");
+        add("createoreexpansion.field_controller.lid_opened", "接收盖已打开");
+        add("createoreexpansion.field_controller.lid_closed", "接收盖已关闭");
+        add("createoreexpansion.field_controller.type_accel", "能量场类型：加速场");
+        add("createoreexpansion.field_controller.type_deflect", "能量场类型：偏转场");
+        add("createoreexpansion.goggles.energy_wave_regulator", "翡翠能量调级器");
+        add("createoreexpansion.goggles.sapphire_wave_regulator", "蓝宝石能量调级器");
+        add("createoreexpansion.goggles.gate_need_speed", "需要转速 ≥%s RPM 才调制");
+        add("createoreexpansion.goggles.gate_speed_ok", "%s RPM 调制中");
         // 档位按 Create 配置的转速上限（maxRotationSpeed，默认 256）等比划分，
         // RPM 区间由代码读取配置后作为参数传入（%s），他人修改上限时显示自动跟随
         add("createoreexpansion.goggles.charger_low", "低充能态（1~%s RPM）");

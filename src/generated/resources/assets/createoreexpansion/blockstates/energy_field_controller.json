@@ -1,0 +1,56 @@
+{
+  "variants": {
+    "facing=down,open=false": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller",
+      "x": 180
+    },
+    "facing=down,open=true": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller_open",
+      "x": 180
+    },
+    "facing=east,open=false": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open=true": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller_open",
+      "x": 270,
+      "y": 270
+    },
+    "facing=north,open=false": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open=true": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller_open",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,open=false": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller",
+      "x": 270
+    },
+    "facing=south,open=true": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller_open",
+      "x": 270
+    },
+    "facing=up,open=false": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller"
+    },
+    "facing=up,open=true": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller_open"
+    },
+    "facing=west,open=false": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open=true": {
+      "model": "createoreexpansion:block/energy_field_controller/sapphire_field_controller_open",
+      "x": 270,
+      "y": 90
+    }
+  }
+}

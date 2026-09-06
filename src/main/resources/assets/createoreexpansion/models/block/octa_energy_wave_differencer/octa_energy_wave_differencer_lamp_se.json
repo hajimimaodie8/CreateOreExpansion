@@ -1,0 +1,55 @@
+{
+  "credit": "Made with Blockbench",
+  "textures": {
+    "0": "createoreexpansion:block/energy_wave_machine/special_light",
+    "particle": "createoreexpansion:block/energy_wave_machine/special_light"
+  },
+  "elements": [
+    {
+      "from": [
+        10.8891,
+        16,
+        10.8891
+      ],
+      "to": [
+        12.8891,
+        16.02,
+        12.8891
+      ],
+      "faces": {
+        "up": {
+          "uv": [
+            11,
+            11,
+            13,
+            13
+          ],
+          "texture": "#0"
+        }
+      }
+    },
+    {
+      "from": [
+        10.8891,
+        -0.02,
+        10.8891
+      ],
+      "to": [
+        12.8891,
+        0,
+        12.8891
+      ],
+      "faces": {
+        "down": {
+          "uv": [
+            11,
+            11,
+            13,
+            13
+          ],
+          "texture": "#0"
+        }
+      }
+    }
+  ]
+}

@@ -2,11 +2,16 @@
   "values": [
     "createoreexpansion:jade_casing",
     "createoreexpansion:power_angle_grinder",
-    "createoreexpansion:jade_create_charger",
+    "createoreexpansion:jade_stress_charger",
+    "createoreexpansion:sapphire_stress_charger",
+    "createoreexpansion:energy_field_controller",
+    "createoreexpansion:sapphire_wave_regulator",
     "createoreexpansion:energy_wave_regulator",
     "createoreexpansion:wave_speed_regulator",
+    "createoreexpansion:sapphire_speed_regulator",
     "createoreexpansion:energy_wave_disperser",
     "createoreexpansion:six_face_disperser",
-    "createoreexpansion:energy_sensing_lamp"
+    "createoreexpansion:octa_energy_wave_differencer",
+    "createoreexpansion:sapphire_casing"
   ]
 }

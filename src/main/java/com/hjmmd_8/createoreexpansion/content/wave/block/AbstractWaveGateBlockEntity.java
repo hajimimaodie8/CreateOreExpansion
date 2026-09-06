@@ -1,10 +1,16 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
+import java.util.List;
+
+import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
+import com.simibubi.create.content.kinetics.base.IRotate;
 import com.simibubi.create.content.kinetics.simpleRelays.SimpleKineticBlockEntity;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -28,6 +34,83 @@ public abstract class AbstractWaveGateBlockEntity extends SimpleKineticBlockEnti
 
 	protected AbstractWaveGateBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
+	}
+
+	// ========== 机型参数（子类覆写区分翡翠/蓝宝石等变体） ==========
+
+	/**
+	 * 最低调制转速（RPM）：达到后才对能量波做等级/速度调制，否则仅通道。
+	 * 翡翠 = Create FAST（默认 100）；蓝宝石 = 64。
+	 */
+	public float getModulationSpeedThreshold() {
+		return IRotate.SpeedLevel.FAST.getSpeedValue();
+	}
+
+	/** 调级器可提升到的最大波等级（1~5）：翡翠 3（伽马），蓝宝石 5（欧米伽）。 */
+	public int getMaxBoostLevel() {
+		return 3;
+	}
+
+	/**
+	 * 该机型<b>可承载/允许输出</b>的最高波等级（1~5）：
+	 * 翡翠线 = 3（伽马），蓝宝石线 = 5（欧米伽）。
+	 * <p>翡翠调级器/波速调节器遇到 4/5 级波（蓝宝石专属）时，只有把波降级到本上限内的
+	 * 操作才有效；维持/升级/原样穿过 4/5 级波一律操作无效（波湮灭）。蓝宝石机型不受限。</p>
+	 */
+	public int getMaxSupportedWaveLevel() {
+		return 3;
+	}
+
+	/**
+	 * 波速调节器分档数（翡翠 4 档：速度修正 0.5/1/1.5/2；蓝宝石 6 档：0.5~3）。
+	 * 仅波速调节器子类使用；调级器返回 0 无意义。
+	 */
+	public int getSpeedTierCount() {
+		return 4;
+	}
+
+	/** 波速调节器单档修正量（格/秒）。 */
+	public float getSpeedTierStep() {
+		return 0.5f;
+	}
+
+	/** 波速调节器分档转速区间下界（RPM），低于此不调制。 */
+	public float getSpeedTierBase() {
+		return IRotate.SpeedLevel.FAST.getSpeedValue();
+	}
+
+	/** 波速调节器分档转速区间上界（RPM）。 */
+	public float getSpeedTierMax() {
+		return 256f;
+	}
+
+	// ========== 护目镜悬浮信息（行排版学 Create Ore Excavation 钻机） ==========
+
+	/** 护目镜标题行（子类各自机型名，文案走 lang 键）。 */
+	protected abstract Component getGoggleTitle();
+
+	/**
+	 * 波闸统一护目镜主干（子类调用 super 后追加各自调制信息行）：
+	 * KBE 应力行 → 机型标题 → 转速需求/调制状态行（未达标金色提示，仿钻机 speedRequirement）。
+	 */
+	@Override
+	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+		boolean added = super.addToGoggleTooltip(tooltip, isPlayerSneaking);
+
+		GoggleUtil.forGoggles(tooltip, getGoggleTitle().copy()
+			.withStyle(ChatFormatting.GRAY));
+		added = true;
+
+		float threshold = getModulationSpeedThreshold();
+		float speed = Math.abs(getSpeed());
+		if (speed < threshold) {
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.gate_need_speed", (int) threshold)
+				.withStyle(ChatFormatting.GOLD));
+		} else {
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.gate_speed_ok", (int) speed)
+				.withStyle(ChatFormatting.AQUA));
+		}
+		return added;
 	}
 
 	@Override

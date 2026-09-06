@@ -11,6 +11,7 @@ import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelTier;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrinderRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
+import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.kinetics.belt.behaviour.DirectBeltInputBehaviour;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
@@ -506,23 +507,23 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	public boolean addToTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
 		boolean added = super.addToTooltip(tooltip, isPlayerSneaking);
 
-		// 悬停提示：当前支持的加工类型（随安装的角磨轮等级变化）
+		// 悬停提示：当前支持的加工类型（随安装的角磨轮等级变化）；行排版统一缩进（GoggleUtil）
 		GrindingWheelTier tier = getWheelTier();
 		if (tier == null) {
-			tooltip.add(Component.translatable("createoreexpansion.tooltip.no_wheel_type")
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.no_wheel_type")
 				.withStyle(ChatFormatting.GRAY));
 			return true;
 		}
-		tooltip.add(Component.translatable("createoreexpansion.tooltip.supported_types")
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.supported_types")
 			.withStyle(ChatFormatting.GRAY));
-		tooltip.add(Component.translatable("createoreexpansion.tooltip.type_grinding")
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.type_grinding")
 			.withStyle(ChatFormatting.GRAY));
 		if (tier.level >= 2) {
-			tooltip.add(Component.translatable("createoreexpansion.tooltip.type_advanced")
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.type_advanced")
 				.withStyle(ChatFormatting.GRAY));
 		}
 		if (tier.level >= 3) {
-			tooltip.add(Component.translatable("createoreexpansion.tooltip.type_dismantling")
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.type_dismantling")
 				.withStyle(ChatFormatting.GRAY));
 		}
 		return true;
@@ -532,13 +533,14 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
 		boolean added = super.addToGoggleTooltip(tooltip, isPlayerSneaking);
 
-		tooltip.add(Component.translatable("createoreexpansion.goggles.angle_grinder")
+		// 护目镜信息行：行排版统一缩进（GoggleUtil，同充能器/波闸）
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.angle_grinder")
 			.withStyle(ChatFormatting.GRAY));
 		added = true;
 
 		ResourceLocation wheelId = getWheel();
 		if (wheelId == null) {
-			tooltip.add(Component.translatable("createoreexpansion.goggles.no_wheel")
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.no_wheel")
 				.withStyle(ChatFormatting.RED));
 			return added;
 		}
@@ -547,29 +549,29 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		Component wheelName = wheelItem != null && wheelItem != Items.AIR
 			? wheelItem.getDescription()
 			: Component.literal(wheelId.toString());
-		tooltip.add(Component.translatable("createoreexpansion.goggles.installed_wheel", wheelName)
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.installed_wheel", wheelName)
 			.withStyle(ChatFormatting.WHITE));
 
 		// 轮子特殊效果（护目镜可见）
 		Component effectDescription = getWheelEffect().getDescription();
 		if (!effectDescription.getString()
 			.isEmpty())
-			tooltip.add(effectDescription.copy()
+			GoggleUtil.forGoggles(tooltip, effectDescription.copy()
 				.withStyle(ChatFormatting.AQUA));
 
 		GrindingWheelTier tier = getWheelTier();
 		if (tier == null)
 			return added;
 
-		tooltip.add(Component.translatable("createoreexpansion.goggles.required_speed", tier.getMinRpm())
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.required_speed", tier.getMinRpm())
 			.withStyle(ChatFormatting.GOLD));
 
 		float speed = Math.abs(getSpeed());
 		if (speed < tier.getMinRpm()) {
-			tooltip.add(Component.translatable("createoreexpansion.goggles.speed_too_low")
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.speed_too_low")
 				.withStyle(ChatFormatting.RED));
 		} else {
-			tooltip.add(Component.translatable("createoreexpansion.goggles.processing_time",
+			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.processing_time",
 				String.format(Locale.ROOT, "%.1f", tier.getProcessingTime(speed)))
 				.withStyle(ChatFormatting.AQUA));
 		}

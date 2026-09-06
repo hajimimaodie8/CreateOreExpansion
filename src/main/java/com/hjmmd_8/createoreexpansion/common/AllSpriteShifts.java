@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 
 public class AllSpriteShifts {
     public static final CTSpriteShiftEntry JADE_CASING = omni("jade_casing");
+    public static final CTSpriteShiftEntry SAPPHIRE_CASING = omni("sapphire_casing");
 
     private static CTSpriteShiftEntry omni(String name) {
         return CTSpriteShifter.getCT(AllCTTypes.OMNIDIRECTIONAL,

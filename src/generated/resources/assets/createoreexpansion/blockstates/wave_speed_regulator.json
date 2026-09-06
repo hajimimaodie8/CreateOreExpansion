@@ -1,106 +1,106 @@
 {
   "variants": {
     "facing=down,receiver_bottom=false,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_0",
       "x": 180
     },
     "facing=down,receiver_bottom=false,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_2",
       "x": 180
     },
     "facing=down,receiver_bottom=true,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_1",
       "x": 180
     },
     "facing=down,receiver_bottom=true,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_3",
       "x": 180
     },
     "facing=east,receiver_bottom=false,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_0",
       "x": 270,
       "y": 270
     },
     "facing=east,receiver_bottom=false,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_2",
       "x": 270,
       "y": 270
     },
     "facing=east,receiver_bottom=true,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_1",
       "x": 270,
       "y": 270
     },
     "facing=east,receiver_bottom=true,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_3",
       "x": 270,
       "y": 270
     },
     "facing=north,receiver_bottom=false,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_0",
       "x": 270,
       "y": 180
     },
     "facing=north,receiver_bottom=false,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_2",
       "x": 270,
       "y": 180
     },
     "facing=north,receiver_bottom=true,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_1",
       "x": 270,
       "y": 180
     },
     "facing=north,receiver_bottom=true,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_3",
       "x": 270,
       "y": 180
     },
     "facing=south,receiver_bottom=false,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_0",
       "x": 270
     },
     "facing=south,receiver_bottom=false,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_2",
       "x": 270
     },
     "facing=south,receiver_bottom=true,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_1",
       "x": 270
     },
     "facing=south,receiver_bottom=true,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_3",
       "x": 270
     },
     "facing=up,receiver_bottom=false,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_0"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_0"
     },
     "facing=up,receiver_bottom=false,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_2"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_2"
     },
     "facing=up,receiver_bottom=true,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_1"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_1"
     },
     "facing=up,receiver_bottom=true,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_3"
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_3"
     },
     "facing=west,receiver_bottom=false,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_0",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_0",
       "x": 270,
       "y": 90
     },
     "facing=west,receiver_bottom=false,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_2",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_2",
       "x": 270,
       "y": 90
     },
     "facing=west,receiver_bottom=true,receiver_top=false": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_1",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_1",
       "x": 270,
       "y": 90
     },
     "facing=west,receiver_bottom=true,receiver_top=true": {
-      "model": "createoreexpansion:block/energy_wave_machine/wave_speed_regulator_3",
+      "model": "createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_3",
       "x": 270,
       "y": 90
     }

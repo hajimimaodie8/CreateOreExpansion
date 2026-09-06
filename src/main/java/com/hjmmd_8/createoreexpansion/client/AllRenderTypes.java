@@ -34,4 +34,24 @@ public class AllRenderTypes extends RenderType {
                 .setDepthTestState(NO_DEPTH_TEST)
                 .createCompositeState(false)
     );
+
+    /**
+     * 能量场指示框：QUADS 细长棱线（像 Create 的 outlineSolid 那种有粗度的框，
+     * 而非 1px 线条）。顶点格式 POSITION_COLOR，带半透明混合与 alpha 渐变。
+     */
+    public static final RenderType CUBOID_QUADS_TRANSLUCENT = RenderType.create(
+            "energy_field_cuboid_lines",
+            DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.QUADS,
+            262144,
+            false,
+            false,
+            RenderType.CompositeState.builder()
+                .setShaderState(new ShaderStateShard(GameRenderer::getPositionColorShader))
+                .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                .setWriteMaskState(COLOR_WRITE)
+                .setCullState(NO_CULL)
+                .setDepthTestState(LEQUAL_DEPTH_TEST)
+                .createCompositeState(false)
+    );
 }

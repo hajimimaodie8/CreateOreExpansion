@@ -119,8 +119,8 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
     /** 单条工具充能配方：输入单个能量物品，输出=输入工具本身（充能后仍是该工具，JEI 直观显示）。
      * @param level 配方要求的充能等级（1=低、2=高、3=伽马） */
     private void charging(RecipeOutput output, ItemLike item, String name, int level) {
-        new StandardProcessingRecipe.Builder<>(params -> new ChargingRecipe(params, level),
-            CreateOreExpansion.modLoc(name))
+        new ChargingRecipe.Builder(CreateOreExpansion.modLoc(name))
+            .withLevel(level)
             .require(item)
             .output(item, 1)
             .build(output);

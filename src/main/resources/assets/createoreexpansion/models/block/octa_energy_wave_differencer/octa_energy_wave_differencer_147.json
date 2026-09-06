@@ -1,0 +1,9 @@
+{
+  "parent": "createoreexpansion:block/octa_energy_wave_differencer/octa_energy_wave_differencer",
+  "textures": {
+    "small_n": "createoreexpansion:block/energy_wave_machine/sapphire_wave_differencer_small_side_open",
+    "small_e": "createoreexpansion:block/energy_wave_machine/sapphire_wave_differencer_small_side_open",
+    "big_ne": "createoreexpansion:block/energy_wave_machine/sapphire_wave_differencer_big_side_open",
+    "big_sw": "createoreexpansion:block/energy_wave_machine/sapphire_wave_differencer_big_side_open"
+  }
+}

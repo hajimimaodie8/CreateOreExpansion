@@ -15,8 +15,7 @@ import net.minecraft.world.phys.Vec3;
  * <p><b>职责拆分</b>（本类只做接口编排，逻辑委托单一职责工具类）：</p>
  * <ul>
  *   <li>{@link SablePose} —— 位姿变换（世界↔本地坐标、plot 中心偏移）；</li>
- *   <li>{@link SableSubLevelAccess} —— 容器遍历/命中检测/BE 匹配/本地方块读取；</li>
- *   <li>{@link SablePhysicsVerify} —— 物理属性验证（调试）。</li>
+ *   <li>{@link SableSubLevelAccess} —— 容器遍历/命中检测/BE 匹配/本地方块读取。</li>
  * </ul>
  *
  * <p><b>加载约束</b>：本类直接引用 Sable 类型，<b>只能在 Sable 已安装时被加载</b>——
@@ -28,9 +27,8 @@ public final class SableSubLevelBridge implements SubLevelBridge {
 	public static final SableSubLevelBridge INSTANCE = new SableSubLevelBridge();
 
 	static {
-		// 类被加载（主类 Class.forName 触发）即注册到桥接注册表 + 挂接物理属性验证
+		// 类被加载（主类 Class.forName 触发）即注册到桥接注册表
 		SableBridges.set(INSTANCE);
-		net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(SablePhysicsVerify::onServerStarted);
 	}
 
 	private SableSubLevelBridge() {
@@ -84,5 +82,13 @@ public final class SableSubLevelBridge implements SubLevelBridge {
 	@Override
 	public Level worldLevel(Hit hit) {
 		return SablePose.worldLevel(hit);
+	}
+
+	@Override
+	public java.util.List<Object> subLevels(net.minecraft.server.level.ServerLevel worldLevel) {
+		return SableSubLevelAccess.allSubLevels(worldLevel)
+			.stream()
+			.map(s -> (Object) s)
+			.collect(java.util.stream.Collectors.toList());
 	}
 }

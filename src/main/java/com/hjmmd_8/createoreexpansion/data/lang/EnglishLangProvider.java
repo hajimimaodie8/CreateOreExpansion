@@ -117,6 +117,8 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.END_STELLARSTONE_ORE.get(), "End Stellarstone Ore");
         add(AllBlocks.RAW_STELLARSTONE_BLOCK.get(), "Raw Stellarstone Block");
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
+        add(AllBlocks.JADE_CASING.get(), "Jade Casing");
+        add(AllBlocks.SAPPHIRE_CASING.get(), "Sapphire Casing");
         // Stellarstone growable crystal
         add(AllBlocks.STELLARSTONE_BUDDING_BLOCK.get(), "Stellarstone Crystal Budding Block");
         add(AllBlocks.STELLARSTONE_SMALL_BUD.get(), "Small Stellarstone Crystal Bud");
@@ -124,10 +126,10 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.STELLARSTONE_LARGE_BUD.get(), "Large Stellarstone Crystal Bud");
         add(AllBlocks.STELLARSTONE_CLUSTER.get(), "Stellarstone Crystal Cluster");
         add(AllBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
-        add(AllBlocks.JADE_CREATE_CHARGER.get(), "Jade Create Charger");
-        add(AllBlocks.ENERGY_WAVE_REGULATOR.get(), "Energy Wave Regulator");
-        add(AllBlocks.WAVE_SPEED_REGULATOR.get(), "Wave Speed Regulator");
-        add("createoreexpansion.goggles.wave_speed_regulator", "Wave Speed Regulator");
+        add(AllBlocks.JADE_STRESS_CHARGER.get(), "Jade Create Charger");
+        add(AllBlocks.ENERGY_WAVE_REGULATOR.get(), "Jade Energy Wave Regulator");
+        add(AllBlocks.WAVE_SPEED_REGULATOR.get(), "Jade Wave Speed Regulator");
+        add("createoreexpansion.goggles.wave_speed_regulator", "Jade Wave Speed Regulator");
         add("createoreexpansion.goggles.speed_regulator_tier", "Speed Tier: %s");
         add("createoreexpansion.goggles.speed_regulator_amount", "Speed Change: ±%s blocks/s");
         // Jade wave entity info
@@ -135,9 +137,13 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.jade.wave_level", "Wave Level: %s");
         add("createoreexpansion.jade.wave_speed", "Speed: %s blocks/s");
         add("createoreexpansion.jade.wave_lifetime", "Lifetime: %s s");
+        add("createoreexpansion.jade.wave_charge", "Charge: %s");
+        add("createoreexpansion.jade.wave_charge_none", "Charge: none");
+        add("createoreexpansion.jade.charge_positive", "Positive");
+        add("createoreexpansion.jade.charge_negative", "Negative");
         add(AllBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");
         add(AllBlocks.SIX_FACE_DISPERSER.get(), "Six-Face Energy Wave Disperser");
-        add(AllBlocks.ENERGY_SENSING_LAMP.get(), "Energy Sensing Lamp");
+        add(AllBlocks.OCTA_ENERGY_WAVE_DIFFERENCER.get(), "Octa Energy Wave Disperser");
         add(AllBlocks.REINFORCED_LIGHTNING_ROD.get(), "Reinforced Lightning Rod");
         add(AllItems.RUBY_INGOT.get(), "Ruby Ingot");
         add(AllItems.RUBY_SHEET.get(), "Ruby Sheet");
@@ -232,18 +238,53 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.assembly.grinding", "Grind in a Power Angle Grinder");
         add("createoreexpansion.recipe.assembly.charging", "Charge in a Jade Create Charger");
         add("createoreexpansion.recipe.assembly.charging_hover", "Charge in a Jade Create Charger: %s");
+        add("createoreexpansion.recipe.assembly.charging_hover_sapphire", "Charge in a Sapphire Create Charger: %s");
         add("createoreexpansion.recipe.assembly.cca_charging", "Charge in a Tesla Coil or Strike by Lightning");
         // Charging category title (all three levels share one category; level badge keys below)
         add("createoreexpansion.recipe.charging", "Charging");
         add("createoreexpansion.jei.charging.level.1", "Low Energy");
         add("createoreexpansion.jei.charging.level.2", "High Energy");
         add("createoreexpansion.jei.charging.level.3", "Gamma Energy");
+        add("createoreexpansion.jei.charging.level.4", "Overload Energy");
+        add("createoreexpansion.jei.charging.level.5", "Ultimate Energy");
+        add("entity.createoreexpansion.charger_wave", "Charger Wave");
         add("entity.createoreexpansion.jade_charger_wave", "Charger Wave");
 
         // ========== Power Angle Grinder goggles ==========
         add("createoreexpansion.goggles.angle_grinder", "Power Angle Grinder");
-        add("createoreexpansion.goggles.jade_charger", "Jade Create Charger");
+        add("createoreexpansion.goggles.jade_charger", "Jade Stress Charger");
+        add("createoreexpansion.goggles.sapphire_charger", "Sapphire Stress Charger");
+        add("createoreexpansion.goggles.field_controller", "Energy Field Controller");
+        add("createoreexpansion.goggles.field_controller_idle", "No stress (cannot generate a field)");
+        add("createoreexpansion.goggles.field_controller_polarity", "Port polarity: %s");
+        add("createoreexpansion.goggles.field_controller_polarity_pos", "Positive");
+        add("createoreexpansion.goggles.field_controller_polarity_neg", "Negative");
+        add("createoreexpansion.goggles.field_controller_polarity_none", "None (no stress)");
+        add("createoreexpansion.goggles.field_controller_tier", "Field tier: %s");
+        add("createoreexpansion.field_controller.lid_opened", "Receiver lid opened");
+        add("createoreexpansion.field_controller.lid_closed", "Receiver lid closed");
+        add("createoreexpansion.field_controller.type_accel", "Field type: Acceleration");
+        add("createoreexpansion.field_controller.type_deflect", "Field type: Deflection");
+        add("createoreexpansion.goggles.sapphire_speed_regulator", "Sapphire Speed Regulator");
+        add("createoreexpansion.goggles.sapphire_charger_normal", "Mode: Normal (continuous fire)");
+        add("createoreexpansion.goggles.sapphire_charger_storing", "Mode: Storing (click/redstone when full)");
+        add("createoreexpansion.charger.mode", "Charger Mode");
+        add("createoreexpansion.charger_mode.normal", "Normal");
+        add("createoreexpansion.charger_mode.store", "Store");
+        add("createoreexpansion.goggles.sapphire_charger_store_progress", "Charge stored: %s%%");
+        add("createoreexpansion.goggles.sapphire_charger_store_layers", "Charge layers: %s/%s");
+        add("createoreexpansion.goggles.sapphire_charger_store_full", "Full: right-click to release");
+        add("createoreexpansion.goggles.sapphire_charger_store_line", "Layer progress: %s/%s");
+        add("createoreexpansion.goggles.sapphire_charger_1", "Low Charge (%s-%s RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_2", "High Charge (%s-%s RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_3", "Gamma Charge (%s-%s RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_4", "Overload Charge (%s-%s RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_5", "Ultimate Charge (%s+ RPM)");
         add("createoreexpansion.goggles.charger_idle", "No stress");
+        add("createoreexpansion.goggles.energy_wave_regulator", "Jade Energy Wave Regulator");
+        add("createoreexpansion.goggles.sapphire_wave_regulator", "Sapphire Wave Regulator");
+        add("createoreexpansion.goggles.gate_need_speed", "Requires %s+ RPM to modulate");
+        add("createoreexpansion.goggles.gate_speed_ok", "Modulating at %s RPM");
         // Tiers scale with Create's maxRotationSpeed config (default 256);
         // RPM range is read from config and passed in as args (%s) at runtime
         add("createoreexpansion.goggles.charger_low", "Low Charge (1-%s RPM)");

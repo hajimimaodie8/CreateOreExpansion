@@ -4,6 +4,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWave
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 
@@ -55,12 +56,24 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider {
 		String levelName = switch (wave.getWaveLevel()) {
 			case 2 -> "高";
 			case 3 -> "伽马";
+			case 4 -> "伊普西龙";
+			case 5 -> "欧米伽";
 			default -> "低";
 		};
 		int color = colorOf(wave.getWaveRenderColor());
 		tooltip.add(Component.translatable("createoreexpansion.jade.wave_level", levelName)
 			.withStyle(ChatFormatting.WHITE)
 			.withStyle(style -> style.withColor(color)));
+
+		// 电荷状态（能量场作用前提）：正电荷 / 负电荷 / 未带电
+		var charge = wave.getChargePolarity();
+		MutableComponent chargeLine = charge == null
+			? Component.translatable("createoreexpansion.jade.wave_charge_none")
+			: Component.translatable("createoreexpansion.jade.wave_charge",
+				Component.translatable(charge == com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE
+					? "createoreexpansion.jade.charge_positive"
+					: "createoreexpansion.jade.charge_negative"));
+		tooltip.add(chargeLine.withStyle(charge == null ? ChatFormatting.DARK_GRAY : ChatFormatting.YELLOW));
 
 		// 运行速度（格/秒）
 		tooltip.add(Component.translatable("createoreexpansion.jade.wave_speed",

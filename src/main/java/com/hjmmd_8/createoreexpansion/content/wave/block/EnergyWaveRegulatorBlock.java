@@ -26,6 +26,12 @@ public class EnergyWaveRegulatorBlock extends AbstractWaveGateBlock<EnergyWaveRe
 		super(properties);
 	}
 
+	/** 能量调级器：对波做等级调制。 */
+	@Override
+	public boolean modulatesWaveLevel() {
+		return true;
+	}
+
 	@Override
 	public Class<EnergyWaveRegulatorBlockEntity> getBlockEntityClass() {
 		return EnergyWaveRegulatorBlockEntity.class;

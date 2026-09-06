@@ -1,17 +1,25 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.content.charger.block.JadeCreateChargerBlock;
+import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerMovementBehaviour;
+import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlock;
+import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalBuddingBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalClusterBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalGrowthConfigs;
+import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlock;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.DisperserMovingInteraction;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.EnergySensingLampBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireSpeedRegulatorBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireWaveRegulatorBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.WaveSpeedRegulatorBlock;
+import com.simibubi.create.api.behaviour.interaction.MovingInteractionBehaviour;
+import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.api.stress.BlockStressValues;
 import com.simibubi.create.content.decoration.encasing.CasingBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
@@ -123,12 +131,6 @@ public final class AllBlocks {
 		.item()
 		.tag(AllGemTags.JADE.itemStorageRawBlocks)
 		.build()
-		.register();
-
-	public static final BlockEntry<CasingBlock> JADE_CASING = CreateOreExpansion.REGISTRATE
-		.block("jade_casing", CasingBlock::new)
-		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
-		.transform(BuilderTransformers.casing(() -> AllSpriteShifts.JADE_CASING))
 		.register();
 
 	public static final BlockEntry<Block> TOPAZ_ORE = CreateOreExpansion.REGISTRATE
@@ -339,6 +341,12 @@ public final class AllBlocks {
 		.build()
 		.register();
 
+	public static final BlockEntry<CasingBlock> JADE_CASING = CreateOreExpansion.REGISTRATE
+			.block("jade_casing", CasingBlock::new)
+			.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
+			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.JADE_CASING))
+			.register();
+
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
 	public static final BlockEntry<PowerAngleGrinderBlock> POWER_ANGLE_GRINDER = CreateOreExpansion.REGISTRATE
 		.block("power_angle_grinder", PowerAngleGrinderBlock::new)
@@ -382,8 +390,8 @@ public final class AllBlocks {
 		.register();
 
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<JadeCreateChargerBlock> JADE_CREATE_CHARGER = CreateOreExpansion.REGISTRATE
-		.block("jade_create_charger", JadeCreateChargerBlock::new)
+	public static final BlockEntry<JadeStressChargerBlock> JADE_STRESS_CHARGER = CreateOreExpansion.REGISTRATE
+		.block("jade_stress_charger", JadeStressChargerBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
 		.properties(p -> p.noOcclusion())
@@ -391,11 +399,13 @@ public final class AllBlocks {
 		.addLayer(() -> () -> RenderType.cutoutMipped())
 		.transform(TagGen.axeOrPickaxe())
 		.blockstate((ctx, prov) -> {
+			// MODE 属性现为 0~5（共享基类，为蓝宝石 4/5 级预留）；翡翠只用 0~3，
+			// 4/5 补位复用 _3 模型（翡翠实际不会进入，纯满足 blockstate 全覆盖）
 			ExistingModelFile[] models = new ExistingModelFile[4];
 			for (int i = 0; i < 4; i++)
 				models[i] = prov.models()
 					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-						"block/jade_create_charger/jade_create_charger_" + i));
+						"block/jade_stress_charger/jade_stress_charger_" + i));
 			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
 			for (Direction dir : Direction.values()) {
 				// 模型默认正面为 +Y（发射头朝上）：竖直放置（UP）用原样，DOWN 转 180，
@@ -406,10 +416,60 @@ public final class AllBlocks {
 							.isHorizontal() ? 270 : 0;
 				int yRot = dir.getAxis()
 					.isHorizontal() ? (int) dir.toYRot() : 0;
-				for (int mode = 0; mode < 4; mode++) {
+				for (int mode = 0; mode <= 5; mode++) {
 					vb.partialState()
 						.with(DirectionalKineticBlock.FACING, dir)
-						.with(JadeCreateChargerBlock.MODE, mode)
+						.with(JadeStressChargerBlock.MODE, mode)
+						.modelForState()
+						.modelFile(models[Math.min(mode, 3)])
+						.rotationX(xRot)
+						.rotationY(yRot)
+						.addModel();
+				}
+			}
+		})
+		.onRegister(block -> {
+			BlockStressValues.IMPACTS.register(block, () -> 4.0);
+			// Create 动态结构（动力轴承/矿车装配站）适配：充能器随结构自行工作（像钻头/动力锯）
+			MovementBehaviour.REGISTRY.register(block, new ChargerMovementBehaviour());
+		})
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("jade_stress_charger"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/jade_stress_charger/jade_stress_charger_item")))
+		.build()
+		.register();
+
+	/** 蓝宝石应力充能器：蓝宝石科技线专属充能器（可蓄至 4/5 级、双模式）。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<SapphireStressChargerBlock> SAPPHIRE_STRESS_CHARGER = CreateOreExpansion.REGISTRATE
+		.block("sapphire_stress_charger", SapphireStressChargerBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 0~5 挡模型齐全：_4/_5 当前复制 _3 外观占位（后续替换文件即可独立成 4/5 级外观）
+			ExistingModelFile[] models = new ExistingModelFile[6];
+			for (int i = 0; i < 6; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/sapphire_stress_charger/sapphire_stress_charger_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				// 与翡翠充能器同款旋转映射：UP 原样、DOWN 180、水平绕 X 躺下再绕 Y 转向
+				int xRot = dir == Direction.UP ? 0
+					: dir == Direction.DOWN ? 180
+						: dir.getAxis()
+							.isHorizontal() ? 270 : 0;
+				int yRot = dir.getAxis()
+					.isHorizontal() ? (int) dir.toYRot() : 0;
+				// MODE 0~5 全覆盖：每个挡位指向各自模型（_4/_5 现为 _3 外观占位，文件独立可后续替换）
+				for (int mode = 0; mode <= 5; mode++) {
+					vb.partialState()
+						.with(DirectionalKineticBlock.FACING, dir)
+						.with(SapphireStressChargerBlock.MODE, mode)
 						.modelForState()
 						.modelFile(models[mode])
 						.rotationX(xRot)
@@ -418,14 +478,116 @@ public final class AllBlocks {
 				}
 			}
 		})
-		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
+		.onRegister(block -> {
+			BlockStressValues.IMPACTS.register(block, () -> 4.0);
+			// Create 动态结构适配：蓝宝石充能器随结构自行工作（同翡翠）
+			MovementBehaviour.REGISTRY.register(block, new ChargerMovementBehaviour());
+		})
 		.item()
-		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("jade_create_charger"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/jade_create_charger/jade_create_charger_item")))
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("sapphire_stress_charger"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/sapphire_stress_charger/sapphire_stress_charger_item")))
 		.build()
 		.register();
 
-	/** 能量调级器：六向应力机器（齿轮轴沿 FACING），承接翡翠应力充能器能量波调级。 */
+	/** 能量场控制器（Energy Field Controller）：六向应力机器，应力输入 → 场强档位（配对/极性/机壳扩展规则见 BE 注释）。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<EnergyFieldControllerBlock> ENERGY_FIELD_CONTROLLER = CreateOreExpansion.REGISTRATE
+		.block("energy_field_controller", EnergyFieldControllerBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 模型默认"口"（接收面板）在 +Y 顶面、轴在底面（与充能器同构）：
+			// UP 原样、DOWN 180、水平先绕 X 躺下（+Y→+Z）再绕 Y 转向 facing
+			// OPEN=false 用 close 模型、OPEN=true 用 open 变体（口面贴 energy_field_controller_receiver_open）
+			ExistingModelFile closed = prov.models()
+				.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+					"block/energy_field_controller/sapphire_field_controller"));
+			ExistingModelFile open = prov.models()
+				.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+					"block/energy_field_controller/sapphire_field_controller_open"));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				int xRot = dir == Direction.UP ? 0
+					: dir == Direction.DOWN ? 180
+						: dir.getAxis()
+							.isHorizontal() ? 270 : 0;
+				int yRot = dir.getAxis()
+					.isHorizontal() ? (int) dir.toYRot() : 0;
+				for (boolean isOpen : new boolean[] { false, true }) {
+					vb.partialState()
+						.with(DirectionalKineticBlock.FACING, dir)
+						.with(EnergyFieldControllerBlock.OPEN, isOpen)
+						.modelForState()
+						.modelFile(isOpen ? open : closed)
+						.rotationX(xRot)
+						.rotationY(yRot)
+						.addModel();
+				}
+			}
+		})
+		.onRegister(block -> {
+			BlockStressValues.IMPACTS.register(block, () -> 4.0);
+		})
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_field_controller"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_field_controller/sapphire_field_controller_item")))
+		.build()
+		.register();
+
+	/** 蓝宝石能量调级器：蓝宝石科技线专属（64 RPM 起调制、最大可把波提升至 5 级欧米伽）。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<SapphireWaveRegulatorBlock> SAPPHIRE_WAVE_REGULATOR = CreateOreExpansion.REGISTRATE
+		.block("sapphire_wave_regulator", SapphireWaveRegulatorBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 与翡翠调级器同款：机座模型按顶/底面板 open/close 选 4 变体，六向 FACING 旋转
+			ExistingModelFile[] models = new ExistingModelFile[4];
+			for (int i = 0; i < 4; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/energy_wave_machine/sapphire_wave_regulator_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				int xRot = dir == Direction.UP ? 0
+					: dir == Direction.DOWN ? 180
+						: dir.getAxis()
+							.isHorizontal() ? 270 : 0;
+				int yRot = dir.getAxis()
+					.isHorizontal() ? (int) dir.toYRot() : 0;
+				for (int top = 0; top < 2; top++) {
+					for (int bottom = 0; bottom < 2; bottom++) {
+						vb.partialState()
+							.with(DirectionalKineticBlock.FACING, dir)
+							.with(SapphireWaveRegulatorBlock.RECEIVER_TOP, top == 1)
+							.with(SapphireWaveRegulatorBlock.RECEIVER_BOTTOM, bottom == 1)
+							.modelForState()
+							.modelFile(models[top * 2 + bottom])
+							.rotationX(xRot)
+							.rotationY(yRot)
+							.addModel();
+					}
+				}
+			}
+		})
+		// 蓝宝石能量调级器：应力消耗固定为 8x RPM（同翡翠调级器；不随波级变化）
+		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 8.0))
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("sapphire_wave_regulator"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/sapphire_wave_regulator_item")))
+		.build()
+		.register();
+
+	/** 能量调级器：六向应力机器（齿轮轴沿 FACING），承接翡翠应力充能器能量波调级。
+	 * 与蓝宝石调级器共享 {@code AbstractWaveGateBlock} 基类（机型差异：转速门槛/最大升等级）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
 	public static final BlockEntry<EnergyWaveRegulatorBlock> ENERGY_WAVE_REGULATOR = CreateOreExpansion.REGISTRATE
 		.block("energy_wave_regulator", EnergyWaveRegulatorBlock::new)
@@ -443,7 +605,7 @@ public final class AllBlocks {
 			for (int i = 0; i < 4; i++)
 				models[i] = prov.models()
 					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-						"block/energy_wave_machine/energy_wave_regulator_" + i));
+						"block/energy_wave_machine/jade_energy_wave_regulator_" + i));
 			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
 			for (Direction dir : Direction.values()) {
 				int xRot = dir == Direction.UP ? 0
@@ -467,10 +629,11 @@ public final class AllBlocks {
 				}
 			}
 		})
-		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
+		// 能量调级器：应力消耗固定为 8x RPM（不随波级变化；速度调节器仍为 4x）
+		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 8.0))
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_wave_regulator"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/energy_wave_regulator_item")))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/jade_energy_wave_regulator_item")))
 		.build()
 		.register();
 
@@ -491,7 +654,7 @@ public final class AllBlocks {
 			for (int i = 0; i < 4; i++)
 				models[i] = prov.models()
 					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-						"block/energy_wave_machine/wave_speed_regulator_" + i));
+						"block/energy_wave_machine/jade_wave_speed_regulator_" + i));
 			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
 			for (Direction dir : Direction.values()) {
 				int xRot = dir == Direction.UP ? 0
@@ -518,7 +681,54 @@ public final class AllBlocks {
 		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("wave_speed_regulator"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/wave_speed_regulator_item")))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/jade_wave_speed_regulator_item")))
+		.build()
+		.register();
+
+	/** 蓝宝石波速调节器：蓝宝石科技线专属（64 RPM 起调制、64~256 RPM 分 6 档 ±0.5~3 格/秒）。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<SapphireSpeedRegulatorBlock> SAPPHIRE_SPEED_REGULATOR = CreateOreExpansion.REGISTRATE
+		.block("sapphire_speed_regulator", SapphireSpeedRegulatorBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 与翡翠波速调节器同款：机座模型按顶/底面板 open/close 选 4 变体，六向 FACING 旋转
+			ExistingModelFile[] models = new ExistingModelFile[4];
+			for (int i = 0; i < 4; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/energy_wave_machine/sapphire_speed_regulator_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				int xRot = dir == Direction.UP ? 0
+					: dir == Direction.DOWN ? 180
+						: dir.getAxis()
+							.isHorizontal() ? 270 : 0;
+				int yRot = dir.getAxis()
+					.isHorizontal() ? (int) dir.toYRot() : 0;
+				for (int top = 0; top < 2; top++) {
+					for (int bottom = 0; bottom < 2; bottom++) {
+						vb.partialState()
+							.with(DirectionalKineticBlock.FACING, dir)
+							.with(SapphireSpeedRegulatorBlock.RECEIVER_TOP, top == 1)
+							.with(SapphireSpeedRegulatorBlock.RECEIVER_BOTTOM, bottom == 1)
+							.modelForState()
+							.modelFile(models[top * 2 + bottom])
+							.rotationX(xRot)
+							.rotationY(yRot)
+							.addModel();
+					}
+				}
+			}
+		})
+		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("sapphire_speed_regulator"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/sapphire_speed_regulator_item")))
 		.build()
 		.register();
 
@@ -542,7 +752,7 @@ public final class AllBlocks {
 			for (int i = 0; i < 16; i++)
 				models[i] = prov.models()
 					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-						"block/energy_wave_machine/energy_wave_disperser_" + i));
+						"block/energy_wave_machine/jade_energy_wave_disperser_" + i));
 			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
 			for (Direction dir : Direction.values()) {
 				int xRot = dir == Direction.UP ? 0
@@ -572,9 +782,10 @@ public final class AllBlocks {
 				}
 			}
 		})
+		.onRegister(MovingInteractionBehaviour.interactionBehaviour(DisperserMovingInteraction.instance()))
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_wave_disperser"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/energy_wave_disperser_item")))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/jade_energy_wave_disperser_item")))
 		.build()
 		.register();
 
@@ -596,7 +807,7 @@ public final class AllBlocks {
 			for (int i = 0; i < 64; i++)
 				models[i] = prov.models()
 					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-						"block/energy_wave_machine/six_face_disperser_" + i));
+						"block/energy_wave_machine/jade_six_face_disperser_" + i));
 			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
 			for (int u = 0; u < 2; u++) {
 				for (int d = 0; d < 2; d++) {
@@ -621,44 +832,77 @@ public final class AllBlocks {
 				}
 			}
 		})
+		.onRegister(MovingInteractionBehaviour.interactionBehaviour(DisperserMovingInteraction.instance()))
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("six_face_disperser"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/six_face_disperser")))
+			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/jade_six_face_disperser")))
 		.build()
 		.register();
 
-	/** 能量感应灯：被能量波击中切换亮态（黄/绿/蓝，光照15 + 红石信号5/10/15），
-	 * 4 个 blockstate 变体模型按 lamp_state 切换贴图，纯方块无 BE。 */
+	/** 八面能量波差器：无朝向固定机器，8 个接收方向（4 正交面 + 4 斜向）独立开关；
+	 * 开口数规则：1=反弹、2=通道、3~4=分裂降 1、5~6=降 2、7~8=降 3。
+	 * 模型/贴图 = octa_energy_wave_differencer（sapphire 系）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<EnergySensingLampBlock> ENERGY_SENSING_LAMP = CreateOreExpansion.REGISTRATE
-		.block("energy_sensing_lamp", EnergySensingLampBlock::new)
+	public static final BlockEntry<OctaEnergyWaveDifferencerBlock> OCTA_ENERGY_WAVE_DIFFERENCER = CreateOreExpansion.REGISTRATE
+		.block("octa_energy_wave_differencer", OctaEnergyWaveDifferencerBlock::new)
 		.initialProperties(SharedProperties::stone)
-		.properties(p -> p.mapColor(MapColor.COLOR_YELLOW))
+		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
 		.properties(p -> p.noOcclusion())
 		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
 		.addLayer(() -> () -> RenderType.cutoutMipped())
 		.transform(TagGen.axeOrPickaxe())
 		.blockstate((ctx, prov) -> {
-			// 4 个变体模型（0=灭、1=黄、2=绿、3=蓝），按 lamp_state 切换
-			ExistingModelFile[] models = new ExistingModelFile[4];
-			for (int i = 0; i < 4; i++)
+			// 8 面 open 组合 → 256 变体模型（薄 parent 覆盖：base 定义 8 个方向纹理键，
+			// 变体只覆盖 open 方向为 open 贴图）。变体索引位序见 gen_octa_variants.js：
+			// bit0=n, bit1=e, bit2=s, bit3=w, bit4=ne, bit5=nw, bit6=se, bit7=sw。
+			// 注意：紫黑根因曾是灯 PartialModel 未注册（已修），变体模型本身有效。
+			ExistingModelFile[] models = new ExistingModelFile[256];
+			for (int i = 0; i < 256; i++)
 				models[i] = prov.models()
 					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-						"block/energy_wave_machine/energy_sensing_lamp_" + i));
+						"block/octa_energy_wave_differencer/octa_energy_wave_differencer_" + i));
 			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
-			for (int s = 0; s < 4; s++) {
-				vb.partialState()
-					.with(EnergySensingLampBlock.LAMP_STATE, s)
-					.modelForState()
-					.modelFile(models[s])
-					.addModel();
+			for (Direction.Axis axis : new Direction.Axis[] { Direction.Axis.Y, Direction.Axis.X, Direction.Axis.Z }) {
+				// 姿态旋转（待目测校准）：axis=Y 原样；axis=X 应让顶/底朝东西(点东西向墙)，
+				// axis=Z 应让顶/底朝南北(点南北向墙)。先给组合 x90+y90 / x90，若方向反只调 y 的 90/270。
+				int xRot = axis == Direction.Axis.Y ? 0 : 90;
+				int yRot = axis == Direction.Axis.X ? 90 : 0;
+				for (int n = 0; n < 2; n++)
+					for (int e = 0; e < 2; e++)
+						for (int s = 0; s < 2; s++)
+							for (int w = 0; w < 2; w++)
+								for (int ne = 0; ne < 2; ne++)
+									for (int nw = 0; nw < 2; nw++)
+										for (int se = 0; se < 2; se++)
+											for (int sw = 0; sw < 2; sw++)
+												vb.partialState()
+													.with(OctaEnergyWaveDifferencerBlock.AXIS, axis)
+													.with(OctaEnergyWaveDifferencerBlock.NORTH, n == 1)
+													.with(OctaEnergyWaveDifferencerBlock.EAST, e == 1)
+													.with(OctaEnergyWaveDifferencerBlock.SOUTH, s == 1)
+													.with(OctaEnergyWaveDifferencerBlock.WEST, w == 1)
+													.with(OctaEnergyWaveDifferencerBlock.NORTH_EAST, ne == 1)
+													.with(OctaEnergyWaveDifferencerBlock.NORTH_WEST, nw == 1)
+													.with(OctaEnergyWaveDifferencerBlock.SOUTH_EAST, se == 1)
+													.with(OctaEnergyWaveDifferencerBlock.SOUTH_WEST, sw == 1)
+													.modelForState()
+													.modelFile(models[n * 1 + e * 2 + s * 4 + w * 8 + ne * 16 + nw * 32 + se * 64 + sw * 128])
+													.rotationX(xRot)
+													.rotationY(yRot)
+													.addModel();
 			}
 		})
+		// 航空学/contraption 兼容：结构装配后可右键开合（与四面/六面差波器同款交互，
+		// 本机支持命中细分：中心 6px/两侧 5px/顶底 8 扇区，见 DisperserMovingInteraction）
+		.onRegister(MovingInteractionBehaviour.interactionBehaviour(DisperserMovingInteraction.instance()))
 		.item()
-		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_sensing_lamp"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/energy_sensing_lamp_0")))
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("octa_energy_wave_differencer"))
+			.parent(new UncheckedModelFile("createoreexpansion:block/octa_energy_wave_differencer/octa_energy_wave_differencer")))
 		.build()
 		.register();
+
+	// ===== 能量感应灯（EnergySensingLamp）：暂时下架 —— 待作者重做模型后恢复注册。
+	// 贴图/模型文件保留在 resources（assets/.../energy_wave_machine/jade_energy_sensing_lamp_*.json + png）。
 
 	/** 强化避雷针：继承原版 LightningRodBlock（全部原版行为保留），叠加伽马能量波充能；
 	 * 加入原版 lightning_rods tag（三叉戟引雷、铁砧工艺等交互正常作用）。 */
@@ -700,6 +944,13 @@ public final class AllBlocks {
 			.parent(new UncheckedModelFile("createoreexpansion:block/reinforced_lightning_rod/reinforced_lightning_rod")))
 		.build()
 		.register();
+
+
+	public static final BlockEntry<CasingBlock> SAPPHIRE_CASING = CreateOreExpansion.REGISTRATE
+		.block("sapphire_casing", CasingBlock::new)
+			.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE))
+			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.SAPPHIRE_CASING))
+			.register();
 
 	// ========== 可生长水晶（翡翠/黄玉/蓝宝石/星辉石）——继承原版紫水晶机制，AE2 催生器可加速 ==========
 	// 每种水晶 5 个方块：小芽 → 中芽 → 大芽 → 簇（随机刻逐级生长），芽床（随机刻 + 方块实体进度双轨生芽）。

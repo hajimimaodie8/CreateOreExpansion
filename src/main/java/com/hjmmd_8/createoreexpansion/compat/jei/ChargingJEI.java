@@ -45,8 +45,9 @@ public class ChargingJEI implements IModPlugin {
 		// 全部充能等级共用一个分类：配方按卡片内等级徽章区分
 		allCategories.add(builder(ChargingRecipe.class)
 			.addAllRecipesIf(recipe -> recipe.value() instanceof ChargingRecipe)
-			.catalyst(AllBlocks.JADE_CREATE_CHARGER::get)
-			.itemIcon(AllBlocks.JADE_CREATE_CHARGER.get())
+			.catalyst(AllBlocks.JADE_STRESS_CHARGER::get)
+			.catalyst(AllBlocks.SAPPHIRE_STRESS_CHARGER::get)
+			.itemIcon(AllBlocks.JADE_STRESS_CHARGER.get())
 			.emptyBackground(177, 70)
 			.build(CreateOreExpansion.modLoc("charging"), ChargingCategory::new));
 	}

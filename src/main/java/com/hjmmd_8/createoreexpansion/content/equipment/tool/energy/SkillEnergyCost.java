@@ -55,8 +55,6 @@ public final class SkillEnergyCost {
 			double multiplier = enchant >= 5 ? 0.5 : 1.0 - 0.1 * enchant;
 			cost = Math.max(1, (int) Math.round(cost * multiplier));
 		}
-		CreateOreExpansion.LOGGER.info("[COE-ENCH] computeCost skill={} level={} base={} reduceEnchant={} cost={}",
-			AllSkills.getId(skill), level, base, enchant, cost);
 		return cost;
 	}
 

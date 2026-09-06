@@ -11,13 +11,14 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
+import net.neoforged.neoforge.items.wrapper.RecipeWrapper;
 
 /**
  * 应力充能器能量波的核心加工逻辑（独立抽取）。
@@ -139,7 +140,7 @@ public final class ChargerWaveProcessor {
 	public ChargingRecipe findRecipe(ItemStack stack) {
 		if (stack.isEmpty())
 			return null;
-		@SuppressWarnings("unchecked")
+	@SuppressWarnings("unchecked")
 		RecipeType<ChargingRecipe> type = (RecipeType<ChargingRecipe>) (RecipeType<?>) AllRecipeTypes.CHARGING.getType();
 		ChargingRecipe best = null;
 		for (RecipeHolder<ChargingRecipe> holder : level.getRecipeManager()
@@ -147,7 +148,7 @@ public final class ChargerWaveProcessor {
 			ChargingRecipe recipe = holder.value();
 			if (recipe.getLevel() > waveLevel)
 				continue; // 本波等级不够：不加工
-			if (!recipe.matches(new SingleRecipeInput(stack), level))
+			if (!recipe.matches(new RecipeWrapper(singleSlot(stack)), level))
 				continue;
 			if (best == null || recipe.getLevel() > best.getLevel())
 				best = recipe;
@@ -160,6 +161,13 @@ public final class ChargerWaveProcessor {
 		ItemEntity drop = new ItemEntity(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, stack);
 		drop.setDeltaMovement(Vec3.ZERO);
 		level.addFreshEntity(drop);
+	}
+
+	/** 把单物品包成 IItemHandler（RecipeWrapper 需要），供配方匹配用。 */
+	private static IItemHandler singleSlot(ItemStack stack) {
+		ItemStackHandler handler = new ItemStackHandler(1);
+		handler.setStackInSlot(0, stack);
+		return handler;
 	}
 
 	/** 判断方块是否是可加工的有物品槽方块（置物台/工作台等） */

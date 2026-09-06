@@ -22,12 +22,6 @@
     },
     {
       "type": "createoreexpansion:charging",
-      "level": 1,
-      "ingredients": [ { "item": "minecraft:netherrack" } ],
-      "results": [ { "id": "minecraft:netherrack" } ]
-    },
-    {
-      "type": "createoreexpansion:charging",
       "level": 2,
       "ingredients": [ { "item": "minecraft:netherrack" } ],
       "results": [ { "id": "minecraft:netherrack" } ]
@@ -35,6 +29,12 @@
     {
       "type": "createoreexpansion:charging",
       "level": 3,
+      "ingredients": [ { "item": "minecraft:netherrack" } ],
+      "results": [ { "id": "minecraft:netherrack" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 4,
       "ingredients": [ { "item": "minecraft:netherrack" } ],
       "results": [ { "id": "minecraft:netherrack" } ]
     },

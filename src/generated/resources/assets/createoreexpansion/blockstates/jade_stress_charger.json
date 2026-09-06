@@ -1,0 +1,160 @@
+{
+  "variants": {
+    "facing=down,mode=0": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_0",
+      "x": 180
+    },
+    "facing=down,mode=1": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_1",
+      "x": 180
+    },
+    "facing=down,mode=2": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_2",
+      "x": 180
+    },
+    "facing=down,mode=3": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 180
+    },
+    "facing=down,mode=4": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 180
+    },
+    "facing=down,mode=5": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 180
+    },
+    "facing=east,mode=0": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_0",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,mode=1": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_1",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,mode=2": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_2",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,mode=3": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,mode=4": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,mode=5": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 270
+    },
+    "facing=north,mode=0": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_0",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,mode=1": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_1",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,mode=2": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_2",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,mode=3": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,mode=4": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,mode=5": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,mode=0": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_0",
+      "x": 270
+    },
+    "facing=south,mode=1": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_1",
+      "x": 270
+    },
+    "facing=south,mode=2": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_2",
+      "x": 270
+    },
+    "facing=south,mode=3": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270
+    },
+    "facing=south,mode=4": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270
+    },
+    "facing=south,mode=5": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270
+    },
+    "facing=up,mode=0": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_0"
+    },
+    "facing=up,mode=1": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_1"
+    },
+    "facing=up,mode=2": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_2"
+    },
+    "facing=up,mode=3": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3"
+    },
+    "facing=up,mode=4": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3"
+    },
+    "facing=up,mode=5": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3"
+    },
+    "facing=west,mode=0": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_0",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,mode=1": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_1",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,mode=2": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_2",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,mode=3": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,mode=4": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,mode=5": {
+      "model": "createoreexpansion:block/jade_stress_charger/jade_stress_charger_3",
+      "x": 270,
+      "y": 90
+    }
+  }
+}

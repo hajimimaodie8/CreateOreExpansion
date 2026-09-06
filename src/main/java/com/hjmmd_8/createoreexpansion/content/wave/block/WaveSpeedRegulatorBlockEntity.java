@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.WaveSpeedRegulation;
+import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -28,26 +29,27 @@ public class WaveSpeedRegulatorBlockEntity extends AbstractWaveGateBlockEntity {
 	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
 		boolean added = super.addToGoggleTooltip(tooltip, isPlayerSneaking);
 
-		tooltip.add(Component.translatable("createoreexpansion.goggles.wave_speed_regulator")
-			.withStyle(ChatFormatting.GRAY));
-		added = true;
-
-		// 未接入应力/转速不足（< FAST 100 RPM）：无调制，不显示变速等级
+		// 未接入应力/转速不足（< FAST 100 RPM）：无调制（需求提示已由基类给出）
 		if (!isSpeedRequirementFulfilled())
 			return added;
 
 		// 变速等级：按当前转速分档（I/II/III/IV）
 		int tier = WaveSpeedRegulation.tierForSpeed(getSpeed());
-		Component tierText = Component.translatable("createoreexpansion.goggles.speed_regulator_tier",
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.speed_regulator_tier",
 			WaveSpeedRegulation.romanForTier(tier))
-			.withStyle(tier == 0 ? ChatFormatting.DARK_GRAY : ChatFormatting.AQUA);
-		tooltip.add(tierText);
+			.withStyle(tier == 0 ? ChatFormatting.DARK_GRAY : ChatFormatting.AQUA));
 
 		// 各档调速量（±格/秒），供参考
-		tooltip.add(Component.translatable("createoreexpansion.goggles.speed_regulator_amount",
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.speed_regulator_amount",
 			WaveSpeedRegulation.offsetForSpeed(getSpeed()))
 			.withStyle(ChatFormatting.GRAY));
 
 		return added;
+	}
+
+	/** 护目镜标题（基类主干输出）：波速调节器。 */
+	@Override
+	protected Component getGoggleTitle() {
+		return Component.translatable("createoreexpansion.goggles.wave_speed_regulator");
 	}
 }

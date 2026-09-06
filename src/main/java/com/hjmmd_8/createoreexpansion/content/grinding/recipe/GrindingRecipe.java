@@ -14,12 +14,12 @@ import com.simibubi.create.content.processing.sequenced.IAssemblyRecipe;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
 
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.items.wrapper.RecipeWrapper;
 
 /**
  * 角磨配方：动力角磨床加工（物品在角磨轮上缓慢移动并处理）。
@@ -28,14 +28,14 @@ import net.neoforged.api.distmarker.OnlyIn;
  * <p>实现 {@link IAssemblyRecipe}：角磨步骤可加入序列加工配方
  * （Create 6.0 序列步骤 = 任意实现 IAssemblyRecipe 的 ProcessingRecipe）。</p>
  */
-public class GrindingRecipe extends StandardProcessingRecipe<SingleRecipeInput> implements IAssemblyRecipe {
+public class GrindingRecipe extends StandardProcessingRecipe<RecipeWrapper> implements IAssemblyRecipe {
 
 	public GrindingRecipe(ProcessingRecipeParams params) {
 		super(AllRecipeTypes.GRINDING, params);
 	}
 
 	@Override
-	public boolean matches(SingleRecipeInput inv, Level level) {
+	public boolean matches(RecipeWrapper inv, Level level) {
 		if (inv.isEmpty())
 			return false;
 		return ingredients.get(0)

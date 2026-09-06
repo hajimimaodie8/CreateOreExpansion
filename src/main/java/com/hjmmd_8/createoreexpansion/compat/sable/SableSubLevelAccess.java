@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.compat.sable;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge.Hit;
 
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
@@ -29,9 +28,6 @@ import java.util.List;
  */
 final class SableSubLevelAccess {
 
-	/** 调试：query 探测日志节流（毫秒） */
-	private static long lastProbeLog = 0;
-
 	private SableSubLevelAccess() {
 	}
 
@@ -54,14 +50,6 @@ final class SableSubLevelAccess {
 		if (!(worldLevel instanceof ServerLevel serverLevel))
 			return null;
 		List<ServerSubLevel> subs = allSubLevels(serverLevel);
-		long now = System.currentTimeMillis();
-		boolean logProbe = now - lastProbeLog > 5000;
-		if (logProbe && !subs.isEmpty()) {
-			lastProbeLog = now;
-			CreateOreExpansion.LOGGER.info("[Sable] query 探测：主世界 {} 有 {} 个 sub-level，波世界坐标 {}",
-				serverLevel.dimension()
-					.location(), subs.size(), worldPos);
-		}
 		for (ServerSubLevel sub : subs) {
 			if (sub.isRemoved())
 				continue;
@@ -76,11 +64,6 @@ final class SableSubLevelAccess {
 				BlockState st = sub.getPlot()
 					.getEmbeddedLevelAccessor()
 					.getBlockState(p.subtract(SablePose.centerOf(sub)));
-				if (logProbe) {
-					CreateOreExpansion.LOGGER.info("[Sable]   sub {}：波本地 {}（偏移 {}）→ 方块 {} = {}",
-						sub.getUniqueId(), local, p.subtract(SablePose.centerOf(sub)), p, st.getBlock()
-							.getDescriptionId());
-				}
 				if (!st.isAir()) {
 					anySolid = true;
 					break;
@@ -111,30 +94,8 @@ final class SableSubLevelAccess {
 					continue;
 				if (sub.getPlot() != null && sub.getPlot()
 					.contains(Vec3.atCenterOf(be.getBlockPos()))) {
-					CreateOreExpansion.LOGGER.info("[Sable] ofBlockEntity：BE@{} 落在 plot 内 → 匹配 sub {}",
-						be.getBlockPos(), sub.getUniqueId());
 					return new Hit(sub);
 				}
-			}
-		}
-		// 调试：未匹配（发射退化为主世界逻辑）——打印 BE 坐标与第一个 sub 的 plot 范围，便于定位
-		for (ServerLevel serverLevel : server.getAllLevels()) {
-			List<ServerSubLevel> subs = allSubLevels(serverLevel);
-			if (!subs.isEmpty()) {
-				ServerSubLevel sub = subs.get(0);
-				CreateOreExpansion.LOGGER.warn("[Sable] ofBlockEntity 未匹配：BE@{} plot范围 chunk[{},{}]-[{},{}] 中心={}",
-					be.getBlockPos(),
-					sub.getPlot()
-						.getChunkMin().x,
-					sub.getPlot()
-						.getChunkMin().z,
-					sub.getPlot()
-						.getChunkMax().x,
-					sub.getPlot()
-						.getChunkMax().z,
-					sub.getPlot()
-						.getCenterBlock());
-				break;
 			}
 		}
 		return null;

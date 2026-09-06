@@ -29,8 +29,11 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  */
 public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock {
 
-	/** 模式：0=未接入应力（展示），1/2/3=蓄力阶段（低/高/伽马） */
-	public static final IntegerProperty MODE = IntegerProperty.create("mode", 0, 3);
+	/**
+	 * 模式/蓄力阶段：0=未接入应力（展示），1/2/3=蓄力阶段（低/高/伽马），
+	 * 4=伊普西龙 / 5=欧米伽（仅蓝宝石充能器会写入；翡翠机器只使用 0~3，行为不变）。
+	 */
+	public static final IntegerProperty MODE = IntegerProperty.create("mode", 0, 5);
 
 	/** 非全方块形状（x/z 内缩 0.5px，仿 Create 机器）。
 	 * <p>碰撞形状若是全方块，AO 遮蔽判定（isCollisionShapeFullBlock）会把本方块当遮蔽物，
@@ -55,12 +58,14 @@ public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock
 
 	@Override
 	public BlockState getStateForPlacement(BlockPlaceContext context) {
-		// 仿创造马达：优先对准相邻传动轴方向放置
+		// 自动对轴（仿 Create DirectionalKineticBlock）：getPreferredFacing 返回相邻传动轴
+		// 所在侧 preferred；本机传动轴口在 FACING 反面（hasShaftTowards 只认 FACING 反面），
+		// 故 FACING 取 preferred 的反方向，让轴口自动扣住相邻传动轴、发射头朝外。
 		Direction preferred = getPreferredFacing(context);
 		if ((context.getPlayer() != null && context.getPlayer()
 			.isShiftKeyDown()) || preferred == null)
 			return super.getStateForPlacement(context);
-		return defaultBlockState().setValue(FACING, preferred);
+		return defaultBlockState().setValue(FACING, preferred.getOpposite());
 	}
 
 	@Override
@@ -74,6 +79,15 @@ public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock
 		// 传动轴从 FACING 对面（底端）接入，与发射头（FACING 方向）同一轴线的另一端
 		return face == state.getValue(FACING)
 			.getOpposite();
+	}
+
+	/**
+	 * 隐藏 Create 默认静态应力行：充能器用自定义行（三实心方块 + 区间提示，
+	 * 见 client.ChargerKineticTooltip），避免默认静态 "4x RPM" 重复。
+	 */
+	@Override
+	public boolean hideStressImpact() {
+		return true;
 	}
 
 	// ========== 光照规则（仿 Create 机器：动力锯/冲压机等不挡光） ==========

@@ -22,19 +22,19 @@
     },
     {
       "type": "createoreexpansion:charging",
-      "level": 1,
-      "ingredients": [ { "item": "minecraft:end_stone" } ],
-      "results": [ { "id": "minecraft:end_stone" } ]
-    },
-    {
-      "type": "createoreexpansion:charging",
-      "level": 2,
-      "ingredients": [ { "item": "minecraft:end_stone" } ],
-      "results": [ { "id": "minecraft:end_stone" } ]
-    },
-    {
-      "type": "createoreexpansion:charging",
       "level": 3,
+      "ingredients": [ { "item": "minecraft:end_stone" } ],
+      "results": [ { "id": "minecraft:end_stone" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 4,
+      "ingredients": [ { "item": "minecraft:end_stone" } ],
+      "results": [ { "id": "minecraft:end_stone" } ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "level": 5,
       "ingredients": [ { "item": "minecraft:end_stone" } ],
       "results": [ { "id": "minecraft:end_stone" } ]
     },

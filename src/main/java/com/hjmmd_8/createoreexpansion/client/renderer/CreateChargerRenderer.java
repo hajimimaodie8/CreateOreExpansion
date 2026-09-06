@@ -37,16 +37,20 @@ public class CreateChargerRenderer extends KineticBlockEntityRenderer<AbstractCr
 		standardKineticRotationTransform(shaft, be, light)
 			.renderInto(ms, buffer.getBuffer(RenderType.cutoutMipped()));
 
-		// 发射头（shutter）：模型顶面（+Y）朝 FACING——与传动轴同一轴线。
+		// 发射头（shutter）+ 发射口（emission slot，shutter 模型内含）：模型顶面（+Y）朝 FACING——与传动轴同一轴线。
 		// partialFacingVertical = rotateY(horizontal) + rotateX(vertical+90)，Create 专门用于顶面朝向部件
-		// 蓄力动画：沿 FACING 平移（收缩为负、弹出为正）
+		// 机型化：蓝宝石充能器用蓝宝石发射头/发射口材质（sapphire_shutter + sapphire_emission_slot），
+		// 翡翠充能器用 jade 版——勿再统一写死翡翠 partial（曾致蓝宝石发射头贴图错误）
 		float offset = be.getShutterOffset(partialTicks);
 		ms.pushPose();
 		if (offset != 0) {
 			ms.translate(facing.getNormal().getX() * offset, facing.getNormal().getY() * offset,
 				facing.getNormal().getZ() * offset);
 		}
-		SuperByteBuffer shutter = CachedBuffers.partialFacingVertical(AllPartialModels.CHARGER_SHUTTER, state, facing)
+		boolean sapphire = state.getBlock() instanceof com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlock;
+		dev.engine_room.flywheel.lib.model.baked.PartialModel shutterModel = sapphire
+			? AllPartialModels.SAPPHIRE_CHARGER_SHUTTER : AllPartialModels.CHARGER_SHUTTER;
+		SuperByteBuffer shutter = CachedBuffers.partialFacingVertical(shutterModel, state, facing)
 			.light(light);
 		shutter.renderInto(ms, buffer.getBuffer(RenderType.cutoutMipped()));
 		ms.popPose();

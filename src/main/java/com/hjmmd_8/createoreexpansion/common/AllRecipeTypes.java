@@ -22,6 +22,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
@@ -40,7 +41,7 @@ public enum AllRecipeTypes implements IRecipeTypeInfo, StringRepresentable {
 	LIGHTNING_BLOCK(LightningBlockRecipe::new),
 	GRINDING(GrindingRecipe::new),
 	DISMANTLING(() -> new DismantlingRecipe.Serializer()),
-	CHARGING(ChargingRecipe.Serializer::new);
+	CHARGING(() -> new ChargingRecipe.Serializer<>(ChargingRecipe::new));
 
 	public static final Predicate<RecipeHolder<?>> CAN_BE_AUTOMATED = r -> !r.id()
 		.getPath()
@@ -99,6 +100,13 @@ public enum AllRecipeTypes implements IRecipeTypeInfo, StringRepresentable {
 	public <I extends RecipeInput, R extends Recipe<I>> Optional<RecipeHolder<R>> find(I inv, Level world) {
 		return world.getRecipeManager()
 			.getRecipeFor(getType(), inv, world);
+	}
+
+	/** 单物品 → RecipeWrapper（配方匹配统一走机械动力的 RecipeWrapper）。 */
+	public static net.neoforged.neoforge.items.wrapper.RecipeWrapper wrap(ItemStack stack) {
+		net.neoforged.neoforge.items.ItemStackHandler handler = new net.neoforged.neoforge.items.ItemStackHandler(1);
+		handler.setStackInSlot(0, stack);
+		return new net.neoforged.neoforge.items.wrapper.RecipeWrapper(handler);
 	}
 
 	@Override
