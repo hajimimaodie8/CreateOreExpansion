@@ -52,6 +52,16 @@ public abstract class AbstractWaveGateBlockEntity extends SimpleKineticBlockEnti
 	}
 
 	/**
+	 * 能量调级器<b>单次提升级数</b>：翡翠/蓝宝石恒为 1（每次顺基准穿过 +1 级）。
+	 * 星辉石机型覆写为按本机转速返回 1 或 2（32~128 RPM → +1、129~256 RPM → +2）。
+	 * <p>由 {@code WaveMachineActions} 在授予延迟升级时读取并写入波实体
+	 * （{@code boostStep}），翡翠/蓝宝石继承默认 1，行为不变。</p>
+	 */
+	public int getBoostStepForSpeed() {
+		return 1;
+	}
+
+	/**
 	 * 该机型<b>可承载/允许输出</b>的最高波等级（1~5）：
 	 * 翡翠线 = 3（伽马），蓝宝石线 = 5（欧米伽）。
 	 * <p>翡翠调级器/波速调节器遇到 4/5 级波（蓝宝石专属）时，只有把波降级到本上限内的

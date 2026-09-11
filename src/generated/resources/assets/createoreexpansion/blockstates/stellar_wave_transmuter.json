@@ -1,0 +1,420 @@
+{
+  "variants": {
+    "facing=down,open_east=false,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_0",
+      "x": 180
+    },
+    "facing=down,open_east=false,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_2",
+      "x": 180
+    },
+    "facing=down,open_east=false,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_4",
+      "x": 180
+    },
+    "facing=down,open_east=false,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_6",
+      "x": 180
+    },
+    "facing=down,open_east=false,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_8",
+      "x": 180
+    },
+    "facing=down,open_east=false,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_10",
+      "x": 180
+    },
+    "facing=down,open_east=false,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_12",
+      "x": 180
+    },
+    "facing=down,open_east=false,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_14",
+      "x": 180
+    },
+    "facing=down,open_east=true,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_1",
+      "x": 180
+    },
+    "facing=down,open_east=true,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_3",
+      "x": 180
+    },
+    "facing=down,open_east=true,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_5",
+      "x": 180
+    },
+    "facing=down,open_east=true,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_7",
+      "x": 180
+    },
+    "facing=down,open_east=true,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_9",
+      "x": 180
+    },
+    "facing=down,open_east=true,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_11",
+      "x": 180
+    },
+    "facing=down,open_east=true,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_13",
+      "x": 180
+    },
+    "facing=down,open_east=true,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_15",
+      "x": 180
+    },
+    "facing=east,open_east=false,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_0",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=false,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_2",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=false,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_4",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=false,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_6",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=false,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_8",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=false,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_10",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=false,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_12",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=false,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_14",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=true,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_1",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=true,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_3",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=true,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_5",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=true,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_7",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=true,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_9",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=true,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_11",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=true,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_13",
+      "x": 270,
+      "y": 270
+    },
+    "facing=east,open_east=true,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_15",
+      "x": 270,
+      "y": 270
+    },
+    "facing=north,open_east=false,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_0",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=false,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_2",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=false,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_4",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=false,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_6",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=false,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_8",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=false,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_10",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=false,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_12",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=false,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_14",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=true,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_1",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=true,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_3",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=true,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_5",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=true,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_7",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=true,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_9",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=true,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_11",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=true,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_13",
+      "x": 270,
+      "y": 180
+    },
+    "facing=north,open_east=true,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_15",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,open_east=false,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_0",
+      "x": 270
+    },
+    "facing=south,open_east=false,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_2",
+      "x": 270
+    },
+    "facing=south,open_east=false,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_4",
+      "x": 270
+    },
+    "facing=south,open_east=false,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_6",
+      "x": 270
+    },
+    "facing=south,open_east=false,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_8",
+      "x": 270
+    },
+    "facing=south,open_east=false,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_10",
+      "x": 270
+    },
+    "facing=south,open_east=false,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_12",
+      "x": 270
+    },
+    "facing=south,open_east=false,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_14",
+      "x": 270
+    },
+    "facing=south,open_east=true,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_1",
+      "x": 270
+    },
+    "facing=south,open_east=true,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_3",
+      "x": 270
+    },
+    "facing=south,open_east=true,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_5",
+      "x": 270
+    },
+    "facing=south,open_east=true,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_7",
+      "x": 270
+    },
+    "facing=south,open_east=true,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_9",
+      "x": 270
+    },
+    "facing=south,open_east=true,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_11",
+      "x": 270
+    },
+    "facing=south,open_east=true,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_13",
+      "x": 270
+    },
+    "facing=south,open_east=true,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_15",
+      "x": 270
+    },
+    "facing=up,open_east=false,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_0"
+    },
+    "facing=up,open_east=false,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_2"
+    },
+    "facing=up,open_east=false,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_4"
+    },
+    "facing=up,open_east=false,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_6"
+    },
+    "facing=up,open_east=false,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_8"
+    },
+    "facing=up,open_east=false,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_10"
+    },
+    "facing=up,open_east=false,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_12"
+    },
+    "facing=up,open_east=false,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_14"
+    },
+    "facing=up,open_east=true,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_1"
+    },
+    "facing=up,open_east=true,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_3"
+    },
+    "facing=up,open_east=true,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_5"
+    },
+    "facing=up,open_east=true,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_7"
+    },
+    "facing=up,open_east=true,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_9"
+    },
+    "facing=up,open_east=true,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_11"
+    },
+    "facing=up,open_east=true,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_13"
+    },
+    "facing=up,open_east=true,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_15"
+    },
+    "facing=west,open_east=false,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_0",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=false,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_2",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=false,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_4",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=false,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_6",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=false,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_8",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=false,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_10",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=false,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_12",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=false,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_14",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=true,open_north=false,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_1",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=true,open_north=false,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_3",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=true,open_north=false,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_5",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=true,open_north=false,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_7",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=true,open_north=true,open_south=false,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_9",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=true,open_north=true,open_south=false,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_11",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=true,open_north=true,open_south=true,open_west=false": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_13",
+      "x": 270,
+      "y": 90
+    },
+    "facing=west,open_east=true,open_north=true,open_south=true,open_west=true": {
+      "model": "createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_15",
+      "x": 270,
+      "y": 90
+    }
+  }
+}

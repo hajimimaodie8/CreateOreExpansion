@@ -18,6 +18,7 @@ import com.hjmmd_8.createoreexpansion.compat.jei.category.base.CreateRecipeCateg
 import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningBlockCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.ProcessingViaFanCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.category.StellarWaveTransmuterCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.TransmutingCategory;
 
 import mezz.jei.api.IModPlugin;
@@ -44,8 +45,12 @@ public class CreateOreExpansionJEI implements IModPlugin {
 
 	private final List<CreateRecipeCategory<?>> allCategories = new ArrayList<>();
 
+	/** 无真实配方的"工作原理"说明分类（目前：星辉波变器流程卡）。 */
+	private final List<StellarWaveTransmuterCategory> flowCategories = new ArrayList<>();
+
 	private void loadCategories() {
 		allCategories.clear();
+		flowCategories.clear();
 
 		builder(AllTransmutingRecipe.class)
 			.addTypedRecipes(AllRecipeTypes.TRANSMUTING)
@@ -58,17 +63,22 @@ public class CreateOreExpansionJEI implements IModPlugin {
 
 		builder(LightningRecipe.class)
 			.addTypedRecipes(AllRecipeTypes.LIGHTNING)
-			.catalyst(() -> Blocks.LIGHTNING_ROD)
-			.itemIcon(Blocks.LIGHTNING_ROD)
+			.catalyst(() -> net.minecraft.world.level.block.Blocks.LIGHTNING_ROD)
+			.catalyst(() -> com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.get())
+			.itemIcon(com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.get())
 			.emptyBackground(178, 72)
 			.build("lightning", LightningCategory::new);
 
 		builder(LightningBlockRecipe.class)
 			.addTypedRecipes(AllRecipeTypes.LIGHTNING_BLOCK)
-			.catalyst(() -> Blocks.LIGHTNING_ROD)
-			.itemIcon(Blocks.LIGHTNING_ROD)
+			.catalyst(() -> net.minecraft.world.level.block.Blocks.LIGHTNING_ROD)
+			.catalyst(() -> com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.get())
+			.itemIcon(com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.get())
 			.emptyBackground(178, 72)
 			.build("lightning_block", LightningBlockCategory::new);
+
+		// 星辉波变器：无真实配方的"工作原理"说明分类（单张流程卡，无逐机器动画）
+		flowCategories.add(new StellarWaveTransmuterCategory());
 	}
 
 	private <T extends Recipe<? extends RecipeInput>> CategoryBuilder<T> builder(Class<T> recipeClass) {
@@ -85,16 +95,19 @@ public class CreateOreExpansionJEI implements IModPlugin {
 	public void registerCategories(IRecipeCategoryRegistration registration) {
 		loadCategories();
 		registration.addRecipeCategories(allCategories.toArray(IRecipeCategory[]::new));
+		registration.addRecipeCategories(flowCategories.toArray(IRecipeCategory[]::new));
 	}
 
 	@Override
 	public void registerRecipes(IRecipeRegistration registration) {
 		allCategories.forEach(c -> c.registerRecipes(registration));
+		flowCategories.forEach(c -> c.registerRecipes(registration));
 	}
 
 	@Override
 	public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
 		allCategories.forEach(c -> c.registerCatalysts(registration));
+		flowCategories.forEach(c -> c.registerCatalysts(registration));
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

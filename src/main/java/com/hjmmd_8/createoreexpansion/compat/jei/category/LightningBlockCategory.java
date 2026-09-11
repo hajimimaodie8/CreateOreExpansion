@@ -77,7 +77,7 @@ public class LightningBlockCategory extends ProcessingViaFanCategory.MultiOutput
 
 	@Override
 	protected void renderAttachedBlock(GuiGraphics graphics) {
-		GuiGameElement.of(Blocks.LIGHTNING_ROD.defaultBlockState())
+		GuiGameElement.of(com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.getDefaultState())
 			.scale(SCALE)
 			.atLocal(0, 0, 2)
 			.lighting(AnimatedKinetics.DEFAULT_LIGHTING)

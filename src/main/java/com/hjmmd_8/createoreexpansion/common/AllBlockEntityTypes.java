@@ -10,8 +10,11 @@ import com.hjmmd_8.createoreexpansion.client.renderer.wave.SixFaceDisperserRende
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.WaveGateRenderer;
 import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.block.StellarstoneStressChargerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalBuddingBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlockEntity;
+import com.hjmmd_8.createoreexpansion.client.renderer.StellarWaveTransmuterRenderer;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlockEntity;
@@ -19,6 +22,8 @@ import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBloc
 import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireSpeedRegulatorBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireWaveRegulatorBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneSpeedRegulatorBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneWaveRegulatorBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.WaveSpeedRegulatorBlockEntity;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
@@ -48,12 +53,28 @@ public final class AllBlockEntityTypes {
 			.renderer(() -> CreateChargerRenderer::new)
 			.register();
 
+	/** 星辉石应力充能器方块实体（手动发射等级 + 双模式；渲染与翡翠/蓝宝石共用 CreateChargerRenderer） */
+	public static final BlockEntityEntry<StellarstoneStressChargerBlockEntity> STELLARSTONE_STRESS_CHARGER =
+		CreateOreExpansion.REGISTRATE
+			.blockEntity("stellarstone_stress_charger", StellarstoneStressChargerBlockEntity::new)
+			.validBlocks(AllBlocks.STELLARSTONE_STRESS_CHARGER)
+			.renderer(() -> CreateChargerRenderer::new)
+			.register();
+
 	/** 能量场控制器方块实体（应力 → 场强档位；渲染：FACING 反面底部传动轴） */
 	public static final BlockEntityEntry<EnergyFieldControllerBlockEntity> ENERGY_FIELD_CONTROLLER =
 		CreateOreExpansion.REGISTRATE
 			.blockEntity("energy_field_controller", EnergyFieldControllerBlockEntity::new)
 			.validBlocks(AllBlocks.ENERGY_FIELD_CONTROLLER)
 			.renderer(() -> FieldControllerRenderer::new)
+			.register();
+
+	/** 星辉波变器方块实体（扫描加工机 → 为穿过的波附加加工属性；渲染：FACING 反面底部传动轴） */
+	public static final BlockEntityEntry<StellarWaveTransmuterBlockEntity> STELLAR_WAVE_TRANSMUTER =
+		CreateOreExpansion.REGISTRATE
+			.blockEntity("stellar_wave_transmuter", StellarWaveTransmuterBlockEntity::new)
+			.validBlocks(AllBlocks.STELLAR_WAVE_TRANSMUTER)
+			.renderer(() -> StellarWaveTransmuterRenderer::new)
 			.register();
 
 	/** 能量调级器方块实体（齿轮随应力旋转） */
@@ -83,6 +104,22 @@ public final class AllBlockEntityTypes {
 		CreateOreExpansion.REGISTRATE
 			.blockEntity("sapphire_speed_regulator", SapphireSpeedRegulatorBlockEntity::new)
 			.validBlocks(AllBlocks.SAPPHIRE_SPEED_REGULATOR)
+			.renderer(() -> WaveGateRenderer::new)
+			.register();
+
+	/** 星辉石能量调级器方块实体（渲染与蓝宝石/翡翠调级器共用 WaveGateRenderer） */
+	public static final BlockEntityEntry<StellarstoneWaveRegulatorBlockEntity> STELLARSTONE_WAVE_REGULATOR =
+		CreateOreExpansion.REGISTRATE
+			.blockEntity("stellarstone_wave_regulator", StellarstoneWaveRegulatorBlockEntity::new)
+			.validBlocks(AllBlocks.STELLARSTONE_WAVE_REGULATOR)
+			.renderer(() -> WaveGateRenderer::new)
+			.register();
+
+	/** 星辉石波速调节器方块实体（渲染与翡翠/蓝宝石波速调节器共用 WaveGateRenderer） */
+	public static final BlockEntityEntry<StellarstoneSpeedRegulatorBlockEntity> STELLARSTONE_SPEED_REGULATOR =
+		CreateOreExpansion.REGISTRATE
+			.blockEntity("stellarstone_speed_regulator", StellarstoneSpeedRegulatorBlockEntity::new)
+			.validBlocks(AllBlocks.STELLARSTONE_SPEED_REGULATOR)
 			.renderer(() -> WaveGateRenderer::new)
 			.register();
 

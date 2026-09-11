@@ -99,10 +99,11 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
     /** 粗矿序列配方：切割 → 压片 → 角磨，整个流程循环 2 遍，过渡物为粗矿本身，结果池 4 项各 25%。
      * 手写在 resources/data（不走生成器），此处不再生成 */
 
-    /** 工具充能配方：翡翠应力充能器能量波给能量工具/凝能佩充能，低/高/伽马 = 100/500/1000 点。
+    /** 工具充能配方：翡翠/蓝宝石应力充能器能量波给能量工具/凝能佩充能。
      * <p>物品来源为 {@link ChargingRecipeTools}（在 AllItems 注册处统一挂接，单一数据源）。
-     * 每个物品 × 3 个充能等级各一条配方，等级由配方 JSON 的 {@code level} 字段（1/2/3）区分，
-     * 统一放在 {@code tool_charge/} 一个文件夹下，文件名后缀 _low/_high/_gamma 仅保证 id 唯一。</p> */
+     * 每个物品 × <b>5 个充能等级</b>各一条配方（低/高/伽马/伊普西龙/欧米伽 = level 1~5），
+     * 等级由配方 JSON 的 {@code level} 字段区分，统一放在 {@code tool_charge/} 下，
+     * 文件名后缀 _low/_high/_gamma/_epsilon/_omega 仅保证 id 唯一。</p> */
     private void toolCharging(RecipeOutput output) {
         // 触发 AllItems 类加载（能量工具/凝能佩经其静态初始化注册进 ChargingRecipeTools），
         // 避免 data gen 时注册器为空导致配方生成 0 条
@@ -113,11 +114,13 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
             charging(output, item, "tool_charge/" + name + "_low", 1);
             charging(output, item, "tool_charge/" + name + "_high", 2);
             charging(output, item, "tool_charge/" + name + "_gamma", 3);
+            charging(output, item, "tool_charge/" + name + "_epsilon", 4);
+            charging(output, item, "tool_charge/" + name + "_omega", 5);
         }
     }
 
     /** 单条工具充能配方：输入单个能量物品，输出=输入工具本身（充能后仍是该工具，JEI 直观显示）。
-     * @param level 配方要求的充能等级（1=低、2=高、3=伽马） */
+     * @param level 配方要求的充能等级（1=低、2=高、3=伽马、4=伊普西龙、5=欧米伽） */
     private void charging(RecipeOutput output, ItemLike item, String name, int level) {
         new ChargingRecipe.Builder(CreateOreExpansion.modLoc(name))
             .withLevel(level)

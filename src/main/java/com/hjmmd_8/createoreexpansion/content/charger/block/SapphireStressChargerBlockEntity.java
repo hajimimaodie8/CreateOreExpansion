@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.block;
 
 import java.util.List;
 
+import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
@@ -47,8 +48,9 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 	protected ScrollOptionBehaviour<SapphireChargerMode> modeSelection;
 
 	/**
-	 * 储存模式<b>已充能层数</b>（0 ~ {@link #STORE_MAX_LAYERS}=10）：
-	 * 每次充能完成（一个发射间隔）层数 +1，<b>满 10 层后不再充能</b>（等玩家释放）。
+	 * 储存模式<b>已充能层数</b>（0 ~ {@link #getStoreMaxLayers()}，上限由配置
+	 * {@code charger.sapphireMaxLayers} 给出，默认 10）：
+	 * 每次充能完成（一个发射间隔）层数 +1，<b>满层后不再充能</b>（等玩家释放）。
 	 * 每层 = 一次可释放的能量（右键一次放一层 = 一个能量波）。
 	 */
 	private int storeLayers;
@@ -58,9 +60,6 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 
 	/** 上一 tick 红石信号（上升沿检测：false→true 触发一次释放）。 */
 	private boolean prevRedstone;
-
-	/** 层数上限：机器最多充 10 层，满后不再充能。 */
-	private static final int STORE_MAX_LAYERS = 10;
 
 	public SapphireStressChargerBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
@@ -107,19 +106,26 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 		return storingMode;
 	}
 
-	/** 已充能层数（0 ~ 10）。 */
+	/** 已充能层数（0 ~ {@link #getStoreMaxLayers()}）。 */
 	public int getStoreLayers() {
 		return storeLayers;
 	}
 
-	/** 层数上限（10）。 */
+	/**
+	 * 层数上限（配置 {@code charger.sapphireMaxLayers}，默认 10）。
+	 *
+	 * <p><b>可外部自定义</b>：数值取自公共配置 {@code createoreexpansion-common.toml}，
+	 * 与星辉石充能器分开配置；改动后（重载/重启）机器容量立即跟随，客户端护目镜读同一份配置，
+	 * 显示保持一致。配置尚未加载时用 {@link AllConfig#sapphireMaxStoreLayers} 的初值兜底。</p>
+	 */
+	@Override
 	public int getStoreMaxLayers() {
-		return STORE_MAX_LAYERS;
+		return Math.max(1, AllConfig.sapphireMaxStoreLayers);
 	}
 
-	/** 是否已满 10 层（不能再充）。 */
+	/** 是否已满（不能再充）。 */
 	public boolean isStoreFull() {
-		return storeLayers >= STORE_MAX_LAYERS;
+		return storeLayers >= getStoreMaxLayers();
 	}
 
 	/** 是否还有可释放的层（右键/红石可触发释放）。 */
@@ -155,7 +161,7 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 	@Override
 	protected void onChargeComplete() {
 		if (storingMode) {
-			if (storeLayers < STORE_MAX_LAYERS) {
+			if (storeLayers < getStoreMaxLayers()) {
 				storeLayers++;
 				storedLevel = getBlockState().getValue(AbstractCreateChargerBlock.MODE);
 				sendData();
@@ -284,10 +290,11 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 			storingMode ? "createoreexpansion.goggles.sapphire_charger_storing" : "createoreexpansion.goggles.sapphire_charger_normal")
 			.withStyle(storingMode ? ChatFormatting.BLUE : ChatFormatting.GRAY));
 		if (storingMode) {
-			// 充能层数（x/10 文字 + 能量条）：每充一次能 +1 层，满 10 不再充，右键一次放一层
-			int filled = (int) ((long) storeLayers * 10L / STORE_MAX_LAYERS);
+			// 充能层数（x/上限 文字 + 能量条）：每充一次能 +1 层，满层不再充，右键一次放一层
+			int maxLayers = getStoreMaxLayers();
+			int filled = (int) ((long) storeLayers * 10L / maxLayers);
 			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.sapphire_charger_store_layers",
-				storeLayers, STORE_MAX_LAYERS)
+				storeLayers, maxLayers)
 				.withStyle(ChatFormatting.GRAY));
 			GoggleUtil.forGoggles(tooltip,
 				(net.minecraft.network.chat.MutableComponent) BarTooltipRender.energy(filled, 10, 10, fillColor()));
@@ -317,12 +324,14 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 		storingMode = compound.getBoolean("StoringMode");
 		// 兼容旧档迁移：旧版 StoreLayers 直接沿用；旧版 StoreProgress（已删字段）折算——
 		// 每满 10 进度折 1 层；更早的 StoredCharge（满 200 视为 1 层）同样兜底。
+		// 上限按配置取（改大上限后旧档层数照读，改小则钳到新上限）。
+		int maxLayers = getStoreMaxLayers();
 		if (compound.contains("StoreLayers")) {
-			storeLayers = Mth.clamp(compound.getInt("StoreLayers"), 0, STORE_MAX_LAYERS);
+			storeLayers = Mth.clamp(compound.getInt("StoreLayers"), 0, maxLayers);
 		} else {
 			int progress = compound.getInt("StoreProgress");
 			int old = compound.getBoolean("StoringMode") && compound.getInt("StoredCharge") > 0 ? 1 : 0;
-			storeLayers = Mth.clamp(progress / 10 + old, 0, STORE_MAX_LAYERS);
+			storeLayers = Mth.clamp(progress / 10 + old, 0, maxLayers);
 		}
 		storedLevel = Mth.clamp(compound.getInt("StoredLevel"), 1, 5);
 		// 模式槽值与 storingMode 对齐（读档后 behaviour 的 NBT 已由 super 读取；

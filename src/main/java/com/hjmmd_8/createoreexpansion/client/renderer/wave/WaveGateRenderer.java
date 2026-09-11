@@ -70,11 +70,14 @@ public class WaveGateRenderer<T extends AbstractWaveGateBlockEntity>
 		if (!fulfilled)
 			return; // 转速不足：灯全灭（面板状态仍由 blockstate 贴图显示）
 
-		// 蓝宝石机型（调级器/波速机）用蓝宝石指示灯（sapphire_light），翡翠机型用 jade_light
+		// 机型指示灯：星辉石用 stellarstone_light 灯、蓝宝石用 sapphire_light 灯、翡翠用 jade_light 灯
+		boolean stellarstone = state.getBlock() instanceof com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneWaveRegulatorBlock
+			|| state.getBlock() instanceof com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneSpeedRegulatorBlock;
 		boolean sapphire = state.getBlock() instanceof com.hjmmd_8.createoreexpansion.content.wave.block.SapphireWaveRegulatorBlock
 			|| state.getBlock() instanceof com.hjmmd_8.createoreexpansion.content.wave.block.SapphireSpeedRegulatorBlock;
-		java.util.Map<String, dev.engine_room.flywheel.lib.model.baked.PartialModel> lamps = sapphire
-			? AllPartialModels.SAPPHIRE_WAVE_GATE_LAMPS : AllPartialModels.WAVE_GATE_LAMPS;
+		java.util.Map<String, dev.engine_room.flywheel.lib.model.baked.PartialModel> lamps = stellarstone
+			? AllPartialModels.STELLARSTONE_WAVE_GATE_LAMPS
+			: sapphire ? AllPartialModels.SAPPHIRE_WAVE_GATE_LAMPS : AllPartialModels.WAVE_GATE_LAMPS;
 		for (String side : new String[] { "north", "east", "south", "west" }) {
 			if (topOpen)
 				renderLamp(lamps.get(side + "_top"), state, facing, ms, buffer);

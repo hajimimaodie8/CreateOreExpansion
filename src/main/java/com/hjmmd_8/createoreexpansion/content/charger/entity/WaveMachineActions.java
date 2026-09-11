@@ -83,8 +83,10 @@ public class WaveMachineActions {
 				wave.movement = wave.movement.scale(-1);
 			}
 			case PASS_BOOST_LATER -> {
-				// 顺基准双开口：穿过，延迟升级（飞行 0.5 格 = 1/(2v) 秒后等级+1）
+				// 顺基准双开口：穿过，延迟升级（飞行 0.5 格 = 1/(2v) 秒后等级提升）。
+				// 提升级数按机型参数：翡翠/蓝宝石恒 1；星辉石按本机转速 1 或 2（波侧封顶 MAX_LEVEL=5）
 				wave.boostRemaining = BOOST_DISTANCE;
+				wave.boostStep = regulator.getBoostStepForSpeed();
 			}
 			case PASS_DOWNGRADE -> {
 				// 逆基准双开口：穿过，立即降级

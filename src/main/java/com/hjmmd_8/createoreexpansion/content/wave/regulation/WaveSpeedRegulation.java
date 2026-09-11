@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.wave.regulation;
 
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireSpeedRegulatorBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneSpeedRegulatorBlock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
@@ -100,6 +101,7 @@ public final class WaveSpeedRegulation extends AbstractWaveGateRegulation {
 	 */
 	public Result resolve(BlockState state, BlockPos pos, Vec3 wavePos, Vec3 movement, int waveLevel) {
 		int maxSupported = state.getBlock() instanceof SapphireSpeedRegulatorBlock
+				|| state.getBlock() instanceof StellarstoneSpeedRegulatorBlock
 			? com.hjmmd_8.createoreexpansion.content.wave.WaveLevels.SAPPHIRE_MAX
 			: com.hjmmd_8.createoreexpansion.content.wave.WaveLevels.JADE_MAX;
 		if (waveLevel > maxSupported)
@@ -182,7 +184,10 @@ public final class WaveSpeedRegulation extends AbstractWaveGateRegulation {
 		return Math.max(0, Math.min(tierCount - 1, (int) Math.floor(tier)));
 	}
 
-	/** 档位罗马数字（I/II/III/IV，翡翠 4 档；蓝宝石 6 档扩展至 VI），供护目镜提示显示。 */
+	/**
+	 * 档位罗马数字（I~VIII）：翡翠 4 档 I~IV、蓝宝石 6 档 I~VI、星辉石 8 档 I~VIII，
+	 * 供护目镜提示显示。仅扩展档位段，既有机型（≤6 档）结果不变。
+	 */
 	public static String romanForTier(int tier) {
 		return switch (tier) {
 			case 0 -> "I";
@@ -190,7 +195,9 @@ public final class WaveSpeedRegulation extends AbstractWaveGateRegulation {
 			case 2 -> "III";
 			case 3 -> "IV";
 			case 4 -> "V";
-			default -> "VI";
+			case 5 -> "VI";
+			case 6 -> "VII";
+			default -> "VIII";
 		};
 	}
 }

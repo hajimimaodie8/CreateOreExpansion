@@ -4,10 +4,12 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerMovementBehaviour;
 import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlock;
 import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlock;
+import com.hjmmd_8.createoreexpansion.content.charger.block.StellarstoneStressChargerBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalBuddingBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalClusterBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalGrowthConfigs;
 import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlock;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlock;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.DisperserMovingInteraction;
@@ -15,6 +17,8 @@ import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBloc
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireSpeedRegulatorBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireWaveRegulatorBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneSpeedRegulatorBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneWaveRegulatorBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.WaveSpeedRegulatorBlock;
@@ -489,6 +493,57 @@ public final class AllBlocks {
 		.build()
 		.register();
 
+	/** 星辉石应力充能器：蓝宝石充能器的复制变体——发射等级手动固定（两侧槽：模式 + 手动等级）。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<StellarstoneStressChargerBlock> STELLARSTONE_STRESS_CHARGER =
+		CreateOreExpansion.REGISTRATE
+			.block("stellarstone_stress_charger", StellarstoneStressChargerBlock::new)
+			.initialProperties(SharedProperties::stone)
+			.properties(p -> p.mapColor(MapColor.COLOR_PURPLE))
+			.properties(p -> p.noOcclusion())
+			.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+			.addLayer(() -> () -> RenderType.cutoutMipped())
+			.transform(TagGen.axeOrPickaxe())
+			.blockstate((ctx, prov) -> {
+				// MODE 0~5 全覆盖：与蓝宝石同构（_4/_5 现为独立占位文件，可后续替换独立外观）
+				ExistingModelFile[] models = new ExistingModelFile[6];
+				for (int i = 0; i < 6; i++)
+					models[i] = prov.models()
+						.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+							"block/stellarstone_stress_charger/stellarstone_stress_charger_" + i));
+				VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+				for (Direction dir : Direction.values()) {
+					// 与翡翠/蓝宝石充能器同款旋转映射：UP 原样、DOWN 180、水平绕 X 躺下再绕 Y 转向
+					int xRot = dir == Direction.UP ? 0
+						: dir == Direction.DOWN ? 180
+							: dir.getAxis()
+								.isHorizontal() ? 270 : 0;
+					int yRot = dir.getAxis()
+						.isHorizontal() ? (int) dir.toYRot() : 0;
+					for (int mode = 0; mode <= 5; mode++) {
+						vb.partialState()
+							.with(DirectionalKineticBlock.FACING, dir)
+							.with(StellarstoneStressChargerBlock.MODE, mode)
+							.modelForState()
+							.modelFile(models[mode])
+							.rotationX(xRot)
+							.rotationY(yRot)
+							.addModel();
+					}
+				}
+			})
+			.onRegister(block -> {
+				BlockStressValues.IMPACTS.register(block, () -> 4.0);
+				// Create 动态结构适配：星辉石充能器随结构自行工作（同翡翠/蓝宝石）
+				MovementBehaviour.REGISTRY.register(block, new ChargerMovementBehaviour());
+			})
+			.item()
+			.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("stellarstone_stress_charger"))
+				.parent(new UncheckedModelFile(
+					"createoreexpansion:block/stellarstone_stress_charger/stellarstone_stress_charger_item")))
+			.build()
+			.register();
+
 	/** 能量场控制器（Energy Field Controller）：六向应力机器，应力输入 → 场强档位（配对/极性/机壳扩展规则见 BE 注释）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
 	public static final BlockEntry<EnergyFieldControllerBlock> ENERGY_FIELD_CONTROLLER = CreateOreExpansion.REGISTRATE
@@ -535,6 +590,58 @@ public final class AllBlocks {
 		.item()
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("energy_field_controller"))
 			.parent(new UncheckedModelFile("createoreexpansion:block/energy_field_controller/sapphire_field_controller_item")))
+		.build()
+		.register();
+
+	/** 星辉波变器：六向应力机器（单轴口，FACING 反面接入），扫描加工机并为穿过的能量波附加加工属性。
+	 * <p>模型 = 差波器侧面几何（星辉石能量接收面 close/open 整面切换）+ 顶面灯盘
+	 * （{@code stellarstone_disperser_lamp}）+ 场控底面底座（轴口面 {@code stellarstone_gearbox}）。
+	 * 4 个水平侧面独立开关 → 16 个变体模型 × 6 个 FACING = 96 个 variant。</p> */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<StellarWaveTransmuterBlock> STELLAR_WAVE_TRANSMUTER = CreateOreExpansion.REGISTRATE
+		.block("stellar_wave_transmuter", StellarWaveTransmuterBlock::new)
+		.initialProperties(SharedProperties::stone)
+		.properties(p -> p.mapColor(MapColor.COLOR_PURPLE))
+		.properties(p -> p.noOcclusion())
+		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+		.addLayer(() -> () -> RenderType.cutoutMipped())
+		.transform(TagGen.axeOrPickaxe())
+		.blockstate((ctx, prov) -> {
+			// 16 个变体模型（4 个水平侧面的 open 组合），六向 FACING 旋转：
+			// 模型默认灯盘朝 +Y——竖直放置（UP）原样、DOWN 转 180，水平先绕 X 躺下（+Y→+Z）再绕 Y 转向 facing
+			ExistingModelFile[] models = new ExistingModelFile[16];
+			for (int i = 0; i < 16; i++)
+				models[i] = prov.models()
+					.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+						"block/energy_wave_machine/stellarstone_wave_transmuter_" + i));
+			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+			for (Direction dir : Direction.values()) {
+				int xRot = dir == Direction.UP ? 0
+					: dir == Direction.DOWN ? 180
+						: dir.getAxis()
+							.isHorizontal() ? 270 : 0;
+				int yRot = dir.getAxis()
+					.isHorizontal() ? (int) dir.toYRot() : 0;
+				for (int index = 0; index < 16; index++) {
+					vb.partialState()
+						.with(DirectionalKineticBlock.FACING, dir)
+						.with(StellarWaveTransmuterBlock.NORTH, (index & 8) != 0)
+						.with(StellarWaveTransmuterBlock.SOUTH, (index & 4) != 0)
+						.with(StellarWaveTransmuterBlock.WEST, (index & 2) != 0)
+						.with(StellarWaveTransmuterBlock.EAST, (index & 1) != 0)
+						.modelForState()
+						.modelFile(models[index])
+						.rotationX(xRot)
+						.rotationY(yRot)
+						.addModel();
+				}
+			}
+		})
+		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
+		.item()
+		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("stellar_wave_transmuter"))
+			.parent(new UncheckedModelFile(
+				"createoreexpansion:block/energy_wave_machine/stellarstone_wave_transmuter_item")))
 		.build()
 		.register();
 
@@ -731,6 +838,103 @@ public final class AllBlocks {
 			.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/sapphire_speed_regulator_item")))
 		.build()
 		.register();
+
+	/** 星辉石能量调级器：星辉石科技线专属（32 RPM 起调制、单次提升级数随转速 +1/+2、最大升至 5 级欧米伽）。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<StellarstoneWaveRegulatorBlock> STELLARSTONE_WAVE_REGULATOR =
+		CreateOreExpansion.REGISTRATE
+			.block("stellarstone_wave_regulator", StellarstoneWaveRegulatorBlock::new)
+			.initialProperties(SharedProperties::stone)
+			.properties(p -> p.mapColor(MapColor.COLOR_PURPLE))
+			.properties(p -> p.noOcclusion())
+			.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+			.addLayer(() -> () -> RenderType.cutoutMipped())
+			.transform(TagGen.axeOrPickaxe())
+			.blockstate((ctx, prov) -> {
+				// 与蓝宝石调级器同款：机座模型按顶/底面板 open/close 选 4 变体，六向 FACING 旋转
+				ExistingModelFile[] models = new ExistingModelFile[4];
+				for (int i = 0; i < 4; i++)
+					models[i] = prov.models()
+						.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+							"block/energy_wave_machine/stellarstone_wave_regulator_" + i));
+				VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+				for (Direction dir : Direction.values()) {
+					int xRot = dir == Direction.UP ? 0
+						: dir == Direction.DOWN ? 180
+							: dir.getAxis()
+								.isHorizontal() ? 270 : 0;
+					int yRot = dir.getAxis()
+						.isHorizontal() ? (int) dir.toYRot() : 0;
+					for (int top = 0; top < 2; top++) {
+						for (int bottom = 0; bottom < 2; bottom++) {
+							vb.partialState()
+								.with(DirectionalKineticBlock.FACING, dir)
+								.with(StellarstoneWaveRegulatorBlock.RECEIVER_TOP, top == 1)
+								.with(StellarstoneWaveRegulatorBlock.RECEIVER_BOTTOM, bottom == 1)
+								.modelForState()
+								.modelFile(models[top * 2 + bottom])
+								.rotationX(xRot)
+								.rotationY(yRot)
+								.addModel();
+						}
+					}
+				}
+			})
+			// 星辉石能量调级器：应力消耗固定为 8x RPM（同蓝宝石/翡翠调级器；不随波级变化）
+			.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 8.0))
+			.item()
+			.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("stellarstone_wave_regulator"))
+				.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/stellarstone_wave_regulator_item")))
+			.build()
+			.register();
+
+	/** 星辉石波速调节器：星辉石科技线专属（32 RPM 起调制、32~256 RPM 分 8 档 ±0.5~4 格/秒）。 */
+	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
+	public static final BlockEntry<StellarstoneSpeedRegulatorBlock> STELLARSTONE_SPEED_REGULATOR =
+		CreateOreExpansion.REGISTRATE
+			.block("stellarstone_speed_regulator", StellarstoneSpeedRegulatorBlock::new)
+			.initialProperties(SharedProperties::stone)
+			.properties(p -> p.mapColor(MapColor.COLOR_PURPLE))
+			.properties(p -> p.noOcclusion())
+			.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
+			.addLayer(() -> () -> RenderType.cutoutMipped())
+			.transform(TagGen.axeOrPickaxe())
+			.blockstate((ctx, prov) -> {
+				// 与蓝宝石波速调节器同款：机座模型按顶/底面板 open/close 选 4 变体，六向 FACING 旋转
+				ExistingModelFile[] models = new ExistingModelFile[4];
+				for (int i = 0; i < 4; i++)
+					models[i] = prov.models()
+						.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
+							"block/energy_wave_machine/stellarstone_speed_regulator_" + i));
+				VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
+				for (Direction dir : Direction.values()) {
+					int xRot = dir == Direction.UP ? 0
+						: dir == Direction.DOWN ? 180
+							: dir.getAxis()
+								.isHorizontal() ? 270 : 0;
+					int yRot = dir.getAxis()
+						.isHorizontal() ? (int) dir.toYRot() : 0;
+					for (int top = 0; top < 2; top++) {
+						for (int bottom = 0; bottom < 2; bottom++) {
+							vb.partialState()
+								.with(DirectionalKineticBlock.FACING, dir)
+								.with(StellarstoneSpeedRegulatorBlock.RECEIVER_TOP, top == 1)
+								.with(StellarstoneSpeedRegulatorBlock.RECEIVER_BOTTOM, bottom == 1)
+								.modelForState()
+								.modelFile(models[top * 2 + bottom])
+								.rotationX(xRot)
+								.rotationY(yRot)
+								.addModel();
+						}
+					}
+				}
+			})
+			.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 4.0))
+			.item()
+			.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("stellarstone_speed_regulator"))
+				.parent(new UncheckedModelFile("createoreexpansion:block/energy_wave_machine/stellarstone_speed_regulator_item")))
+			.build()
+			.register();
 
 	/** 能量波差器：无应力被动机器，模型上下翡翠机壳、四面能量接收面关闭材质；
 	 * 六向 FACING 旋转（三种朝向与调级器一致），4 侧面开口可独立开关，无需方块实体/渲染器。 */

@@ -70,6 +70,11 @@ public final class AllPartialModels {
 	public static final PartialModel SAPPHIRE_CHARGER_SHUTTER = PartialModel.of(
 		CreateOreExpansion.modLoc("block/sapphire_stress_charger/sapphire_shutter"));
 
+	/** 星辉石应力充能器发射头（models/block/stellarstone_stress_charger/stellarstone_shutter.json，
+	 * 贴星辉石发射口/快门纹理）——与蓝宝石同型复刻，供 CreateChargerRenderer 区分机型 */
+	public static final PartialModel STELLARSTONE_CHARGER_SHUTTER = PartialModel.of(
+		CreateOreExpansion.modLoc("block/stellarstone_stress_charger/stellarstone_shutter"));
+
 	/** 蓝宝石应力充能器传动轴短轴（models/block/sapphire_stress_charger/sapphire_charger_axis.json，
 	 * 同翡翠 4px 短轴布局）——JEI 4/5 级动画用 */
 	public static final PartialModel SAPPHIRE_CHARGER_AXIS = PartialModel.of(
@@ -86,6 +91,8 @@ public final class AllPartialModels {
 	public static final Map<String, PartialModel> WAVE_GATE_LAMPS = buildWaveGateLamps("jade");
 	/** 蓝宝石波闸侧面指示灯（sapphire_wave_gate_lamp_{side}_{pos}.json，贴 sapphire_light.png） */
 	public static final Map<String, PartialModel> SAPPHIRE_WAVE_GATE_LAMPS = buildWaveGateLamps("sapphire");
+	/** 星辉石波闸侧面指示灯（stellarstone_wave_gate_lamp_{side}_{pos}.json，贴 stellarstone_light.png） */
+	public static final Map<String, PartialModel> STELLARSTONE_WAVE_GATE_LAMPS = buildWaveGateLamps("stellarstone");
 
 	private static Map<String, PartialModel> buildWaveGateLamps(String prefix) {
 		java.util.Map<String, PartialModel> map = new java.util.HashMap<>();

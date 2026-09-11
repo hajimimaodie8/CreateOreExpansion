@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -27,6 +28,15 @@ public final class AllEntityTypes {
 				.noSummon()
 				.noSave()
 				.build("charger_wave"));
+
+	/** 能量波变体（星辉波变器侧面穿出，携带加工属性集；不渲染模型，视觉靠粒子） */
+	public static final DeferredHolder<EntityType<?>, EntityType<StellarWaveEntity>> STELLAR_WAVE =
+		ENTITY_TYPES.register("stellar_wave",
+			() -> EntityType.Builder.<StellarWaveEntity>of(StellarWaveEntity::new, MobCategory.MISC)
+				.sized(0.2f, 0.2f)
+				.noSummon()
+				.noSave()
+				.build("stellar_wave"));
 
 	public static void register(IEventBus modEventBus) {
 		ENTITY_TYPES.register(modEventBus);

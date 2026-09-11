@@ -169,6 +169,14 @@ dependencies {
     // Sable 的位姿/包围盒数学类（Pose3d/BoundingBox3d/SubLevelAccess）位于 embedded 的
     // sable-companion jar（Sable 主 jar 的 jarjar 内，编译期不可见）→ 从 jarjar 提取后加入编译期
     compileOnly files("libs/sable-companion-common-1.21.1-1.6.0.jar")
+    // Create Optical（机械动力：光学，聚光器 4 光频加工）+ Create: Vintage Improvements（卷簧机/杠杆锤等）——
+    // 星辉波变器联动：完全可选集成。compileOnly 编译期可用（本地 jar）；localRuntime 让 dev 客户端
+    // （runClient/runData）直接加载这两个 mod 便于验证联动，发布不捆绑——玩家自装才生效。
+    // 代码层用 ModList.isLoaded + try/catch 隔离，未安装时绝不加载其类。
+    compileOnly files("libs/create_optical-0.4.2.jar")
+    compileOnly files("libs/vintageimprovements-1.21.1-0.0.0.3.jar")
+    localRuntime files("libs/create_optical-0.4.2.jar")
+    localRuntime files("libs/vintageimprovements-1.21.1-0.0.0.3.jar")
     localRuntime("maven.modrinth:create-aeronautics:1.3.0+mc1.21.1")
     localRuntime("maven.modrinth:sable:2.0.3+mc1.21.1")
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1"

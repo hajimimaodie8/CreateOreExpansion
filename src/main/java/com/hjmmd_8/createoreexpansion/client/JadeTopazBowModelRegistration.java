@@ -24,6 +24,8 @@ public class JadeTopazBowModelRegistration {
 
         // 充能器能量波：空渲染器（视觉靠粒子）——翡翠/蓝宝石都需注册，否则波实体进入视野即 NPE
         EntityRenderers.register(AllEntityTypes.CHARGER_WAVE.get(), EmptyEntityRenderer::new);
+        // 星辉波变器变体波：同样为空渲染器（视觉靠粒子）
+        EntityRenderers.register(AllEntityTypes.STELLAR_WAVE.get(), EmptyEntityRenderer::new);
 
         event.enqueueWork(() -> {
             ItemProperties.register(AllItems.JADE_TOPAZ_BOW.get(),

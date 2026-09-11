@@ -106,6 +106,14 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	protected float boostRemaining;
 
 	/**
+	 * 调级器增强步数（本次延迟升级一次提升几级）：翡翠/蓝宝石恒为 1；
+	 * 星辉石调级器按授予时的本机转速可为 2（单次 +2，等级仍封顶于
+	 * {@link WaveLevels#MAX_LEVEL}）。由 {@link WaveMachineActions} 在授予
+	 * 延迟升级时从调级器 BE 机型参数（{@code getBoostStepForSpeed()}）写入。
+	 */
+	protected int boostStep = 1;
+
+	/**
 	 * 当前渲染颜色（RGB 0-1）：每 tick 向目标颜色插值靠近，实现升降级/遣返时的平滑渐变。
 	 * 目标色：正常 = 当前等级色；待升级（boostRemaining &gt; 0）时提前变为下一等级色，
 	 * 使波穿出调级器后颜色即开始过渡，而非延迟结束瞬间跳变。
@@ -236,18 +244,23 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			}
 		}
 
-		// 调级器增强延迟：穿过顺基准调级器后累计飞行距离，满 0.5 格（= 1/(2v) 秒）后等级+1
+		// 调级器增强延迟：穿过顺基准调级器后累计飞行距离，满 0.5 格（= 1/(2v) 秒）后等级 +boostStep
+		// （翡翠/蓝宝石恒 +1；星辉石按授予时的转速可为 +2）。提升等级封顶于 WaveLevels.MAX_LEVEL（5），
+		// 星辉石 +2 从 4 级升到 6 时实际停在 5（欧米伽），不会超上限。
 		if (boostRemaining > 0) {
 			boostRemaining -= (float) (getSpeedBlocks() / 20d);
 			if (boostRemaining <= 0) {
 				boostRemaining = 0;
-				setWaveLevel(waveLevel + 1);
+				setWaveLevel(Math.min(waveLevel + boostStep, WaveLevels.MAX_LEVEL));
+				boostStep = 1;
 			}
 		}
 
-		// 平滑渐变：目标色 = 当前等级色；待升级（boostRemaining>0）时提前渐变到下一等级色，
-		// 使波穿出调级器后颜色即开始过渡，而非延迟结束瞬间跳变
-		Vec3 targetColor = boostRemaining > 0 ? getWaveColorForLevel(waveLevel + 1) : getWaveColor();
+		// 平滑渐变：目标色 = 当前等级色；待升级（boostRemaining>0）时提前渐变到提升后的等级色
+		// （按 boostStep 预览，封顶 MAX_LEVEL），使波穿出调级器后颜色即开始过渡，而非延迟结束瞬间跳变
+		Vec3 targetColor = boostRemaining > 0
+			? getWaveColorForLevel(Math.min(waveLevel + boostStep, WaveLevels.MAX_LEVEL))
+			: getWaveColor();
 		renderColor = renderColor.lerp(targetColor, 0.15d);
 		// 距离足够近则直接贴合目标色，避免无限逼近
 		if (renderColor.distanceToSqr(targetColor) < 1.0E-5d)
@@ -302,21 +315,30 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			return;
 		}
 
-		// 命中掉落物：给能量工具充能 / 普通物品按配方转化（检测范围覆盖移动路径，避免高速跳过）
+		// 命中掉落物：给能量工具充能 / 普通物品按配方转化（检测范围覆盖移动路径，避免高速跳过）。
+		// 模板方法 onItemHit：普通波走充电配方加工；变体波（StellarWaveEntity）覆写为链式远程加工
 		AABB sweep = hitBox.expandTowards(movement.x * getSpeedBlocks() / 20d,
 			movement.y * getSpeedBlocks() / 20d, movement.z * getSpeedBlocks() / 20d);
 		List<ItemEntity> items = level().getEntitiesOfClass(ItemEntity.class, sweep, e -> e.isAlive());
 		if (!items.isEmpty()) {
-			// 核心加工逻辑已抽取至 ChargerWaveProcessor（配方匹配 → 消耗输入 → 产出结果）
-			if (processor.processItemEntity(items.get(0))) {
-				ChargerWaveFx.burst(level(), position(), renderColor);
-				discard();
-			}
+			onItemHit(items);
 			return;
 		}
 
 		// 命中方块：置物台/工作台充能、避雷针、调级器，其余方块视为撞墙消散
 		handleBlockCollisions();
+	}
+
+	/**
+	 * 命中掉落物模板方法（默认=普通波行为：单个物品按 charging 配方加工，命中即绽放开消散）。
+	 * 变体波（星辉波变器产物）覆写本方法执行链式远程加工并管理携带载荷。
+	 */
+	protected void onItemHit(List<ItemEntity> items) {
+		// 核心加工逻辑已抽取至 ChargerWaveProcessor（配方匹配 → 消耗输入 → 产出结果）
+		if (processor.processItemEntity(items.get(0))) {
+			ChargerWaveFx.burst(level(), position(), renderColor);
+			discard();
+		}
 	}
 
 	/**
@@ -411,14 +433,25 @@ public abstract class AbstractChargerWaveEntity extends Entity
 				setPos(Vec3.atCenterOf(pos).add(movement.scale(1.0d)));
 				return;
 			}
+			// 星辉波变器：入口侧开口则处理——对面开口→变体波携带扫描属性从对侧穿出；
+			// 对面关闭→原路遣返（等级不变）；入口关闭/机壳面/竖直撞击→按撞墙消散
+			if (state.getBlock() instanceof com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlock) {
+				StellarWaveTransmuterPass.Result pass = StellarWaveTransmuterPass.tryConvert(this, pos);
+				if (pass == StellarWaveTransmuterPass.Result.HIT_WALL) {
+					hitSolid = true; // 波口关闭 / 撞灯盘·轴口面：不可穿，波撞墙消散
+					continue;
+				}
+				// CONVERTED：已转成变体波（原波静默 discard）；
+				// BOUNCED：已反向并推出方块外（等级不变），继续飞行
+				return;
+			}
 			IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
 			if (handler != null) {
-				if (processor.processBlockHandler(handler, pos)) {
-					ChargerWaveFx.burst(level(), position(), renderColor);
-					discard();
-					return;
-				}
-				// 有物品槽但无匹配物品：同样视为撞墙，波在此消散（不穿过置物台/工作台）
+				// 命中带物品槽方块（置物台/工作台/工作盆…）。普通波：只按 charging 配方加工；
+				// 变体波覆写本钩子，用自己携带的加工机配方类型处理槽内物品（链式远程加工）。
+				if (handleItemInventoryBlock(handler, pos))
+					return; // 钩子已处理（可能加工成功并继续/已消散），本 tick 结束
+				// 无匹配物品：同样视为撞墙，波在此消散（不穿过置物台/工作台）
 				ChargerWaveFx.burst(level(), position(), renderColor);
 				discard();
 				return;
@@ -436,6 +469,23 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (contraptionCollisions.tryHandle())
 			return;
 		subLevelCollisions.tryHandle();
+	}
+
+	/**
+	 * 命中带物品槽方块（置物台/工作台/工作盆…）的钩子。
+	 *
+	 * <p>默认（普通波）：把槽内物品交给 {@link ChargerWaveProcessor#processBlockHandler}
+	 * 按 charging 配方加工——无论是否匹配成功，波都会在此消散（命中即消耗，原行为）。</p>
+	 *
+	 * <p>变体波（{@code StellarWaveEntity}）覆写：用自己携带的加工机配方类型逐槽
+	 * 链式远程加工（产物放回槽位/就近输出），成功则本 tick 结束不消散（链用尽才绽放）。</p>
+	 *
+	 * @return true = 本 tick 已被处理（调用方结束方块遍历）；false = 无可加工，
+	 *         由调用方按"撞墙消散"处理
+	 */
+	protected boolean handleItemInventoryBlock(IItemHandler handler, BlockPos pos) {
+		processor.processBlockHandler(handler, pos);
+		return false; // 普通波：无论匹配与否都按撞墙消散（调用方处理特效）
 	}
 
 	/**
@@ -647,6 +697,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		waveLevel = tag.getInt("WaveLevel");
 		movement = new Vec3(tag.getDouble("MoveX"), tag.getDouble("MoveY"), tag.getDouble("MoveZ"));
 		boostRemaining = tag.getFloat("BoostRemaining");
+		boostStep = Mth.clamp(tag.getInt("BoostStep"), 1, WaveLevels.MAX_LEVEL);
 		speedOffset = tag.getDouble("SpeedOffset");
 		if (tag.contains("SpawnX"))
 			spawnPos = new Vec3(tag.getDouble("SpawnX"), tag.getDouble("SpawnY"), tag.getDouble("SpawnZ"));
@@ -672,6 +723,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		tag.putDouble("MoveY", movement.y);
 		tag.putDouble("MoveZ", movement.z);
 		tag.putFloat("BoostRemaining", boostRemaining);
+		tag.putInt("BoostStep", boostStep);
 		tag.putDouble("SpeedOffset", speedOffset);
 		tag.putInt("Charge", charge == null ? 0
 			: charge == com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE ? 1 : 2);

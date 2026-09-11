@@ -201,10 +201,88 @@ public class ChineseLangProvider extends LanguageProvider {
         add("block.createoreexpansion.power_angle_grinder", "动力角磨床");
         add("block.createoreexpansion.jade_stress_charger", "翡翠应力充能器");
         add("block.createoreexpansion.sapphire_stress_charger", "蓝宝石应力充能器");
+        add("block.createoreexpansion.stellarstone_stress_charger", "星辉石应力充能器");
+        add("block.createoreexpansion.stellar_wave_transmuter", "星辉波变器");
+        add("createoreexpansion.goggles.stellar_wave_transmuter", "星辉波变器");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_idle", "未接入应力");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_radius", "扫描半径：%s 格");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_heat", "读取到加热：%s（烈焰燃烧室）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_heat_none", "读取到加热：无（扫描半径内没有点燃的烈焰燃烧室）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_item_containers", "读取到物品容器：%s 台（箱子/工作盆/抽屉等）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_fluid_containers", "读取到流体容器：%s 台（储罐/流体抽屉等）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_energy_storages", "读取到储能设备：%s 台（发电机/蓄电池等，合计 %s FE）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_wave_rpm", "波加工转速：%s RPM（取自本机转速）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_machines", "已接入加工机：%s");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_stress", "加工机应力合计：%s");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_types", "携带配方类型：%s");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_items", "辅料载荷：%s 个 / %s 种");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_fluid", "流体载荷：%s mB");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "电量载荷：%s FE");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "避雷针机会：%s");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "最近波可加工：");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "已绑定 %s 台机器。按 [%s] 显示加工配方");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint_shift", "已绑定 %s 台机器。按住 [%s] 显示加工配方");
+        // 配方清单单行汇总：分隔符与超量省略（顿号连接，超 10 项补"等"）
+        add("createoreexpansion.goggles.list_separator", "、");
+        add("createoreexpansion.goggles.list_etc", "等");
+        // 配方类型显示名（护目镜"最近波可加工"面板；Create/Vintage/CCA/光学/本模组）
+        add("createoreexpansion.recipe_type.pressing", "压片");
+        add("createoreexpansion.recipe_type.cutting", "切割");
+        add("createoreexpansion.recipe_type.milling", "研磨");
+        add("createoreexpansion.recipe_type.crushing", "粉碎");
+        add("createoreexpansion.recipe_type.splashing", "喷洗");
+        add("createoreexpansion.recipe_type.haunting", "闹鬼");
+        add("createoreexpansion.recipe_type.deploying", "部署");
+        add("createoreexpansion.recipe_type.item_application", "物品应用");
+        add("createoreexpansion.recipe_type.mixing", "搅拌");
+        add("createoreexpansion.recipe_type.focusing", "聚焦");
+        add("createoreexpansion.recipe_type.coiling", "卷绕");
+        add("createoreexpansion.recipe_type.curving", "弯折");
+        add("createoreexpansion.recipe_type.polishing", "打磨");
+        add("createoreexpansion.recipe_type.centrifugation", "离心");
+        add("createoreexpansion.recipe_type.vibrating", "振动");
+        add("createoreexpansion.recipe_type.leaves_vibrating", "落叶振动");
+        add("createoreexpansion.recipe_type.pressurizing", "加压");
+        add("createoreexpansion.recipe_type.vacuumizing", "抽真空");
+        add("createoreexpansion.recipe_type.hammering", "锤锻");
+        add("createoreexpansion.recipe_type.auto_smithing", "自动锻造");
+        add("createoreexpansion.recipe_type.auto_upgrade", "自动升级");
+        add("createoreexpansion.recipe_type.turning", "车削");
+        add("createoreexpansion.recipe_type.laser_cutting", "激光切割");
+        add("createoreexpansion.recipe_type.charging", "充能");
+        add("createoreexpansion.recipe_type.rolling", "辊压");
+        add("createoreexpansion.recipe_type.lightning", "闪电转化");
+        add("createoreexpansion.recipe_type.grinding", "打磨");
+        add("createoreexpansion.recipe_type.dismantling", "拆解");
+        // 烈焰燃烧室热档显示名（护目镜加热读数 / Jade 携带加热；序与 Create HeatLevel 一致）
+        add("createoreexpansion.heat_level.none", "无");
+        add("createoreexpansion.heat_level.smouldering", "余烬");
+        add("createoreexpansion.heat_level.fading", "将熄");
+        add("createoreexpansion.heat_level.kindled", "普通加热");
+        add("createoreexpansion.heat_level.seething", "超级加热");
+        add("createoreexpansion.recipe.stellar_wave_transmuter", "星辉波变器");
+        add("createoreexpansion.jei.transmuter.line1", "① 水平飞行的能量波从侧面射入，被转成“变体波”并从对侧穿出；竖直撞上下面会像撞墙一样消散。");
+        add("createoreexpansion.jei.transmuter.line2", "② 变体波携带扫描到的机器配方类型，以及半径内点燃的烈焰燃烧室提供的加热能力（普通/超级加热 → 加热搅拌等加热配方可用）；链式加工次数 = 波等级（每次成功加工 −1）。");
+        add("createoreexpansion.jei.transmuter.line3", "③ 波还携带载荷：辅料物品（最多 5 个/5 种）、流体（最多 500 mB）、电量（如特斯拉线圈全抽）与避雷针释放机会（穿波时抽取 1 次）。");
+        add("createoreexpansion.jei.transmuter.line4", "④ 命中物品执行匹配配方：双输入消耗辅料，流体/电量型条目按需扣减；链尽或消散时剩余载荷存回附近容器/储罐/储能，放不下则掉落/浪费。");
+        add("createoreexpansion.goggles.stellarstone_charger", "星辉石应力充能器");
+        add("createoreexpansion.goggles.stellarstone_charger_manual_level", "手动发射波等级：%s");
+        add("createoreexpansion.goggles.stellarstone_charger_normal", "模式：普通（连续发射）");
+        add("createoreexpansion.goggles.stellarstone_charger_storing", "模式：储存（满后点击/红石触发簇射）");
+        add("createoreexpansion.goggles.stellarstone_charger_store_layers", "充能层数：%s/%s");
+        add("createoreexpansion.goggles.stellarstone_charger_store_full", "已满：右键释放");
+        add("createoreexpansion.charger.manual_level", "发射波等级");
+        // 等级槽调整面板的左侧行标（Create 原版对 ScrollValueBehaviour 硬编码英文 "Value"）
+        add("createoreexpansion.charger.level_row", "等级");
         add("block.createoreexpansion.energy_field_controller", "能量场控制器");
         add("block.createoreexpansion.sapphire_wave_regulator", "蓝宝石能量调级器");
         add("block.createoreexpansion.sapphire_speed_regulator", "蓝宝石波速调节器");
         add("createoreexpansion.goggles.sapphire_speed_regulator", "蓝宝石波速调节器");
+        add("block.createoreexpansion.stellarstone_wave_regulator", "星辉石能量调级器");
+        add("block.createoreexpansion.stellarstone_speed_regulator", "星辉石波速调节器");
+        add("createoreexpansion.goggles.stellarstone_wave_regulator", "星辉石能量调级器");
+        add("createoreexpansion.goggles.stellarstone_speed_regulator", "星辉石波速调节器");
+        add("createoreexpansion.goggles.stellarstone_wave_boost", "单次提升级数：+%s 级");
         add("createoreexpansion.goggles.sapphire_charger_normal", "模式：普通（连续发射）");
         add("createoreexpansion.goggles.sapphire_charger_storing", "模式：储存（满后点击/红石触发簇射）");
         add("createoreexpansion.charger.mode", "充能模式");
@@ -233,6 +311,17 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.jade.wave_charge_none", "电荷：未带电");
         add("createoreexpansion.jade.charge_positive", "正电荷");
         add("createoreexpansion.jade.charge_negative", "负电荷");
+        // 变体波（星辉波变器产物）携带载荷
+        add("createoreexpansion.jade.stellar_wave_payload_items", "携带物品: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_energy", "携带电量: %s FE");
+        add("createoreexpansion.jade.stellar_wave_payload_fluid", "携带流体: %s %s mB");
+        add("createoreexpansion.jade.stellar_wave_payload_rods", "释放机会: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_heat", "携带加热: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_rpm", "携带转速: %s RPM");
+        // 变体波可加工配方类型（能力清单，独立于载荷）
+        add("createoreexpansion.jade.stellar_wave_can_process", "可加工：");
+        // 工作盆内容的实时行（本模组第二个 Jade 插件：逐 tick 取数，跟随波加工结果刷新）
+        add("createoreexpansion.jade.basin_live", "工作盆内容（实时）:");
         add("block.createoreexpansion.energy_wave_disperser", "能量波差器");
         add("block.createoreexpansion.six_face_disperser", "六面能量波差器");
         add("block.createoreexpansion.octa_energy_wave_differencer", "八面能量波差器");
@@ -282,6 +371,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.jei.charging.level.5", "终极能量充能");
         add("entity.createoreexpansion.charger_wave", "充能能量波");
         add("entity.createoreexpansion.jade_charger_wave", "充能能量波");
+        add("entity.createoreexpansion.stellar_wave", "变体能量波");
 
         // ========== 动力角磨床护目镜提示 ==========
         add("createoreexpansion.goggles.angle_grinder", "动力角磨床");

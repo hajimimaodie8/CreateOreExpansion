@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.wave.regulation;
 import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireWaveRegulatorBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneWaveRegulatorBlock;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.state.BlockState;
@@ -104,11 +105,13 @@ public final class EnergyWaveRegulation extends AbstractWaveGateRegulation {
 		return toResult(r, waveLevel, maxSupportedOf(state));
 	}
 
-	/** 由方块类型判断机型承载上限：蓝宝石 5，其余（翡翠）3。 */
+	/** 由方块类型判断机型承载上限：蓝宝石/星辉石 5，其余（翡翠）3。 */
 	private static int maxSupportedOf(BlockState state) {
-		return state.getBlock() instanceof SapphireWaveRegulatorBlock
-			? WaveLevels.SAPPHIRE_MAX
-			: WaveLevels.JADE_MAX;
+		if (state.getBlock() instanceof SapphireWaveRegulatorBlock)
+			return WaveLevels.SAPPHIRE_MAX;
+		if (state.getBlock() instanceof StellarstoneWaveRegulatorBlock)
+			return WaveLevels.MAX_LEVEL;
+		return WaveLevels.JADE_MAX;
 	}
 
 	/**

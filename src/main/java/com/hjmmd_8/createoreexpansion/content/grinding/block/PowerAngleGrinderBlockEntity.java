@@ -468,8 +468,14 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		return wheel;
 	}
 
-	/** 当前安装角磨轮的等级；未安装或未知轮返回 null */
-	private GrindingWheelTier getWheelTier() {
+	/**
+	 * 当前安装角磨轮的等级；未安装或未知轮返回 null。
+	 *
+	 * <p><b>公开只读入口</b>：角磨轮的等级决定这台机器<b>能执行哪些配方类型</b>
+	 * （见 {@link GrinderRecipeTypes}），所以星辉波变器"读取周围机器"时要读它——
+	 * 变器档案的选择器即调本方法（见 {@code StellarWaveMachineCatalog}）。</p>
+	 */
+	public GrindingWheelTier getWheelTier() {
 		ResourceLocation wheelId = getWheel();
 		if (wheelId == null)
 			return null;

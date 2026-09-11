@@ -70,6 +70,18 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 	}
 
 	/**
+	 * 储存模式最高充能层数（每层 = 一次可释放的能量波）。
+	 *
+	 * <p>基类给一个保守默认值；<b>具体机型覆写为读配置</b>——蓝宝石
+	 * {@code charger.sapphireMaxLayers}（默认 10）、星辉石 {@code charger.stellarstoneMaxLayers}
+	 * （默认 20），见 {@code common/AllConfig}。外部（护目镜/其它模组/整合包代码）也可以直接调用
+	 * 本方法取到当前生效的上限。</p>
+	 */
+	public int getStoreMaxLayers() {
+		return 10;
+	}
+
+	/**
 	 * 应力消耗随发射能量波等级（蓄力档）变化：消耗 = 一级基准消耗 × 档位。
 	 * 一级基准 = 注册/配置的 IMPACT（默认 4.0）：翡翠 1~3 → 4/8/12，蓝宝石 1~5 → 4/8/12/16/20。
 	 * 0（未接入应力）→ 0；护目镜/网络按此实时计耗（档位变化见 tick 内的网络推送）。

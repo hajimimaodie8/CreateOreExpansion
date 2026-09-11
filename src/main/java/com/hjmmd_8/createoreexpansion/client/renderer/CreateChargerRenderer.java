@@ -48,8 +48,10 @@ public class CreateChargerRenderer extends KineticBlockEntityRenderer<AbstractCr
 				facing.getNormal().getZ() * offset);
 		}
 		boolean sapphire = state.getBlock() instanceof com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlock;
+		boolean stellarstone = state.getBlock() instanceof com.hjmmd_8.createoreexpansion.content.charger.block.StellarstoneStressChargerBlock;
 		dev.engine_room.flywheel.lib.model.baked.PartialModel shutterModel = sapphire
-			? AllPartialModels.SAPPHIRE_CHARGER_SHUTTER : AllPartialModels.CHARGER_SHUTTER;
+			? AllPartialModels.SAPPHIRE_CHARGER_SHUTTER
+			: stellarstone ? AllPartialModels.STELLARSTONE_CHARGER_SHUTTER : AllPartialModels.CHARGER_SHUTTER;
 		SuperByteBuffer shutter = CachedBuffers.partialFacingVertical(shutterModel, state, facing)
 			.light(light);
 		shutter.renderInto(ms, buffer.getBuffer(RenderType.cutoutMipped()));
