@@ -20,6 +20,9 @@ public final class RecipeTypeNames {
 		// Create 原生
 		"pressing", "cutting", "milling", "crushing", "splashing", "haunting", "deploying",
 		"item_application", "mixing",
+		// Create 原生：压床/注液器/排液器/风扇转化/序列组装（2026-09 补齐——此前"序列组装"等
+		// 在护目镜与 Jade 里显示为未翻译的英文 path，用户实测反馈）
+		"compacting", "filling", "emptying", "transmuting", "sequenced_assembly",
 		// Create Optical 聚光器
 		"focusing",
 		// Vintage Improvements

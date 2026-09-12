@@ -72,11 +72,20 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	/** 扫描刷新间隔（tick；8 tick ≈ 160ms 响应）。 */
 	private static final int SCAN_INTERVAL = 8;
 
-	/** 载荷上限：辅料物品总数 / 种类数 / 流体 mB。（数值集中在 {@link WavePayloadGather}，
-	 *  与"波命中后就地补料"共用同一口径。） */
-	private static final int MAX_PAYLOAD_ITEMS = WavePayloadGather.MAX_ITEMS;
-	private static final int MAX_PAYLOAD_TYPES = WavePayloadGather.MAX_KINDS;
-	private static final int MAX_PAYLOAD_FLUID = WavePayloadGather.MAX_FLUID_MB;
+	/** 载荷上限：辅料物品总数 / 种类数 / 流体 mB。<b>数值来自配置</b>（{@code [wave] maxPayloadItems /
+	 *  maxPayloadKinds / maxPayloadFluidMb}，默认 5 / 5 / 500；见 {@link AllConfig}），
+	 *  与"波命中后就地补料"共用同一口径，所以两处都必须读配置而不是常量。 */
+	private static int maxPayloadItems() {
+		return com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadItems;
+	}
+
+	private static int maxPayloadTypes() {
+		return com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadKinds;
+	}
+
+	private static int maxPayloadFluid() {
+		return com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadFluidMb;
+	}
 
 	/** 扫描到的加工机器数量（客户端同步用）。 */
 	private int scannedCount;
@@ -532,8 +541,13 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		return p;
 	}
 
-	/** 一次载荷收集结果（物品 / 流体 / 电量）。 */
-	public record Payload(List<ItemStack> items, FluidStack fluid, int energy) {
+	/**
+	 * 一次载荷收集结果（物品 / 流体 / 电量 / <b>取料来源方块位置</b>）。
+	 *
+	 * <p>{@code sources} 用于"载荷消散时还回原容器"：波把剩余载荷还回这些位置，
+	 * 而不是丢在消散点（消散点常常就是波正在加工的工作盆上方，会被盆吸进去）。</p>
+	 */
+	public record Payload(List<ItemStack> items, FluidStack fluid, int energy, List<BlockPos> sources) {
 	}
 
 	/**
@@ -548,14 +562,17 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 */
 	private Payload collectPayload(int radius, boolean simulate) {
 		List<ItemStack> items = new ArrayList<>();
+		List<BlockPos> sources = new ArrayList<>();
 		int r = Math.max(1, radius);
 		Predicate<BlockPos> skip = pos -> isMachinery(pos) || isPlayerProcessingStation(pos);
-		WavePayloadGather.gatherItems(level, worldPosition, r, items, MAX_PAYLOAD_ITEMS, MAX_PAYLOAD_TYPES, simulate,
-			skip);
-		FluidStack fluid = WavePayloadGather.gatherFluid(level, worldPosition, r, FluidStack.EMPTY,
-			MAX_PAYLOAD_FLUID, simulate, skip);
-		int energy = WavePayloadGather.gatherEnergy(level, worldPosition, r, simulate, skip);
-		return new Payload(items, fluid, energy);
+		WavePayloadGather.gatherItems(level, worldPosition, r, items, sources, maxPayloadItems(), maxPayloadTypes(),
+			simulate, skip);
+		FluidStack fluid = WavePayloadGather.gatherFluid(level, worldPosition, r, FluidStack.EMPTY, sources,
+			maxPayloadFluid(), simulate, skip);
+		// 电量上限：配置固定值，或（默认）CC&A 充电配方里最贵那条的耗电量——见 WavePayloadGather#resolveEnergyCap
+		int energy = WavePayloadGather.gatherEnergy(level, worldPosition, r, sources, simulate, skip,
+			WavePayloadGather.resolveEnergyCap(level));
+		return new Payload(items, fluid, energy, sources);
 	}
 
 

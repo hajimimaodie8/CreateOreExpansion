@@ -110,8 +110,9 @@ public final class StellarWaveTransmuterPass {
 		variant.setChain(wave.waveLevel);
 		// 载荷在"波穿过的这一瞬间"才真正从扫描区容器抽取（上限：物品 5 个/5 种、
 		// 流体 500 mB、可抽电量全抽）。扫描阶段只做估算，避免箱子被持续抽空。
+		// 同时带上"取料来源位置"：载荷消散时把剩余物还回这些容器（而不是丢进正在加工的工作盆）。
 		StellarWaveTransmuterBlockEntity.Payload payload = be.collectPayloadForWave();
-		variant.attachPayload(payload.items(), payload.fluid(), payload.energy());
+		variant.attachPayload(payload.items(), payload.fluid(), payload.energy(), payload.sources());
 		variant.setRodCharges(drainRodCredit(level, be.getChargedRodPositions()));
 		// 继承速度修正/电荷/渲染色，保证表现连续（波速调节器与能量场修正贯穿转换）
 		variant.addSpeedOffset(wave.speedOffset);

@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.compat.jade;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.hjmmd_8.createoreexpansion.util.RecipeTypeNames;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
@@ -77,8 +78,16 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 	private static final String KEY_HEAT = "carriedHeat";
 	/** 变器携带的加工转速（RPM；转速档判定的依据）。 */
 	private static final String KEY_RPM = "carriedRpm";
-	/** 物品行最多列出的种类数，超出以 "…" 省略。 */
-	private static final int MAX_SHOWN_ITEM_KINDS = 3;
+	/**
+	 * 物品行最多列出的种类数（安全上限；实际种类上限由配置 {@code wave.maxPayloadKinds} 决定，
+	 * 默认 5，这里留到 8 以免配置调大后又被截断）。
+	 *
+	 * <p><b>2026-09-11 修正</b>：此前这里写死 3，于是"箱子里有 3 种、每样还很充足"时
+	 * 提示行只列 3 条就补 "…"，玩家读到的是"波一次只能带 3 个物品"（用户实测反馈），
+	 * 而实际载荷是 5 件 3 种。现在改为：清单按配置上限列全 + 行首给出"n/上限 件 · m/上限 种"，
+	 * 与护目镜的"辅料载荷：n 个 / m 种"口径一致，不会再被误读。</p>
+	 */
+	private static final int MAX_SHOWN_ITEM_KINDS = 8;
 
 	@Override
 	public void register(IWailaCommonRegistration registration) {
@@ -158,8 +167,25 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 			if (!payload.isEmpty()) {
 				ListTag items = payload.getList(KEY_ITEMS, Tag.TAG_COMPOUND);
 				if (!items.isEmpty()) {
-					tooltip.add(Component.translatable("createoreexpansion.jade.stellar_wave_payload_items",
-						payloadItemListText(items)).withStyle(ChatFormatting.GRAY));
+					// 行首给"n 件 / m 种"总数（与护目镜的"辅料载荷：n 个 / m 种"同口径）：
+					// 只列清单时，玩家会把"列出来的几种"误读成"波只能带这么几个"（用户实测反馈）。
+					int totalItems = 0;
+					int kinds = 0;
+					for (int i = 0; i < items.size(); i++) {
+						CompoundTag entry = items.getCompound(i);
+						ResourceLocation id = ResourceLocation.tryParse(entry.getString(KEY_ITEM_ID));
+						if (id == null || BuiltInRegistries.ITEM.getOptional(id)
+							.orElse(Items.AIR) == Items.AIR)
+							continue; // 与清单同口径：注册表里找不到的条目不计
+						kinds++;
+						totalItems += entry.getInt(KEY_ITEM_COUNT);
+					}
+					if (kinds > 0) {
+						tooltip.add(Component.translatable("createoreexpansion.jade.stellar_wave_payload_items",
+							totalItems, com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadItems, kinds,
+							com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadKinds,
+							payloadItemListText(items)).withStyle(ChatFormatting.GRAY));
+					}
 				}
 				// 携带加热（变器扫描半径内的烈焰燃烧室）：档位名 + 该档配色
 				if (payload.contains(KEY_HEAT, Tag.TAG_INT)) {

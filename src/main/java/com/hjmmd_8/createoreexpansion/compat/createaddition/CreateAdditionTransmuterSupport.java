@@ -7,6 +7,7 @@ import com.mrh0.createaddition.recipe.charging.ChargingRecipe;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -166,6 +167,57 @@ public final class CreateAdditionTransmuterSupport {
 			return List.of(ChargingRecipe.TYPE_INFO);
 		} catch (Throwable ignored) {
 			return List.of();
+		}
+	}
+
+	/**
+	 * <b>CC&amp;A 全部充电配方里最大的那条的耗电量（FE）</b>——变体波的"电量载荷上限"就用它
+	 * （用户 2026-09 口径：取电量的最大值改为 CC&amp;A 充电时消耗电量的所有配方的最大值，
+	 * 而不是把四周储能抽干）。
+	 *
+	 * <p>未安装 CC&amp;A / 没有此类配方 / 读取异常 → 返回 0（调用方据此回退到"不设上限"）。</p>
+	 */
+	public static int maxChargingEnergy(Level level) {
+		if (level == null || !isLoaded())
+			return 0;
+		try {
+			int max = 0;
+			var type = com.mrh0.createaddition.index.CARecipes.CHARGING_TYPE.get();
+			for (net.minecraft.world.item.crafting.RecipeHolder<ChargingRecipe> holder : level.getRecipeManager()
+				.getAllRecipesFor(type)) {
+				ChargingRecipe charging = holder.value();
+				if (charging != null)
+					max = Math.max(max, Math.max(0, charging.getEnergy()));
+			}
+			return max;
+		} catch (Throwable ignored) {
+			return 0;
+		}
+	}
+
+	/**
+	 * "雷击落地统一加工也会顺带执行"的配方类型 id（CC&amp;A charging）——波引雷时据此类 id
+	 * 把这些类型从自己的类型门里摘掉，保证同一件物品不会被"雷"和"波"各加工一遍。
+	 * 未安装 CC&amp;A 时返回空集。
+	 *
+	 * <p><b>口径（用户 2026-09 明确，勿混淆）</b>：CC&amp;A 的充电（{@code createaddition:charging}）
+	 * 与本模组的雷电加工（{@code createoreexpansion:lightning} / {@code lightning_block}）是<b>两码事</b>——
+	 * 它们是两套独立机制、两个不同配方类型。这里之所以要"摘掉"，仅仅因为
+	 * {@code LightningEventHandler} 在落点<b>顺带兼容执行</b> CC&amp;A 的充电配方，
+	 * 会和同样带这个类型的波抢同一件物品。</p>
+	 *
+	 * <p><b>替代关系</b>：本模组的充电加工（应力充能器 / 星辉波变器，类型
+	 * {@code createoreexpansion:charging}）<b>可以执行 CC&amp;A 的全部充电配方</b>
+	 * （本类 {@link #extraEnergyRecipeTypes} 把 CC&amp;A charging 类型补进带电波；
+	 * {@code ChargingRecipeAssemblyMixin} 让它能作为序列加工步骤），所以玩家不需要特斯拉线圈也能做这些加工。</p>
+	 */
+	public static java.util.Set<ResourceLocation> strikeHandledTypeIds() {
+		if (!isLoaded())
+			return java.util.Set.of();
+		try {
+			return java.util.Set.of(ChargingRecipe.TYPE_INFO.getId());
+		} catch (Throwable ignored) {
+			return java.util.Set.of();
 		}
 	}
 }

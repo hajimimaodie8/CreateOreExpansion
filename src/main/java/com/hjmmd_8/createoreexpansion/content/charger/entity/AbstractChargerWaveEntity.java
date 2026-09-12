@@ -358,6 +358,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	private void handleBlockCollisions() {
 		boolean hitSolid = false;
+		// 撞到的那个"不带物品槽的普通方块"的位置（供 onSolidBlockHit 引雷用；只有真撞到才非空）
+		BlockPos solidPos = null;
 		for (BlockPos pos : BlockPos.betweenClosed(
 			Mth.floor(getBoundingBox().minX), Mth.floor(getBoundingBox().minY), Mth.floor(getBoundingBox().minZ),
 			Mth.floor(getBoundingBox().maxX), Mth.floor(getBoundingBox().maxY), Mth.floor(getBoundingBox().maxZ))) {
@@ -457,8 +459,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 				return;
 			}
 			hitSolid = true;
+			solidPos = pos.immutable(); // 记录撞到的普通方块（引雷用）
 		}
 		if (hitSolid) {
+			onSolidBlockHit(solidPos); // 钩子：变体波在此引雷（见方法注释）
 			ChargerWaveFx.burst(level(), position(), renderColor);
 			discard();
 			return;
@@ -486,6 +490,19 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	protected boolean handleItemInventoryBlock(IItemHandler handler, BlockPos pos) {
 		processor.processBlockHandler(handler, pos);
 		return false; // 普通波：无论匹配与否都按撞墙消散（调用方处理特效）
+	}
+
+	/**
+	 * 撞到<b>不带物品槽的普通方块</b>（地形 / 机器外壳等，即"撞墙"）时的钩子。
+	 *
+	 * <p>默认空实现。变体波（{@code StellarWaveEntity}）覆写它做<b>引雷</b>：
+	 * 波携带避雷针引雷次数时，撞到哪里就在哪里落一道雷——这样"闪电方块转化"
+	 * （{@code createoreexpansion:lightning_block}）也能被波远程执行
+	 * （否则只有带物品槽的方块会走 {@link #handleItemInventoryBlock}，普通方块永远吃不到雷）。</p>
+	 *
+	 * <p>调用时机：波即将因撞墙而绽放消散之前，只在此处调用一次；波仍按原逻辑消散。</p>
+	 */
+	protected void onSolidBlockHit(BlockPos pos) {
 	}
 
 	/**

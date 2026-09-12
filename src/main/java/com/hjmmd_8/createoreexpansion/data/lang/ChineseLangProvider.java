@@ -218,7 +218,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_items", "辅料载荷：%s 个 / %s 种");
         add("createoreexpansion.goggles.stellar_wave_transmuter_fluid", "流体载荷：%s mB");
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "电量载荷：%s FE");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "避雷针机会：%s");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "避雷针引雷次数：%s（满充能才抽取，波打中哪里就在哪里落雷）");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "最近波可加工：");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "已绑定 %s 台机器。按 [%s] 显示加工配方");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint_shift", "已绑定 %s 台机器。按住 [%s] 显示加工配方");
@@ -235,6 +235,11 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe_type.deploying", "部署");
         add("createoreexpansion.recipe_type.item_application", "物品应用");
         add("createoreexpansion.recipe_type.mixing", "搅拌");
+        add("createoreexpansion.recipe_type.compacting", "压块");
+        add("createoreexpansion.recipe_type.filling", "灌注");
+        add("createoreexpansion.recipe_type.emptying", "排空");
+        add("createoreexpansion.recipe_type.transmuting", "转化");
+        add("createoreexpansion.recipe_type.sequenced_assembly", "序列组装");
         add("createoreexpansion.recipe_type.focusing", "聚焦");
         add("createoreexpansion.recipe_type.coiling", "卷绕");
         add("createoreexpansion.recipe_type.curving", "弯折");
@@ -263,7 +268,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.stellar_wave_transmuter", "星辉波变器");
         add("createoreexpansion.jei.transmuter.line1", "① 水平飞行的能量波从侧面射入，被转成“变体波”并从对侧穿出；竖直撞上下面会像撞墙一样消散。");
         add("createoreexpansion.jei.transmuter.line2", "② 变体波携带扫描到的机器配方类型，以及半径内点燃的烈焰燃烧室提供的加热能力（普通/超级加热 → 加热搅拌等加热配方可用）；链式加工次数 = 波等级（每次成功加工 −1）。");
-        add("createoreexpansion.jei.transmuter.line3", "③ 波还携带载荷：辅料物品（最多 5 个/5 种）、流体（最多 500 mB）、电量（如特斯拉线圈全抽）与避雷针释放机会（穿波时抽取 1 次）。");
+        add("createoreexpansion.jei.transmuter.line3", "③ 波还携带载荷：辅料物品（最多 5 个/5 种）、流体（最多 2 B）、电量（上限 = CC&A 充电配方里最贵那条的耗电量）与避雷针引雷次数（穿波时从**满充能**的强化避雷针抽取；波打中哪里就在哪里落雷，闪电加工由闪电落地统一加工接管）。");
         add("createoreexpansion.jei.transmuter.line4", "④ 命中物品执行匹配配方：双输入消耗辅料，流体/电量型条目按需扣减；链尽或消散时剩余载荷存回附近容器/储罐/储能，放不下则掉落/浪费。");
         add("createoreexpansion.goggles.stellarstone_charger", "星辉石应力充能器");
         add("createoreexpansion.goggles.stellarstone_charger_manual_level", "手动发射波等级：%s");
@@ -312,16 +317,15 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.jade.charge_positive", "正电荷");
         add("createoreexpansion.jade.charge_negative", "负电荷");
         // 变体波（星辉波变器产物）携带载荷
-        add("createoreexpansion.jade.stellar_wave_payload_items", "携带物品: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_items", "携带物品（%s/%s 件 · %s/%s 种）: %s");
         add("createoreexpansion.jade.stellar_wave_payload_energy", "携带电量: %s FE");
         add("createoreexpansion.jade.stellar_wave_payload_fluid", "携带流体: %s %s mB");
-        add("createoreexpansion.jade.stellar_wave_payload_rods", "释放机会: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_rods", "引雷次数: %s（打中哪里就在哪里落雷）");
         add("createoreexpansion.jade.stellar_wave_payload_heat", "携带加热: %s");
         add("createoreexpansion.jade.stellar_wave_payload_rpm", "携带转速: %s RPM");
         // 变体波可加工配方类型（能力清单，独立于载荷）
         add("createoreexpansion.jade.stellar_wave_can_process", "可加工：");
-        // 工作盆内容的实时行（本模组第二个 Jade 插件：逐 tick 取数，跟随波加工结果刷新）
-        add("createoreexpansion.jade.basin_live", "工作盆内容（实时）:");
+        // 工作盆物品行：由 BasinLiveItemStorage 直接接管 Jade 原生行，故不再需要单独的实时行词条
         add("block.createoreexpansion.energy_wave_disperser", "能量波差器");
         add("block.createoreexpansion.six_face_disperser", "六面能量波差器");
         add("block.createoreexpansion.octa_energy_wave_differencer", "八面能量波差器");

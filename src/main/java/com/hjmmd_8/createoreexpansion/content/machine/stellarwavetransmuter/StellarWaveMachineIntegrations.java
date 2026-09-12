@@ -129,4 +129,42 @@ public final class StellarWaveMachineIntegrations {
 		}
 		return out;
 	}
+
+	/**
+	 * <b>CC&amp;A 全部充电配方里最大的那条的耗电量（FE）</b>——变体波"电量载荷上限"的数据来源。
+	 *
+	 * <p>用户 2026-09 口径：波的电量载荷上限 = CC&amp;A 充电时消耗电量的所有配方的最大值
+	 * （够跑最贵的那条即可，不再把四周储能抽干）。未安装 CC&amp;A / 无此类配方 → 0，
+	 * 调用方据此回退到"不设上限"。</p>
+	 */
+	public static int maxStrikeChargingEnergyFe(net.minecraft.world.level.Level level) {
+		try {
+			return CreateAdditionTransmuterSupport.maxChargingEnergy(level);
+		} catch (Throwable ignored) {
+			return 0;
+		}
+	}
+
+	/**
+	 * <b>"雷击落地统一加工也会顺带执行"的配方类型 id</b>（CC&amp;A 的 charging）。
+	 *
+	 * <p><b>先把口径摆正（用户 2026-09 明确）</b>：CC&amp;A 的充电（{@code createaddition:charging}）
+	 * 与本模组的雷电加工（{@code createoreexpansion:lightning} / {@code lightning_block}）是
+	 * <b>两码事</b>——两套独立机制、两个不同配方类型，不要混为一谈。
+	 * 本模组的充电加工（应力充能器 / 星辉波变器，{@code createoreexpansion:charging}）
+	 * <b>可以执行 CC&amp;A 的全部充电配方</b>（见 {@link #energyExtraRecipeTypes} 与
+	 * {@code ChargingRecipeAssemblyMixin}），所以玩家不必依赖特斯拉线圈。</p>
+	 *
+	 * <p><b>那为什么还要这个表</b>：{@code LightningEventHandler} 在落点除了本模组的 lightning 配方，
+	 * 还会<b>兼容性地</b>执行 CC&amp;A 充电配方；而携带电量的波自己也能执行它们。波在命中点
+	 * <b>引了一道雷</b>时，这些类型就交给那道雷，本波从类型门里摘掉，避免同一件物品被加工两遍
+	 * （用户 2026-09 指出的重复执行问题）。未安装 CC&amp;A 时返回空表。</p>
+	 */
+	public static java.util.Set<net.minecraft.resources.ResourceLocation> strikeHandledTypeIds() {
+		try {
+			return CreateAdditionTransmuterSupport.strikeHandledTypeIds();
+		} catch (Throwable ignored) {
+			return java.util.Set.of();
+		}
+	}
 }

@@ -149,15 +149,14 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.jade.charge_positive", "Positive");
         add("createoreexpansion.jade.charge_negative", "Negative");
         // Stellar (variant) wave carried payload
-        add("createoreexpansion.jade.stellar_wave_payload_items", "Carried Items: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_items", "Carried Items (%s/%s pcs · %s/%s kinds): %s");
         add("createoreexpansion.jade.stellar_wave_payload_energy", "Carried Energy: %s FE");
         add("createoreexpansion.jade.stellar_wave_payload_fluid", "Carried Fluid: %s %s mB");
-        add("createoreexpansion.jade.stellar_wave_payload_rods", "Lightning Chance: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_rods", "Lightning Strikes: %s (strikes wherever it hits)");
         add("createoreexpansion.jade.stellar_wave_payload_heat", "Carried Heat: %s");
         add("createoreexpansion.jade.stellar_wave_payload_rpm", "Carried Speed: %s RPM");
         // Variant wave craftable recipe types (capability list, independent of payload)
         add("createoreexpansion.jade.stellar_wave_can_process", "Can process:");
-        add("createoreexpansion.jade.basin_live", "Basin contents (live):");
         add(AllBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");
         add(AllBlocks.SIX_FACE_DISPERSER.get(), "Six-Face Energy Wave Disperser");
         add(AllBlocks.OCTA_ENERGY_WAVE_DIFFERENCER.get(), "Octa Energy Wave Disperser");
@@ -295,7 +294,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_items", "Item payload: %s items, %s kinds");
         add("createoreexpansion.goggles.stellar_wave_transmuter_fluid", "Fluid payload: %s mB");
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "Energy payload: %s FE");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "Lightning rod credits: %s");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "Lightning rod strikes: %s (only taken when fully charged; the wave strikes wherever it hits)");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "Recent wave can process:");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "Linked to %s machines. Hold [%s] for recipes");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint_shift", "Linked to %s machines. Holding [%s] shows recipes");
@@ -312,6 +311,11 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe_type.deploying", "Deploying");
         add("createoreexpansion.recipe_type.item_application", "Item Application");
         add("createoreexpansion.recipe_type.mixing", "Mixing");
+        add("createoreexpansion.recipe_type.compacting", "Compacting");
+        add("createoreexpansion.recipe_type.filling", "Filling");
+        add("createoreexpansion.recipe_type.emptying", "Emptying");
+        add("createoreexpansion.recipe_type.transmuting", "Transmuting");
+        add("createoreexpansion.recipe_type.sequenced_assembly", "Sequenced Assembly");
         add("createoreexpansion.recipe_type.focusing", "Focusing");
         add("createoreexpansion.recipe_type.coiling", "Coiling");
         add("createoreexpansion.recipe_type.curving", "Curving");
@@ -340,7 +344,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.stellar_wave_transmuter", "Stellar Wave Transmuter");
         add("createoreexpansion.jei.transmuter.line1", "1) A horizontal energy wave entering the side is converted into a variant wave that exits on the opposite side; hitting the top/bottom face behaves like a wall.");
         add("createoreexpansion.jei.transmuter.line2", "2) The variant carries the scanned machines' recipe types plus the heat read from lit Blaze Burners in range (heated/superheated, enabling heated mixing and other heat-gated recipes); chain steps = wave level (minus 1 per successful craft).");
-        add("createoreexpansion.jei.transmuter.line3", "3) Payload: up to 5 items (5 kinds), 500 mB fluid, FE energy (fully drained, e.g. Tesla Coils) and 1 lightning-rod credit (drained when passing).");
+        add("createoreexpansion.jei.transmuter.line3", "3) Payload: up to 5 items (5 kinds), 2 B fluid, FE energy (cap = the most expensive CC&A charging recipe) and lightning strikes (taken from FULLY CHARGED reinforced lightning rods; the wave strikes wherever it hits, and the strike is processed by the lightning strike system).");
         add("createoreexpansion.jei.transmuter.line4", "4) On item hit, matching recipes run: dual-input spends auxiliary items, fluid/FE entries deduct the payload; when the chain ends the leftovers return to nearby storage or drop/waste.");
         add("createoreexpansion.goggles.field_controller", "Energy Field Controller");
         add("createoreexpansion.goggles.field_controller_idle", "No stress (cannot generate a field)");

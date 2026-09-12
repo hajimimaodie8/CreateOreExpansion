@@ -106,6 +106,13 @@ public final class AllConfig {
      */
     public static class Wave {
         public final ModConfigSpec.BooleanValue requireCarriedType;
+        public final ModConfigSpec.EnumValue<PayloadRelease> payloadRelease;
+        public final ModConfigSpec.BooleanValue consumeHeldItemAux;
+        public final ModConfigSpec.IntValue maxPayloadItems;
+        public final ModConfigSpec.IntValue maxPayloadKinds;
+        public final ModConfigSpec.IntValue maxPayloadFluidMb;
+        public final ModConfigSpec.IntValue maxPayloadEnergyFe;
+        public final ModConfigSpec.BooleanValue refillPayloadOnHit;
 
         Wave(ModConfigSpec.Builder builder) {
             builder.push("wave");
@@ -114,8 +121,58 @@ public final class AllConfig {
                             "true（默认）：拆掉机器后波不再能做那类配方，与“读取周围机器并整合能力”的设计一致",
                             "false：回到旧的全库检索行为（任何变体波都能做任何配方，不推荐）")
                     .define("requireCarriedType", true);
+            payloadRelease = builder
+                    .comment("波的剩余载荷（没用完的辅料）去哪儿——三种口径：",
+                            "NEAREST_CONTAINER（默认，用户 2026-09-11 拍板）：存进【击中方块周围、变器读取半径之内】",
+                            "  最近的“可存容器”（按距离由近到远逐个试，装满一个接着下一个；工作盆与正在加工的那个方块不算）",
+                            "SOURCE_CONTAINER：还回实际取料的那几个容器（箱子里没用完的辅料原样回到原箱）",
+                            "DROP_AT_DISSIPATION：全部爆落在消散点（最旧的行为；“想亲眼看着掉出来”时用）",
+                            "三种口径都不会把余料放进正在加工的工作盆/方块（2026-09 实测反馈的那条）")
+                    .defineEnum("payloadRelease", PayloadRelease.NEAREST_CONTAINER);
+            consumeHeldItemAux = builder
+                    .comment("执行“手持物类配方”（机械手部署 deploying / 物品应用 item_application）时是否消耗辅料",
+                            "true（默认）：消耗——波没有“手”，每一击都要把辅料从容器/载荷里物化出来，",
+                            "  否则会抓着一份辅料无限盖章、箱子里的原料永远不少（序列组装必须靠它吃齿轮/铁粒）",
+                            "false：按实物机械手的口径，手持物不消耗（旧行为；会让序列组装变成无消耗）")
+                    .define("consumeHeldItemAux", true);
+            maxPayloadItems = builder
+                    .comment("波一次最多携带的物品总数（件）——【取料是“傻抽”：范围内有多少抽多少，抽到上限为止，",
+                            "不看这次要做什么加工、也不按配方需要挑种类，用户 2026-09 明确要求保持这样】",
+                            "取料顺序：先每种各 1 件（铺开种类），还没到本上限时再从“剩余最多的那种”继续各抽 1 件",
+                            "（用户口径：4 种 → 先各 1 件，再从还有存货的那组补到上限）")
+                    .defineInRange("maxPayloadItems", 5, 1, 64);
+            maxPayloadKinds = builder
+                    .comment("波一次最多携带的物品种类数（种）——超过本数的种类不会被带走（同样是傻抽，不做需求筛选）")
+                    .defineInRange("maxPayloadKinds", 5, 1, 64);
+            maxPayloadFluidMb = builder
+                    .comment("波一次最多携带的流体量（mB）——只取扫描到的第一种流体，抽到上限为止",
+                            "默认 2000（= 2 B，用户 2026-09 拍板；旧值 500 mB）")
+                    .defineInRange("maxPayloadFluidMb", 2000, 0, 100000);
+            maxPayloadEnergyFe = builder
+                    .comment("波一次最多携带的电量（FE）",
+                            "-1（默认，自动）：上限 = CC&A 充电配方里最贵那条的耗电量（用户 2026-09 口径）；",
+                            "  未安装 CC&A / 没有此类配方时回退为“不设上限”（保持旧行为：抽干可抽取储能）",
+                            ">= 0：固定上限（想把电量载荷压得更小或放大时直接写数字）",
+                            "上限只限制“取多少”，不改变取料方式（依旧是范围内有多少抽多少、抽到上限为止）")
+                    .defineInRange("maxPayloadEnergyFe", -1, -1, 100_000_000);
+            refillPayloadOnHit = builder
+                    .comment("波命中目标后，是否再在命中点周围自动补一次料",
+                            "false（默认，用户 2026-09-11 拍板）：载荷只在变器穿波那一刻取一次",
+                            "  （取自变器读取半径内的容器 = 玩家自己摆的箱子），波不在命中点自作主张搬东西",
+                            "true：恢复旧行为——命中后按“变器读取半径”在命中点周围再补一次物品/流体/电量")
+                    .define("refillPayloadOnHit", false);
             builder.pop();
         }
+    }
+
+    /** 波剩余载荷的处置口径（见 {@code [wave] payloadRelease}）。 */
+    public enum PayloadRelease {
+        /** 存进"击中方块周围、变器读取半径之内"最近的可存容器（默认）。 */
+        NEAREST_CONTAINER,
+        /** 还回实际取料的那些容器（原箱）。 */
+        SOURCE_CONTAINER,
+        /** 全部爆落在消散点（最旧的行为）。 */
+        DROP_AT_DISSIPATION
     }
 
     // 声明对应缓存
@@ -131,6 +188,20 @@ public final class AllConfig {
     public static int stellarstoneMaxStoreLayers = 20;
     /** 变体波是否只执行"携带到的"配方类型（初值 = 默认 true，配置加载后覆盖） */
     public static boolean waveRequireCarriedType = true;
+    /** 波剩余载荷的处置口径（初值 = 默认 NEAREST_CONTAINER：存进击中方块周围、变器范围内的最近可存容器） */
+    public static PayloadRelease wavePayloadRelease = PayloadRelease.NEAREST_CONTAINER;
+    /** 手持物类配方（deploying/item_application）是否消耗辅料（初值 = 默认 true；false = 按实物机械手口径不消耗） */
+    public static boolean waveConsumeHeldItemAux = true;
+    /** 波载荷物品总数上限（件） */
+    public static int waveMaxPayloadItems = 5;
+    /** 波载荷物品种类上限（种） */
+    public static int waveMaxPayloadKinds = 5;
+    /** 波载荷流体上限（mB；默认 2000 = 2 B） */
+    public static int waveMaxPayloadFluidMb = 2000;
+    /** 波载荷电量上限（FE；-1 = 自动：CC&A 充电配方里最贵那条的耗电量；其余 = 固定上限） */
+    public static int waveMaxPayloadEnergyFe = -1;
+    /** 波命中目标后是否再在命中点自动补料（初值 = 默认 false：只在变器穿波时取一次） */
+    public static boolean waveRefillPayloadOnHit = false;
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
@@ -144,5 +215,12 @@ public final class AllConfig {
         sapphireMaxStoreLayers = Math.max(1, COMMON.CHARGER.sapphireMaxLayers.get());
         stellarstoneMaxStoreLayers = Math.max(1, COMMON.CHARGER.stellarstoneMaxLayers.get());
         waveRequireCarriedType = COMMON.WAVE.requireCarriedType.get();
+        wavePayloadRelease = COMMON.WAVE.payloadRelease.get();
+        waveConsumeHeldItemAux = COMMON.WAVE.consumeHeldItemAux.get();
+        waveMaxPayloadItems = Math.max(1, COMMON.WAVE.maxPayloadItems.get());
+        waveMaxPayloadKinds = Math.max(1, COMMON.WAVE.maxPayloadKinds.get());
+        waveMaxPayloadFluidMb = Math.max(0, COMMON.WAVE.maxPayloadFluidMb.get());
+        waveMaxPayloadEnergyFe = COMMON.WAVE.maxPayloadEnergyFe.get();
+        waveRefillPayloadOnHit = COMMON.WAVE.refillPayloadOnHit.get();
     }
 }
