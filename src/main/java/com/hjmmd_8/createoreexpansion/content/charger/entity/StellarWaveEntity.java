@@ -7,10 +7,9 @@ import java.util.Map;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
-import com.hjmmd_8.createoreexpansion.content.charger.craft.family.WaveRecipeFamilies;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.Candidate;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveAuxResolver;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftConsumption;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateEvaluator;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveOutputPlacer;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateOrdering;
@@ -33,7 +32,6 @@ import com.simibubi.create.content.processing.basin.BasinBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
 import com.simibubi.create.content.processing.recipe.HeatCondition;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
-import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 import net.minecraft.core.BlockPos;
@@ -46,11 +44,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeInput;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
@@ -83,7 +77,7 @@ import net.neoforged.neoforge.items.IItemHandler;
  *       → 产物继续可续链。</li>
  * </ul>
  */
-public class StellarWaveEntity extends AbstractChargerWaveEntity {
+public class StellarWaveEntity extends AbstractChargerWaveEntity implements WaveCraftConsumption.Host {
 
 	/** 变器赋予的加工机属性（方块 id 快照）；可为空 = 波未携带加工属性（退化为普通波）。 */
 	private List<ResourceLocation> attributes = new ArrayList<>();
@@ -915,160 +909,18 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	// 产物回位目标槽（⑥，productSlotHint）的实现已搬入 WaveCraftResults（见其 javadoc：
 	// "辅料即产物来源"的推导类配方——auto_upgrade / auto_smithing——产物优先放回首辅料所在的容器槽）。
 
-	/** 消耗一次加工的资源（辅料/流体/电量），掉落物路径与方块槽路径共用。
-	 *  @param handler        命中容器物品能力（扣减 CONTAINER 来源辅料用；掉落物路径传 null）
-	 *  @param containerFluid 命中容器流体能力（扣减 CONTAINER 来源流体用；掉落物路径/无流体能力传 null） */
+	/**
+	 * 消耗一次加工的资源（辅料/流体/电量），掉落物路径与方块槽路径共用。
+	 *
+	 * <p>扣减规则（按来源真扣、缺口回流、手持物配方开关）全在 {@link WaveCraftConsumption}；
+	 * 本类只作为它的 {@link WaveCraftConsumption.Host} 提供载荷状态。</p>
+	 *
+	 * @param handler        命中容器物品能力（扣减 CONTAINER 来源辅料用；掉落物路径传 null）
+	 * @param containerFluid 命中容器流体能力（扣减 CONTAINER 来源流体用；掉落物路径/无流体能力传 null）
+	 */
 	private void consumeForCraft(Candidate candidate, IItemHandler handler, IFluidHandler containerFluid) {
-		consumeAux(candidate, handler);
-		consumeCraftFluid(candidate, containerFluid);
-		consumeCraftEnergy(candidate);
-	}
-
-	/**
-	 * 按来源扣减电量需求（"电量是一种特殊辅料"的扣减侧）：
-	 * <ul>
-	 *   <li>{@code NEARBY} → 从该方块位置真取（通用储能 {@code extractEnergy(need,false)} /
-	 *       线圈内部按需扣）；</li>
-	 *   <li>{@code PAYLOAD} → 从 {@link #payloadEnergy} 扣。</li>
-	 * </ul>
-	 * 邻域取电若因并发变化少于计划量（估算与实际不符），缺口<b>退回载荷电量补齐</b>，
-	 * 避免"门槛过了却没真扣到电"的白嫖加工；载荷也不够时按尽力而为扣到 0（估算阶段已排除该情形）。
-	 */
-	private void consumeCraftEnergy(Candidate candidate) {
-		if (candidate.energies.isEmpty())
-			return;
-		// 直接用自守卫的 craftDebug（不要写 if (CRAFT_DEBUG)：常量 false 会让 javac 整块消除，
-		// 打开开关后必须重新编译才生效，容易误导排查）
-		craftDebug("电量扣减：本配方合计 {} FE，来源 {}（载荷余量 {} FE）", candidate.energyRequired(),
-			WaveAuxResolver.describeEnergies(candidate.energies), payloadEnergy);
-		for (EnergyDraw draw : candidate.energies) {
-			int amount = draw.amount();
-			if (amount <= 0)
-				continue;
-			if (draw.source() == EnergySource.PAYLOAD) {
-				payloadEnergy = Math.max(0, payloadEnergy - amount);
-				continue;
-			}
-			int taken = auxResolver().extractNearbyEnergy(draw.pos(), amount);
-			if (taken < amount) {
-				int shortfall = amount - taken;
-				payloadEnergy = Math.max(0, payloadEnergy - shortfall);
-				craftDebug("电量扣减：邻域 {} 仅取到 {} / {} FE，缺口 {} FE 转由载荷电量补",
-					draw.pos() == null ? "?" : draw.pos()
-						.toShortString(),
-					taken, amount, shortfall);
-			}
-		}
-	}
-
-	/**
-	 * 按来源扣减流体输入：
-	 * <ul>
-	 *   <li>{@code CONTAINER} → {@code containerFluid.drain(该流体×需求量, EXECUTE)}
-	 *       （按种类+组件取，跨罐由能力实现自行分配）；容器缺失/抽空则安全跳过；</li>
-	 *   <li>{@code PAYLOAD} → 从 {@link #payloadFluid} 扣该量（多条载荷流体按顺序累计扣减）。</li>
-	 * </ul>
-	 *
-	 * <p><b>并发缺口回流补齐（2026-09，与电量侧同口径）</b>：门槛解析与实际扣减之间容器可能变了
-	 * （同 tick 内别的机器抽走了盆里的水、或能力实现按罐限流只给一半），此时若"少扣流体却照常出产物"
-	 * 就是白嫖加工。所以缺口 {Amount − drained} 由<b>载荷流体补扣</b>——与
-	 * {@link #consumeCraftEnergy} 的"邻域取电不足 → 缺口转由载荷电量补"完全对称。</p>
-	 */
-	private void consumeCraftFluid(Candidate candidate, IFluidHandler containerFluid) {
-		for (FluidRef ref : candidate.fluids) {
-			int amount = ref.fluid()
-				.getAmount();
-			if (amount <= 0)
-				continue;
-			if (ref.source() == FluidSource.CONTAINER) {
-				if (containerFluid == null)
-					continue;
-				FluidStack drained = containerFluid.drain(ref.fluid()
-					.copy(), IFluidHandler.FluidAction.EXECUTE);
-				int shortfall = amount - drained.getAmount();
-				if (shortfall > 0) {
-					int covered = Math.min(shortfall, Math.max(0, payloadFluid.getAmount()));
-					if (covered > 0) {
-						if (payloadFluid.getAmount() <= covered)
-							payloadFluid = FluidStack.EMPTY;
-						else
-							payloadFluid.shrink(covered);
-					}
-					craftDebug("流体扣减：容器仅抽出 {} mB / 需 {} mB，缺口 {} mB 转由载荷流体补（实补 {} mB）",
-						drained.getAmount(), amount, shortfall, covered);
-				}
-			} else {
-				if (payloadFluid.getAmount() <= amount)
-					payloadFluid = FluidStack.EMPTY;
-				else
-					payloadFluid.shrink(amount);
-			}
-		}
-	}
-
-	/**
-	 * 逐个消耗候选的全部辅料（每个 ingredient 扣 1 件），<b>按来源分别扣</b>：
-	 * <ul>
-	 *   <li>{@code PAYLOAD} → 从 {@link #payloadItems} 扣 1；扣空即 {@code remove(idx)}，
-	 *       会让<b>更大</b>的下标前移，故载荷下标先收集再<b>降序</b>处理
-	 *       （排序只在同类来源内比较，容器槽号不参与，槽号扣减本身不引起下标漂移）；</li>
-	 *   <li>{@code CONTAINER} → {@code handler.extractItem(slot, 1, false)}（槽号互不干扰，无需排序）；
-	 *       取空/越界/无容器（掉落物路径）一律安全跳过；</li>
-	 * </ul>
-	 *
-	 * <p><b>手持物类配方（deployer / ManualApplication）默认照样扣</b>（2026-09-11 修正，用户实测反馈）：
-	 * 实物机械手确实不消耗手持物（一台机械手夹着一个齿轮能盖很久），但<b>波不是机械手</b>——它没有"手"，
-	 * 每一击都得把辅料从容器/载荷里<b>物化</b>出来，所以必须真扣。旧实现直接跳过整条辅料扣减，
-	 * 后果是：波抓着一份载荷辅料反复盖章，箱子里的原料永远不少（用户："直接也不从箱子里边抽物品，
-	 * 就逮着一个…往机器里边加工"；也是更早那句"消耗了一份产物进行加工后，原材料却没有被消耗"的根因）。
-	 * 需要回到"手持物免费"的旧口径时把配置 {@code wave.consumeHeldItemAux} 设为 false。</p>
-	 *
-	 * @param handler 命中容器（CONTAINER 来源必需；null 时该来源静默跳过）
-	 */
-	private void consumeAux(Candidate candidate, IItemHandler handler) {
-		if (candidate.auxes.isEmpty())
-			return;
-		if (isHeldItemRecipe(candidate.recipe)
-			&& !com.hjmmd_8.createoreexpansion.common.AllConfig.waveConsumeHeldItemAux) {
-			craftDebug("辅料扣减：{} 属手持物类配方且 wave.consumeHeldItemAux=false → 辅料不消耗",
-				candidate.id);
-			return;
-		}
-		// 通道 A：载荷条目（降序扣减，防 remove 引起下标错位）
-		List<Integer> payloadOrder = new ArrayList<>(2);
-		for (AuxRef ref : candidate.auxes)
-			if (ref.source() == AuxSource.PAYLOAD)
-				payloadOrder.add(ref.index());
-		payloadOrder.sort(null); // 自然升序；下面倒序遍历 = 降序处理
-		for (int k = payloadOrder.size() - 1; k >= 0; k--) {
-			int idx = payloadOrder.get(k);
-			if (idx < 0 || idx >= payloadItems.size())
-				continue; // 下标越界（并发变化）：跳过该件，不让异常扩散
-			ItemStack aux = payloadItems.get(idx);
-			aux.shrink(1);
-			if (aux.isEmpty())
-				payloadItems.remove(idx);
-		}
-		// 通道 B：命中容器槽（逐槽真取 1；取空表示槽已变，跳过）
-		if (handler == null)
-			return;
-		for (AuxRef ref : candidate.auxes) {
-			if (ref.source() != AuxSource.CONTAINER)
-				continue;
-			int slot = ref.index();
-			if (slot < 0 || slot >= handler.getSlots())
-				continue;
-			ItemStack taken = handler.extractItem(slot, 1, false);
-			if (taken.isEmpty())
-				craftDebug("辅料扣减：容器槽 {} 已空（并发变化），跳过", slot);
-		}
-	}
-
-	/** 是否"手持物不消耗"类配方（deployer 手部/机械手类，类名兜底判定）。 */
-	private static boolean isHeldItemRecipe(Recipe<?> recipe) {
-		String name = recipe.getClass()
-			.getName();
-		return name.contains("ManualApplicationRecipe") || name.contains("DeployerApplicationRecipe");
+		new WaveCraftConsumption(this, (msg, args) -> craftDebug(msg, args))
+			.consumeForCraft(candidate, handler, containerFluid);
 	}
 
 	// ================= 批次锁定（①：同一批同种物品产出稳定） =================
@@ -1174,8 +1026,8 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	 * 工作盆、目录登记的加工机（含注液器/物品排放器这类<b>非动能</b>机）与动能方块一律不算可存目标。
 	 * 判定实现收敛在 {@link WavePayloadRelease#isStoreTarget}（变器扫描与波侧同源）。
 	 */
-	/** 杈呮枡瑙ｆ瀽鍣細鎸夊綋鍓嶈浇鑽风幇鍦烘瀯閫狅紙杞借嵎鍒楄〃鎸夊紩鐢ㄨ鍙栵紝鏁呭垪琛ㄥ唴瀹瑰彉鍖栫珛鍗冲彲瑙侊級銆?*/
-	private WaveAuxResolver auxResolver() {
+	/** 辅料解析器：按当前载荷现场构造（载荷列表按引用读取，故列表内容变化立即可见）。 */
+	public WaveAuxResolver auxResolver() {
 		return new WaveAuxResolver(level(), payloadItems, payloadFluid, payloadEnergy);
 	}
 
@@ -1183,6 +1035,35 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	 *  {@code craftDebug} 是静态方法，故调试出口用 lambda 绑定（{@code this::craftDebug} 对静态方法不合法）。 */
 	private WaveCraftResults.Context craftResultsContext() {
 		return new WaveCraftResults.Context(level(), auxResolver(), (msg, args) -> craftDebug(msg, args));
+	}
+
+	// ========== WaveCraftConsumption.Host：把"扣减所需的那几项载荷状态"直通出去 ==========
+	// 注意：这里给的是<b>实体内部对象本身</b>，不是 getPayloadItems()/getPayloadFluid() 那种
+	// 给 Jade 客户端看的只读副本——扣减必须就地改动载荷。
+
+	@Override
+	public List<ItemStack> livePayloadItems() {
+		return payloadItems;
+	}
+
+	@Override
+	public FluidStack livePayloadFluid() {
+		return payloadFluid;
+	}
+
+	@Override
+	public void setPayloadFluid(FluidStack fluid) {
+		this.payloadFluid = fluid;
+	}
+
+	@Override
+	public int payloadEnergyValue() {
+		return payloadEnergy;
+	}
+
+	@Override
+	public void setPayloadEnergy(int energy) {
+		this.payloadEnergy = energy;
 	}
 
 	private java.util.function.Predicate<BlockPos> payloadGatherSkip(BlockPos center) {
