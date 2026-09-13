@@ -12,6 +12,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.medallion.ThunderiteStre
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelItem;
+import com.hjmmd_8.createoreexpansion.content.wave.gauge.WaveQueryGaugeItem;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
@@ -1123,6 +1124,16 @@ public final class AllItems {
             .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .skillCooldown(5 * 20)
             .build()
+            .register();
+
+    // ========== 波情查询仪（手持静态贴图；右键查询最近能量波的波情，查询期间播动画贴图） ==========
+
+    public static final ItemEntry<WaveQueryGaugeItem> WAVE_QUERY_GAUGE = CreateOreExpansion.REGISTRATE
+            .item("wave_query_gauge", WaveQueryGaugeItem::new)
+            // 模型走手写 JSON（models/item/wave_query_gauge.json：默认静态 idle + overrides 挂
+            // createoreexpansion:scanning 指向动画模型），故这里给空的 datagen 模型提供者，
+            // 避免 datagen 另生成一份同名模型（做法与 jade_topaz_bow 一致）
+            .model((ctx, provider) -> {})
             .register();
 
     // ========== 角磨轮（动力角磨床配件，开盖后安装） ==========

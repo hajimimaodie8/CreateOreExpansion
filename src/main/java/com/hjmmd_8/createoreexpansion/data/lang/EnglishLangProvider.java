@@ -168,6 +168,23 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.jade.stellar_wave_payload_rpm", "Speed: %s RPM");
         // Variant wave craftable recipe types (capability list, independent of payload)
         add("createoreexpansion.jade.stellar_wave_can_process", "Can process:");
+        // ========== Wave Query Gauge (right-click: profile of the nearest wave) ==========
+        add(AllItems.WAVE_QUERY_GAUGE.get(), "Wave Query Gauge");
+        // The four wave profile elements are one grouped line: speed / level / payload / type.
+        // The level argument is the Greek letter only; "join" is the separator used before the
+        // per-wave-type appendix (kept in lang so both languages control their own punctuation).
+        add("createoreexpansion.wave_gauge.readout", "Wave Speed: %s blocks/s · Wave Level: %s · Wave Payload: %s · Wave Type: %s");
+        add("createoreexpansion.wave_gauge.join", " · ");
+        add("createoreexpansion.wave_gauge.payload_items", "items %s");
+        add("createoreexpansion.wave_gauge.payload_fluid", "fluid %s %s mB");
+        add("createoreexpansion.wave_gauge.payload_energy", "energy %s FE");
+        // Empty payload must be stated: the four elements are grouped, so "nothing carried" needs a placeholder
+        add("createoreexpansion.wave_gauge.payload_none", "empty");
+        // Appendix by wave type: normal -> none, omni -> processable recipe TYPES, attack -> damage
+        add("createoreexpansion.wave_gauge.tail_omni", "Processable recipe types: %s");
+        add("createoreexpansion.wave_gauge.tail_attack", "Attack damage: %s");
+        add("createoreexpansion.wave_gauge.no_wave", "No energy wave nearby");
+        add("createoreexpansion.wave_gauge.tooltip", "Right-click to scan the nearest wave");
         add(AllBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");
         add(AllBlocks.SIX_FACE_DISPERSER.get(), "Six-Face Energy Wave Disperser");
         add(AllBlocks.OCTA_ENERGY_WAVE_DIFFERENCER.get(), "Octa Energy Wave Disperser");

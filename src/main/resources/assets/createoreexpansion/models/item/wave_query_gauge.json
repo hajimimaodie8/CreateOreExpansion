@@ -1,0 +1,14 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "createoreexpansion:item/wave_query_gauge_idle"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "createoreexpansion:scanning": 1
+      },
+      "model": "createoreexpansion:item/wave_query_gauge_scanning"
+    }
+  ]
+}

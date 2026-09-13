@@ -340,6 +340,22 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.jade.stellar_wave_payload_rpm", "转速：%s RPM");
         // 变体波可加工配方类型（能力清单，独立于载荷）
         add("createoreexpansion.jade.stellar_wave_can_process", "可加工：");
+        // ========== 波情查询仪（右键查询最近能量波的波情） ==========
+        add(AllItems.WAVE_QUERY_GAUGE.get(), "波情查询仪");
+        // 波情四要素成组一行：波速 / 波级 / 波载荷 / 波型。波级实参只放希腊字母；
+        // join 是"按波型追加项"前的连接符（放词条里，便于中英各自控制标点）
+        add("createoreexpansion.wave_gauge.readout", "波速：%s 格/秒 · 波级：%s · 波载荷：%s · 波型：%s");
+        add("createoreexpansion.wave_gauge.join", " · ");
+        add("createoreexpansion.wave_gauge.payload_items", "物品 %s 件");
+        add("createoreexpansion.wave_gauge.payload_fluid", "流体 %s %s mB");
+        add("createoreexpansion.wave_gauge.payload_energy", "电量 %s FE");
+        // 空载要占位：四要素成组显示，玩家需能分辨"没带东西"与"没读出来"
+        add("createoreexpansion.wave_gauge.payload_none", "空载");
+        // 按波型追加：普通波不追加；全能波给可加工配方"种类"数；攻击波给攻击伤害
+        add("createoreexpansion.wave_gauge.tail_omni", "可加工配方种类：%s");
+        add("createoreexpansion.wave_gauge.tail_attack", "攻击伤害：%s");
+        add("createoreexpansion.wave_gauge.no_wave", "附近没有能量波");
+        add("createoreexpansion.wave_gauge.tooltip", "右键查询最近的波情");
         // 工作盆物品行：由 BasinLiveItemStorage 直接接管 Jade 原生行，故不再需要单独的实时行词条
         add("block.createoreexpansion.energy_wave_disperser", "能量波差器");
         add("block.createoreexpansion.six_face_disperser", "六面能量波差器");
