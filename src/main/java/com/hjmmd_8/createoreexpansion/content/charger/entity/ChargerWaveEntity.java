@@ -22,9 +22,12 @@ public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 		super(AllEntityTypes.CHARGER_WAVE.get(), level, pos, movementDir, waveLevel);
 	}
 
-	/** 差器均摊分发：创建同类型的降级子波（出口方向为任意向量——斜口出口沿 45° 对角） */
+	/**
+	 * 差器均摊分发：创建同类型的降级子波（出口方向为任意向量——斜口出口沿 45° 对角）。
+	 * 普通能量波不带载荷，故 index/total（载荷均摊份额）在这里用不上。
+	 */
 	@Override
-	protected AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level) {
+	protected AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
 		return new ChargerWaveEntity(level(), pos, dir, level);
 	}
 }

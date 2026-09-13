@@ -145,11 +145,13 @@ public class WaveContraptionCollisions {
 								return true;
 							}
 							Vec3 center = Vec3.atCenterOf(pos);
-							for (Vec3 localOut : OctaEnergyWaveDispersal.otherOpenDirs(state, octaLocalMove, relCenter)) {
+							List<Vec3> octaOuts = OctaEnergyWaveDispersal.otherOpenDirs(state, octaLocalMove, relCenter);
+							for (int outIndex = 0; outIndex < octaOuts.size(); outIndex++) {
 								// 出口方向：机器本地 → contraption 本地（斜口 45° 向量经 applyRotation 转世界）
-								Vec3 contraptionDir = OctaEnergyWaveDifferencerBlock.toWorldVec(axis, localOut);
+								Vec3 contraptionDir = OctaEnergyWaveDifferencerBlock.toWorldVec(axis,
+									octaOuts.get(outIndex));
 								AbstractChargerWaveEntity child = wave.createChildWave(center.add(contraptionDir),
-									contraptionDir, childLevel);
+									contraptionDir, childLevel, outIndex, octaOuts.size());
 								if (child != null) {
 									child.setPos(entity.toGlobalVector(child.position(), 0));
 									child.spawnPos = entity.toGlobalVector(child.spawnPos, 0);
@@ -355,9 +357,11 @@ public class WaveContraptionCollisions {
 			return true;
 		}
 		Vec3 center = Vec3.atCenterOf(pos);
-		for (Direction out : exits) {
-			Vec3 localDir = Vec3.atLowerCornerOf(out.getNormal());
-			AbstractChargerWaveEntity child = wave.createChildWave(center.add(localDir), localDir, childLevel);
+		for (int outIndex = 0; outIndex < exits.size(); outIndex++) {
+			Vec3 localDir = Vec3.atLowerCornerOf(exits.get(outIndex)
+				.getNormal());
+			AbstractChargerWaveEntity child = wave.createChildWave(center.add(localDir), localDir, childLevel,
+				outIndex, exits.size());
 			if (child != null) {
 				// 本地 → 世界（位置/方向，随 contraption 旋转）
 				child.setPos(entity.toGlobalVector(child.position(), 0));

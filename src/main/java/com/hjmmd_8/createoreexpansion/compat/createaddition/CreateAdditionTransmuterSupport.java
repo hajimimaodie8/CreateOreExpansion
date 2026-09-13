@@ -9,6 +9,7 @@ import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -41,7 +42,8 @@ public final class CreateAdditionTransmuterSupport {
 	private CreateAdditionTransmuterSupport() {
 	}
 
-	private static boolean isLoaded() {
+	/** CC&amp;A 是否已加载（核心层只问这个，不接触 CC&amp;A 类）。 */
+	public static boolean isLoaded() {
 		return net.neoforged.fml.ModList.get() != null
 			&& net.neoforged.fml.ModList.get().isLoaded("createaddition");
 	}
@@ -71,6 +73,84 @@ public final class CreateAdditionTransmuterSupport {
 	 */
 	public static int drainTeslaCoilFully(Level level, BlockPos pos) {
 		return consumeTeslaCoil(level, pos, Integer.MAX_VALUE);
+	}
+
+	// ================= 雷击转化用的 CC&A 门面（核心层只见中立类型，不出现任何 CC&A 类） =================
+
+	/**
+	 * <b>雷击转化用：在 CC&amp;A 充电配方里找匹配该物品的配方</b>（首个 ingredient 命中即返回）。
+	 *
+	 * <p>口径与"闪电落地统一加工"一致：单物品输入；未装 CC&amp;A / 无匹配 / 异常一律返回空，
+	 * 由调用方降级为本模组配方。<b>核心层只拿结果，不接触 CC&amp;A 类型</b>。</p>
+	 */
+	public static java.util.Optional<RecipeHolder<? extends Recipe<?>>> findChargingRecipe(Level level,
+		net.minecraft.world.item.ItemStack stack) {
+		if (level == null || stack == null || stack.isEmpty() || !isLoaded())
+			return java.util.Optional.empty();
+		try {
+			for (RecipeHolder<?> holder : level.getRecipeManager()
+				.getAllRecipesFor(com.mrh0.createaddition.index.CARecipes.CHARGING_TYPE.get())) {
+				Recipe<?> recipe = holder.value();
+				if (recipe instanceof ChargingRecipe charging && !charging.getIngredients()
+					.isEmpty()
+					&& charging.getIngredients()
+						.get(0)
+						.test(stack))
+					return java.util.Optional.of(holder);
+			}
+		} catch (Throwable ignored) {
+			// CC&A 异常/缺失：按"没有该配方"处理
+		}
+		return java.util.Optional.empty();
+	}
+
+	/** <b>雷击转化用：把 CC&amp;A 充电配方追加进候选表</b>（核心层只拿到 {@code RecipeHolder} 列表）。 */
+	public static void addChargingRecipes(Level level, java.util.List<RecipeHolder<? extends Recipe<?>>> into) {
+		if (level == null || into == null || !isLoaded())
+			return;
+		try {
+			into.addAll(level.getRecipeManager()
+				.getAllRecipesFor(com.mrh0.createaddition.index.CARecipes.CHARGING_TYPE.get()));
+		} catch (Throwable ignored) {
+			// CC&A 异常/缺失：静默降级为本模组配方
+		}
+	}
+
+	/**
+	 * <b>雷击转化用：CC&amp;A 充电配方的贪心多槽匹配</b>（每个 ingredient 需在输入池中找到可消耗物品；
+	 * 池由调用方按"逐槽复制"准备，匹配时递减）。
+	 *
+	 * <p>非 CC&amp;A 充电配方一律返回 false，由核心层走自己的配方匹配。</p>
+	 */
+	public static boolean matchesChargingRecipe(Recipe<?> recipe,
+		java.util.List<net.minecraft.world.item.ItemStack> pool) {
+		if (!(recipe instanceof ChargingRecipe charging) || pool == null || pool.isEmpty())
+			return false;
+		for (var ingredient : charging.getIngredients()) {
+			boolean found = false;
+			for (var stack : pool) {
+				if (ingredient.test(stack)) {
+					stack.shrink(1);
+					found = true;
+					break;
+				}
+			}
+			if (!found)
+				return false;
+		}
+		return true;
+	}
+
+	/** <b>雷击转化用：抽出 CC&amp;A 充电配方的产物</b>（非该类型返回空表）。 */
+	public static java.util.List<net.minecraft.world.item.ItemStack> rollChargingResults(Recipe<?> recipe,
+		net.minecraft.util.RandomSource random) {
+		if (!(recipe instanceof ChargingRecipe charging))
+			return java.util.List.of();
+		try {
+			return charging.rollResults(random);
+		} catch (Throwable ignored) {
+			return java.util.List.of();
+		}
 	}
 
 	/**

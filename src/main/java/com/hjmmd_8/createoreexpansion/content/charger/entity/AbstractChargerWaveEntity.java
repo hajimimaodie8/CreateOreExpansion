@@ -705,9 +705,30 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * @param pos   出生位置（已外推到差器外）
 	 * @param dir   发射方向（出口开口朝向，单位向量，可为任意方向）
 	 * @param level 子波等级（= 原波等级 - 降级量）
+	 * @param index 本子波在<b>本次分裂</b>中的序号（0 起）
+	 * @param total 本次分裂的子波总数（≥1）
 	 * @return 新波实体；null 则放弃发射
+	 *
+	 * <p><b>为什么要传 index/total（2026-09 修复载荷复制）</b>：分裂 = "母波 discard + 每个开口一个子波"，
+	 * 而母波携带的<b>载荷（物品/流体/电量）与链式次数属于物质</b>——若每个子波都整份继承，
+	 * 2~3 个开口就等于把同一批物品复制 2~3 份（消散时各自归还容器，净赚 ✗）。
+	 * 差器既有语义是"能量<b>均摊</b>分发到子波"，所以载荷也必须按份均摊
+	 * （见 {@code StellarWaveEntity#createChildWave}）。</p>
 	 */
-	protected abstract AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level);
+	protected abstract AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index,
+		int total);
+
+	/**
+	 * <b>分裂前的"物质已分发"钩子</b>：所有差器分裂路径在 {@code discard()} 母波之前调用一次。
+	 *
+	 * <p>为什么需要：母波被 discard 时会走 {@code remove(DISCARDED)} —— 变体波在那里会把剩余载荷
+	 * <b>释放回容器</b>（见 {@code StellarWaveEntity#releasePayload}）。但分裂场景里母波的载荷已经
+	 * <b>按份分给了子波</b>，若再释放一次就是"凭空多出一份"（2026-09 修复的载荷复制）。</p>
+	 *
+	 * <p>默认空实现（普通能量波不带载荷）；{@code StellarWaveEntity} 覆写为"标记载荷已处置"。</p>
+	 */
+	protected void onPayloadDistributedToChildren() {
+	}
 
 	@Override
 	protected void readAdditionalSaveData(CompoundTag tag) {

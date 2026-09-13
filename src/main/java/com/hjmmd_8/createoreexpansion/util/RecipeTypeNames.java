@@ -49,8 +49,13 @@ public final class RecipeTypeNames {
 	/** 类型显示名组件：已知类型走词条译名，未知类型回退英文 path。 */
 	public static Component displayName(ResourceLocation typeId) {
 		String path = typeId.getPath();
-		if (isLocalized(path))
+		if (isLocalized(path)) {
+			// 同名不同类型要区分（2026-09 审计修复）：本模组 createoreexpansion:charging（应力充能器）
+			// 与 CC&A 的 createaddition:charging（特斯拉线圈放电）path 都是 charging，清单里会同名出现。
+			if ("charging".equals(path) && !"createoreexpansion".equals(typeId.getNamespace()))
+				return Component.translatable("createoreexpansion.recipe_type.charging_other");
 			return Component.translatable("createoreexpansion.recipe_type." + path);
+		}
 		return Component.literal(path);
 	}
 }

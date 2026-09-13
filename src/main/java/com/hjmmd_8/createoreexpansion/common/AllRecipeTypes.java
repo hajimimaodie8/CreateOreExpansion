@@ -47,8 +47,26 @@ public enum AllRecipeTypes implements IRecipeTypeInfo, StringRepresentable {
 		.getPath()
 		.endsWith("_manual_only");
 
+	/**
+	 * 该配方是否应被"自动化加工"忽略（波的全库候选池按此过滤，见设计文档 §1.1 第 5 条）。
+	 *
+	 * <p>判据有两半（2026-09 审计修复）：</p>
+	 * <ol>
+	 *   <li>Create 的 <b>serializer tag 分支</b>：{@code AllTags.AllRecipeSerializerTags.AUTOMATION_IGNORE}
+	 *       （原版 Create 只标了 occultism 那两条）——旧实现漏了这一半，导致带该标签的配方仍会进波的全库池；</li>
+	 *   <li>本模组自有约定：配方 id 以 {@code _manual_only} 结尾 = 只能手动。</li>
+	 * </ol>
+	 *
+	 * <p>Create 侧读取失败（版本差异等）时退化为本模组约定，不影响主流程。</p>
+	 */
 	public static boolean shouldIgnoreInAutomation(RecipeHolder<?> recipe) {
-		return !CAN_BE_AUTOMATED.test(recipe);
+		if (!CAN_BE_AUTOMATED.test(recipe))
+			return true;
+		try {
+			return com.simibubi.create.AllRecipeTypes.shouldIgnoreInAutomation(recipe);
+		} catch (Throwable ignored) {
+			return false;
+		}
 	}
 
 	public final ResourceLocation id;

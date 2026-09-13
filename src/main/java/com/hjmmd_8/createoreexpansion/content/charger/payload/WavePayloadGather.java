@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.charger.entity;
+package com.hjmmd_8.createoreexpansion.content.charger.payload;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -99,6 +99,8 @@ public final class WavePayloadGather {
 		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
 			if (pos.equals(center))
 				continue;
+			if (!level.isLoaded(pos))
+				continue; // 未加载区块：capability 查询会触发同步加载（2026-09 审计修复）
 			if (skip != null && skip.test(pos))
 				continue;
 			IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
@@ -194,6 +196,8 @@ public final class WavePayloadGather {
 		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
 			if (pos.equals(center))
 				continue;
+			if (!level.isLoaded(pos))
+				continue; // 未加载区块：capability 查询会触发同步加载
 			if (skip != null && skip.test(pos))
 				continue;
 			IFluidHandler tank = level.getCapability(Capabilities.FluidHandler.BLOCK, pos, null);
@@ -249,6 +253,8 @@ public final class WavePayloadGather {
 				break; // 已取满
 			if (pos.equals(center))
 				continue;
+			if (!level.isLoaded(pos))
+				continue; // 未加载区块：capability 查询会触发同步加载
 			if (skip != null && skip.test(pos))
 				continue;
 			IEnergyStorage storage = level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, null);

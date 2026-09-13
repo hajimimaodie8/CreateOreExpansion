@@ -8,7 +8,17 @@ import java.util.Map;
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
-import com.hjmmd_8.createoreexpansion.content.charger.family.WaveRecipeFamilies;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.family.WaveRecipeFamilies;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.Candidate;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxRef;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxSource;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.EnergyDraw;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.EnergySource;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidRef;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidSource;
+import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
+import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadRelease;
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
@@ -357,8 +367,13 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 				com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadKinds, false, skip);
 			payloadFluid = WavePayloadGather.gatherFluid(level(), center, carriedScanRadius, payloadFluid, taken,
 				com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadFluidMb, false, skip);
-			payloadEnergy += WavePayloadGather.gatherEnergy(level(), center, carriedScanRadius, taken, false, skip,
-				WavePayloadGather.resolveEnergyCap(level()));
+			// 电量按"载荷已有量"算上限（与物品/流体同口径，2026-09 审计修复）：
+			// 旧实现把上限当成"本次新增额度"，于是每次命中补料都能再吃满一个上限，载荷可超上限。
+			int energyCap = WavePayloadGather.resolveEnergyCap(level());
+			int energyRoom = energyCap < 0 ? -1 : Math.max(0, energyCap - payloadEnergy);
+			if (energyRoom != 0)
+				payloadEnergy += WavePayloadGather.gatherEnergy(level(), center, carriedScanRadius, taken, false, skip,
+					energyRoom);
 			rememberPayloadSources(taken);
 			int gotItems = WavePayloadGather.totalItems(payloadItems) - beforeItems;
 			int gotFluid = payloadFluid.getAmount() - beforeFluid;
@@ -391,8 +406,14 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 
 	/** 设定携带载荷（变器转换时把扫描范围抽到的辅料/流体/电量附上）及其取料来源位置。 */
 	public void attachPayload(List<ItemStack> items, FluidStack fluid, int energy, List<BlockPos> sources) {
-		if (items != null)
-			this.payloadItems = new ArrayList<>(items);
+		if (items != null) {
+			// 深拷贝（2026-09 审计修复）：只包一层列表会让波与变器的 auxItems 共用同一批可变 ItemStack，
+			// 波消耗载荷时会同步改小变器的护目镜读数（"辅料载荷 n 个"在两轮扫描之间偏小）。
+			this.payloadItems = new ArrayList<>(items.size());
+			for (ItemStack stack : items)
+				if (stack != null && !stack.isEmpty())
+					this.payloadItems.add(stack.copy());
+		}
 		this.payloadFluid = fluid == null || fluid.isEmpty() ? FluidStack.EMPTY : fluid.copy();
 		this.payloadEnergy = Math.max(0, energy);
 		if (sources != null)
@@ -514,10 +535,12 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			return false;
 		StellarWaveMachineIntegrations.ensureRegistered();
 
-		// 强化避雷针释放机会：携带时，命中这个掉落物就在它所在位置引一道雷
-		// （闪电加工由本模组"闪电落地统一加工"接管，见 summonLightningAt 注释）
-		strikeOwnsTypes = false; // 每次命中复位（见字段注释）
-		summonLightningAt(item.blockPosition());
+		// 强化避雷针释放机会：本次命中最多引一道雷（2026-09 审计修复）。
+		// 旧实现逐件掉落物都调一次：一次 sweep 命中多件时会把引雷额度全烧光、在多处各落一道雷，
+		// 且逐件复位 strikeOwnsTypes 会让"同一件物品只被雷/波加工一遍"的护栏对后续掉落物失效。
+		// 这里用 strikeOwnsTypes 兼作"本次命中已引雷"，不再逐件复位（方块路径每次命中仍会复位）。
+		if (!strikeOwnsTypes)
+			summonLightningAt(item.blockPosition());
 
 		// 环境判定以命中点为中心（掉落物自身位置），供配方机器环境前置条件使用。
 		// 掉落物路径没有容器上下文 → 物品容器/流体容器都传 null、主料槽 = -1
@@ -1815,6 +1838,11 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	 *       （按种类+组件取，跨罐由能力实现自行分配）；容器缺失/抽空则安全跳过；</li>
 	 *   <li>{@code PAYLOAD} → 从 {@link #payloadFluid} 扣该量（多条载荷流体按顺序累计扣减）。</li>
 	 * </ul>
+	 *
+	 * <p><b>并发缺口回流补齐（2026-09，与电量侧同口径）</b>：门槛解析与实际扣减之间容器可能变了
+	 * （同 tick 内别的机器抽走了盆里的水、或能力实现按罐限流只给一半），此时若"少扣流体却照常出产物"
+	 * 就是白嫖加工。所以缺口 {Amount − drained} 由<b>载荷流体补扣</b>——与
+	 * {@link #consumeCraftEnergy} 的"邻域取电不足 → 缺口转由载荷电量补"完全对称。</p>
 	 */
 	private void consumeCraftFluid(Candidate candidate, IFluidHandler containerFluid) {
 		for (FluidRef ref : candidate.fluids) {
@@ -1827,8 +1855,18 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 					continue;
 				FluidStack drained = containerFluid.drain(ref.fluid()
 					.copy(), IFluidHandler.FluidAction.EXECUTE);
-				if (drained.getAmount() < amount)
-					craftDebug("流体扣减：容器仅抽出 {} mB / 需 {} mB（并发变化）", drained.getAmount(), amount);
+				int shortfall = amount - drained.getAmount();
+				if (shortfall > 0) {
+					int covered = Math.min(shortfall, Math.max(0, payloadFluid.getAmount()));
+					if (covered > 0) {
+						if (payloadFluid.getAmount() <= covered)
+							payloadFluid = FluidStack.EMPTY;
+						else
+							payloadFluid.shrink(covered);
+					}
+					craftDebug("流体扣减：容器仅抽出 {} mB / 需 {} mB，缺口 {} mB 转由载荷流体补（实补 {} mB）",
+						drained.getAmount(), amount, shortfall, covered);
+				}
 			} else {
 				if (payloadFluid.getAmount() <= amount)
 					payloadFluid = FluidStack.EMPTY;
@@ -1950,6 +1988,54 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 				continue;
 			amount -= handler.fill(new FluidStack(stack.getFluid(), amount), IFluidHandler.FluidAction.EXECUTE);
 			if (amount <= 0)
+				return;
+		}
+	}
+
+	/** 命中点周围 1 格邻域（不含自身所在格）；产物流体"就近注罐"与载荷兜底共用。 */
+	private List<BlockPos> radiusBlocks() {
+		List<BlockPos> list = new ArrayList<>();
+		BlockPos c = blockPosition();
+		for (int dx = -1; dx <= 1; dx++)
+			for (int dy = -1; dy <= 1; dy++)
+				for (int dz = -1; dz <= 1; dz++) {
+					BlockPos bp = c.offset(dx, dy, dz);
+					if (!bp.equals(c))
+						list.add(bp);
+				}
+		return list;
+	}
+
+	/** 产物流体"就近注罐"：命中点 1 格邻域逐个填，剩余无处可存即浪费（产物不需要"排除口径"）。 */
+	private void nearestFluidHandlerFill(FluidStack stack) {
+		int amount = stack.getAmount();
+		for (BlockPos bp : radiusBlocks()) {
+			IFluidHandler handler = level().getCapability(Capabilities.FluidHandler.BLOCK, bp, null);
+			if (handler == null)
+				continue;
+			try {
+				amount -= handler.fill(new FluidStack(stack.getFluid(), amount), IFluidHandler.FluidAction.EXECUTE);
+			} catch (Throwable ignored) {
+				// 单个储罐异常：换下一个（2026-09 审计修复：不让第三方能力异常冒到 tick）
+			}
+			if (amount <= 0)
+				return;
+		}
+	}
+
+	/** 产物电量"就近注入"：命中点 1 格邻域逐个充，剩余无处可存即浪费。 */
+	private void nearestEnergyReceive(int fe) {
+		int left = fe;
+		for (BlockPos bp : radiusBlocks()) {
+			IEnergyStorage storage = level().getCapability(Capabilities.EnergyStorage.BLOCK, bp, null);
+			if (storage == null || !storage.canReceive())
+				continue;
+			try {
+				left -= storage.receiveEnergy(left, false);
+			} catch (Throwable ignored) {
+				// 单个储能异常：换下一个
+			}
+			if (left <= 0)
 				return;
 		}
 	}
@@ -2509,307 +2595,171 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			center.offset(ENV_RADIUS, ENV_RADIUS, ENV_RADIUS));
 	}
 
-	// ================= 载荷释放 =================
-
 	/** 链用尽：释放剩余载荷（先入容器/储罐/储能，否则掉落/浪费）并消散。 */
 	private void finishAndDiscard() {
 		if (!payloadReleased) {
-			releasePayload();
 			payloadReleased = true;
+			try {
+				releasePayload();
+			} catch (Throwable t) {
+				// 同 remove()：第三方能力异常不得打断消散流程（2026-09 审计修复）
+				craftDebug("载荷释放异常（余料未能全部处置）：{}", t);
+			}
 		}
 		ChargerWaveFx.burst(level(), position(), renderColor);
 		discard();
 	}
 
+	// ================= 载荷释放（实现见 payload/WavePayloadRelease） =================
+
 	/**
-	 * 剩余载荷释放（链尽消散 / 撞墙 / 寿命耗尽等任何消散路径共用），口径由配置
-	 * {@code wave.payloadRelease} 决定：
+	 * 剩余载荷释放（链尽消散 / 撞墙 / 寿命耗尽等任何消散路径共用）：把运行态打包成一次请求交给
+	 * {@link WavePayloadRelease}，并在<b>任何情况下</b>清空载荷状态（{@code finally}）。
 	 *
-	 * <ul>
-	 *   <li><b>{@code NEAREST_CONTAINER}（默认，用户 2026-09-11 拍板）</b>：物品存进
-	 *       <b>击中方块周围、变器读取半径之内</b>最近的可存容器（按距离由近到远逐个试，
-	 *       装满一个接着下一个）；流体就近注入同一范围内的储罐；电量就近充入同一范围内的储能。
-	 *       范围取 {@link #carriedScanRadius}（= 变器穿波时的读取半径），圆心取
-	 *       {@link #lastProcessedBlock}（最近加工过的方块；没有则用消散点）。
-	 *       <b>工作盆与正在加工的那个方块不算容器</b>（2026-09 实测反馈：余料进盆是 bug）。</li>
-	 *   <li>{@code SOURCE_CONTAINER}：物品还回实际取料的那几个容器（原箱），流体注回原储罐，
-	 *       电量充回原储能；还不上时才落在来源方块上方（或消散点）。</li>
-	 *   <li>{@code DROP_AT_DISSIPATION}：物品全部爆落在消散点，流体/电量就近注入。</li>
-	 * </ul>
-	 *
-	 * <p><b>历史脉络</b>：最早"全爆在消散点"→ 掉落物被工作盆吸进去（用户实测反馈）；
-	 * 改为"还回取料容器"→ 用户再定口径：余料应留在<b>加工现场</b>（范围内最近的容器），
-	 * 而不是千里迢迢回原箱。</p>
+	 * <p>口径（三种模式）、排除口径（绝不进工作盆/加工机）、异常隔离都在那个类里，见其类注释
+	 * 与设计文档 §11.1。这里只做"取值 + 打包 + 兜底清理"。</p>
 	 */
 	private void releasePayload() {
 		if (level().isClientSide)
 			return;
-		com.hjmmd_8.createoreexpansion.common.AllConfig.PayloadRelease mode =
-			com.hjmmd_8.createoreexpansion.common.AllConfig.wavePayloadRelease;
-		BlockPos center = lastProcessedBlock != null ? lastProcessedBlock : blockPosition();
-		for (ItemStack stack : payloadItems) {
-			if (stack.isEmpty())
-				continue;
-			ItemStack rest;
-			switch (mode) {
-				case NEAREST_CONTAINER -> {
-					rest = storeInNearestContainer(stack, center);
-					if (!rest.isEmpty())
-						rest = returnItemsToSources(rest); // 现场放不下：退回原箱
-				}
-				case SOURCE_CONTAINER -> rest = returnItemsToSources(stack);
-				default -> rest = stack.copy();
-			}
-			if (rest.isEmpty())
-				continue;
-			// 还剩下：能定位到容器就落在它上方（绝不落进正在加工的容器），否则落在消散点
-			BlockPos at = payloadSources.isEmpty() ? null : payloadSources.get(payloadSources.size() - 1);
-			if (mode != com.hjmmd_8.createoreexpansion.common.AllConfig.PayloadRelease.DROP_AT_DISSIPATION
-				&& at != null)
-				dropAtBlock(at.above(), rest);
-			else
-				dropAtPosition(rest);
+		try {
+			WavePayloadRelease.release(new WavePayloadRelease.Request(level(), AllConfig.wavePayloadRelease,
+				position(), payloadItems, payloadFluid, payloadEnergy, payloadSources,
+				lastProcessedBlock != null ? lastProcessedBlock : blockPosition(),
+				Math.max(1, carriedScanRadius)));
+		} catch (Throwable t) {
+			// 第三方容器/储能的能力实现抛异常：绝不把异常从实体移除流程抛到服务端 tick
+			// （2026-09 审计修复）。余料按"这次没放进去"处理。
+			craftDebug("载荷释放异常（余料未能全部处置）：{}", t);
+		} finally {
+			payloadItems.clear();
+			payloadFluid = FluidStack.EMPTY;
+			payloadEnergy = 0;
+			payloadSources.clear();
+			lastProcessedBlock = null;
 		}
-		payloadItems.clear();
-		if (!payloadFluid.isEmpty()) {
-			FluidStack rest = switch (mode) {
-				case NEAREST_CONTAINER -> fillNearestTank(payloadFluid, center);
-				case SOURCE_CONTAINER -> returnFluidToSources(payloadFluid);
-				default -> payloadFluid;
-			};
-			if (!rest.isEmpty())
-				nearestFluidHandlerFill(rest); // 还放不下：就近尽力而为（仍无处可存则浪费）
-		}
-		payloadFluid = FluidStack.EMPTY;
-		if (payloadEnergy > 0) {
-			int left = switch (mode) {
-				case NEAREST_CONTAINER -> chargeNearestStorage(payloadEnergy, center);
-				case SOURCE_CONTAINER -> returnEnergyToSources(payloadEnergy);
-				default -> payloadEnergy;
-			};
-			if (left > 0)
-				nearestEnergyReceive(left);
-		}
-		payloadEnergy = 0;
-		payloadSources.clear();
-		lastProcessedBlock = null;
-	}
-
-	/** 在消散点落一件（老的"爆落"口径）。 */
-	private void dropAtPosition(ItemStack stack) {
-		ItemEntity drop = new ItemEntity(level(), getX(), getY(), getZ(), stack);
-		drop.setDeltaMovement(Vec3.ZERO);
-		level().addFreshEntity(drop);
 	}
 
 	/**
-	 * 把余料存进"{@code center} 周围、{@link #carriedScanRadius} 之内"的<b>最近可存容器</b>：
-	 * 按距离由近到远逐个试，能塞多少塞多少（塞满一个接着下一个），返回最终没塞进去的剩余。
-	 *
-	 * <p>跳过：{@code center} 自身（正在加工的那个方块）、工作盆、各类动能机器内部库存
-	 * ——与"取料"同一套排除口径（{@link #payloadGatherSkip}），保证余料不会进盆。</p>
-	 */
-	private ItemStack storeInNearestContainer(ItemStack stack, BlockPos center) {
-		ItemStack rest = stack.copy();
-		if (center == null || rest.isEmpty())
-			return rest;
-		int radius = Math.max(1, carriedScanRadius);
-		java.util.function.Predicate<BlockPos> skip = payloadGatherSkip(center);
-		for (BlockPos pos : sortedByDistance(center, radius)) {
-			if (skip.test(pos))
-				continue;
-			IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-			if (handler == null)
-				continue;
-			for (int slot = 0; slot < handler.getSlots() && !rest.isEmpty(); slot++)
-				rest = handler.insertItem(slot, rest, false);
-			if (rest.isEmpty())
-				return ItemStack.EMPTY; // 最近的容器已经装下全部余料
-		}
-		return rest;
-	}
-
-	/** 把余料流体注进范围内最近的储罐；返回没注进去的部分。 */
-	private FluidStack fillNearestTank(FluidStack stack, BlockPos center) {
-		int left = stack.getAmount();
-		if (center == null || left <= 0)
-			return stack;
-		java.util.function.Predicate<BlockPos> skip = payloadGatherSkip(center);
-		for (BlockPos pos : sortedByDistance(center, Math.max(1, carriedScanRadius))) {
-			if (skip.test(pos))
-				continue;
-			IFluidHandler tank = level().getCapability(Capabilities.FluidHandler.BLOCK, pos, null);
-			if (tank == null)
-				continue;
-			left -= tank.fill(new FluidStack(stack.getFluid(), left), IFluidHandler.FluidAction.EXECUTE);
-			if (left <= 0)
-				return FluidStack.EMPTY;
-		}
-		return new FluidStack(stack.getFluid(), Math.max(0, left));
-	}
-
-	/** 把余料电量充进范围内最近的储能；返回没充进去的 FE。 */
-	private int chargeNearestStorage(int fe, BlockPos center) {
-		int left = fe;
-		if (center == null || left <= 0)
-			return left;
-		java.util.function.Predicate<BlockPos> skip = payloadGatherSkip(center);
-		for (BlockPos pos : sortedByDistance(center, Math.max(1, carriedScanRadius))) {
-			if (skip.test(pos))
-				continue;
-			IEnergyStorage storage = level().getCapability(Capabilities.EnergyStorage.BLOCK, pos, null);
-			if (storage == null || !storage.canReceive())
-				continue;
-			left -= storage.receiveEnergy(left, false);
-			if (left <= 0)
-				return 0;
-		}
-		return Math.max(0, left);
-	}
-
-	/**
-	 * "取料 / 余料入库"共用的排除口径：不打正在加工的那个方块（{@code center}）的主意，
-	 * 工作盆与各类动能机器内部库存也不算可存容器（2026-09 实测：余料进盆/进机器是 bug）。
+	 * "取料 / 余料入库 / 退还原箱"共用的排除口径：不打正在加工的那个方块（{@code center}）的主意；
+	 * 工作盆、目录登记的加工机（含注液器/物品排放器这类<b>非动能</b>机）与动能方块一律不算可存目标。
+	 * 判定实现收敛在 {@link WavePayloadRelease#isStoreTarget}（变器扫描与波侧同源）。
 	 */
 	private java.util.function.Predicate<BlockPos> payloadGatherSkip(BlockPos center) {
-		return pos -> {
-			if (pos.equals(center))
-				return true;
-			try {
-				net.minecraft.world.level.block.entity.BlockEntity be = level().getBlockEntity(pos);
-				return be instanceof BasinBlockEntity
-					|| be instanceof com.simibubi.create.content.kinetics.base.KineticBlockEntity;
-			} catch (Throwable ignored) {
-				return true; // 判定异常：保守跳过
-			}
-		};
+		return pos -> pos.equals(center) || !WavePayloadRelease.isStoreTarget(level(), pos);
 	}
-
-	/** 以 {@code center} 为圆心、半径 {@code r} 的立方体，按到圆心的距离由近到远排序。 */
-	private static List<BlockPos> sortedByDistance(BlockPos center, int r) {
-		List<BlockPos> list = new ArrayList<>();
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r)))
-			list.add(pos.immutable());
-		list.sort(java.util.Comparator.comparingDouble(center::distSqr));
-		return list;
-	}
-
-	/** 把载荷物品还回取料容器（最新来源优先，逐槽全扫）；返回还没还进去的剩余。 */
-	private ItemStack returnItemsToSources(ItemStack stack) {
-		ItemStack rest = stack.copy();
-		for (int i = payloadSources.size() - 1; i >= 0 && !rest.isEmpty(); i--) {
-			IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, payloadSources.get(i), null);
-			if (handler == null)
-				continue;
-			for (int slot = 0; slot < handler.getSlots() && !rest.isEmpty(); slot++)
-				rest = handler.insertItem(slot, rest, false);
-		}
-		return rest;
-	}
-
-	/** 把载荷流体注回取料储罐（最新来源优先）；返回还剩余量（EMPTY = 全部还回）。 */
-	private FluidStack returnFluidToSources(FluidStack stack) {
-		int left = stack.getAmount();
-		for (int i = payloadSources.size() - 1; i >= 0 && left > 0; i--) {
-			IFluidHandler tank = level().getCapability(Capabilities.FluidHandler.BLOCK, payloadSources.get(i), null);
-			if (tank == null)
-				continue;
-			left -= tank.fill(new FluidStack(stack.getFluid(), left), IFluidHandler.FluidAction.EXECUTE);
-		}
-		return left <= 0 ? FluidStack.EMPTY : new FluidStack(stack.getFluid(), left);
-	}
-
-	/** 把载荷电量充回取料储能（最新来源优先）；返回没充进去的剩余 FE。 */
-	private int returnEnergyToSources(int fe) {
-		int left = fe;
-		for (int i = payloadSources.size() - 1; i >= 0 && left > 0; i--) {
-			IEnergyStorage storage = level().getCapability(Capabilities.EnergyStorage.BLOCK, payloadSources.get(i), null);
-			if (storage == null || !storage.canReceive())
-				continue;
-			left -= storage.receiveEnergy(left, false);
-		}
-		return Math.max(0, left);
-	}
-
-	/** 尝试把物品插入命中点邻域容器（当前仅用于"产物放回容器"等场景，载荷释放不再使用）。 */
-	private ItemStack insertIntoNearestContainer(ItemStack stack) {
-		ItemStack leftover = stack.copy();
-		for (BlockPos bp : radiusBlocks()) {
-			IItemHandler handler = level().getCapability(Capabilities.ItemHandler.BLOCK, bp, null);
-			if (handler == null)
-				continue;
-			leftover = handler.insertItem(0, leftover, false);
-			if (leftover.isEmpty())
-				return ItemStack.EMPTY;
-		}
-		return leftover;
-	}
-
-	private void nearestFluidHandlerFill(FluidStack stack) {
-		int amount = stack.getAmount();
-		for (BlockPos bp : radiusBlocks()) {
-			IFluidHandler handler = level().getCapability(Capabilities.FluidHandler.BLOCK, bp, null);
-			if (handler == null)
-				continue;
-			amount -= handler.fill(new FluidStack(stack.getFluid(), amount), IFluidHandler.FluidAction.EXECUTE);
-			if (amount <= 0)
-				return;
-		}
-	}
-
-	private void nearestEnergyReceive(int fe) {
-		int left = fe;
-		for (BlockPos bp : radiusBlocks()) {
-			IEnergyStorage storage = level().getCapability(Capabilities.EnergyStorage.BLOCK, bp, null);
-			if (storage == null || !storage.canReceive())
-				continue;
-			left -= storage.receiveEnergy(left, false);
-			if (left <= 0)
-				return;
-		}
-	}
-
-	/** 命中点周围 1 格邻域（不含自身所在格）。 */
-	private List<BlockPos> radiusBlocks() {
-		List<BlockPos> list = new ArrayList<>();
-		BlockPos c = blockPosition();
-		for (int dx = -1; dx <= 1; dx++)
-			for (int dy = -1; dy <= 1; dy++)
-				for (int dz = -1; dz <= 1; dz++) {
-					BlockPos bp = c.offset(dx, dy, dz);
-					if (!bp.equals(c))
-						list.add(bp);
-				}
-		return list;
-	}
-
 	@Override
 	public void remove(RemovalReason reason) {
 		if (reason == RemovalReason.DISCARDED && !level().isClientSide && !payloadReleased) {
 			payloadReleased = true;
-			releasePayload(); // 寿命/撞墙等任何消散：剩余载荷也要落地
+			try {
+				releasePayload(); // 寿命/撞墙等任何消散：剩余载荷也要落地
+			} catch (Throwable t) {
+				// 第三方容器/储能的能力实现抛异常时，绝不把异常从实体移除流程里抛出去
+				// （2026-09 审计修复：否则会从 tick 冒到服务端 tick）。余料按"这次没放进去"处理。
+				craftDebug("载荷释放异常（余料未能全部处置）：{}", t);
+			}
 		}
 		super.remove(reason);
 	}
 
-	// ================= 分裂继承 =================
+	// ================= 分裂继承（能力继承、物质均摊） =================
 
-	/** 差波器分裂：生成继承属性集与载荷的变体子波。 */
+	/**
+	 * 差波器分裂：生成变体子波。<b>能力整份继承，物质（载荷/链式次数）按份均摊</b>。
+	 *
+	 * <p><b>2026-09 修复（载荷复制）</b>：分裂的语义是"母波 discard + 每个开口一个子波"，
+	 * 所以载荷必须<b>分成 total 份</b>发放——旧实现给每个子波整份拷贝，
+	 * 2~3 开口 = 同一批物品/流体/电量被复制 2~3 份（每个子波消散时又各自归还来源容器，净赚）。
+	 * 这与差器既有的"能量<b>均摊</b>分发"口径一致。</p>
+	 *
+	 * <ul>
+	 *   <li><b>整份继承</b>（"能力"，不因分裂而缩水）：属性集、配方类型、加热档、转速、读取半径；</li>
+	 *   <li><b>按份均摊</b>（"物质"）：载荷物品（按每种的数量分份，余数给靠前的子波）、
+	 *       载荷流体、载荷电量、链式剩余次数（{@code chainLeft}）；</li>
+	 *   <li><b>不可分割</b>：避雷针引雷次数整份给第 0 个子波（其余子波为 0）——
+	 *       否则一次满充能避雷针会变成多次落雷；</li>
+	 *   <li><b>取料来源表</b>整份继承（只是"归还目标"，物资已按份分开，不会因此多出东西）。</li>
+	 * </ul>
+	 */
 	@Override
-	protected AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level) {
+	protected AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
 		StellarWaveEntity child = new StellarWaveEntity(level(), pos, dir, level);
 		child.attributes = new ArrayList<>(attributes);
 		child.recipeTypes = new ArrayList<>(recipeTypes);
 		child.carriedHeat = carriedHeat;
 		child.carriedRpm = carriedRpm;
 		child.carriedScanRadius = carriedScanRadius;
-		child.payloadItems = new ArrayList<>(payloadItems);
-		child.payloadFluid = payloadFluid.copy();
-		child.payloadEnergy = payloadEnergy;
+		int n = Math.max(1, total);
+		int i = Math.max(0, Math.min(index, n - 1));
+		child.payloadItems = splitItems(payloadItems, i, n);
+		int fluidAmount = splitShare(payloadFluid.isEmpty() ? 0 : payloadFluid.getAmount(), i, n);
+		child.payloadFluid = fluidAmount <= 0 ? FluidStack.EMPTY : payloadFluid.copyWithAmount(fluidAmount);
+		child.payloadEnergy = splitShare(payloadEnergy, i, n);
 		child.payloadSources = new ArrayList<>(payloadSources);
-		child.rodCharges = rodCharges;
-		child.chainLeft = chainLeft;
+		child.rodCharges = i == 0 ? rodCharges : 0; // 引雷次数不可分割
+		child.chainLeft = splitShare(chainLeft, i, n);
 		return child;
+	}
+
+	/**
+	 * <b>分裂时"载荷已分发"标记</b>（基类钩子 {@code onPayloadDistributedToChildren} 的覆写）。
+	 *
+	 * <p>母波分裂后会被 {@code discard()}，而 {@code remove(DISCARDED)} 会调 {@link #releasePayload()} ——
+	 * 若不标记，母波会把<b>整份</b>载荷（子波拿到的只是份额）再释放回容器一次，等于凭空多出一份。
+	 * 标为"已处置"后，母波消散时不再重复释放。</p>
+	 */
+	@Override
+	protected void onPayloadDistributedToChildren() {
+		payloadReleased = true;
+	}
+
+	/** n 等份中的第 i 份（余数优先给靠前的子波）：{@code share(5,1,2) == 2}、{@code share(5,0,2) == 3}。 */
+	private static int splitShare(int amount, int index, int total) {
+		if (amount <= 0)
+			return 0;
+		if (total <= 1)
+			return amount;
+		int base = amount / total;
+		return base + (index < amount % total ? 1 : 0);
+	}
+
+	/**
+	 * 载荷物品按"<b>每个子波拿到尽量不同的种类、数量尽量均匀</b>"发放（2026-09 用户口径）。
+	 *
+	 * <p><b>做法：把载荷摊平成"每件一个位置"的序列，子波 i 取所有 {@code 位置 % 子波数 == i}</b>
+	 * （同一物料的若干件在序列里连续，于是被轮转着分给不同子波）。四条性质：</p>
+	 * <ol>
+	 *   <li><b>绝不凭空制造 / 丢失</b>：每件物品只落进一个子波，各子波之和恒等于母波原量；</li>
+	 *   <li><b>种类最大化分散</b>：相邻物品总是分给不同子波，所以"每种各 1 件"时各子波拿到的是
+	 *       <b>互不相同</b>的种类。旧实现按"每种数量等分 + 余数给靠前的子波"，会让<b>第 0 个子波
+	 *       独吞全部种类、其余子波空手</b>（每种 count=1 时余数全落在 index 0）；</li>
+	 *   <li><b>数量最均匀</b>：任一子波的件数与平均值的差不超过 1 件；</li>
+	 *   <li><b>确定性</b>：每个子波各自调用都能独立算出自己那一份，无需在子波间共享状态
+	 *       （分裂是"逐个开口调用 createChildWave"，没有统一的分发时机）。</li>
+	 * </ol>
+	 *
+	 * <p>同一物料件数大于子波数时（例如 A×5、2 个子波）无法做到"种类互不相同"，此时退化为
+	 * "该物料在各子波间尽量均匀"（3 / 2），仍有界且守恒。</p>
+	 */
+	private static List<ItemStack> splitItems(List<ItemStack> items, int index, int total) {
+		int n = Math.max(1, total);
+		int me = Math.max(0, Math.min(index, n - 1));
+		List<ItemStack> out = new ArrayList<>(items.size());
+		int position = 0; // 摊平后的位置游标：第 p 件对应"第 p 个位置"
+		for (ItemStack stack : items) {
+			if (stack == null || stack.isEmpty())
+				continue;
+			int count = stack.getCount();
+			int take = 0;
+			for (int p = 0; p < count; p++)
+				if ((position + p) % n == me)
+					take++;
+			position += count;
+			if (take > 0)
+				out.add(stack.copyWithCount(take));
+		}
+		return out;
 	}
 
 	// ========== NBT（属性集随波实体保存/恢复；载荷为运行态，不落盘） ==========
@@ -2827,6 +2777,19 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		tag.putFloat("WaveCarriedRpm", carriedRpm);
 		// 变器当时的读取半径（= 命中后"就地补料"的生效半径）
 		tag.putInt("WaveCarriedRadius", carriedScanRadius);
+		// ===== 2026-09 审计修复：补全"半个波"问题所需的三个字段 =====
+		// 旧实现只存 attributes/heat/rpm/radius，读档后 chainLeft 落到默认 0 → 波在第一个容器前
+		// 无声自毁；recipeTypes 为空 → 类型门退回"按机器 id 展开静态档案"，状态选择器（真空室 mode、
+		// 杠杆锤锤下方块、角磨轮等级）全部丢失；waveOrigin 为 null → 环境判定的"波源"中心消失。
+		tag.putInt("WaveChain", chainLeft);
+		ListTag typeList = new ListTag();
+		for (IRecipeTypeInfo type : recipeTypes)
+			if (type != null && type.getId() != null)
+				typeList.add(StringTag.valueOf(type.getId()
+					.toString()));
+		tag.put("WaveRecipeTypeIds", typeList);
+		if (waveOrigin != null)
+			tag.putLong("WaveOrigin", waveOrigin.asLong());
 	}
 
 	@Override
@@ -2834,101 +2797,36 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		super.readAdditionalSaveData(tag);
 		attributes = new ArrayList<>();
 		ListTag list = tag.getList("WaveAttributes", Tag.TAG_STRING);
-		for (int i = 0; i < list.size(); i++)
-			attributes.add(ResourceLocation.tryParse(list.getString(i)));
+		for (int i = 0; i < list.size(); i++) {
+			// 非法/空 id 一律跳过：旧实现直接 add(tryParse(...))，遇到被外部工具改过的存档会塞进 null，
+			// 而 getAttributes() 的 List.copyOf 拒绝 null 元素（NPE）（2026-09 审计修复）
+			ResourceLocation id = ResourceLocation.tryParse(list.getString(i));
+			if (id != null)
+				attributes.add(id);
+		}
 		carriedHeat = HeatLevelNames.byOrdinal(tag.getInt("WaveCarriedHeat"));
 		carriedRpm = Math.abs(tag.getFloat("WaveCarriedRpm"));
 		carriedScanRadius = Math.max(1, tag.getInt("WaveCarriedRadius"));
-	}
-
-	/**
-	 * 辅料来源通道（2026-09 双通道；同轮<b>优先级反转</b>为"容器优先、载荷兜底"）：
-	 * <ul>
-	 *   <li>{@link #CONTAINER}：<b>命中容器自身的其它槽</b>（工作盆/置物台里和主料同一批的物品）——
-	 *       仅方块槽路径可用（{@code handler != null}），索引即槽号，<b>优先使用</b>；</li>
-	 *   <li>{@link #PAYLOAD}：波载荷 {@link #payloadItems}——变器扫描圈内非加工机容器的抽取物，
-	 *       掉落物路径唯一来源，容器凑不齐时兜底。</li>
-	 * </ul>
-	 */
-	private enum AuxSource {
-		CONTAINER, PAYLOAD
-	}
-
-	/** 一条辅料引用：来源通道 + 该通道内的下标（容器槽号 / 载荷条目下标）。 */
-	private record AuxRef(AuxSource source, int index) {
-	}
-
-	/** 流体输入来源通道：{@link #CONTAINER} = 命中容器的流体槽（优先），{@link #PAYLOAD} = 波载荷流体（兜底）。 */
-	private enum FluidSource {
-		CONTAINER, PAYLOAD
-	}
-
-	/**
-	 * 一条流体输入需求：来源通道 + 所需流体（<b>种类与组件 + 需求量</b>，用 {@code copyWithAmount}
-	 * 从命中的罐内流体/载荷流体复制而来，故带组件时也能精确 drain）。
-	 */
-	private record FluidRef(FluidSource source, FluidStack fluid) {
-	}
-
-	/**
-	 * 电量来源通道（"电量类比成一种特殊的辅料"，2026-09）：{@link #NEARBY} = 命中点邻域的可抽储能
-	 * （通用 {@code IEnergyStorage} / CC&amp;A 特斯拉线圈；<b>优先</b>），{@link #PAYLOAD} = 波载荷电量（兜底）。
-	 * 与 {@code AuxSource}/{@code FluidSource} 的"就近优先、载荷兜底"优先级完全对称。
-	 */
-	private enum EnergySource {
-		NEARBY, PAYLOAD
-	}
-
-	/**
-	 * 一条电量需求：来源通道 + 需求量（FE）+ 供能方块位置（{@code NEARBY} 专用，需长期持有故为
-	 * {@code immutable()}；{@code PAYLOAD} 为 null）。
-	 * <p>与 {@link AuxRef}（物品：来源+下标）、{@link FluidRef}（流体：来源+种类/量）构成三类
-	 * "资源引用"——同一套"就近优先、载荷兜底 + 按来源扣减"的模型。</p>
-	 */
-	private record EnergyDraw(EnergySource source, int amount, BlockPos pos) {
-	}
-
-	/**
-	 * 命中候选：配方数据包 id（批次锁定稳定标识）+ 配方 + <b>辅料引用列表</b> + <b>流体输入引用列表</b>
-	 * + <b>电量需求引用列表</b>——三类"资源引用"同构，都是"就近来源优先、波载荷兜底、按来源扣减"。
-	 *
-	 * <p><b>辅料引用列表</b>（2026-09 由单个 {@code int auxIndex} → 载荷下标列表 → 双通道引用列表）：
-	 * 单条配方可有 1~{@link #MAX_ITEM_INPUTS} 个物品输入，主料取命中物品，其余每个 ingredient
-	 * 各需 1 件辅料，可分别来自命中容器其它槽（优先）或波载荷。列表<b>按 ingredient 升序压缩存储</b>：
-	 * {@code auxes.get(k)} 即 {@code recipe.getIngredients().get(k+1)} 所用的那件辅料——
-	 * 例如 3 输入锻造融合里 {@code get(0)} = 可锻造盔甲、{@code get(1)} = 锻造材料，主料 = 锻造模板。
-	 * 空列表 = 单输入无辅料。</p>
-	 *
-	 * <p><b>流体输入引用列表</b>（2026-09 新增）：每条流体 ingredient 一条记录，来源同样是
-	 * "容器流体槽优先、载荷流体兜底"，按 ingredient 升序存储；空列表 = 无流体输入。</p>
-	 *
-	 * <p><b>电量需求引用列表</b>（2026-09 新增）：配方电量需求是个总量（{@code recipeEnergyRequired}），
-	 * 但可以由<b>多个邻域储能合力 + 载荷兜底</b>凑出，故按来源拆成若干条
-	 * {@link EnergyDraw}（各带位置与额度）；空列表 = 该配方不耗电。</p>
-	 *
-	 * <p><b>族配方归属</b>（2026-09 新增）：{@code familyRecipe} 非空表示本候选来自"步骤族"路径
-	 * （序列装配）——{@code recipe} 是该装配的<b>下一步成品配方</b>（用于辅料/流体/电量门槛），
-	 * 而产物推导与后续排序口径仍按族配方（{@link WaveRecipeFamilies}）走。</p>
-	 */
-	private record Candidate(ResourceLocation id, Recipe<?> recipe, List<AuxRef> auxes, List<FluidRef> fluids,
-		List<EnergyDraw> energies, Recipe<?> familyRecipe) {
-
-		/** 产物推导应走的"族配方"：步骤族候选返回装配配方，普通候选返回自身。 */
-		Recipe<?> familyTarget() {
-			return familyRecipe == null ? recipe : familyRecipe;
+		// ===== 2026-09 审计修复（与写入端成对）：链式次数 / 类型快照 / 波源位置 =====
+		chainLeft = Math.max(0, tag.getInt("WaveChain"));
+		recipeTypes = new ArrayList<>();
+		ListTag typeList = tag.getList("WaveRecipeTypeIds", Tag.TAG_STRING);
+		for (int i = 0; i < typeList.size(); i++) {
+			ResourceLocation tid = ResourceLocation.tryParse(typeList.getString(i));
+			if (tid == null)
+				continue;
+			IRecipeTypeInfo info = recipeTypeById(tid);
+			if (info != null)
+				recipeTypes.add(info);
 		}
+		waveOrigin = tag.contains("WaveOrigin") ? BlockPos.of(tag.getLong("WaveOrigin")) : null;
+	}
 
-		/** 首个辅料引用（"辅料即产物来源"的变形升级/锻造融合推导入口；无辅料返回 null）。 */
-		AuxRef firstAux() {
-			return auxes.isEmpty() ? null : auxes.get(0);
-		}
-
-		/** 合计电量需求（FE；0 = 不耗电）。 */
-		int energyRequired() {
-			int sum = 0;
-			for (EnergyDraw draw : energies)
-				sum += draw.amount();
-			return sum;
-		}
+	/** 按注册表 id 找回配方类型档案（读档恢复用；找不到的类型跳过，不影响其它字段）。 */
+	private static IRecipeTypeInfo recipeTypeById(ResourceLocation id) {
+		for (IRecipeTypeInfo type : StellarWaveMachineRegistry.allRecipeTypes())
+			if (type != null && id.equals(type.getId()))
+				return type;
+		return null;
 	}
 }

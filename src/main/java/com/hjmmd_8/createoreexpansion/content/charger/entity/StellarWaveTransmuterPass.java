@@ -159,6 +159,12 @@ public final class StellarWaveTransmuterPass {
 			f.setInt(rod, 0);
 			g.setInt(rod, 0);
 			rod.setChanged();
+			// 必须同步客户端（2026-09 审计修复）：setChanged 只标服务端脏，不含 BE 数据包，
+			// 客户端 gammaChargeProgress/readyCharges 仍是满格 → 护目镜进度条不降、就绪粒子继续播。
+			// 与 ReinforcedLightningRodBlockEntity#syncToClient 同口径（块更新包）。
+			if (rod.getLevel() instanceof net.minecraft.server.level.ServerLevel serverLevel)
+				serverLevel.getChunkSource()
+					.blockChanged(rod.getBlockPos());
 			return true;
 		} catch (Throwable ignored) {
 			return false;

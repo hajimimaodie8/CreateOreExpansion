@@ -215,10 +215,10 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_machines", "已接入加工机：%s");
         add("createoreexpansion.goggles.stellar_wave_transmuter_stress", "加工机应力合计：%s");
         add("createoreexpansion.goggles.stellar_wave_transmuter_types", "携带配方类型：%s");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_items", "辅料载荷：%s 个 / %s 种");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_items", "辅料载荷：%s/%s 个 · %s/%s 种");
         add("createoreexpansion.goggles.stellar_wave_transmuter_fluid", "流体载荷：%s mB");
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "电量载荷：%s FE");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "避雷针引雷次数：%s（满充能才抽取，波打中哪里就在哪里落雷）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "已蓄满避雷针：%s 台（每发波抽取 1 次，波打中哪里就在哪里落雷）");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "最近波可加工：");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "已绑定 %s 台机器。按 [%s] 显示加工配方");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint_shift", "已绑定 %s 台机器。按住 [%s] 显示加工配方");
@@ -254,9 +254,10 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe_type.auto_upgrade", "自动升级");
         add("createoreexpansion.recipe_type.turning", "车削");
         add("createoreexpansion.recipe_type.laser_cutting", "激光切割");
-        add("createoreexpansion.recipe_type.charging", "充能");
+        add("createoreexpansion.recipe_type.charging", "充能（应力充能器）");
+        add("createoreexpansion.recipe_type.charging_other", "充电（CC&A 特斯拉线圈）");
         add("createoreexpansion.recipe_type.rolling", "辊压");
-        add("createoreexpansion.recipe_type.lightning", "闪电转化");
+        add("createoreexpansion.recipe_type.lightning", "闪电转化（由引雷触发）");
         add("createoreexpansion.recipe_type.grinding", "打磨");
         add("createoreexpansion.recipe_type.dismantling", "拆解");
         // 烈焰燃烧室热档显示名（护目镜加热读数 / Jade 携带加热；序与 Create HeatLevel 一致）

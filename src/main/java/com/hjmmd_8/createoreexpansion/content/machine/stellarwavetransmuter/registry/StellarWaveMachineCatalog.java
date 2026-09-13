@@ -181,7 +181,7 @@ public final class StellarWaveMachineCatalog {
 	 * （由 {@code WaveRecipeFamilies} 登记的非 ProcessingRecipe 族执行，波侧已可直接执行）。</p>
 	 */
 	private static java.util.List<com.simibubi.create.foundation.recipe.IRecipeTypeInfo> angleGrinderTypes(
-		com.simibubi.create.content.kinetics.base.KineticBlockEntity machine,
+		net.minecraft.world.level.block.entity.BlockEntity machine,
 		java.util.List<com.simibubi.create.foundation.recipe.IRecipeTypeInfo> base) {
 		if (!(machine instanceof com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity grinder))
 			return base;
@@ -191,7 +191,7 @@ public final class StellarWaveMachineCatalog {
 		// 转速不足 = 这台机器此刻不加工（与 PowerAngleGrinderBlockEntity 自身判据完全一致：
 		// `Math.abs(getSpeed()) < tier.getMinRpm()` 时不找任何配方）。变器"读取周围机器"同样
 		// 只读"此刻真能用"的能力：角磨床停转/转速不够时，波不会凭空带上打磨能力。
-		if (Math.abs(machine.getSpeed()) < tier.getMinRpm())
+		if (Math.abs(grinder.getSpeed()) < tier.getMinRpm())
 			return java.util.List.of();
 		return com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrinderRecipeTypes
 			.getFor(tier.level);

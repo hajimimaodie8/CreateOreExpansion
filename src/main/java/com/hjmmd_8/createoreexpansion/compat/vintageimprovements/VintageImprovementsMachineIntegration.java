@@ -120,7 +120,8 @@ public final class VintageImprovementsMachineIntegration {
 	}
 
 	/** 真空室状态选择器：非真空室原样返回；真空室按 mode 只给当前模式那一套配方类型。 */
-	private static List<IRecipeTypeInfo> vacuumChamberTypes(KineticBlockEntity machine, List<IRecipeTypeInfo> base) {
+	private static List<IRecipeTypeInfo> vacuumChamberTypes(net.minecraft.world.level.block.entity.BlockEntity machine,
+		List<IRecipeTypeInfo> base) {
 		if (!(machine instanceof com.negodya1.vintageimprovements.content.kinetics.vacuum_chamber.VacuumChamberBlockEntity chamber))
 			return base;
 		boolean pressurizing = readVacuumMode(chamber);
@@ -148,7 +149,8 @@ public final class VintageImprovementsMachineIntegration {
 	 *
 	 * <p>读不到世界/异常时返回 {@code base}（保守沿用静态全集），不让联动异常影响整体扫描。</p>
 	 */
-	private static List<IRecipeTypeInfo> helveHammerTypes(KineticBlockEntity machine, List<IRecipeTypeInfo> base) {
+	private static List<IRecipeTypeInfo> helveHammerTypes(net.minecraft.world.level.block.entity.BlockEntity machine,
+		List<IRecipeTypeInfo> base) {
 		try {
 			if (machine.getLevel() == null)
 				return base;

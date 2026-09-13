@@ -4,12 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-import com.hjmmd_8.createoreexpansion.content.charger.entity.WavePayloadGather;
+import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyField;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.display.TransmuterGoggles;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.scan.TransmuterScanner;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.scan.TransmuterScanner.HeatReading;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.hjmmd_8.createoreexpansion.util.RecipeTypeNames;
@@ -89,6 +92,13 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 
 	/** 扫描到的加工机器数量（客户端同步用）。 */
 	private int scannedCount;
+	/**
+	 * 扫描到的机器里<b>动能机</b>的数量（客户端同步用）。
+	 *
+	 * <p>应力公式只按耗应力的机器算：{@code Σ(动能机应力) × (1 + 0.1 × (动能机数 − 1))}。
+	 * 注液器 / 物品排放器这类非动能加工机计"机器数"（面板读数）但不计应力，也不参与该乘子。</p>
+	 */
+	private int scannedKineticCount;
 	/** 被扫机器实时应力之和（客户端同步用；goggles 展示）。 */
 	private float scannedStress;
 	/** 当前扫描半径（客户端同步用）。 */
@@ -184,19 +194,22 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		// 首次扫描前注册可选 mod 加工机（幂等，未安装对应 mod 静默跳过）
 		StellarWaveMachineIntegrations.ensureRegistered();
 		int radius = resolveRadius();
-		List<KineticBlockEntity> machines = collectMachines(radius);
+		List<BlockPos> machines = collectMachines(radius);
 		List<ResourceLocation> ids = new ArrayList<>(machines.size());
-		for (KineticBlockEntity m : machines)
-			ids.add(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(m.getBlockState()
+		for (BlockPos m : machines)
+			ids.add(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(m)
 				.getBlock()));
 		scannedIds = ids;
 		// 解析每台机器当前状态应执行的配方类型（注册中心的静态档案 + 状态选择器，
 		// 如 Vintage 真空室 mode 加压/抽真空）；未注册的启发式动能机 = 空表（执行走全库）
 		java.util.List<com.simibubi.create.foundation.recipe.IRecipeTypeInfo> types = new ArrayList<>();
-		for (KineticBlockEntity m : machines) {
-			ResourceLocation blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(m.getBlockState()
+		for (BlockPos m : machines) {
+			ResourceLocation blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(m)
 				.getBlock());
-			for (com.simibubi.create.foundation.recipe.IRecipeTypeInfo t : StellarWaveMachineRegistry.resolve(m,
+			net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(m);
+			if (be == null)
+				continue;
+			for (com.simibubi.create.foundation.recipe.IRecipeTypeInfo t : StellarWaveMachineRegistry.resolve(be,
 				blockId))
 				if (!types.contains(t))
 					types.add(t);
@@ -216,12 +229,18 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 			&& !types.contains(com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.LIGHTNING))
 			types.add(com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.LIGHTNING);
 		// 载荷源设备读数（物品容器 / 流体容器 / 储能设备；护目镜"读取到什么"用，不显示坐标）
-		DeviceCounts devices = scanDeviceCounts(radius);
+		TransmuterScanner.DeviceCounts devices = scanDeviceCounts(radius);
 		// 只估算可携带载荷（不真抽）；真实抽取发生在波穿过的瞬间（collectPayloadForWave）
 		estimatePayload(radius);
 		float sum = 0f;
-		for (KineticBlockEntity m : machines)
-			sum += stressOf(m);
+		int kineticCount = 0;
+		for (BlockPos m : machines) {
+			// 只有动能机耗应力（注液器/物品排放器这类非动能机计"机器数"但不计应力）
+			if (!(level.getBlockEntity(m) instanceof KineticBlockEntity kinetic))
+				continue;
+			sum += stressOf(kinetic);
+			kineticCount++;
+		}
 
 		// 载荷概览摘要（护目镜/网络同步用；纯数字，客户端无需完整载荷对象）
 		int newTypeCount = types.size();
@@ -240,6 +259,7 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		}
 
 		boolean changed = radius != scanRadius || machines.size() != scannedCount
+			|| kineticCount != scannedKineticCount
 			|| Math.abs(sum - scannedStress) > 0.5f
 			|| newTypeCount != recipeTypeCount || newItemCount != payloadItemCount
 			|| newKindCount != payloadTypeCount || newFluidMb != payloadFluidMb
@@ -252,6 +272,7 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 			|| !newTypeIds.equals(scannedTypeIds);
 		scanRadius = radius;
 		scannedCount = machines.size();
+		scannedKineticCount = kineticCount;
 		scannedStress = sum;
 		recipeTypeCount = newTypeCount;
 		payloadItemCount = newItemCount;
@@ -314,11 +335,7 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		return -1;
 	}
 
-	/**
-	 * 一次加热扫描结果：半径内<b>最高</b>热档 + 该热源位置（无热源 = NONE / null）。
-	 */
-	private record HeatReading(BlazeBurnerBlock.HeatLevel level, BlockPos pos) {
-	}
+	/** 一次加热扫描结果（记录类型与扫描实现同在 {@link TransmuterScanner}）。 */
 
 	/**
 	 * 扫描半径内（与加工机同一立方体、不含自身格）的<b>加热源</b>读数。
@@ -333,111 +350,41 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 * 与 Create 机器自身读热方式同源；档位序 NONE &lt; SMOULDERING &lt; FADING &lt;
 	 * KINDLED &lt; SEETHING，取最高者作为本机热读数（多个燃烧室不累加，同 Create 口径）。</p>
 	 */
+	/** 加热读数（实现见 {@link TransmuterScanner#scanHeat}：取半径内最高档，不累加）。 */
 	private HeatReading scanHeatSources(int radius) {
-		BlazeBurnerBlock.HeatLevel best = BlazeBurnerBlock.HeatLevel.NONE;
-		BlockPos bestPos = null;
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(worldPosition.offset(-r, -r, -r),
-			worldPosition.offset(r, r, r))) {
-			if (pos.equals(worldPosition))
-				continue;
-			BlazeBurnerBlock.HeatLevel heat;
-			try {
-				heat = BlazeBurnerBlock.getHeatLevelOf(level.getBlockState(pos));
-			} catch (Throwable ignored) {
-				continue; // 单个方块判定异常（未加载区块 / 可选 mod 异常）：跳过
-			}
-			if (heat == BlazeBurnerBlock.HeatLevel.NONE)
-				continue; // 未点燃（空燃烧室）不算热源
-			if (heat.ordinal() > best.ordinal()) {
-				best = heat;
-				bestPos = pos.immutable();
-			}
-		}
-		return new HeatReading(best, bestPos);
+		return TransmuterScanner.scanHeat(level, worldPosition, radius);
 	}
 
 	/**
-	 * 一次"载荷源设备"扫描结果（护目镜展示用；只报种类与数量，不报坐标）。
-	 */
-	private record DeviceCounts(int itemContainers, int fluidContainers, int energyStorages, int energyStoredFe) {
-	}
-
-	/**
-	 * 扫描半径内的<b>载荷源设备</b>读数：物品容器 / 流体容器 / 储能设备各自<b>台数</b>
-	 * （以及储能的合计可读电量）。
+	 * 扫描半径内的<b>载荷源设备</b>读数（实现见 {@link TransmuterScanner#scanDeviceCounts}）。
 	 *
-	 * <p>判定一律走 NeoForge 能力（capability），故"箱子、其它模组的流体抽屉/储罐、
-	 * 发电机与蓄电池"天然全覆盖，不需要逐 mod 登记方块 id；口径与载荷抽取一致：
-	 * 跳过自身格与加工机（{@link #isMachinery}），因为波只从"非加工机的容器"取料
-	 * （加工机内部库存不该被抽走）。</p>
-	 *
-	 * <p><b>只读</b>：储能只调 {@code getEnergyStored()}，绝不在此处抽电——
-	 * 真实抽取发生在波穿过的瞬间（{@link #collectPayloadForWave()}）。</p>
+	 * <p>口径一律走能力（capability），故"箱子、其它模组的流体抽屉/储罐、发电机与蓄电池"天然全覆盖；
+	 * 跳过自身格、加工机（含注液器这类非动能机）与工作盆——波只从"非加工机的普通容器"取料。
+	 * <b>只读</b>：储能只读不抽（真实抽取发生在波穿过的瞬间）。</p>
 	 */
-	private DeviceCounts scanDeviceCounts(int radius) {
-		int itemContainers = 0;
-		int fluidContainers = 0;
-		int energyStorages = 0;
-		int energyStoredFe = 0;
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(worldPosition.offset(-r, -r, -r),
-			worldPosition.offset(r, r, r))) {
-			if (pos.equals(worldPosition))
-				continue;
-			if (isMachinery(pos))
-				continue; // 加工机内部库存不算载荷源
-			if (isPlayerProcessingStation(pos))
-				continue; // 工作盆同理：那是玩家在用的加工容器
-			try {
-				IItemHandler items = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-				if (items != null && items.getSlots() > 0)
-					itemContainers++;
-			} catch (Throwable ignored) {
-				// 单个方块能力查询异常：跳过
-			}
-			try {
-				IFluidHandler tank = level.getCapability(Capabilities.FluidHandler.BLOCK, pos, null);
-				if (tank != null && tank.getTanks() > 0)
-					fluidContainers++;
-			} catch (Throwable ignored) {
-				// 同上
-			}
-			try {
-				IEnergyStorage storage = level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, null);
-				if (storage != null) {
-					energyStorages++;
-					energyStoredFe += Math.max(0, storage.getEnergyStored());
-				}
-			} catch (Throwable ignored) {
-				// 同上
-			}
-		}
-		return new DeviceCounts(itemContainers, fluidContainers, energyStorages, energyStoredFe);
+	private TransmuterScanner.DeviceCounts scanDeviceCounts(int radius) {
+		return TransmuterScanner.scanDeviceCounts(level, worldPosition, radius);
 	}
 
 	/**
-	 * 收集半径立方体内（不含自身）的动能处理机。
+	 * 收集半径立方体内（不含自身）的加工机<b>位置</b>。
 	 *
 	 * <p><b>自动识别（全库引擎配套）</b>：收录条件 = {@link #isMachinery(BlockPos)}——
 	 * 注册表（{@code registry.StellarWaveMachineRegistry}）机器 <b>或</b> 启发式动能处理机
 	 * （排除轴/齿轮/传送带等纯传动件）。任意 mod（现在或未来）的动能加工机放到变器旁
 	 * 即被识别，无需逐 mod 注册；配方执行由波侧全库检索（见 {@code StellarWaveEntity}），
 	 * 这里只负责机器数/应力/载荷口径。</p>
+	 *
+	 * <p><b>2026-09 修正：不再要求动能机</b>。旧实现写死
+	 * {@code instanceof KineticBlockEntity}，于是 Create 的<b>注液器 Spout</b>（{@code filling}）与
+	 * <b>物品排放器 Item Drain</b>（{@code emptying}）这类 {@code SmartBlockEntity} 永远扫不到
+	 * → 波拿不到这两种类型 → 类型门把注液/排放配方挡掉。用户实测表现：
+	 * "水正常抽到了，但击中后只被存进附近储罐，不给铁桶注液"（没候选 → 波消散 → 余料就近入罐）。
+	 * 现在按位置收录，是否耗应力由 {@link #stressOf} 只对动能机计算。</p>
 	 */
-	private List<KineticBlockEntity> collectMachines(int radius) {
-		List<KineticBlockEntity> list = new ArrayList<>();
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(worldPosition.offset(-r, -r, -r),
-			worldPosition.offset(r, r, r))) {
-			if (pos.equals(worldPosition))
-				continue;
-			if (!(level.getBlockEntity(pos) instanceof KineticBlockEntity kinetic))
-				continue;
-			if (isMachinery(pos))
-				list.add(kinetic);
-		}
-		return list;
+	/** 半径内认可的加工机位置（实现见 {@link TransmuterScanner#collectMachines}）。 */
+	private List<BlockPos> collectMachines(int radius) {
+		return TransmuterScanner.collectMachines(level, worldPosition, radius);
 	}
 
 	/**
@@ -449,34 +396,14 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 * </ul>
 	 */
 	private boolean isMachinery(BlockPos pos) {
-		BlockState state = level.getBlockState(pos);
-		if (StellarWaveMachineRegistry.isRegistered(state.getBlock()))
-			return true;
-		if (!(state.getBlock() instanceof com.simibubi.create.content.kinetics.base.KineticBlock))
-			return false;
-		String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock())
-			.toString();
-		// 纯传动/结构件黑名单：不算加工机（波变器不能靠一根轴就"识别出加工能力"）
-		return !(id.startsWith("create:shaft") || id.startsWith("create:gearbox")
-			|| id.startsWith("create:cogwheel") || id.startsWith("create:large_cogwheel")
-			|| id.startsWith("create:belt") || id.startsWith("create:clutch")
-			|| id.startsWith("create:gearshift") || id.startsWith("create:mechanical_piston")
-			|| id.startsWith("create:mechanical_bearing") || id.startsWith("create:gantry")
-			|| id.startsWith("create:linear_chassis") || id.startsWith("create:radial_chassis"));
+		// 口径统一在 registry（2026-09）：变器扫描与波侧取料排除共用同一判定，
+		// 避免"登记的注液器/物品排放器等非动能加工机"两边判得不一样。
+		return StellarWaveMachineRegistry.isMachinery(level, pos);
 	}
 
-	/** 半径内已蓄满待释放的强化避雷针列表（不含自身格）。 */
+	/** 半径内已蓄满待释放的强化避雷针列表（实现见 {@link TransmuterScanner#collectChargedRods}）。 */
 	private List<BlockPos> collectChargedRods(int radius) {
-		List<BlockPos> rods = new ArrayList<>();
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(worldPosition.offset(-r, -r, -r),
-			worldPosition.offset(r, r, r))) {
-			if (pos.equals(worldPosition))
-				continue;
-			if (level.getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod && rod.hasReadyCharge())
-				rods.add(pos);
-		}
-		return rods;
+		return TransmuterScanner.collectChargedRods(level, worldPosition, radius);
 	}
 
 	/**
@@ -596,21 +523,47 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	// ================= 应力 =================
 
 	/**
-	 * 应力消耗：Σ(被扫机器实时应力) × (1 + 0.1 × (机器数 − 1))。
-	 * 扫描到 0 台（未布配机器）时回退本机静态注册 IMPACT（默认 4.0），保证可独立空转；
-	 * 0 转速（未接入）不计耗。
+	 * 应力消耗：Σ(被扫<b>动能机</b>实时应力) × (1 + 0.1 × (动能机数 − 1))。
+	 *
+	 * <p>乘子按<b>动能机</b>数算（{@link #scannedKineticCount}）：注液器 / 物品排放器这类
+	 * 非动能加工机不耗应力，多摆一台不该让变器变重。扫描到 0 台动能机时回退本机注册
+	 * IMPACT（{@code BlockStressValues.getImpact}，受 Create 配置/数据包影响）。</p>
+	 *
+	 * <p><b>2026-09 审计修复（不再按自身速度提前返回 0）</b>：Create 的 {@code KineticNetwork}
+	 * 只在 add/addSilently/updateStressFor 时把 {@code calculateStressApplied()} 写进
+	 * {@code members} 缓存，之后 {@code getActualStressOf} 直接读缓存<b>不再重算</b>；
+	 * 而 {@code KineticBlockEntity.getSpeed()} 在过载时也返回 0。旧实现遇到速度 0 就 return 0，
+	 * 于是"过载一次"就被网络永久缓存成 0 耗能（只有扫描内容恰好变化才会被纠正）。
+	 * Create 的普通机器从不这样做——速度倍率由网络统一乘 {@code getTheoreticalSpeed()} 承担。</p>
 	 */
 	@Override
 	public float calculateStressApplied() {
-		if (level == null || Math.abs(getSpeed()) <= 0) {
+		if (level == null) {
 			this.lastStressApplied = 0f;
 			return 0f;
 		}
 		float base = (float) com.simibubi.create.api.stress.BlockStressValues.getImpact(getStressConfigKey());
-		double impact = scannedCount > 0 ? scannedStress * (1.0d + 0.1d * (scannedCount - 1)) : base;
+		double impact = scannedKineticCount > 0 ? scannedStress * (1.0d + 0.1d * (scannedKineticCount - 1)) : base;
 		float capped = (float) Math.max(0, impact);
 		this.lastStressApplied = capped;
 		return capped;
+	}
+
+	/**
+	 * 速度/过载状态变化后<b>主动刷新</b>本机在网络里的应力贡献（2026-09 审计修复）：
+	 * 网络的 {@code members} 是缓存值，不会自己重算，必须显式 {@code updateStressFor}。
+	 */
+	@Override
+	public void onSpeedChanged(float previousSpeed) {
+		super.onSpeedChanged(previousSpeed);
+		if (level == null || level.isClientSide)
+			return;
+		try {
+			if (hasNetwork())
+				getOrCreateNetwork().updateStressFor(this, calculateStressApplied());
+		} catch (Throwable ignored) {
+			// 网络表尚未就绪等异常：下一次扫描/速度变化会再试，不影响主循环
+		}
 	}
 
 	// ================= 展示 =================
@@ -707,118 +660,12 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 					.withStyle(ChatFormatting.DARK_GRAY));
 			return true;
 		}
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_radius",
-			scanRadius).withStyle(ChatFormatting.AQUA));
-		// 加热读数（烈焰燃烧室）：范围内有没有点着火的燃烧室、是哪一档——
-		// 修复前这里什么都不显示，玩家只能看到"加热配方不生效"却查不出原因。
-		// 只报"读到了什么"，不报方块坐标
-		if (scannedHeat == BlazeBurnerBlock.HeatLevel.NONE) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_heat_none")
-					.withStyle(ChatFormatting.DARK_GRAY));
-		} else {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_heat",
-					HeatLevelNames.displayName(scannedHeat))
-					.withStyle(style -> style.withColor(HeatLevelNames.colorOf(scannedHeat))));
-		}
-		// 载荷源设备读数（只报种类/数量，不报坐标）：读到才显示，没扫到不占版面
-		if (scannedItemContainers > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_item_containers",
-					scannedItemContainers).withStyle(ChatFormatting.GRAY));
-		}
-		if (scannedFluidContainers > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_fluid_containers",
-					scannedFluidContainers).withStyle(ChatFormatting.GRAY));
-		}
-		if (scannedEnergyStorages > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_energy_storages",
-					scannedEnergyStorages, scannedEnergyStoredFe).withStyle(ChatFormatting.GRAY));
-		}
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_machines",
-			scannedCount).withStyle(ChatFormatting.GRAY));
-		// 波加工转速（= 本机转速）：Vintage 抛光配方的 speed_limits 档位判定依据（见设计文档 §5）
-		GoggleUtil.forGoggles(tooltip,
-			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_wave_rpm",
-				(int) Math.abs(getSpeed())).withStyle(ChatFormatting.GRAY));
-		if (scannedCount > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_stress", (int) scannedStress)
-					.withStyle(ChatFormatting.GRAY));
-		}
-		// ===== 绑定机器可加工配方（Shift 提示行；按住时该行高亮并逐条列出配方清单） =====
-		if (scannedCount > 0) {
-			boolean shift = isPlayerSneaking; // 护目镜渲染时 = 玩家正按住 Shift
-			var keyShift = Component.translatable("create.tooltip.keyShift")
-				.withStyle(shift ? ChatFormatting.WHITE : ChatFormatting.GRAY);
-			var bindLine = Component.translatable(shift
-				? "createoreexpansion.goggles.stellar_wave_transmuter_bind_hint_shift"
-				: "createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", scannedCount, keyShift);
-			if (shift)
-				bindLine.withStyle(ChatFormatting.WHITE);
-			GoggleUtil.forGoggles(tooltip, bindLine);
-			if (shift && !scannedTypeIds.isEmpty()) {
-				// 单行顿号连接（最多 10 项，超出补"等"）——避免逐条列把提示框撑窄挤满
-				GoggleUtil.forGoggles(tooltip, 1, Component.literal(" · ")
-					.append(joinedTypeNames(scannedTypeIds))
-					.withStyle(ChatFormatting.GRAY));
-			}
-		}
-		// ===== 载荷概览摘要（配方类型/辅料·流体·电量/避雷针机会） =====
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_types",
-			recipeTypeCount).withStyle(ChatFormatting.GOLD));
-		if (payloadItemCount > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_items", payloadItemCount,
-					payloadTypeCount).withStyle(ChatFormatting.GRAY));
-		}
-		if (payloadFluidMb > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_fluid", payloadFluidMb)
-					.withStyle(ChatFormatting.GRAY));
-		}
-		if (payloadEnergyFe > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_energy", payloadEnergyFe)
-					.withStyle(ChatFormatting.GRAY));
-		}
-		if (rodCreditCount > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_rods", rodCreditCount)
-					.withStyle(ChatFormatting.GRAY));
-		}
-		// ===== 最近波携带的可加工属性（仅按住 Shift 时显示；单行顿号连接） =====
-		if (isPlayerSneaking && !lastWaveRecipeTypeIds.isEmpty()) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_last_wave")
-					.withStyle(ChatFormatting.GRAY));
-			GoggleUtil.forGoggles(tooltip, 1, Component.literal(" · ")
-				.append(joinedTypeNames(lastWaveRecipeTypeIds))
-				.withStyle(ChatFormatting.GRAY));
-		}
+		TransmuterGoggles.append(tooltip, new TransmuterGoggles.Readout(scanRadius, getSpeed(), scannedHeat,
+			scannedItemContainers, scannedFluidContainers, scannedEnergyStorages, scannedEnergyStoredFe, scannedCount,
+			scannedStress, scannedTypeIds, recipeTypeCount, payloadItemCount, payloadTypeCount, payloadFluidMb,
+			payloadEnergyFe, rodCreditCount, lastWaveRecipeTypeIds), isPlayerSneaking);
 		return true;
 	}
-
-	/** 配方类型显示名**单行汇总**：顿号连接，最多 {@value #MAX_LISTED_TYPES} 项，超出补"等"，
-	 *  避免逐条列把护目镜提示框挤满缩窄。 */
-	private static final int MAX_LISTED_TYPES = 10;
-
-	private static Component joinedTypeNames(List<ResourceLocation> typeIds) {
-		MutableComponent line = Component.empty();
-		int shown = Math.min(typeIds.size(), MAX_LISTED_TYPES);
-		for (int i = 0; i < shown; i++) {
-			if (i > 0)
-				line.append(Component.translatable("createoreexpansion.goggles.list_separator"));
-			line.append(RecipeTypeNames.displayName(typeIds.get(i)));
-		}
-		if (typeIds.size() > MAX_LISTED_TYPES)
-			line.append(Component.translatable("createoreexpansion.goggles.list_etc"));
-		return line;
-	}
-
 	// ================= NBT =================
 
 	@Override
@@ -826,6 +673,7 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		super.write(compound, registries, clientPacket);
 		compound.putInt("ScanRadius", scanRadius);
 		compound.putInt("ScannedCount", scannedCount);
+		compound.putInt("ScannedKineticCount", scannedKineticCount);
 		compound.putFloat("ScannedStress", scannedStress);
 		// 加热读数（烈焰燃烧室）：档位序号 + 热源位置（asLong 打包成 1 个 long，位置仅内部用）。
 		// 客户端护目镜要显示读数，故随客户端包同步；落盘亦可（读档后护目镜重扫描前也能显示正确值）。
@@ -863,6 +711,10 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		super.read(compound, registries, clientPacket);
 		scanRadius = Mth.clamp(compound.getInt("ScanRadius"), 1, 3);
 		scannedCount = Math.max(0, compound.getInt("ScannedCount"));
+		// 旧存档没有该键（0）：退回"全部机器都算动能机"的旧口径，避免读档后应力变轻
+		scannedKineticCount = compound.contains("ScannedKineticCount")
+			? Math.max(0, compound.getInt("ScannedKineticCount"))
+			: scannedCount;
 		scannedStress = Math.max(0, compound.getFloat("ScannedStress"));
 		scannedHeat = HeatLevelNames.byOrdinal(compound.getInt("ScannedHeat"));
 		scannedHeatPos = compound.contains("ScannedHeatPos") ? BlockPos.of(compound.getLong("ScannedHeatPos")) : null;

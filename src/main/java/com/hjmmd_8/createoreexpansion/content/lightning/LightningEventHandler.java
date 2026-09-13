@@ -194,61 +194,36 @@ public final class LightningEventHandler {
      * <p>匹配语义与本模组 lightning 配方一致：单物品输入，按充电配方的首个 ingredient 测试。
      * CC&amp;A 未安装时返回空。</p>
      */
+    /**
+     * 在 CC&amp;A 充电配方中查找匹配当前物品的配方（雷击转化自动适用 CC&amp;A 充电配方）。
+     *
+     * <p><b>2026-09 隔离整改</b>：CC&amp;A 的类/配方类型全部收在 compat 门面里，本类只见
+     * {@code RecipeHolder} 这类中立类型——核心层不出现任何 CC&amp;A 硬编码。</p>
+     */
     private static Optional<RecipeHolder<? extends Recipe<?>>> findCcaCharging(ServerLevel level, ItemStack stack) {
-        if (!isCreateAdditionLoaded())
-            return Optional.empty();
-        try {
-            var chargingType = com.mrh0.createaddition.index.CARecipes.CHARGING_TYPE.get();
-            for (RecipeHolder<?> holder : level.getRecipeManager().getAllRecipesFor(chargingType)) {
-                var recipe = holder.value();
-                if (recipe instanceof com.mrh0.createaddition.recipe.charging.ChargingRecipe charging
-                    && !charging.getIngredients().isEmpty()
-                    && charging.getIngredients().get(0).test(stack))
-                    return Optional.of(holder);
-            }
-        } catch (Throwable ignored) {
-            // CC&A 异常/缺失时静默降级为本模组配方
-        }
-        return Optional.empty();
-    }
-
-    /** CC&amp;A（Create Crafts &amp; Additions）是否已加载 */
-    private static boolean isCreateAdditionLoaded() {
-        return net.neoforged.fml.ModList.get() != null
-            && net.neoforged.fml.ModList.get().isLoaded("createaddition");
+        return com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport
+            .findChargingRecipe(level, stack);
     }
 
     /**
-     * 统一匹配闪电输入：本模组配方走自身 matches；CC&amp;A 充电配方按贪心多槽匹配
-     * （每个 ingredient 需在输入池中找到可消耗物品）。
+     * 统一匹配闪电输入：本模组配方走自身 {@code matches}；其余（如 CC&amp;A 充电配方）交给
+     * compat 门面按贪心多槽匹配（每个 ingredient 需在输入池中找到可消耗物品）。
+     *
+     * <p>输入池在此按"逐槽复制"准备——门面匹配时会递减池内物品，不会动到世界里的真实物品。</p>
      */
     private static boolean matchesLightning(Recipe<?> recipe, LightningInput input, Level level) {
         if (recipe instanceof LightningRecipe lightningRecipe)
             return lightningRecipe.matches(input, level);
-        if (recipe instanceof com.mrh0.createaddition.recipe.charging.ChargingRecipe charging) {
-            if (input.isEmpty())
-                return false;
-            List<ItemStack> pool = new ArrayList<>();
-            for (int i = 0; i < input.size(); i++) {
-                ItemStack stack = input.getItem(i);
-                if (!stack.isEmpty())
-                    pool.add(stack.copy());
-            }
-            for (Ingredient ingredient : charging.getIngredients()) {
-                boolean found = false;
-                for (ItemStack stack : pool) {
-                    if (ingredient.test(stack)) {
-                        stack.shrink(1);
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)
-                    return false;
-            }
-            return true;
+        if (input.isEmpty())
+            return false;
+        List<ItemStack> pool = new ArrayList<>();
+        for (int i = 0; i < input.size(); i++) {
+            ItemStack stack = input.getItem(i);
+            if (!stack.isEmpty())
+                pool.add(stack.copy());
         }
-        return false;
+        return com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport
+            .matchesChargingRecipe(recipe, pool);
     }
 
     /**
@@ -296,17 +271,11 @@ public final class LightningEventHandler {
         // ---- 循环匹配加工（多输入配方优先），直到无配方可匹配 ----
         List<ItemStack> outputs = new ArrayList<>();
         boolean processed = false;
-        // 候选配方：本模组 lightning 配方 + CC&A 充电配方（若已加载，自动适用于雷击转化）
+        // 候选配方：本模组 lightning 配方 + 其它模组顺带适用的充电配方（经 compat 门面，核心层无硬编码）
         List<RecipeHolder<? extends Recipe<?>>> allRecipes = new ArrayList<>(
             level.getRecipeManager().getAllRecipesFor(AllRecipeTypes.LIGHTNING.getType()));
-        if (isCreateAdditionLoaded()) {
-            try {
-                allRecipes.addAll(
-                    level.getRecipeManager().getAllRecipesFor(com.mrh0.createaddition.index.CARecipes.CHARGING_TYPE.get()));
-            } catch (Throwable ignored) {
-                // CC&A 异常/缺失时静默降级为本模组配方
-            }
-        }
+        com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport
+            .addChargingRecipes(level, allRecipes);
 
         while (true) {
             LightningInput input =
@@ -342,8 +311,10 @@ public final class LightningEventHandler {
                 for (ItemStack result : lightningRecipe.rollResults(level.random)) {
                     mergeIntoList(outputs, result);
                 }
-            } else if (best instanceof com.mrh0.createaddition.recipe.charging.ChargingRecipe chargingRecipe) {
-                for (ItemStack result : chargingRecipe.rollResults(level.random)) {
+            } else {
+                // 其余（充电类）配方：产物推导交给 compat 门面（非该类返回空表）
+                for (ItemStack result : com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport
+                    .rollChargingResults(best, level.random)) {
                     mergeIntoList(outputs, result);
                 }
             }

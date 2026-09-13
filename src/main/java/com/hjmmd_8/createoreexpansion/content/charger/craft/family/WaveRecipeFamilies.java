@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.charger.family;
+package com.hjmmd_8.createoreexpansion.content.charger.craft.family;
 
 import java.util.ArrayList;
 import java.util.List;

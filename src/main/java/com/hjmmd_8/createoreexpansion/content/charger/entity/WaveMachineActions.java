@@ -201,11 +201,15 @@ public class WaveMachineActions {
 				// ≥3 开口：其余每个开口均摊发射降级子波（出口斜口 = 45° 对角）
 				int childLevel = wave.waveLevel - OctaEnergyWaveDispersal.decrementOf(state);
 				Vec3 center = Vec3.atCenterOf(pos);
-				for (Vec3 localOut : OctaEnergyWaveDispersal.otherOpenDirs(state, localMove, localRel)) {
+				// 先取出口列表：载荷要按"子波总数"分份，故需要 index/total（见 createChildWave 注释）
+				List<Vec3> octaOuts = OctaEnergyWaveDispersal.otherOpenDirs(state, localMove, localRel);
+				for (int outIndex = 0; outIndex < octaOuts.size(); outIndex++) {
+					Vec3 localOut = octaOuts.get(outIndex);
 					// 出口方向：本地 → 世界（axis=Y 不变）
 					Vec3 worldOut = OctaEnergyWaveDifferencerBlock.toWorldVec(axis, localOut);
 					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
-					AbstractChargerWaveEntity child = wave.createChildWave(center.add(worldOut), worldOut, childLevel);
+					AbstractChargerWaveEntity child = wave.createChildWave(center.add(worldOut), worldOut, childLevel,
+						outIndex, octaOuts.size());
 					if (child != null) {
 						if (frame != null) {
 							// 结构本地出生 → 转回世界坐标/方向（波必须出生在真实世界）；
@@ -267,11 +271,13 @@ public class WaveMachineActions {
 				// ≥3 开口：其余每个开口均摊发射降一级的波
 				int childLevel = wave.waveLevel - 1;
 				Vec3 center = Vec3.atCenterOf(pos);
-				for (Direction modelSide : EnergyWaveDispersal.exitsOf(state, wave.movement)) {
-					Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, modelSide);
+				List<Direction> disperserOuts = EnergyWaveDispersal.exitsOf(state, wave.movement);
+				for (int outIndex = 0; outIndex < disperserOuts.size(); outIndex++) {
+					Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, disperserOuts.get(outIndex));
 					Vec3 outDir = Vec3.atLowerCornerOf(worldOut.getNormal());
 					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
-					AbstractChargerWaveEntity child = wave.createChildWave(center.add(outDir), outDir, childLevel);
+					AbstractChargerWaveEntity child = wave.createChildWave(center.add(outDir), outDir, childLevel,
+						outIndex, disperserOuts.size());
 					if (child != null) {
 						if (frame != null) {
 							// 结构本地出生 → 转回世界坐标/方向（波必须出生在真实世界）；
@@ -330,10 +336,13 @@ public class WaveMachineActions {
 				// 3-4 开口降一级、5-6 开口降二级：其余每个开口均摊发射子波
 				int childLevel = wave.waveLevel - SixFaceDispersal.decrementOf(state);
 				Vec3 center = Vec3.atCenterOf(pos);
-				for (Direction worldOut : SixFaceDispersal.exitsOf(state, wave.movement)) {
-					Vec3 outDir = Vec3.atLowerCornerOf(worldOut.getNormal());
+				List<Direction> sixOuts = SixFaceDispersal.exitsOf(state, wave.movement);
+				for (int outIndex = 0; outIndex < sixOuts.size(); outIndex++) {
+					Vec3 outDir = Vec3.atLowerCornerOf(sixOuts.get(outIndex)
+						.getNormal());
 					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
-					AbstractChargerWaveEntity child = wave.createChildWave(center.add(outDir), outDir, childLevel);
+					AbstractChargerWaveEntity child = wave.createChildWave(center.add(outDir), outDir, childLevel,
+						outIndex, sixOuts.size());
 					if (child != null) {
 						if (frame != null) {
 							// 结构本地出生 → 转回世界坐标/方向（波必须出生在真实世界）；

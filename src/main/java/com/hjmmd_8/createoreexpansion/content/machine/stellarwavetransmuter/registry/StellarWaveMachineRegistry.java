@@ -10,11 +10,14 @@ import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.regi
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
 /**
  * 星辉波变器"加工机注册中心"（唯一入口，统一三张旧表：认可名单 / 方块→配方类型 /
@@ -114,8 +117,65 @@ public final class StellarWaveMachineRegistry {
 		return e == null ? List.of() : e.types();
 	}
 
-	/** 按机器实时状态解析出的当前配方类型（应用选择器；未注册 = 空表）。 */
-	public static List<IRecipeTypeInfo> resolve(KineticBlockEntity machine, ResourceLocation blockId) {
+	/**
+	 * 目录里出现过的<b>全部配方类型</b>（去重，按首次出现顺序）。
+	 *
+	 * <p>用途：变体波读档恢复时把存下来的类型 id 还原成 {@code IRecipeTypeInfo} 档案
+	 * （见 {@code StellarWaveEntity#readAdditionalSaveData}）——避免读档后类型集为空、
+	 * 类型门退回"按机器 id 展开静态档案"而丢掉状态选择器（真空室 mode / 杠杆锤锤下方块 / 磨轮等级）。</p>
+	 */
+	public static List<IRecipeTypeInfo> allRecipeTypes() {
+		List<IRecipeTypeInfo> out = new ArrayList<>();
+		for (MachineEntry e : ENTRIES.values())
+			for (IRecipeTypeInfo t : e.types())
+				if (t != null && t.getId() != null && !out.contains(t))
+					out.add(t);
+		return out;
+	}
+
+	/**
+	 * <b>"这个位置的方块算不算加工机"——变器扫描与波侧取料排除的<b>唯一口径</b></b>
+	 * （2026-09 统一：此前两边各写一份，导致 registry 登记的<b>非动能</b>加工机
+	 * ——Create 注液器 Spout / 物品排放器 Item Drain——被变器当载荷源抽、却被波侧跳过）。
+	 *
+	 * <p>判据：① 目录已登记（含非动能机）→ 是；② 否则若是 Create 动能方块，排除纯传动/结构件
+	 * （轴/齿轮箱/大小齿轮/传送带/离合/变速器/活塞/轴承/龙门/底盘等）后视为加工机候选，
+	 * 使"任意 mod 的动能加工机摆在旁边即可被识别"，无需逐 mod 登记。</p>
+	 *
+	 * <p>调用方需自行保证区块已加载（本方法直接读方块状态）。</p>
+	 */
+	public static boolean isMachinery(Level level, BlockPos pos) {
+		if (level == null || pos == null)
+			return false;
+		BlockState state = level.getBlockState(pos);
+		if (isRegistered(state.getBlock()))
+			return true;
+		if (!(state.getBlock() instanceof com.simibubi.create.content.kinetics.base.KineticBlock))
+			return false;
+		String id = BuiltInRegistries.BLOCK.getKey(state.getBlock())
+			.toString();
+		// 纯传动/结构件黑名单：不算加工机（变器不能靠一根轴就"识别出加工能力"）。
+		// 2026-09 补齐漏项：vertical_gearbox / adjustable_chain_gearshift / sequenced_gearshift
+		// （它们不以 gearbox/gearshift 开头，旧的前缀匹配漏掉了）。
+		if (id.startsWith("create:vertical_gearbox") || id.startsWith("create:adjustable_chain_gearshift")
+			|| id.startsWith("create:sequenced_gearshift"))
+			return false;
+		return !(id.startsWith("create:shaft") || id.startsWith("create:gearbox")
+			|| id.startsWith("create:cogwheel") || id.startsWith("create:large_cogwheel")
+			|| id.startsWith("create:belt") || id.startsWith("create:clutch")
+			|| id.startsWith("create:gearshift") || id.startsWith("create:mechanical_piston")
+			|| id.startsWith("create:mechanical_bearing") || id.startsWith("create:gantry")
+			|| id.startsWith("create:linear_chassis") || id.startsWith("create:radial_chassis"));
+	}
+
+	/**
+	 * 按机器实时状态解析出的当前配方类型（应用选择器；未注册 = 空表）。
+	 *
+	 * <p>参数是 {@link BlockEntity} 而非 {@code KineticBlockEntity}：加工机不全是动能机
+	 * （Create 注液器 Spout / 物品排放器 Item Drain 都是 {@code SmartBlockEntity}），
+	 * 只收动能机会导致 {@code filling}/{@code emptying} 类型永远进不了波（2026-09 修正）。</p>
+	 */
+	public static List<IRecipeTypeInfo> resolve(BlockEntity machine, ResourceLocation blockId) {
 		MachineEntry e = ENTRIES.get(blockId);
 		if (e == null)
 			return List.of();

@@ -291,10 +291,10 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_machines", "Machines linked: %s");
         add("createoreexpansion.goggles.stellar_wave_transmuter_stress", "Linked machine stress: %s");
         add("createoreexpansion.goggles.stellar_wave_transmuter_types", "Recipe types loaded: %s");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_items", "Item payload: %s items, %s kinds");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_items", "Item payload: %s/%s items, %s/%s kinds");
         add("createoreexpansion.goggles.stellar_wave_transmuter_fluid", "Fluid payload: %s mB");
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "Energy payload: %s FE");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "Lightning rod strikes: %s (only taken when fully charged; the wave strikes wherever it hits)");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "Charged rods: %s (1 strike drawn per wave; the wave strikes wherever it hits)");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "Recent wave can process:");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "Linked to %s machines. Hold [%s] for recipes");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint_shift", "Linked to %s machines. Holding [%s] shows recipes");
@@ -330,9 +330,10 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe_type.auto_upgrade", "Auto Upgrade");
         add("createoreexpansion.recipe_type.turning", "Turning");
         add("createoreexpansion.recipe_type.laser_cutting", "Laser Cutting");
-        add("createoreexpansion.recipe_type.charging", "Charging");
+        add("createoreexpansion.recipe_type.charging", "Charging (Stress Charger)");
+        add("createoreexpansion.recipe_type.charging_other", "Charging (CC&A Tesla Coil)");
         add("createoreexpansion.recipe_type.rolling", "Rolling");
-        add("createoreexpansion.recipe_type.lightning", "Lightning Conversion");
+        add("createoreexpansion.recipe_type.lightning", "Lightning Conversion (via strike)");
         add("createoreexpansion.recipe_type.grinding", "Grinding");
         add("createoreexpansion.recipe_type.dismantling", "Dismantling");
         // Blaze Burner heat level display names (goggles heat read / Jade carried heat)
