@@ -9,7 +9,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import com.hjmmd_8.createoreexpansion.common.AllBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.subcategory.ChargingAssemblySubCategory;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.compat.jei.category.sequencedAssembly.SequencedAssemblySubCategory;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;

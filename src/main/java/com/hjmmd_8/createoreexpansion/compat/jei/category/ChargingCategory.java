@@ -7,7 +7,7 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedJadeCharger;
 import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedSapphireCharger;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
 import com.simibubi.create.content.processing.recipe.ProcessingOutput;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
@@ -73,7 +73,7 @@ public class ChargingCategory extends CreateRecipeCategory<ChargingRecipe> {
 
 		// 充能器方块状态随配方档位切换（1=α/2=β/3=γ/4=ε/5=ω），与等级徽章/能量波颜色一致；
 		// 4/5 级为蓝宝石专属，动画换成蓝宝石充能器
-		AnimatedJadeCharger charger = recipe.getLevel() >= com.hjmmd_8.createoreexpansion.content.wave.WaveLevels.EPSILON
+		AnimatedJadeCharger charger = recipe.getLevel() >= com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels.EPSILON
 			? sapphireCharger : jadeCharger;
 		charger.mode = recipe.getLevel();
 		charger.draw(graphics, getBackground().getWidth() / 2 - 13, 22);

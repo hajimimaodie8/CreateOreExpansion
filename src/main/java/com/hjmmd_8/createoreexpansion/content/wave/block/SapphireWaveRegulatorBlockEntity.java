@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;

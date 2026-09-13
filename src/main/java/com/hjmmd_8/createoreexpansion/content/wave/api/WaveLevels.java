@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.wave;
+package com.hjmmd_8.createoreexpansion.content.wave.api;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;

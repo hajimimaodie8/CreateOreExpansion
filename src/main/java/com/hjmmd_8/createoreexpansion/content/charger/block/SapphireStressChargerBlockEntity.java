@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -250,7 +250,7 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 	 * 档位文案（含 RPM 区间）：区间边界与 {@link #getModeForSpeed} 同源（按 Create
 	 * maxRotationSpeed 上限动态计算，默认 256），修改上限配置后提示自动跟随；
 	 * 档位名一律"希腊字母 + 充能态"——α/β/γ/ε/ω 充能态（符号见
-	 * {@link com.hjmmd_8.createoreexpansion.content.wave.WaveLevels#glyph(int)}）。
+	 * {@link com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels#glyph(int)}）。
 	 */
 	@Override
 	protected Component getStateName(int mode, int max) {

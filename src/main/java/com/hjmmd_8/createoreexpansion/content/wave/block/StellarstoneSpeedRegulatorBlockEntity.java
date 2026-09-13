@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.WaveSpeedRegulation;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 

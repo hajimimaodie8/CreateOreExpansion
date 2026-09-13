@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.block;
 
 import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;

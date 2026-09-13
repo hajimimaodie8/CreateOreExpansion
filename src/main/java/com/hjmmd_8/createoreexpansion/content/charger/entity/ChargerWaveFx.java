@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.function.UnaryOperator;
 
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 
 import net.minecraft.core.BlockPos;

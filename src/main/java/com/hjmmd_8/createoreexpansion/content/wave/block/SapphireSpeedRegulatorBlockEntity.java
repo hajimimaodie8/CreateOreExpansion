@@ -42,7 +42,7 @@ public class SapphireSpeedRegulatorBlockEntity extends AbstractWaveGateBlockEnti
 	/** 蓝宝石波速调节器：可承载 1~5 级波（4/5 级限制仅翡翠机型有）。 */
 	@Override
 	public int getMaxSupportedWaveLevel() {
-		return com.hjmmd_8.createoreexpansion.content.wave.WaveLevels.SAPPHIRE_MAX;
+		return com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels.SAPPHIRE_MAX;
 	}
 
 	/** 单档 0.5 格/秒（6 档 = 0.5~3）。 */

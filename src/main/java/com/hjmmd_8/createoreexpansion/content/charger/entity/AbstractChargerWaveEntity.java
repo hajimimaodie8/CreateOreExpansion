@@ -11,7 +11,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;

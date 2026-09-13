@@ -102,8 +102,8 @@ public final class WaveSpeedRegulation extends AbstractWaveGateRegulation {
 	public Result resolve(BlockState state, BlockPos pos, Vec3 wavePos, Vec3 movement, int waveLevel) {
 		int maxSupported = state.getBlock() instanceof SapphireSpeedRegulatorBlock
 				|| state.getBlock() instanceof StellarstoneSpeedRegulatorBlock
-			? com.hjmmd_8.createoreexpansion.content.wave.WaveLevels.SAPPHIRE_MAX
-			: com.hjmmd_8.createoreexpansion.content.wave.WaveLevels.JADE_MAX;
+			? com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels.SAPPHIRE_MAX
+			: com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels.JADE_MAX;
 		if (waveLevel > maxSupported)
 			return Result.VANISH; // 翡翠机承载上限 3：4/5 级波调速必然维持 4/5 → 无效湮灭
 		AbstractWaveGateRegulation.Result r = handle(state, pos, 0f, wavePos, movement);

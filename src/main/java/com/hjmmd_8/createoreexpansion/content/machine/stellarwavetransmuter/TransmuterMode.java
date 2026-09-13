@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
 import net.minecraft.ChatFormatting;

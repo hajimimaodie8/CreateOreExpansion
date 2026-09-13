@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 

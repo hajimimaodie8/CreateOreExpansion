@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.compat.jei.subcategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedJadeCharger;
 import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedSapphireCharger;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
-import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.simibubi.create.compat.jei.category.sequencedAssembly.SequencedAssemblySubCategory;
 import com.simibubi.create.content.processing.sequenced.SequencedRecipe;
