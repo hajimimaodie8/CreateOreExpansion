@@ -16,7 +16,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * 应力充能器渲染（翡翠/雷鸣共用）：传动轴（沿 FACING）+ 发射头（shutter，顶面朝 FACING，与传动轴同一轴线）。
+ * 应力充能器渲染（翡翠/星辉石共用）：传动轴（沿 FACING）+ 发射头（shutter，顶面朝 FACING，与传动轴同一轴线）。
  * 面向抽象基类 {@link AbstractCreateChargerBlockEntity}，子类方块实体无需各自渲染器。
  */
 public class CreateChargerRenderer extends KineticBlockEntityRenderer<AbstractCreateChargerBlockEntity> {

@@ -499,7 +499,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 移动速度（格/秒）：等级基础速度（查 {@link WaveLevels#baseSpeed}，α 2 / β 4 /
 	 * γ 6 / ε 7 / ω 8）+ 速度修正值（波速调节器叠加），
 	 * 夹在 {@link #MIN_SPEED} ~ {@link WaveLevels#maxSpeed}（4/5 级 12，1~3 级 10）之间。
-	 * 子类可覆写基础速度（如雷鸣波更快）。
+	 * 子类可覆写基础速度（按等级分档）。
 	 */
 	protected double getSpeedBlocks() {
 		double base = WaveLevels.baseSpeed(waveLevel);

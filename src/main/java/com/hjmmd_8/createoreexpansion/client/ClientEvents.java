@@ -71,7 +71,7 @@ public class ClientEvents {
         }
         if (text == null)
             return;
-        // 只对工具（含能量组件）与佩显示；星辉石/雷鸣石材料不显示祝福行
+        // 只对工具（含能量组件）与佩显示；星辉石/雷鸣合金材料不显示祝福行
         if (!(stack.getItem() instanceof IMedallion) && !ToolEnergy.hasEnergy(stack))
             return;
         int color = stack.getOrDefault(AllDataComponents.ENERGY_COLOR, 0xDF98A7);

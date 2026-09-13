@@ -40,7 +40,7 @@ import net.minecraft.world.phys.Vec3;
  *     <li>护目镜蓄力能量条（复用工具能量条，填充色随充能态）。</li>
  * </ul>
  *
- * <p>子类（翡翠充能器/雷鸣充能器）只需覆写：</p>
+ * <p>子类（翡翠充能器/星辉石充能器）只需覆写：</p>
  * <ul>
  *     <li>{@link #createWave(Level, Vec3, Vec3, int)} —— 发射各自的能量波实体；</li>
  *     <li>{@link #getWaveColor(int)} —— 档位指示色（默认查 {@link WaveLevels#indicatorColor(int)}
