@@ -78,8 +78,27 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	private static final int SCAN_INTERVAL = 8;
 
 	/**
+	 * 扫描刷新间隔（tick）的<b>只读访问口</b>。
+	 *
+	 * <p>存在意义：攻击波变态的"攻击场"要把实体查询框按"两次扫描之间波最多能走多远"外扩
+	 * （见 {@code TransmuterMode} 的行程余量），这个距离必须用<b>本类真正在用的</b>那个间隔来算，
+	 * 否则一旦扫描间隔被调整，外扩量就会与实际间隔失配、场开始悄悄漏波。</p>
+	 *
+	 * <p>所以这里开一个只读口，而不是在模式枚举里另写一个 {@code 8}——同一个数值只有一处定义，
+	 * 才谈得上"改一处、全场跟随"。</p>
+	 *
+	 * <p><b>与场节拍的分工</b>：这个间隔是<b>读数</b>（以及查询框外扩量）用的；各模式的"场"另按
+	 * {@link TransmuterMode#fieldIntervalTicks()} 跑（可以更短，见 {@link #tick()}）。外扩量继续
+	 * 按本间隔算 = 比场节拍所需更大的超集，只多捞几个候选，不改变点燃口径。</p>
+	 */
+	public static int scanIntervalTicks() {
+		return SCAN_INTERVAL;
+	}
+
+	/**
 	 * <b>当前处理模式</b>（扳手右键切换）：加工波变态（穿波转换）/ 攻击波变态（对波透明 + 攻击场）。
-	 * 两态各自的行为全部封装在 {@link TransmuterMode} 里，本类只负责"存 + 同步 + 每轮扫描问一次"。
+	 * 两态各自的行为（含"要不要场、场多久扫一次"）全部封装在 {@link TransmuterMode} 里，
+	 * 本类只负责"存 + 同步 + 按该模式自报的节拍问一次"。
 	 * <p>落盘并随客户端包同步：护目镜面板要显示当前模式（见 {@link #write}/{@link #read}）。</p>
 	 */
 	private TransmuterMode mode = TransmuterMode.PROCESSING;
@@ -97,6 +116,17 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	private float scannedStress;
 	/** 当前扫描半径（客户端同步用）。 */
 	private int scanRadius = 1;
+
+	/**
+	 * <b>攻击场的节拍计数器</b>（服务端专用；<b>不落盘、不同步</b>——场是瞬时外部条件，
+	 * 计数器只是"下一次该不该扫"的本地节流，重进世界/重新加载区块后从 0 重新起算没有任何影响）。
+	 *
+	 * <p>存在理由：场（攻击波变态的"点燃穿过场的普通波"）的正确性上限由"两次场扫描之间波能走多远"
+	 * 决定（见 {@code TransmuterMode#applyField} 的 javadoc），而重扫描那一套读数（热源 / 机器 /
+	 * 设备计数 / 载荷）8 tick 一次就够。两件事的时间常数差一个量级，所以各用各的节拍：本计数器
+	 * 只管场，{@link #lazyTick()} 仍按 {@link #SCAN_INTERVAL} 管读数。</p>
+	 */
+	private int fieldTickCounter;
 
 	/** 最近一轮扫描到的加工机方块 id（服务端用；穿波转换时作为波属性快照）。 */
 	private List<ResourceLocation> scannedIds = new ArrayList<>();
@@ -170,6 +200,57 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		setLazyTickRate(SCAN_INTERVAL);
 	}
 
+	// ================= 场节拍（本类唯一一处 applyField 调用点） =================
+
+	/**
+	 * <b>每 tick 推进"场节拍"</b>：到点就按当前模式跑一次该模式的"场"
+	 * （{@link TransmuterMode#applyField}）——这就是本类<b>唯一</b>一处 {@code applyField} 调用。
+	 *
+	 * <p><b>为什么场不能挂在重扫描上</b>：{@link #refreshScan()} 那一套（热源 / 机器 / 设备计数 /
+	 * 载荷估算）是<b>读数</b>，8 tick ≈ 160ms 已足够，也确实不能提速（提速等于把那整套的代价乘几倍）。
+	 * 但攻击场是<b>穿过判定</b>：它的判定只看"最近一 tick 的位移线段"，两次场扫描之间有
+	 * {@code 节拍 − 1} tick 完全没有被覆盖，波只要在这段空档里整段穿过场盒就一次都不会被点燃。
+	 * 8 tick 下空档有 7 tick，而半径 1 的场盒棱长只有 3 格、最高波速 12 格/秒（0.6 格/tick）时
+	 * 正面穿场只要 5 tick &lt; 7 —— 这就是"被波速调节器加速过的波在半径 1 的变器上可能整段
+	 * 穿过而不被点燃"的根因。现在场按模式自报的节拍（{@link TransmuterMode#fieldIntervalTicks()}，
+	 * 攻击波变态 = 2 tick，空档 1 tick）单独跑，重扫描仍是 {@link #SCAN_INTERVAL} tick。</p>
+	 *
+	 * <p><b>一个诚实的旁注</b>：Create 的 {@code SmartBlockEntity#tick()} 用"先比较后自减"的计数
+	 * （{@code if (lazyTickCounter-- <= 0)}），所以重扫描的实际周期是
+	 * {@link #SCAN_INTERVAL} + 1 = 9 tick，而非字面的 8；旧实现空档实际是 8 tick。这既不影响
+	 * 本类的分工，也不影响场节拍公式（{@link TransmuterMode#fieldIntervalTicks()} 只依赖波速表与
+	 * 场盒棱长，与重扫描周期无关），只是"旧实现漏波"这一判断的前提数字更宽松一点。</p>
+	 *
+	 * <p><b>为什么这不等于"每 tick 开销"</b>：一轮场只做一次实体查询（只找波实体）+ 几个候选的
+	 * 线段判定，<b>没有任何方块遍历</b>；加工波变态（节拍 0）连查询都不做。相比之下同一台机器每
+	 * 8 tick 的重扫描要遍历 (2r+1)³ 个方块并逐个查能力/方块实体——把场换成每 2 tick 一次实体查询，
+	 * 新增代价仍在那一套的零头之内。</p>
+	 *
+	 * <p><b>客户端不跑</b>：场是服务端权威的瞬时外部条件（点燃结果由实体本身同步到客户端），
+	 * 且客户端不应替服务端做玩法判定。</p>
+	 */
+	@Override
+	public void tick() {
+		super.tick();
+		if (level == null || level.isClientSide)
+			return;
+		int interval = mode.fieldIntervalTicks();
+		if (interval <= 0) {
+			// 本模式没有场（加工波变态）：连实体查询都不做，计数器回到起点备用
+			fieldTickCounter = 0;
+			return;
+		}
+		if (++fieldTickCounter < interval)
+			return;
+		fieldTickCounter = 0;
+		// 半径复用重扫描已算好的 scanRadius，而不是在这里再调一次 resolveRadius()：
+		// resolveRadius() 每次都要遍历本维度的能量场、并按场源字符串回查场控方块实体（不便宜），
+		// 节拍从 8 tick 缩到 2 tick 后每轮都调等于把那份代价乘 4；scanRadius 由 refreshScan 每
+		// 8 tick 刷新一次，陈旧窗口 ≤8 tick，与"读数本来就 8 tick 一刷新"完全同一量级，
+		// 且这样点燃范围与护目镜显示的读取半径始终是同一个数。
+		mode.applyField(level, worldPosition, Math.max(1, scanRadius));
+	}
+
 	// ================= 处理模式（双态） =================
 
 	/** 当前处理模式（客户端读同步值；护目镜面板显示，见 {@code TransmuterGoggles}）。 */
@@ -206,15 +287,16 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 
 	/**
 	 * 一轮扫描：重算半径 → 收集半径内认可加工机 → 汇总应力 → 变化时推网络并同步。
-	 * 调用方：{@link #lazyTick()}（服务端每 8 tick）。
+	 * 调用方：{@link #lazyTick()}（服务端每 {@link #SCAN_INTERVAL} tick）。
+	 *
+	 * <p><b>这里不跑"场"</b>：各模式的场有自己的节拍（{@link TransmuterMode#fieldIntervalTicks()}，
+	 * 由 {@link #tick()} 里的 {@link #fieldTickCounter} 驱动），全场唯一一处
+	 * {@link TransmuterMode#applyField} 调用在 {@link #tick()}——本方法只刷新读数，两者互不牵连。</p>
 	 */
 	private void refreshScan() {
 		// 首次扫描前注册可选 mod 加工机（幂等，未安装对应 mod 静默跳过）
 		StellarWaveMachineIntegrations.ensureRegistered();
 		int radius = resolveRadius();
-		// 本模式的"场"作用（攻击波变态 = 攻击场：把半径内仍是普通波的波点燃成攻击波；
-		// 加工波变态没有场）。半径复用本轮扫描已算好的那一个，场内判定全部落在模式枚举里。
-		mode.applyField(level, worldPosition, radius);
 		List<BlockPos> machines = collectMachines(radius);
 		List<ResourceLocation> ids = new ArrayList<>(machines.size());
 		for (BlockPos m : machines)
