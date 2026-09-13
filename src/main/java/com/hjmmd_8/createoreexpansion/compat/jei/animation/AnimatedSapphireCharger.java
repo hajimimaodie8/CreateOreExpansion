@@ -9,7 +9,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * JEI 分类动画：蓝宝石应力充能器（4/5 级超载/终极充能配方专用显示）。
+ * JEI 分类动画：蓝宝石应力充能器（4/5 级 ε/ω 充能配方专用显示）。
  *
  * <p>仅替换机身方块状态与 shutter/轴 partial 为蓝宝石机型，动画节奏复用
  * {@link AnimatedJadeCharger}（蓄力收缩 → 弹出发射）。</p>

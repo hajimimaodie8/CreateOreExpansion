@@ -204,6 +204,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("block.createoreexpansion.stellarstone_stress_charger", "星辉石应力充能器");
         add("block.createoreexpansion.stellar_wave_transmuter", "星辉波变器");
         add("createoreexpansion.goggles.stellar_wave_transmuter", "星辉波变器");
+        add("createoreexpansion.stellar_wave_transmuter.mode.processing", "加工波变态");
+        add("createoreexpansion.stellar_wave_transmuter.mode.attack", "攻击波变态");
         add("createoreexpansion.goggles.stellar_wave_transmuter_idle", "未接入应力");
         add("createoreexpansion.goggles.stellar_wave_transmuter_radius", "扫描半径：%s 格");
         add("createoreexpansion.goggles.stellar_wave_transmuter_heat", "读取到加热：%s（烈焰燃烧室）");
@@ -298,32 +300,44 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.sapphire_charger_store_layers", "充能层数：%s/%s");
         add("createoreexpansion.goggles.sapphire_charger_store_full", "已满：右键释放");
         add("createoreexpansion.goggles.sapphire_charger_store_line", "本层进度：%s/%s");
-        add("createoreexpansion.goggles.sapphire_charger_1", "低充能态（%s~%s RPM）");
-        add("createoreexpansion.goggles.sapphire_charger_2", "高充能态（%s~%s RPM）");
-        add("createoreexpansion.goggles.sapphire_charger_3", "伽马充能态（%s~%s RPM）");
-        add("createoreexpansion.goggles.sapphire_charger_4", "超载充能态（%s~%s RPM）");
-        add("createoreexpansion.goggles.sapphire_charger_5", "终极充能态（≥%s RPM）");
+        // 档位名统一"希腊字母 + 充能态"（α/β/γ/ε/ω；符号见 WaveLevels#glyph，唯一实现点）
+        add("createoreexpansion.goggles.sapphire_charger_1", "α 充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.sapphire_charger_2", "β 充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.sapphire_charger_3", "γ 充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.sapphire_charger_4", "ε 充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.sapphire_charger_5", "ω 充能态（≥%s RPM）");
         add("block.createoreexpansion.energy_wave_regulator", "翡翠能量调级器");
         add("block.createoreexpansion.wave_speed_regulator", "翡翠波速调节器");
         add("createoreexpansion.goggles.wave_speed_regulator", "翡翠波速调节器");
         add("createoreexpansion.goggles.speed_regulator_tier", "变速等级：%s");
         add("createoreexpansion.goggles.speed_regulator_amount", "调速量：±%s 格/秒");
-        // Jade 波实体信息
+        // Jade 波实体信息（波情四项：波速 / 波级 / 波载荷 / 波型，成组显示）
         add("config.jade.plugin_createoreexpansion.wave", "能量波信息");
-        add("createoreexpansion.jade.wave_level", "波等级：%s");
-        add("createoreexpansion.jade.wave_speed", "运行速度：%s 格/秒");
+        // 波级只显示希腊字母（α/β/γ/ε/ω），词条里不带档位文字
+        add("createoreexpansion.jade.wave_level", "波级：%s");
+        add("createoreexpansion.jade.wave_speed", "波速：%s 格/秒");
+        add("createoreexpansion.jade.wave_type", "波型：%s");
+        add("createoreexpansion.jade.wave_payload", "波载荷：%s");
+        // 波载荷行只报"物资"（物品/流体/电量）；加热·转速·引雷次数是其下的附着明细行，
+        // 故物资为空的措辞要写明"未携带物品/流体/电量"，不能说成"空载"（否则与明细行自相矛盾）
+        add("createoreexpansion.jade.wave_payload_none", "无（未携带物品/流体/电量）");
         add("createoreexpansion.jade.wave_lifetime", "剩余寿命：%s 秒");
         add("createoreexpansion.jade.wave_charge", "电荷：%s");
         add("createoreexpansion.jade.wave_charge_none", "电荷：未带电");
         add("createoreexpansion.jade.charge_positive", "正电荷");
         add("createoreexpansion.jade.charge_negative", "负电荷");
-        // 变体波（星辉波变器产物）携带载荷
-        add("createoreexpansion.jade.stellar_wave_payload_items", "携带物品（%s/%s 件 · %s/%s 种）: %s");
-        add("createoreexpansion.jade.stellar_wave_payload_energy", "携带电量: %s FE");
-        add("createoreexpansion.jade.stellar_wave_payload_fluid", "携带流体: %s %s mB");
-        add("createoreexpansion.jade.stellar_wave_payload_rods", "引雷次数: %s（打中哪里就在哪里落雷）");
-        add("createoreexpansion.jade.stellar_wave_payload_heat", "携带加热: %s");
-        add("createoreexpansion.jade.stellar_wave_payload_rpm", "携带转速: %s RPM");
+        // 波型显示名（波情④取名字口 WaveType#displayName 查这些词条；扩展模组新波型自带词条即可）
+        add("createoreexpansion.wave_type.normal", "普通波");
+        add("createoreexpansion.wave_type.omni", "全能波");
+        add("createoreexpansion.wave_type.attack", "攻击波");
+        // 波载荷明细（概要行见 jade.wave_payload；件数/种类数与护目镜"辅料载荷"同口径）
+        add("createoreexpansion.jade.stellar_wave_payload_items", "物品 %s/%s 件 · %s/%s 种");
+        add("createoreexpansion.jade.stellar_wave_payload_item_list", "物品：%s");
+        add("createoreexpansion.jade.stellar_wave_payload_energy", "电量 %s FE");
+        add("createoreexpansion.jade.stellar_wave_payload_fluid", "流体 %s %s mB");
+        add("createoreexpansion.jade.stellar_wave_payload_rods", "引雷次数：%s（打中哪里就在哪里落雷）");
+        add("createoreexpansion.jade.stellar_wave_payload_heat", "加热：%s");
+        add("createoreexpansion.jade.stellar_wave_payload_rpm", "转速：%s RPM");
         // 变体波可加工配方类型（能力清单，独立于载荷）
         add("createoreexpansion.jade.stellar_wave_can_process", "可加工：");
         // 工作盆物品行：由 BasinLiveItemStorage 直接接管 Jade 原生行，故不再需要单独的实时行词条
@@ -333,7 +347,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("block.createoreexpansion.reinforced_lightning_rod", "强化避雷针");
         // JEI 提示：两种获取引雷能力的途径
         add("createoreexpansion.jei.lightning_rod.ways", "引雷能力获取途径：① 被真实自然闪电击中；② 接收伽马能量波攒满进度（10/10）");
-        add("createoreexpansion.tooltip.lightning_rod.charge", "伽马充能进度：");
+        add("createoreexpansion.tooltip.lightning_rod.charge", "γ 充能进度：");
         add("createoreexpansion.tooltip.lightning_rod.ready", "引雷充能就绪！右键释放闪电");
         add("createoreexpansion.msg.cannot_open_cover", "由于空间不足，无法开盖");
         add("createoreexpansion.msg.need_open_cover", "需要先开盖才能安装角磨轮");
@@ -367,13 +381,13 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.assembly.charging_hover", "在翡翠应力充能器进行%s");
         add("createoreexpansion.recipe.assembly.charging_hover_sapphire", "在蓝宝石应力充能器进行%s");
         add("createoreexpansion.recipe.assembly.cca_charging", "在特斯拉线圈中充能或雷击");
-        // 充能分类标题（低/高/伽马三个等级共用一个分类，等级徽章见 jei.charging.level.*）
+        // 充能分类标题（α/β/γ/ε/ω 五个档位共用一个分类，档位徽章见 jei.charging.level.*）
         add("createoreexpansion.recipe.charging", "充能加工");
-        add("createoreexpansion.jei.charging.level.1", "低能量充能");
-        add("createoreexpansion.jei.charging.level.2", "高能量充能");
-        add("createoreexpansion.jei.charging.level.3", "伽马能量充能");
-        add("createoreexpansion.jei.charging.level.4", "超载能量充能");
-        add("createoreexpansion.jei.charging.level.5", "终极能量充能");
+        add("createoreexpansion.jei.charging.level.1", "α 充能");
+        add("createoreexpansion.jei.charging.level.2", "β 充能");
+        add("createoreexpansion.jei.charging.level.3", "γ 充能");
+        add("createoreexpansion.jei.charging.level.4", "ε 充能");
+        add("createoreexpansion.jei.charging.level.5", "ω 充能");
         add("entity.createoreexpansion.charger_wave", "充能能量波");
         add("entity.createoreexpansion.jade_charger_wave", "充能能量波");
         add("entity.createoreexpansion.stellar_wave", "变体能量波");
@@ -400,9 +414,9 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.gate_speed_ok", "%s RPM 调制中");
         // 档位按 Create 配置的转速上限（maxRotationSpeed，默认 256）等比划分，
         // RPM 区间由代码读取配置后作为参数传入（%s），他人修改上限时显示自动跟随
-        add("createoreexpansion.goggles.charger_low", "低充能态（1~%s RPM）");
-        add("createoreexpansion.goggles.charger_high", "高充能态（%s~%s RPM）");
-        add("createoreexpansion.goggles.charger_gamma", "伽马充能态（≥%s RPM）");
+        add("createoreexpansion.goggles.charger_low", "α 充能态（1~%s RPM）");
+        add("createoreexpansion.goggles.charger_high", "β 充能态（%s~%s RPM）");
+        add("createoreexpansion.goggles.charger_gamma", "γ 充能态（≥%s RPM）");
         add("createoreexpansion.goggles.no_wheel", "未安装角磨轮！");
         add("createoreexpansion.goggles.installed_wheel", "角磨轮：%s");
         add("createoreexpansion.goggles.required_speed", "所需转速：≥ %s RPM");

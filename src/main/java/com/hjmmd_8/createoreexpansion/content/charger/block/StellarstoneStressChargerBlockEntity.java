@@ -42,7 +42,7 @@ import net.minecraft.world.phys.Vec3;
  *       直接返回等级槽的数值（1~5，与转速无关；接入应力即按该等级蓄力/发射）；</li>
  *   <li><b>双槽交互</b>：机器左右两侧各一个 ValueBox——
  *       {@link StellarstoneChargerModeSlot}（模式，普通 ⇄ 储存，沿用 {@link SapphireChargerMode}）
- *       与 {@link StellarstoneChargerLevelSlot}（手动发射波等级 1~5 整数滚动），
+ *       与 {@link StellarstoneChargerLevelSlot}（手动发射波级 1~5 整数滚动，对外只显示 α/β/γ/ε/ω），
  *       分别贴在不同侧面（详见各槽 {@code isSideActive} 注释）；</li>
  *   <li><b>储存模式释放层</b>：每层均按手动等级发射（攒层时记录当时的手动等级）。</li>
  * </ul>
@@ -253,13 +253,16 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 
 	/**
 	 * 档位文案：星辉石充能器等级固定为手动槽数值，不显示 RPM 区间——
-	 * 直接提示当前手动发射波等级（0 = 未接入应力，复用公共 idle 文案）。
+	 * 直接提示当前手动发射波级（0 = 未接入应力，复用公共 idle 文案）。
+	 *
+	 * <p>波级对外<b>只显示希腊字母</b>（α/β/γ/ε/ω，见 {@link WaveLevels#glyph(int)}）。</p>
 	 */
 	@Override
 	protected Component getStateName(int mode, int max) {
 		if (mode <= 0)
 			return Component.translatable("createoreexpansion.goggles.charger_idle");
-		return Component.translatable("createoreexpansion.goggles.stellarstone_charger_manual_level", mode);
+		return Component.translatable("createoreexpansion.goggles.stellarstone_charger_manual_level",
+			WaveLevels.displayName(mode));
 	}
 
 	/** 护目镜 tooltip：附加当前模式（普通/储存）与储存模式下的充能进度（排版同蓝宝石）。 */
@@ -378,8 +381,8 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 	 * <b>多出一个永远选不中的 0 列</b>，且左侧行标是未翻译的 {@code Component.literal("Value")}
 	 * （Create 自己的写法，任何 ScrollValueBehaviour 都这样）。这里覆写三处对齐语义：</p>
 	 * <ul>
-	 *   <li>{@link #createBoard}：板宽 = 4（列 0..4 → 等级 1..5），行标走词条
-	 *       {@code createoreexpansion.charger.level_row}，数值显示 = 列 + 1；</li>
+	 *   <li>{@link #createBoard}：板宽 = 4（列 0..4 → 波级 1..5），行标走词条
+	 *       {@code createoreexpansion.charger.level_row}，数值显示 = 列 + 1 的<b>希腊字母符号</b>；</li>
 	 *   <li>{@link #getValueSettings}：把内部等级换算成"列"（value − 1）回给面板，光标初始位置才对；</li>
 	 *   <li>{@link #setValueSettings}：把面板选中的列换回等级（+1）再写入，并沿用 Create 的反馈音。</li>
 	 * </ul>
@@ -403,14 +406,13 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 			return 1;
 		}
 
-		/** 面板：列 0..(MAX−LOW)。左行标用本模组词条，数值显示为"等级"(= 列 + LOW)。 */
+		/** 面板：列 0..(MAX−LOW)。左行标用本模组词条，数值显示为波级符号（= 列 + LOW → α/β/γ/ε/ω）。 */
 		@Override
 		public ValueSettingsBoard createBoard(Player player, BlockHitResult hitResult) {
 			return new ValueSettingsBoard(label, WaveLevels.MAX_LEVEL - WaveLevels.LOW, 10,
 				com.google.common.collect.ImmutableList.of(
 					Component.translatable("createoreexpansion.charger.level_row")),
-				new ValueSettingsFormatter(settings -> Component.literal(
-					String.valueOf(settings.value() + WaveLevels.LOW))));
+				new ValueSettingsFormatter(settings -> WaveLevels.displayName(settings.value() + WaveLevels.LOW)));
 		}
 
 		/** 内部等级(1~5) → 面板列(0~4)：光标初始落点与当前等级一致。 */

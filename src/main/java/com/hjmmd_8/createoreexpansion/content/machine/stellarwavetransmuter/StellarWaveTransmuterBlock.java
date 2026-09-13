@@ -10,6 +10,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Axis;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
@@ -22,6 +23,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -47,13 +49,16 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * 入口开且对面出口开 → 生成变体波从对侧穿出。判定见
  * {@code StellarWaveTransmuterPass#tryConvert}。</p>
  *
- * <p><b>扳手交互</b>（{@link #onWrenched}，本机<b>没有</b>拨叉/齿轮切换机制）：</p>
+ * <p><b>交互分工（用户定义，两件互不重叠的事）</b>：</p>
  * <ul>
- *   <li>点 4 个侧面 → 切换该侧开/关（模型面映射到世界方向后，非水平方向不切换）；</li>
- *   <li>点灯盘面（FACING 面）→ 按点击位置沿对角线分 4 区域（照抄差波器
- *       {@code EnergyWaveDisperserBlock#sideForShellClick}），切换对应侧面开口；
- *       用户要求"哪个面开口，对应那边的灯就亮"，即灯位点击 = 切换该侧开口；</li>
- *   <li>点轴口面（FACING 反面）→ 旋转朝向（轴口面是传动轴面，不可作为波口打开）。</li>
+ *   <li><b>空手右键 = 波口开关</b>（{@link #useWithoutItem}）：点 4 个侧面直接切换该侧；
+ *       点灯盘面（FACING 面）按点击位置沿对角线分 4 区域（与差波器
+ *       {@code EnergyWaveDisperserBlock#sideForShellClick} 同一套分区），切换对应侧面开口——
+ *       用户要求"哪个面开口，对应那边的灯就亮"，即灯位点击 = 切换该侧开口；
+ *       点轴口面（FACING 反面，传动轴面）不切换任何面。开关逻辑只有
+ *       {@link #toggleWavePort} 一处实现；</li>
+ *   <li><b>扳手右键 = 切换处理模式</b>（{@link #onWrenched}）：加工波变态 ↔ 攻击波变态
+ *       （见 {@link TransmuterMode}）。扳手<b>不再旋转朝向</b>（放置时自动对轴）。</li>
  * </ul>
  *
  * <p><b>工作原理简述</b>：接入应力后按扫描半径快照周边加工机器（见
@@ -189,36 +194,80 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 		return modelSide == null ? null : propertyFor(modelSide);
 	}
 
-	// ========== 扳手交互 ==========
+	// ========== 交互分工：空手 = 波口开关，扳手 = 处理模式 ==========
 
 	/**
-	 * 扳手右键：
+	 * <b>空手右键：切换"该面"的波口开关</b>。
+	 *
 	 * <ul>
-	 *   <li>4 个侧面 → 切换该侧波口开/关；</li>
-	 *   <li>灯盘面（FACING 面）→ 按点击位置 4 分区切换对应侧面波口；</li>
-	 *   <li>轴口面（FACING 反面）→ 旋转朝向（轴口面不可开）。</li>
+	 *   <li>点 4 个侧面 → 直接切换该侧；</li>
+	 *   <li>点灯盘面（FACING 面）→ 按点击位置分 4 区域，切换对应侧面（见
+	 *       {@link #worldDirForLampClick}）；</li>
+	 *   <li>点轴口面（FACING 反面）→ 不切换任何面（那个方向不是波口）。</li>
 	 * </ul>
-	 * 状态修改只在服务端执行（客户端由同步包更新，避免多人下双端不一致）。
+	 *
+	 * <p><b>与扳手的分工（用户定义）</b>：空手只管波口开关；处理模式（加工波变态 ↔ 攻击波变态）
+	 * 归扳手，见 {@link #onWrenched}。两条路径互不重叠，且开关状态只在服务端改、由同步包下发
+	 * （多人下不会双端不一致）。</p>
+	 *
+	 * <p>状态修改刻意不复制一份：分区与"世界方向 → 开口属性"的换算只有
+	 * {@link #toggleWavePort} 一处实现。</p>
+	 */
+	@Override
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+		BlockHitResult hitResult) {
+		// 真正"空手"才管波口：手里拿着东西（方块/工具/扳手）时放行给默认逻辑，
+		// 否则右键变器会挡住放方块（useWithoutItem 在手握物品时也会被调用）。
+		if (!player.getMainHandItem()
+			.isEmpty())
+			return InteractionResult.PASS;
+		return toggleWavePort(state, level, pos, hitResult.getDirection(), hitResult.getLocation());
+	}
+
+	/**
+	 * <b>扳手右键：只做一件事——切换处理模式</b>（加工波变态 ↔ 攻击波变态）。
+	 *
+	 * <p>与旧版的分工变化（用户要求）：扳手<b>不再负责旋转朝向</b>（原
+	 * {@code super.onWrenched} 的旋转分支已移除；本机放置时自动对轴，
+	 * 见 {@link #getStateForPlacement}），也不再负责波口开关（那是空手右键）。</p>
+	 *
+	 * <p>切换在<b>服务端</b>执行并靠同步包下发（模式存在方块实体里，见
+	 * {@link StellarWaveTransmuterBlockEntity#cycleMode()}）：客户端只播本地预测的
+	 * 音效/动画，不自行改状态，避免多人下两端不一致。</p>
 	 */
 	@Override
 	public InteractionResult onWrenched(BlockState state, UseOnContext context) {
 		Level level = context.getLevel();
 		BlockPos pos = context.getClickedPos();
-		Direction clicked = context.getClickedFace();
+		if (!(level.getBlockEntity(pos) instanceof StellarWaveTransmuterBlockEntity be))
+			return InteractionResult.SUCCESS;
+		if (!level.isClientSide) {
+			be.cycleMode();
+			AllSoundEvents.WRENCH_ROTATE.playOnServer(level, pos, 1, level.random.nextFloat() + .5f);
+		}
+		return InteractionResult.SUCCESS;
+	}
+
+	/**
+	 * <b>波口开关的唯一实现</b>（空手交互调用；任何其它入口要开/关波口都走这里，不许再抄一遍）。
+	 *
+	 * <p>参数刻意是显式值（方块状态 + 点中的世界方向 + 点的精确位置），而不是某个交互上下文对象：
+	 * 这样"世界方向 → 模型侧面属性"的换算、灯盘面 4 分区判定、服务端改状态与音效全都只有一处。</p>
+	 *
+	 * @param clickedFace   玩家点中的方块面（世界方向）
+	 * @param clickLocation 玩家点中的精确位置（灯盘面分区用；其它面不读）
+	 * @return 恒 SUCCESS（客户端不预测；状态改动只在服务端执行，由同步包更新）
+	 */
+	private InteractionResult toggleWavePort(BlockState state, Level level, BlockPos pos, Direction clickedFace,
+		Vec3 clickLocation) {
 		Direction facing = state.getValue(FACING);
-
-		// 1) 轴口面（FACING 反面）：旋转朝向（传动轴面，不允许作为波口打开）
-		if (clicked == facing.getOpposite())
-			return super.onWrenched(state, context);
-
-		// 2) 世界方向 → 模型侧面（水平侧面 = 直接点该侧；灯盘面 = 按点击位置分区）
-		Direction worldDir = clicked == facing ? worldDirForLampClick(state, context) : clicked;
+		// 世界方向 → 模型侧面：水平侧面 = 点哪面切哪面；灯盘面（FACING 面）= 按点击位置分区取一侧
+		Direction worldDir = clickedFace == facing ? worldDirForLampClick(state, pos, clickLocation) : clickedFace;
 		if (!isOpenable(worldDir))
 			return InteractionResult.SUCCESS; // 映射落到 UP/DOWN：该点击不切换任何面
-
 		BooleanProperty property = propertyForWorld(state, worldDir);
 		if (property == null)
-			return InteractionResult.SUCCESS;
+			return InteractionResult.SUCCESS; // 灯盘/轴口这类非侧面的世界方向：不可开
 
 		if (!level.isClientSide) {
 			level.setBlock(pos, state.setValue(property, !state.getValue(property)), Block.UPDATE_CLIENTS);
@@ -234,11 +283,12 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	 * <p>分区逻辑与差波器 {@code EnergyWaveDisperserBlock#sideForShellClick} 完全一致
 	 * （已游戏实测校准）：机壳朝 Y 时用 x/z 平面，朝 X 时用 y/z 平面，朝 Z 时用 x/y 平面。</p>
 	 *
+	 * @param pos           变器方块位置（取方块中心作为分区原点）
+	 * @param clickLocation 玩家点中的精确位置（世界坐标）
 	 * @return 命中的世界方向（可能是 UP/DOWN——躺倒放置时机壳面内含有竖直分区的落点）
 	 */
-	private Direction worldDirForLampClick(BlockState state, UseOnContext context) {
-		Vec3 rel = context.getClickLocation()
-			.subtract(Vec3.atCenterOf(context.getClickedPos()));
+	private static Direction worldDirForLampClick(BlockState state, BlockPos pos, Vec3 clickLocation) {
+		Vec3 rel = clickLocation.subtract(Vec3.atCenterOf(pos));
 		Direction facing = state.getValue(FACING);
 
 		if (facing.getAxis() == Axis.Y) {

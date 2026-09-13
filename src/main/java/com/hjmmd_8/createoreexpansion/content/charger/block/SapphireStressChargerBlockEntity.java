@@ -258,7 +258,8 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 	/**
 	 * 档位文案（含 RPM 区间）：区间边界与 {@link #getModeForSpeed} 同源（按 Create
 	 * maxRotationSpeed 上限动态计算，默认 256），修改上限配置后提示自动跟随；
-	 * 4=超载充能态、5=终极充能态（波本身仍叫伊普西龙/欧米伽）。
+	 * 档位名一律"希腊字母 + 充能态"——α/β/γ/ε/ω 充能态（符号见
+	 * {@link com.hjmmd_8.createoreexpansion.content.wave.WaveLevels#glyph(int)}）。
 	 */
 	@Override
 	protected Component getStateName(int mode, int max) {

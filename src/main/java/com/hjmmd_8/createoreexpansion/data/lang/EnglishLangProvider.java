@@ -139,22 +139,33 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.wave_speed_regulator", "Jade Wave Speed Regulator");
         add("createoreexpansion.goggles.speed_regulator_tier", "Speed Tier: %s");
         add("createoreexpansion.goggles.speed_regulator_amount", "Speed Change: ±%s blocks/s");
-        // Jade wave entity info
+        // Jade wave entity info (wave profile: speed / level / payload / type)
         add("config.jade.plugin_createoreexpansion.wave", "Wave Information");
+        // Wave level is shown as a Greek letter only (α/β/γ/ε/ω); no level word in the entry
         add("createoreexpansion.jade.wave_level", "Wave Level: %s");
-        add("createoreexpansion.jade.wave_speed", "Speed: %s blocks/s");
+        add("createoreexpansion.jade.wave_speed", "Wave Speed: %s blocks/s");
+        add("createoreexpansion.jade.wave_type", "Wave Type: %s");
+        add("createoreexpansion.jade.wave_payload", "Wave Payload: %s");
+        // The payload line only reports materials (items/fluid/energy); heat, RPM and lightning
+        // strikes are its indented detail lines, so the empty wording must not say "empty" outright.
+        add("createoreexpansion.jade.wave_payload_none", "none (no items/fluid/energy)");
         add("createoreexpansion.jade.wave_lifetime", "Lifetime: %s s");
         add("createoreexpansion.jade.wave_charge", "Charge: %s");
         add("createoreexpansion.jade.wave_charge_none", "Charge: none");
         add("createoreexpansion.jade.charge_positive", "Positive");
         add("createoreexpansion.jade.charge_negative", "Negative");
-        // Stellar (variant) wave carried payload
-        add("createoreexpansion.jade.stellar_wave_payload_items", "Carried Items (%s/%s pcs · %s/%s kinds): %s");
-        add("createoreexpansion.jade.stellar_wave_payload_energy", "Carried Energy: %s FE");
-        add("createoreexpansion.jade.stellar_wave_payload_fluid", "Carried Fluid: %s %s mB");
-        add("createoreexpansion.jade.stellar_wave_payload_rods", "Lightning Strikes: %s (strikes wherever it hits)");
-        add("createoreexpansion.jade.stellar_wave_payload_heat", "Carried Heat: %s");
-        add("createoreexpansion.jade.stellar_wave_payload_rpm", "Carried Speed: %s RPM");
+        // Wave type display names (looked up by WaveType#displayName)
+        add("createoreexpansion.wave_type.normal", "Normal Wave");
+        add("createoreexpansion.wave_type.omni", "Omni Wave");
+        add("createoreexpansion.wave_type.attack", "Attack Wave");
+        // Wave payload details (summary line: jade.wave_payload)
+        add("createoreexpansion.jade.stellar_wave_payload_items", "items %s/%s, %s/%s kinds");
+        add("createoreexpansion.jade.stellar_wave_payload_item_list", "Items: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_energy", "energy %s FE");
+        add("createoreexpansion.jade.stellar_wave_payload_fluid", "fluid %s %s mB");
+        add("createoreexpansion.jade.stellar_wave_payload_rods", "Lightning strikes: %s (strikes wherever it hits)");
+        add("createoreexpansion.jade.stellar_wave_payload_heat", "Heat: %s");
+        add("createoreexpansion.jade.stellar_wave_payload_rpm", "Speed: %s RPM");
         // Variant wave craftable recipe types (capability list, independent of payload)
         add("createoreexpansion.jade.stellar_wave_can_process", "Can process:");
         add(AllBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");
@@ -174,7 +185,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllItems.INCOMPLETE_TRANSMUTE_MECHANISM.get(), "Incomplete Transmute Mechanism");
         // JEI tooltip: two ways to obtain a lightning strike
         add("createoreexpansion.jei.lightning_rod.ways", "Ways to gain a lightning strike: ① Be struck by a real natural lightning bolt; ② Absorb Gamma energy waves to fill the progress (10/10)");
-        add("createoreexpansion.tooltip.lightning_rod.charge", "Gamma Charge: ");
+        add("createoreexpansion.tooltip.lightning_rod.charge", "γ Charge: ");
         add("createoreexpansion.tooltip.lightning_rod.ready", "Lightning ready! Right-click to release");
         add("createoreexpansion.msg.cannot_open_cover", "Cannot open the cover: not enough space");
         add("createoreexpansion.msg.need_open_cover", "Open the cover first to install a grinding wheel");
@@ -256,13 +267,13 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.recipe.assembly.charging_hover", "Charge in a Jade Create Charger: %s");
         add("createoreexpansion.recipe.assembly.charging_hover_sapphire", "Charge in a Sapphire Create Charger: %s");
         add("createoreexpansion.recipe.assembly.cca_charging", "Charge in a Tesla Coil or Strike by Lightning");
-        // Charging category title (all three levels share one category; level badge keys below)
+        // Charging category title (all five tiers α/β/γ/ε/ω share one category; badge keys below)
         add("createoreexpansion.recipe.charging", "Charging");
-        add("createoreexpansion.jei.charging.level.1", "Low Energy");
-        add("createoreexpansion.jei.charging.level.2", "High Energy");
-        add("createoreexpansion.jei.charging.level.3", "Gamma Energy");
-        add("createoreexpansion.jei.charging.level.4", "Overload Energy");
-        add("createoreexpansion.jei.charging.level.5", "Ultimate Energy");
+        add("createoreexpansion.jei.charging.level.1", "α Charging");
+        add("createoreexpansion.jei.charging.level.2", "β Charging");
+        add("createoreexpansion.jei.charging.level.3", "γ Charging");
+        add("createoreexpansion.jei.charging.level.4", "ε Charging");
+        add("createoreexpansion.jei.charging.level.5", "ω Charging");
         add("entity.createoreexpansion.charger_wave", "Charger Wave");
         add("entity.createoreexpansion.jade_charger_wave", "Charger Wave");
         add("entity.createoreexpansion.stellar_wave", "Variant Wave");
@@ -280,6 +291,8 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.charger.manual_level", "Manual Wave Level");
         add("createoreexpansion.charger.level_row", "Level");
         add("createoreexpansion.goggles.stellar_wave_transmuter", "Stellar Wave Transmuter");
+        add("createoreexpansion.stellar_wave_transmuter.mode.processing", "Processing Mode");
+        add("createoreexpansion.stellar_wave_transmuter.mode.attack", "Attack Mode");
         add("createoreexpansion.goggles.stellar_wave_transmuter_idle", "No stress");
         add("createoreexpansion.goggles.stellar_wave_transmuter_radius", "Scan radius: %s blocks");
         add("createoreexpansion.goggles.stellar_wave_transmuter_heat", "Heat read: %s (Blaze Burner)");
@@ -368,11 +381,11 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.sapphire_charger_store_layers", "Charge layers: %s/%s");
         add("createoreexpansion.goggles.sapphire_charger_store_full", "Full: right-click to release");
         add("createoreexpansion.goggles.sapphire_charger_store_line", "Layer progress: %s/%s");
-        add("createoreexpansion.goggles.sapphire_charger_1", "Low Charge (%s-%s RPM)");
-        add("createoreexpansion.goggles.sapphire_charger_2", "High Charge (%s-%s RPM)");
-        add("createoreexpansion.goggles.sapphire_charger_3", "Gamma Charge (%s-%s RPM)");
-        add("createoreexpansion.goggles.sapphire_charger_4", "Overload Charge (%s-%s RPM)");
-        add("createoreexpansion.goggles.sapphire_charger_5", "Ultimate Charge (%s+ RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_1", "α Charging (%s-%s RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_2", "β Charging (%s-%s RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_3", "γ Charging (%s-%s RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_4", "ε Charging (%s-%s RPM)");
+        add("createoreexpansion.goggles.sapphire_charger_5", "ω Charging (%s+ RPM)");
         add("createoreexpansion.goggles.charger_idle", "No stress");
         add("createoreexpansion.goggles.energy_wave_regulator", "Jade Energy Wave Regulator");
         add("createoreexpansion.goggles.sapphire_wave_regulator", "Sapphire Wave Regulator");
@@ -380,9 +393,9 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.gate_speed_ok", "Modulating at %s RPM");
         // Tiers scale with Create's maxRotationSpeed config (default 256);
         // RPM range is read from config and passed in as args (%s) at runtime
-        add("createoreexpansion.goggles.charger_low", "Low Charge (1-%s RPM)");
-        add("createoreexpansion.goggles.charger_high", "High Charge (%s-%s RPM)");
-        add("createoreexpansion.goggles.charger_gamma", "Gamma Charge (%s+ RPM)");
+        add("createoreexpansion.goggles.charger_low", "α Charging (1-%s RPM)");
+        add("createoreexpansion.goggles.charger_high", "β Charging (%s-%s RPM)");
+        add("createoreexpansion.goggles.charger_gamma", "γ Charging (%s+ RPM)");
         add("createoreexpansion.goggles.no_wheel", "No grinding wheel installed!");
         add("createoreexpansion.goggles.installed_wheel", "Wheel: %s");
         add("createoreexpansion.goggles.required_speed", "Required speed: ≥ %s RPM");

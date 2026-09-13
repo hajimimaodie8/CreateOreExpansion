@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.dis
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.TransmuterMode;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.hjmmd_8.createoreexpansion.util.RecipeTypeNames;
@@ -22,7 +23,7 @@ import net.minecraft.resources.ResourceLocation;
  * <p><b>读数口径（历史修复，勿回退）</b>：一律只报"<b>读到了什么</b>"——加热档位、设备台数、
  * 储能量、载荷量、配方类型数；<b>绝不显示方块坐标</b>（用户 2026-09 明确要求）。</p>
  *
- * <p>行序：半径 → 加热 → 载荷源设备（物品/流体容器、储能）→ 加工机数与应力 → 波加工转速 →
+ * <p>行序：处理模式 → 半径 → 加热 → 载荷源设备（物品/流体容器、储能）→ 加工机数与应力 → 波加工转速 →
  * 绑定机器可加工配方（Shift 展开清单）→ 载荷概览（类型数/辅料·流体·电量/避雷针）→
  * 最近一波可加工属性（Shift）。</p>
  */
@@ -37,6 +38,7 @@ public final class TransmuterGoggles {
 	/**
 	 * 护目镜面板所需的全部读数（调用点打包，见 {@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip}）。
 	 *
+	 * @param mode              当前处理模式（加工波变态 / 攻击波变态；扳手右键切换）
 	 * @param scanRadius        当前扫描半径（能量场档位决定）
 	 * @param speed             本机转速（绝对值；= 波加工转速）
 	 * @param heat              半径内最高热档（NONE = 没读到点着的烈焰燃烧室）
@@ -49,7 +51,7 @@ public final class TransmuterGoggles {
 	 * @param rodCount          半径内已蓄满待释放的强化避雷针台数
 	 * @param lastWaveTypeIds   最近一波穿出时实际可执行的全部类型（Shift）
 	 */
-	public record Readout(int scanRadius, float speed, BlazeBurnerBlock.HeatLevel heat,
+	public record Readout(TransmuterMode mode, int scanRadius, float speed, BlazeBurnerBlock.HeatLevel heat,
 		int itemContainers, int fluidContainers, int energyStorages, int energyStoredFe,
 		int machineCount, float machineStress, List<ResourceLocation> scannedTypeIds, int recipeTypeCount,
 		int payloadItemCount, int payloadTypeCount, int payloadFluidMb, int payloadEnergyFe, int rodCount,
@@ -57,12 +59,19 @@ public final class TransmuterGoggles {
 	}
 
 	/**
-	 * 渲染面板（"半径"那一行起，直到"最近一波"行）。
+	 * 渲染面板（"处理模式"那一行起，直到"最近一波"行）。
 	 *
 	 * @param sneaking 玩家是否正按住 Shift（护目镜渲染时机即为按键状态）
 	 * @return 恒 true（与 {@code IHaveGoggleInformation} 的约定一致）
 	 */
 	public static boolean append(List<Component> tooltip, Readout r, boolean sneaking) {
+		// 处理模式行放在最前：两态对波的行为完全不同（一个加工、一个是攻击场），
+		// 玩家第一眼要看到的就是"这台变器现在在干什么"
+		GoggleUtil.forGoggles(tooltip,
+			Component.translatable(r.mode()
+				.translationKey())
+				.withStyle(r.mode()
+					.displayColor()));
 		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_radius",
 			r.scanRadius()).withStyle(ChatFormatting.AQUA));
 		// 加热读数（烈焰燃烧室）：范围内有没有点着火的燃烧室、是哪一档——

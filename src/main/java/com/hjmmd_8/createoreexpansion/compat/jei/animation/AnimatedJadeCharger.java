@@ -20,7 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * 发射头在蓄力期缓慢向机身内收缩，发射瞬间弹簧式弹出，随后开始下一轮循环。</p>
  *
  * <p>机型可覆写（{@link #machineState()}/{@link #axisModel()}/{@link #shutterModel()}）：
- * 蓝宝石充能器（{@link AnimatedSapphireCharger}）用于 4/5 级（超载/终极）配方动画。</p>
+ * 蓝宝石充能器（{@link AnimatedSapphireCharger}）用于 4/5 级（ε/ω）配方动画。</p>
  *
  * <p><b>传动轴渲染铁律（已踩坑，勿再改）</b>：</p>
  * <ul>
@@ -46,9 +46,9 @@ public class AnimatedJadeCharger extends AnimatedKinetics {
 	/** 弹出时长（tick） */
 	private static final int POP = 6;
 
-	/** 方块状态档位（MODE）：1=低能量、2=高能量、3=伽马能量。由
+	/** 方块状态档位（MODE）：1=α、2=β、3=γ。由
 	 * {@link com.hjmmd_8.createoreexpansion.compat.jei.subcategory.ChargingAssemblySubCategory}
-	 * 按配方充能等级设置，默认 3（伽马，蓝色）。 */
+	 * 按配方充能档位设置，默认 3（γ，蓝色）。 */
 	public int mode = 3;
 
 	/** 机身方块状态（本机 = 翡翠充能器；蓝宝石子类覆写换机型）。 */

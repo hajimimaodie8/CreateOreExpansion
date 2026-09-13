@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.wave;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.TransmuterMode;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineActions;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveSubLevelCollisions;
@@ -29,7 +30,9 @@ import net.neoforged.neoforge.items.IItemHandler;
  *   <li><b>强化避雷针</b>：≥3 级波命中即 +1 充能，波消散；</li>
  *   <li><b>能量波闸</b>（调级器 / 波速调节器）：按 {@code modulatesWaveLevel()} 分流，遣返或推出方块外；</li>
  *   <li><b>差器</b>三种（四面 / 六面 / 八面）：遣返、转向、均摊分裂；</li>
- *   <li><b>星辉波变器</b>：入口开口 → 穿波转换（转成变体波 / 原路遣返 / 撞墙）；</li>
+ *   <li><b>星辉波变器</b>：按变器当前<b>处理模式</b>分流（{@code TransmuterMode}）——
+ *       加工波变态：入口开口 → 穿波转换（转成变体波 / 原路遣返 / 撞墙，实现在
+ *       {@link StellarWaveTransmuterPass}）；攻击波变态：变器对波透明，波照常穿过；</li>
  *   <li><b>带物品槽方块</b>：交给 {@link AbstractChargerWaveEntity#handleItemInventoryBlock} 钩子；</li>
  *   <li>其余：按撞墙处理（{@link AbstractChargerWaveEntity#onSolidBlockHit} 钩子 + 绽放消散）。</li>
  * </ol>
@@ -147,17 +150,25 @@ public final class WaveHitResolver {
 						.scale(1.0d)));
 				return;
 			}
-			// 星辉波变器：入口侧开口则处理——对面开口→变体波携带扫描属性从对侧穿出；
-			// 对面关闭→原路遣返（等级不变）；入口关闭/机壳面/竖直撞击→按撞墙消散
+			// 星辉波变器：按变器当前<b>处理模式</b>分流（加工波变态 / 攻击波变态）。
+			// 模式各自对波做什么全部封装在 TransmuterMode 里，此处只按返回的处置执行三选一：
+			//   CONSUMED     —— 已处理完（穿波转换 / 原路遣返），本 tick 结束；
+			//   BLOCKED      —— 波口未开 / 撞到不可穿机壳面，按撞墙消散；
+			//   TRANSPARENT  —— 攻击波变态：变器对波透明（不转换、不拦面、也不推位），继续飞
 			if (state.getBlock() instanceof StellarWaveTransmuterBlock) {
-				StellarWaveTransmuterPass.Result pass = StellarWaveTransmuterPass.tryConvert(wave, pos);
-				if (pass == StellarWaveTransmuterPass.Result.HIT_WALL) {
-					hitSolid = true; // 波口关闭 / 撞灯盘·轴口面：不可穿，波撞墙消散
-					continue;
+				switch (TransmuterMode.at(wave.level(), pos)
+					.onWaveHit(wave, pos)) {
+					case CONSUMED -> {
+						return;
+					}
+					case BLOCKED -> {
+						hitSolid = true; // 波口关闭 / 撞灯盘·轴口面：不可穿，波撞墙消散
+						continue;
+					}
+					case TRANSPARENT -> {
+						continue; // 当作这里没有方块：波照常飞行（面开关在攻击波变态下不拦波）
+					}
 				}
-				// CONVERTED：已转成变体波（原波静默 discard）；
-				// BOUNCED：已反向并推出方块外（等级不变），继续飞行
-				return;
 			}
 			IItemHandler handler = wave.level()
 				.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);

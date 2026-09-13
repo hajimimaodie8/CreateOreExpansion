@@ -77,6 +77,12 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	/** 扫描刷新间隔（tick；8 tick ≈ 160ms 响应）。 */
 	private static final int SCAN_INTERVAL = 8;
 
+	/**
+	 * <b>当前处理模式</b>（扳手右键切换）：加工波变态（穿波转换）/ 攻击波变态（对波透明 + 攻击场）。
+	 * 两态各自的行为全部封装在 {@link TransmuterMode} 里，本类只负责"存 + 同步 + 每轮扫描问一次"。
+	 * <p>落盘并随客户端包同步：护目镜面板要显示当前模式（见 {@link #write}/{@link #read}）。</p>
+	 */
+	private TransmuterMode mode = TransmuterMode.PROCESSING;
 
 	/** 扫描到的加工机器数量（客户端同步用）。 */
 	private int scannedCount;
@@ -164,6 +170,30 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		setLazyTickRate(SCAN_INTERVAL);
 	}
 
+	// ================= 处理模式（双态） =================
+
+	/** 当前处理模式（客户端读同步值；护目镜面板显示，见 {@code TransmuterGoggles}）。 */
+	public TransmuterMode getMode() {
+		return mode;
+	}
+
+	/**
+	 * 切换处理模式（扳手右键调用；<b>只在服务端执行</b>，见
+	 * {@code StellarWaveTransmuterBlock#onWrenched}）。
+	 *
+	 * <p>模式是方块实体状态（不是 blockstate），同步走 {@link #notifyUpdate()}——
+	 * 它等于 {@code setChanged() + sendData()}，与本类既有的扫描读数完全同一套手法
+	 * （客户端包走 {@code write/read} 的 {@code clientPacket = true} 分支）。
+	 * 多人下客户端只收包、不自行改值，不会出现两端模式不一致。</p>
+	 *
+	 * @return 切换后的模式
+	 */
+	public TransmuterMode cycleMode() {
+		mode = mode.next();
+		notifyUpdate();
+		return mode;
+	}
+
 	// ================= 扫描 =================
 
 	@Override
@@ -182,6 +212,9 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		// 首次扫描前注册可选 mod 加工机（幂等，未安装对应 mod 静默跳过）
 		StellarWaveMachineIntegrations.ensureRegistered();
 		int radius = resolveRadius();
+		// 本模式的"场"作用（攻击波变态 = 攻击场：把半径内仍是普通波的波点燃成攻击波；
+		// 加工波变态没有场）。半径复用本轮扫描已算好的那一个，场内判定全部落在模式枚举里。
+		mode.applyField(level, worldPosition, radius);
 		List<BlockPos> machines = collectMachines(radius);
 		List<ResourceLocation> ids = new ArrayList<>(machines.size());
 		for (BlockPos m : machines)
@@ -604,7 +637,7 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 					.withStyle(ChatFormatting.DARK_GRAY));
 			return true;
 		}
-		TransmuterGoggles.append(tooltip, new TransmuterGoggles.Readout(scanRadius, getSpeed(), scannedHeat,
+		TransmuterGoggles.append(tooltip, new TransmuterGoggles.Readout(mode, scanRadius, getSpeed(), scannedHeat,
 			scannedItemContainers, scannedFluidContainers, scannedEnergyStorages, scannedEnergyStoredFe, scannedCount,
 			scannedStress, scannedTypeIds, recipeTypeCount, payloadItemCount, payloadTypeCount, payloadFluidMb,
 			payloadEnergyFe, rodCreditCount, lastWaveRecipeTypeIds), isPlayerSneaking);
@@ -615,6 +648,9 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	@Override
 	public void write(CompoundTag compound, Provider registries, boolean clientPacket) {
 		super.write(compound, registries, clientPacket);
+		// 处理模式（加工波变态 / 攻击波变态）：既落盘（读档后模式不丢）也随客户端包同步（护目镜显示），
+		// 故不放在下面的 clientPacket 分支里
+		compound.putString("TransmuterMode", mode.key());
 		compound.putInt("ScanRadius", scanRadius);
 		compound.putInt("ScannedCount", scannedCount);
 		compound.putInt("ScannedKineticCount", scannedKineticCount);
@@ -653,6 +689,8 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	@Override
 	protected void read(CompoundTag compound, Provider registries, boolean clientPacket) {
 		super.read(compound, registries, clientPacket);
+		// 处理模式：老存档没有该键 → byKey 回退加工波变态（默认态），不会因缺键变成别的模式
+		mode = TransmuterMode.byKey(compound.getString("TransmuterMode"));
 		scanRadius = Mth.clamp(compound.getInt("ScanRadius"), 1, 3);
 		scannedCount = Math.max(0, compound.getInt("ScannedCount"));
 		// 旧存档没有该键（0）：退回"全部机器都算动能机"的旧口径，避免读档后应力变轻

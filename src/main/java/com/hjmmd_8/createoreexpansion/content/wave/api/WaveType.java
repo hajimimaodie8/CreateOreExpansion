@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.api;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 /**
@@ -37,4 +38,22 @@ public interface WaveType {
 
 	/** 拖尾与绽放的视觉风格。 */
 	WaveTrailStyle trailStyle();
+
+	/**
+	 * <b>波型显示名</b>（Jade"波型"行等一切对外读数；波情四属性之一的取名字口）。
+	 *
+	 * <p>默认按 {@link #id()} 的 path 查词条 {@code createoreexpansion.wave_type.<path>}
+	 * （内置三个：{@code normal}=普通波、{@code omni}=全能波、{@code attack}=攻击波），
+	 * <b>缺词条时回退显示 path 本身</b>——扩展模组注册的新波型即使没补词条也不会显示成裸键名，
+	 * 与 {@code RecipeTypeNames} 的"已知类型查表、未知回退 path"同一口径。</p>
+	 *
+	 * <p>显示点一律调本方法（<b>不许在任何界面代码里对波型 id 写 switch</b>）；
+	 * 需要更特殊的呈现（带颜色/图标/复合组件）时覆写本方法，或注册时自带实现类。</p>
+	 */
+	default Component displayName() {
+		ResourceLocation id = id();
+		if (id == null)
+			return Component.empty();
+		return Component.translatableWithFallback("createoreexpansion.wave_type." + id.getPath(), id.getPath());
+	}
 }

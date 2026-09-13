@@ -315,7 +315,7 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 			releaseTicks = newRelease;
 	}
 
-	/** 当前充能态（1=低/2=高/3=伽马）对应的粒子颜色（RGB int）—— 子类各自配色 */
+	/** 当前充能档位（1=α/2=β/3=γ）对应的粒子颜色（RGB int）—— 子类各自配色 */
 	protected abstract int getWaveColor(int mode);
 
 	/** 护目镜状态行颜色（默认跟随粒子颜色） */
@@ -329,9 +329,9 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 	}
 
 	/**
-	 * 护目镜状态行文字（按当前充能态）：翡翠 0~3；蓝宝石子类覆写支持 4=伊普西龙/5=欧米伽。
+	 * 护目镜状态行文字（按当前充能档位）：翡翠 α/β/γ；蓝宝石子类覆写支持 ε/ω。
 	 *
-	 * @param mode 当前充能态（blockstate MODE）
+	 * @param mode 当前充能档位（blockstate MODE）
 	 * @param max  Create 配置的转速上限（默认 256），用于显示档位 RPM 区间
 	 */
 	protected Component getStateName(int mode, int max) {
