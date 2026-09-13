@@ -12,6 +12,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.craft.family.WaveRecipeFam
 import com.hjmmd_8.createoreexpansion.content.charger.craft.Candidate;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveAuxResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateEvaluator;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveOutputPlacer;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateOrdering;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveEnvironmentChecks;
@@ -650,12 +651,12 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			.isEmpty()) {
 			for (FluidStack fr : pr.getFluidResults())
 				if (!fr.isEmpty())
-					nearestFluidHandlerFill(fr.copy());
+					WaveOutputPlacer.fillNearestTank(level(), blockPosition(), fr.copy());
 		} else {
 			// 非 ProcessingRecipe 族（拆解等）的流体产物：掉落物路径无容器上下文，只能就近注入
 			for (FluidStack fr : WaveCraftResults.familyFluidResults(level(), candidate, single, item.blockPosition()))
 				if (!fr.isEmpty())
-					nearestFluidHandlerFill(fr.copy());
+					WaveOutputPlacer.fillNearestTank(level(), blockPosition(), fr.copy());
 		}
 		chainLeft--;
 		return true;
@@ -838,28 +839,28 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			for (ItemStack result : results) {
 				if (result.isEmpty())
 					continue;
-				ItemStack leftover = insertBack(handler, target, result);
+				ItemStack leftover = WaveOutputPlacer.insertBack(handler, target, result);
 				if (!leftover.isEmpty() && target != slot)
-					leftover = insertBack(handler, slot, leftover); // 次选：主料槽
+					leftover = WaveOutputPlacer.insertBack(handler, slot, leftover); // 次选：主料槽
 				if (!leftover.isEmpty())
-					dropAtBlock(pos, leftover);
+					WaveOutputPlacer.dropAtBlock(level(), pos, leftover);
 			}
 			// 流体产物：优先注入命中方块自身储罐（真空室等），放不下/无处可存再就近
 			if (chosen.recipe instanceof ProcessingRecipe<?, ?> pr && !pr.getFluidResults()
 				.isEmpty()) {
 				for (FluidStack fr : pr.getFluidResults())
 					if (!fr.isEmpty()) {
-						FluidStack rest = fillBlockOrNearby(pos, fr.copy());
+						FluidStack rest = WaveOutputPlacer.fillBlock(level(), pos, fr.copy());
 						if (!rest.isEmpty())
-							fillNearbyOnly(rest); // 尽力而为，剩余浪费
+							WaveOutputPlacer.fillNearby(level(), blockPosition(), rest); // 尽力而为，剩余浪费
 					}
 			} else {
 				// 非 ProcessingRecipe 族（拆解等）的流体产物：同样"命中方块储罐优先 → 就近"
 				for (FluidStack fr : WaveCraftResults.familyFluidResults(level(), chosen, probe, pos))
 					if (!fr.isEmpty()) {
-						FluidStack rest = fillBlockOrNearby(pos, fr.copy());
+						FluidStack rest = WaveOutputPlacer.fillBlock(level(), pos, fr.copy());
 						if (!rest.isEmpty())
-							fillNearbyOnly(rest);
+							WaveOutputPlacer.fillNearby(level(), blockPosition(), rest);
 					}
 			}
 			craftTrace("加工 {} → 选中 {} [{}]（候选 {} 条，辅料 {}）产出 {}{}", input.getItem(), chosen.id,
@@ -1060,112 +1061,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			ItemStack taken = handler.extractItem(slot, 1, false);
 			if (taken.isEmpty())
 				craftDebug("辅料扣减：容器槽 {} 已空（并发变化），跳过", slot);
-		}
-	}
-
-	/**
-	 * 尝试把物品插回槽位；<b>首选槽放不下时扫描整个容器</b>找空位/可叠加槽；仍失败返回剩余（调用方掉落）。
-	 *
-	 * <p>为什么必须扫整容器：主料槽里往往还剩着一堆原料（典型：一个槽里 64 个原木），
-	 * 而产物与原料<b>不是同种物品</b>（去皮原木 ≠ 原木），{@code insertItem} 到该槽必然失败。
-	 * 旧实现只试这一个槽 → 产物被直接掉到地上，玩家看到"加工出来的东西爆了一地"，
-	 * 更糟的是<b>连锁加工因此断掉</b>——下一步（去皮原木 + 铜锭 → 铜机壳）需要在盆里
-	 * 找到上一步的产物，而它已经不在盆里了（用户 2026-09 实测反馈）。</p>
-	 */
-	private static ItemStack insertBack(IItemHandler handler, int slot, ItemStack stack) {
-		if (stack == null || stack.isEmpty())
-			return ItemStack.EMPTY;
-		ItemStack rest = handler.insertItem(slot, stack, false);
-		if (rest.isEmpty())
-			return ItemStack.EMPTY;
-		for (int i = 0; i < handler.getSlots(); i++) {
-			if (i == slot)
-				continue;
-			rest = handler.insertItem(i, rest, false);
-			if (rest.isEmpty())
-				return ItemStack.EMPTY;
-		}
-		return rest;
-	}
-
-	/** 方块上方掉落（产物放不下时）。 */
-	private void dropAtBlock(BlockPos pos, ItemStack stack) {
-		ItemEntity drop = new ItemEntity(level(), pos.getX() + 0.5, pos.getY() + 0.8, pos.getZ() + 0.5, stack);
-		drop.setDeltaMovement(Vec3.ZERO);
-		level().addFreshEntity(drop);
-	}
-
-	/** 优先注入命中方块自身的流体槽；未耗尽部分返回。 */
-	private FluidStack fillBlockOrNearby(BlockPos pos, FluidStack stack) {
-		IFluidHandler self = level().getCapability(Capabilities.FluidHandler.BLOCK, pos, null);
-		if (self != null) {
-			int done = self.fill(new FluidStack(stack.getFluid(), stack.getAmount()),
-				IFluidHandler.FluidAction.EXECUTE);
-			if (done >= stack.getAmount())
-				return FluidStack.EMPTY;
-			stack.shrink(done);
-		}
-		return stack;
-	}
-
-	/** 就近（命中点 1 格邻域）注罐：剩余无处可存则浪费。 */
-	private void fillNearbyOnly(FluidStack stack) {
-		int amount = stack.getAmount();
-		for (BlockPos bp : radiusBlocks()) {
-			IFluidHandler handler = level().getCapability(Capabilities.FluidHandler.BLOCK, bp, null);
-			if (handler == null)
-				continue;
-			amount -= handler.fill(new FluidStack(stack.getFluid(), amount), IFluidHandler.FluidAction.EXECUTE);
-			if (amount <= 0)
-				return;
-		}
-	}
-
-	/** 命中点周围 1 格邻域（不含自身所在格）；产物流体"就近注罐"与载荷兜底共用。 */
-	private List<BlockPos> radiusBlocks() {
-		List<BlockPos> list = new ArrayList<>();
-		BlockPos c = blockPosition();
-		for (int dx = -1; dx <= 1; dx++)
-			for (int dy = -1; dy <= 1; dy++)
-				for (int dz = -1; dz <= 1; dz++) {
-					BlockPos bp = c.offset(dx, dy, dz);
-					if (!bp.equals(c))
-						list.add(bp);
-				}
-		return list;
-	}
-
-	/** 产物流体"就近注罐"：命中点 1 格邻域逐个填，剩余无处可存即浪费（产物不需要"排除口径"）。 */
-	private void nearestFluidHandlerFill(FluidStack stack) {
-		int amount = stack.getAmount();
-		for (BlockPos bp : radiusBlocks()) {
-			IFluidHandler handler = level().getCapability(Capabilities.FluidHandler.BLOCK, bp, null);
-			if (handler == null)
-				continue;
-			try {
-				amount -= handler.fill(new FluidStack(stack.getFluid(), amount), IFluidHandler.FluidAction.EXECUTE);
-			} catch (Throwable ignored) {
-				// 单个储罐异常：换下一个（2026-09 审计修复：不让第三方能力异常冒到 tick）
-			}
-			if (amount <= 0)
-				return;
-		}
-	}
-
-	/** 产物电量"就近注入"：命中点 1 格邻域逐个充，剩余无处可存即浪费。 */
-	private void nearestEnergyReceive(int fe) {
-		int left = fe;
-		for (BlockPos bp : radiusBlocks()) {
-			IEnergyStorage storage = level().getCapability(Capabilities.EnergyStorage.BLOCK, bp, null);
-			if (storage == null || !storage.canReceive())
-				continue;
-			try {
-				left -= storage.receiveEnergy(left, false);
-			} catch (Throwable ignored) {
-				// 单个储能异常：换下一个
-			}
-			if (left <= 0)
-				return;
 		}
 	}
 
