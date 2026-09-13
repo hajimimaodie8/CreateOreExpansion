@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * 星辉石能量调级器方块实体：面板/啮合全部继承 {@link AbstractWaveGateBlockEntity}，
- * 仅覆写机型参数：32 RPM 起调制、最大可把波提升至 5 级（欧米伽，终极充能态），
+ * 仅覆写机型参数：32 RPM 起调制、最大可把波提升至 5 级（ω 充能，终极充能态），
  * 且<b>单次提升级数由本机转速决定</b>（32~128 RPM → +1；129~256 RPM → +2）。
  *
  * <p>提升级数通过 {@link #getBoostStepForSpeed()} 提供给波实体应用端
@@ -52,7 +52,7 @@ public class StellarstoneWaveRegulatorBlockEntity extends AbstractWaveGateBlockE
 		return Math.abs(getSpeed()) >= 129f ? 2 : 1;
 	}
 
-	/** 星辉石调级器：最大可升等级 5（欧米伽）——提升封顶到 5（全局上限）。 */
+	/** 星辉石调级器：最大可升等级 5（ω 充能）——提升封顶到 5（全局上限）。 */
 	@Override
 	public int getMaxBoostLevel() {
 		return WaveLevels.MAX_LEVEL;

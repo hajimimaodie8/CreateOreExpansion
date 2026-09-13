@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.block;
 
 import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -12,7 +13,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * 翡翠应力充能器方块实体：复用 {@link AbstractCreateChargerBlockEntity} 全部通用行为，
- * 仅定制翡翠配色（低=黄、高=绿、伽马=蓝）与翡翠充能波实体。
+ * 仅定制翡翠配色（α 黄/β 绿/γ 蓝，封顶 γ）与翡翠充能波实体。
  */
 public class JadeStressChargerBlockEntity extends AbstractCreateChargerBlockEntity {
 
@@ -25,15 +26,15 @@ public class JadeStressChargerBlockEntity extends AbstractCreateChargerBlockEnti
 		return new ChargerWaveEntity(level, start, movementDir, mode);
 	}
 
-	/** 翡翠充能波颜色（RGB 0-1）：低=黄、高=绿、伽马=蓝 */
+	/**
+	 * 翡翠充能波颜色（ARGB）：<b>标准 5 档表里只认 α~γ</b>（翡翠线封顶 3 级）——
+	 * 色值查 {@link WaveLevels#indicatorColor(int)}，ε/ω 与未接入一律回落基类的未接入灰。
+	 */
 	@Override
 	protected int getWaveColor(int mode) {
-		return switch (mode) {
-			case 2 -> 0x55FF55;
-			case 3 -> 0x5555FF;
-			case 1 -> 0xFFFF55;
-			default -> 0xAAAAAA;
-		};
+		return mode >= WaveLevels.LOW && mode <= WaveLevels.JADE_MAX
+			? WaveLevels.indicatorColor(mode)
+			: IDLE_INDICATOR_COLOR;
 	}
 
 	@Override

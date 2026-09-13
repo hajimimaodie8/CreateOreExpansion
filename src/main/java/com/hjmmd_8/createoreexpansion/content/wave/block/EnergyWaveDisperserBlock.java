@@ -20,7 +20,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
@@ -146,36 +145,17 @@ public class EnergyWaveDisperserBlock extends Block implements IWrenchable, IBE<
 	/**
 	 * 机壳面分区点击：以方块中心为原点，点击位置沿两条对角线分成 4 个区域，
 	 * 对应模型 4 侧面（上=模型北、下=模型南、左=模型西、右=模型东）。
-	 * <p>判断基于<b>世界坐标偏移</b>，命中区域先得世界方向，再经
+	 * <p>分区数学（原点、双轴绝对值比较、朝向决定坐标平面）<b>只有
+	 * {@link MachineFaceQuadrants#worldDirectionAt} 一处实现</b>——与星辉波变器灯盘面点击共用；
+	 * 本方法只负责取上下文里的点击信息，命中区域先得世界方向，再经
 	 * {@link #modelFaceOf} 映射到模型面（与灯材质位序一致）。</p>
 	 *
 	 * @return 命中的模型侧面；无法判定时返回 null
 	 */
 	private Direction sideForShellClick(BlockState state, UseOnContext context) {
-		Vec3 hit = context.getClickLocation();
-		Vec3 rel = hit.subtract(Vec3.atCenterOf(context.getClickedPos()));
 		Direction facing = state.getValue(FACING);
-
-		Direction worldDir;
-		if (facing.getAxis() == Direction.Axis.Y) {
-			// 机壳面朝上/下：用 x/z 偏移，上北（-Z）下南（+Z）左西（-X）右东（+X）
-			if (Math.abs(rel.x) > Math.abs(rel.z))
-				worldDir = rel.x > 0 ? Direction.EAST : Direction.WEST;
-			else
-				worldDir = rel.z > 0 ? Direction.SOUTH : Direction.NORTH;
-		} else if (facing.getAxis() == Direction.Axis.X) {
-			// 机壳朝东西（躺倒），模型 up 面朝东西：分区落在 y/z 平面
-			if (Math.abs(rel.y) > Math.abs(rel.z))
-				worldDir = rel.y > 0 ? Direction.UP : Direction.DOWN;
-			else
-				worldDir = rel.z > 0 ? Direction.SOUTH : Direction.NORTH;
-		} else {
-			// 机壳朝南北，分区落在 x/y 平面
-			if (Math.abs(rel.y) > Math.abs(rel.x))
-				worldDir = rel.y > 0 ? Direction.UP : Direction.DOWN;
-			else
-				worldDir = rel.x > 0 ? Direction.EAST : Direction.WEST;
-		}
+		Direction worldDir = MachineFaceQuadrants.worldDirectionAt(facing, context.getClickedPos(),
+			context.getClickLocation());
 		// 世界方向 → 模型面（该世界方向的侧面开口）
 		return modelFaceOf(facing, worldDir);
 	}

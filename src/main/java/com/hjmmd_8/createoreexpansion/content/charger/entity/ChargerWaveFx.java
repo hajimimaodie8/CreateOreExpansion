@@ -43,9 +43,26 @@ import org.joml.Vector3f;
  * 所有公开方法都有风格参数版本，并保留无风格参数的旧重载（默认 {@link WaveTrailStyle#NORMAL}，
  * 行为与改造前逐字一致），供既有调用点继续使用。</p>
  *
- * <p><b>粒子预算</b>：点缀粒子按"主粒子数量 × 比例"派生（见 {@link Accent}），
- * 各风格比例之和 ≤ 0.37，故单次发射的总粒子量最多约为主粒子量的 1.37 倍——
- * 拖尾 6 → 9、绽放 30 → 39、爆炸 105 → 133（5 级），均不触及"不超过现状 2 倍"的红线。
+ * <p><b>粒子预算</b>：点缀粒子按"主粒子数量 × 比例"派生（见 {@link Accent} 与
+ * {@link #accentCount(int, Accent) 数量算法}）——<b>点缀颗数 = Math.round(基数 × 比例)</b>，
+ * 每个风格挂两种点缀，比例各为 1/4 与 1/8（同风格两比例之和恒为 0.375），
+ * 故单次发射的总粒子量最多为主粒子基数的 1.375 倍。<b>逐档实算</b>
+ * （基数 + round(基数 × 1/4) + round(基数 × 1/8) = 合计）：</p>
+ * <ul>
+ *   <li><b>拖尾</b>（基数 6，见 {@code AbstractChargerWaveEntity} 每 tick 6 颗）：
+ *       6 + round(1.5)=2 + round(0.75)=1 = <b>9</b>；</li>
+ *   <li><b>绽放</b>（基数 {@link #BURST_COUNT} = 30）：30 + round(7.5)=8 + round(3.75)=4 = <b>42</b>；</li>
+ *   <li><b>爆炸</b>（基数 {@code 30 + boomLevel × 25}，见 {@link #triggerBoom}）：
+ *       1 级 55 + round(13.75)=14 + round(6.875)=7 = <b>76</b>；
+ *       2 级 80 + round(20)=20 + round(10)=10 = <b>110</b>；
+ *       3 级 105 + round(26.25)=26 + round(13.125)=13 = <b>144</b>；
+ *       4 级 130 + round(32.5)=33 + round(16.25)=16 = <b>179</b>；
+ *       5 级 155 + round(38.75)=39 + round(19.375)=19 = <b>213</b>。</li>
+ * </ul>
+ * <p>以上合计<b>不含</b>爆炸的"可选第二色"那一次发送——它另发 {@code 基数 / 2} 颗主粒子
+ * （整数除法：55→27、80→40、105→52、130→65、155→77），且不带任何点缀。
+ * 各档点缀颗数上限为 39（5 级爆炸），始终低于 {@link #MAX_ACCENT_PER_EMIT}，
+ * 故"总量不超过现状 2 倍"的红线在 1~5 级内恒满足。
  * {@link WaveTrailStyle#NORMAL} 不挂任何点缀，逐字节等于改造前。</p>
  */
 public final class ChargerWaveFx {
@@ -63,7 +80,11 @@ public final class ChargerWaveFx {
 
 	/** 命中绽放的主粒子基数（改造前即为 30，保持不变）。 */
 	private static final int BURST_COUNT = 30;
-	/** 单次发射的点缀粒子上限：防止大范围爆炸（5 级爆炸主粒子 105）时点缀失控。 */
+	/**
+	 * 单个点缀档案的颗数上限（每次发送各自封顶）：防止未来等级/比例改动让点缀失控。
+	 * <p>现有 1~5 级的最大值出现在 5 级爆炸（基数 155）的 1/4 点缀上——39 颗，
+	 * 距本上限尚有 9 颗余量，故当前它不会真正生效。</p>
+	 */
 	private static final int MAX_ACCENT_PER_EMIT = 48;
 
 	private ChargerWaveFx() {
@@ -87,8 +108,9 @@ public final class ChargerWaveFx {
 	/**
 	 * 点缀粒子档案：在风格主粒子之外额外发送的一类原版粒子。
 	 *
-	 * <p>数量按比例派生而非写死，这样同一个档案在"拖尾（6 颗）/绽放（30 颗）/爆炸（55~105 颗）"
-	 * 三种量级下都能自动等比缩放。</p>
+	 * <p>数量按比例派生而非写死，这样同一个档案在"拖尾（6 颗）/绽放（30 颗）/
+	 * 爆炸（1~5 级 55/80/105/130/155 颗）"三种量级下都能自动等比缩放——
+	 * 实算方式与各档合计见类注释的"粒子预算"一节。</p>
 	 *
 	 * @param particle     原版粒子类型（无参构造的 {@code SimpleParticleType}，客户端无需注册）
 	 * @param ratio        相对主粒子数量的比例（0.25 = 每 4 颗主粒子配 1 颗点缀）
@@ -390,7 +412,7 @@ public final class ChargerWaveFx {
 	 *   <li>区域内生物受该等级撞击伤害（查 {@link net.minecraft.world.damagesource.DamageSource} 前
 	 *       见 {@link #damageForLevel}：4/6/8/10/12）；</li>
 	 *   <li>区域内掉落物 / 置物台物品按该等级直接充能加工；</li>
-	 *   <li><b>≥3 级爆炸</b>额外给范围内强化避雷针 +1 伽马充能；</li>
+	 *   <li><b>≥3 级爆炸</b>额外给范围内强化避雷针 +1 γ 充能；</li>
 	 *   <li>密集粒子扩散（比撞墙 30 个更密）+ 爆炸音效。</li>
 	 * </ul>
 	 *
@@ -425,7 +447,7 @@ public final class ChargerWaveFx {
 		if (level instanceof ServerLevel server) {
 			StyleProfile profile = profile(style);
 			// 密集球面扩散粒子（等级越高越密）
-			int count = 30 + boomLevel * 25; // 55 / 80 / 105 个
+			int count = 30 + boomLevel * 25; // 55 / 80 / 105 / 130 / 155 个（1~5 级）
 			server.sendParticles(particleFor(profile, color, 0.7f), center.x, center.y, center.z, count,
 				1.2, 1.2, 1.2, 0.15);
 			if (color2 != null) {
@@ -433,7 +455,7 @@ public final class ChargerWaveFx {
 				server.sendParticles(particleFor(profile, color2, 0.5f), center.x, center.y, center.z, count / 2,
 					1.0, 1.0, 1.0, 0.12);
 			}
-			// 风格点缀：数量随爆炸密度等比放大（1 级 55 → 约 20 颗，5 级 105 → 约 39 颗）
+			// 风格点缀：数量随爆炸密度等比放大（1 级 55 → 14+7=21 颗，5 级 155 → 39+19=58 颗）
 			for (Accent accent : profile.accents()) {
 				int extras = accentCount(count, accent);
 				if (extras <= 0)
@@ -475,7 +497,7 @@ public final class ChargerWaveFx {
 		for (int x = minX; x <= maxX; x++) {
 			for (int z = minZ; z <= maxZ; z++) {
 				BlockPos pos = new BlockPos(x, y, z);
-				// 伽马能量加工（等级 ≥3）：范围内强化避雷针获得 1 次伽马充能
+				// 伽马能量加工（等级 ≥3）：范围内强化避雷针获得 1 次 γ 充能
 				if (boomLevel >= 3
 					&& level.getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 					rod.onGammaWaveHit();

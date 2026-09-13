@@ -8,6 +8,7 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.infrastructure.config.AllConfigs;
@@ -42,7 +43,8 @@ import net.minecraft.world.phys.Vec3;
  * <p>子类（翡翠充能器/雷鸣充能器）只需覆写：</p>
  * <ul>
  *     <li>{reateWave(Level, Vec3, Direction, int)} —— 发射各自的能量波实体；</li>
- *     <li>{@link #getWaveColor(int)} —— 三档充能态对应粒子颜色（子类各自配色）；</li>
+ *     <li>{@link #getWaveColor(int)} —— 档位指示色（默认查 {@link WaveLevels#indicatorColor(int)}
+ *         标准 5 档表，翡翠子类覆写为只认 α~γ）；</li>
  *     <li>{@link #getMachineName()} —— 护目镜标题；</li>
  *     <li>{@link #getGoggleColor(int)} —— 护目镜状态行颜色（默认跟随粒子颜色）。</li>
  * </ul>
@@ -315,8 +317,30 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 			releaseTicks = newRelease;
 	}
 
-	/** 当前充能档位（1=α/2=β/3=γ）对应的粒子颜色（RGB int）—— 子类各自配色 */
-	protected abstract int getWaveColor(int mode);
+	/** 未接入应力 / 越界档位的指示灯灰（ARGB）：标准 5 档表之外，本线唯一的固定配色。 */
+	protected static final int IDLE_INDICATOR_COLOR = 0xAAAAAA;
+
+	/**
+	 * 档位指示色（ARGB）：查<b>标准 5 档表</b> {@link WaveLevels#indicatorColor(int)}
+	 * （1=α 黄、2=β 绿、3=γ 蓝、4=ε 紫粉、5=ω 玫红），越界（0 = 未接入应力、坏数据）回落
+	 * {@link #IDLE_INDICATOR_COLOR}。
+	 *
+	 * <p>颜色值本身只有 {@link WaveLevels#indicatorColor(int)} 一处实现；本方法只补"未接入/越界"
+	 * 的回落色，供指示灯、护目镜能量条填充色与各子类共用。</p>
+	 */
+	protected static int indicatorColorForMode(int mode) {
+		return WaveLevels.isValid(mode) ? WaveLevels.indicatorColor(mode) : IDLE_INDICATOR_COLOR;
+	}
+
+	/**
+	 * 当前充能档位（1=α/2=β/3=γ/4=ε/5=ω）对应的指示灯 / 护目镜颜色（ARGB）。
+	 *
+	 * <p>默认即 {@link #indicatorColorForMode(int)}：标准 5 档表 + 未接入灰。翡翠充能器只到 γ 档，
+	 * 故其子类覆写为"仅 α~γ 有效"，把 ε/ω 也归入未接入灰。</p>
+	 */
+	protected int getWaveColor(int mode) {
+		return indicatorColorForMode(mode);
+	}
 
 	/** 护目镜状态行颜色（默认跟随粒子颜色） */
 	protected ChatFormatting getGoggleColor(int mode) {

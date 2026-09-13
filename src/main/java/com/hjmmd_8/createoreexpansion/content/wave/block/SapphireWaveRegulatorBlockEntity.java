@@ -9,7 +9,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * 蓝宝石能量调级器方块实体：面板/啮合全部继承 {@link AbstractWaveGateBlockEntity}，
- * 仅覆写机型参数：64 RPM 起调制、最大可把波提升至 5 级（欧米伽，终极充能态）。
+ * 仅覆写机型参数：64 RPM 起调制、最大可把波提升至 5 级（ω 充能，终极充能态）。
  */
 public class SapphireWaveRegulatorBlockEntity extends AbstractWaveGateBlockEntity {
 
@@ -29,7 +29,7 @@ public class SapphireWaveRegulatorBlockEntity extends AbstractWaveGateBlockEntit
 		return Math.abs(getSpeed()) >= getModulationSpeedThreshold();
 	}
 
-	/** 蓝宝石调级器：最大可升等级 5（欧米伽）——1~4 级波顺向逐级 +1，最高到 5（翡翠封顶 3）。 */
+	/** 蓝宝石调级器：最大可升等级 5（ω 充能）——1~4 级波顺向逐级 +1，最高到 5（翡翠封顶 3）。 */
 	@Override
 	public int getMaxBoostLevel() {
 		return WaveLevels.SAPPHIRE_MAX;

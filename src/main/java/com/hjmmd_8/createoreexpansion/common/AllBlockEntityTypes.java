@@ -147,7 +147,7 @@ public final class AllBlockEntityTypes {
 
 	// ===== 能量感应灯方块实体：与方块一同暂时下架（待重做模型后恢复） =====
 
-	/** 强化避雷针方块实体（伽马充能状态；渲染用原版避雷针模型，无需自定义渲染器） */
+	/** 强化避雷针方块实体（γ 充能状态；渲染用原版避雷针模型，无需自定义渲染器） */
 	public static final BlockEntityEntry<ReinforcedLightningRodBlockEntity> REINFORCED_LIGHTNING_ROD = CreateOreExpansion.REGISTRATE
 		.blockEntity("reinforced_lightning_rod", ReinforcedLightningRodBlockEntity::new)
 		.validBlocks(AllBlocks.REINFORCED_LIGHTNING_ROD)

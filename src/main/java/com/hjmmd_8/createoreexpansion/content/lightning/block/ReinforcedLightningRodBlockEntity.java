@@ -34,7 +34,7 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public class ReinforcedLightningRodBlockEntity extends BlockEntity implements IHaveGoggleInformation {
 
-	/** 伽马充能最大总进度（攒满获得 1 次手动引雷机会） */
+	/** γ 充能最大总进度（攒满获得 1 次手动引雷机会） */
 	public static final int MAX_CHARGE = 10;
 	/** 手动引雷释放冷却（tick；8 秒 = 160 tick） */
 	public static final int RELEASE_COOLDOWN_TICKS = 160;
@@ -100,7 +100,7 @@ public class ReinforcedLightningRodBlockEntity extends BlockEntity implements IH
 
 	// ========== 状态查询（公开方法） ==========
 
-	/** 当前伽马充能进度（tooltip 用） */
+	/** 当前 γ 充能进度（tooltip 用） */
 	public int getGammaChargeProgress() {
 		return gammaChargeProgress;
 	}
@@ -115,14 +115,14 @@ public class ReinforcedLightningRodBlockEntity extends BlockEntity implements IH
 		return gammaChargeProgress >= MAX_CHARGE && readyCharges > 0;
 	}
 
-	// ========== 护目镜提示（工程师护目镜显示伽马充能进度） ==========
+	// ========== 护目镜提示（工程师护目镜显示 γ 充能进度） ==========
 
 	@Override
 	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
 		// 行排版统一缩进（GoggleUtil，同充能器/波闸/角磨床）
 		GoggleUtil.forGoggles(tooltip, Component.translatable("block.createoreexpansion.reinforced_lightning_rod")
 			.withStyle(ChatFormatting.GRAY));
-		// 伽马充能进度：冒号后直接跟竖线进度条（金色）
+		// γ 充能进度：冒号后直接跟竖线进度条（金色）
 		// 注意：withStyle 必须在 append 之前调用，否则会把进度条也染成白色
 		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.lightning_rod.charge")
 			.withStyle(ChatFormatting.WHITE)

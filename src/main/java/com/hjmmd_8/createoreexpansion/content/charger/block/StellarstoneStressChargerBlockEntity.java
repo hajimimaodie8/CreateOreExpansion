@@ -223,18 +223,9 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 		return new ChargerWaveEntity(level, start, movementDir, mode);
 	}
 
-	/** 指示灯/护目镜颜色（ARGB）：1 黄、2 绿、3 蓝、4 紫粉、5 玫红（同蓝宝石配色）。 */
-	@Override
-	protected int getWaveColor(int mode) {
-		return switch (mode) {
-			case 1 -> 0xFFFF55; // 低：黄
-			case 2 -> 0x55FF55; // 高：绿
-			case 3 -> 0x5555FF; // 伽马：蓝
-			case 4 -> 0xFF66E0; // 伊普西龙：紫粉
-			case 5 -> 0xFF4073; // 欧米伽：玫红
-			default -> 0xAAAAAA;
-		};
-	}
+	// 指示灯/护目镜颜色（ARGB）不再本类实现：与蓝宝石同用基类
+	// AbstractCreateChargerBlockEntity#getWaveColor(int) 的标准 5 档表
+	// （1=α 黄、2=β 绿、3=γ 蓝、4=ε 紫粉、5=ω 玫红，越界回落未接入灰）。
 
 	@Override
 	protected Component getMachineName() {

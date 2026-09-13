@@ -7,6 +7,7 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedJadeCharger;
 import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedSapphireCharger;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
+import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
 import com.simibubi.create.content.processing.recipe.ProcessingOutput;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
@@ -98,15 +99,13 @@ public class ChargingCategory extends CreateRecipeCategory<ChargingRecipe> {
 
 	/** 发射粒子已移除：严格仿照注液分类，不画能量波粒子动画 */
 
-	/** 能量波颜色（按配方档位）：α=黄、β=绿、γ=蓝、ε=紫粉、ω=玫红（与各充能器蓄力态配色一致） */
+	/**
+	 * 能量波颜色（按配方档位）：查<b>标准 5 档表</b> {@link WaveLevels#indicatorColor(int)}
+	 * ——α=黄、β=绿、γ=蓝、ε=紫粉、ω=玫红，与各充能器指示灯/蓄力态配色逐档一致；
+	 * 越界档位由该表回落为 α 黄（与改造前的 {@code default -> 0xFFFF55} 相同）。
+	 */
 	private int getWaveColor(ChargingRecipe recipe) {
-		return switch (recipe.getLevel()) {
-			case 2 -> 0x55FF55;
-			case 3 -> 0x5555FF;
-			case 4 -> 0xFF66E0;
-			case 5 -> 0xFF4073; // ω：玫红（主体红，偏粉紫）
-			default -> 0xFFFF55;
-		};
+		return WaveLevels.indicatorColor(recipe.getLevel());
 	}
 
 }

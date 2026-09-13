@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter;
 
 import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
+import com.hjmmd_8.createoreexpansion.content.wave.block.MachineFaceQuadrants;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.foundation.block.IBE;
@@ -52,8 +53,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * <p><b>交互分工（用户定义，两件互不重叠的事）</b>：</p>
  * <ul>
  *   <li><b>空手右键 = 波口开关</b>（{@link #useWithoutItem}）：点 4 个侧面直接切换该侧；
- *       点灯盘面（FACING 面）按点击位置沿对角线分 4 区域（与差波器
- *       {@code EnergyWaveDisperserBlock#sideForShellClick} 同一套分区），切换对应侧面开口——
+ *       点灯盘面（FACING 面）按点击位置沿对角线分 4 区域（与差波器机壳面点击共用
+ *       {@link MachineFaceQuadrants#worldDirectionAt} 一份分区数学），切换对应侧面开口——
  *       用户要求"哪个面开口，对应那边的灯就亮"，即灯位点击 = 切换该侧开口；
  *       点轴口面（FACING 反面，传动轴面）不切换任何面。开关逻辑只有
  *       {@link #toggleWavePort} 一处实现；</li>
@@ -280,33 +281,17 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	 * 灯盘面（FACING 面）分区点击：以方块中心为原点，点击位置沿两条对角线分成 4 区域，
 	 * 命中区域先得<b>世界方向</b>（与灯位一致），再由 {@link #propertyForWorld} 换到模型面属性。
 	 *
-	 * <p>分区逻辑与差波器 {@code EnergyWaveDisperserBlock#sideForShellClick} 完全一致
-	 * （已游戏实测校准）：机壳朝 Y 时用 x/z 平面，朝 X 时用 y/z 平面，朝 Z 时用 x/y 平面。</p>
+	 * <p>分区数学<b>只有 {@link MachineFaceQuadrants#worldDirectionAt} 一处实现</b>——
+	 * 与差波器 {@code EnergyWaveDisperserBlock#sideForShellClick} 共用同一份（已游戏实测校准：
+	 * 机壳朝 Y 时用 x/z 平面，朝 X 时用 y/z 平面，朝 Z 时用 x/y 平面）；
+	 * 本方法只做参数传递，保留原签名供 {@link #toggleWavePort} 调用。</p>
 	 *
 	 * @param pos           变器方块位置（取方块中心作为分区原点）
 	 * @param clickLocation 玩家点中的精确位置（世界坐标）
 	 * @return 命中的世界方向（可能是 UP/DOWN——躺倒放置时机壳面内含有竖直分区的落点）
 	 */
 	private static Direction worldDirForLampClick(BlockState state, BlockPos pos, Vec3 clickLocation) {
-		Vec3 rel = clickLocation.subtract(Vec3.atCenterOf(pos));
-		Direction facing = state.getValue(FACING);
-
-		if (facing.getAxis() == Axis.Y) {
-			// 灯盘朝上/下：用 x/z 偏移，上北（-Z）下南（+Z）左西（-X）右东（+X）
-			if (Math.abs(rel.x) > Math.abs(rel.z))
-				return rel.x > 0 ? Direction.EAST : Direction.WEST;
-			return rel.z > 0 ? Direction.SOUTH : Direction.NORTH;
-		}
-		if (facing.getAxis() == Axis.X) {
-			// 灯盘朝东西（躺倒）：分区落在 y/z 平面
-			if (Math.abs(rel.y) > Math.abs(rel.z))
-				return rel.y > 0 ? Direction.UP : Direction.DOWN;
-			return rel.z > 0 ? Direction.SOUTH : Direction.NORTH;
-		}
-		// 灯盘朝南北，分区落在 x/y 平面
-		if (Math.abs(rel.y) > Math.abs(rel.x))
-			return rel.y > 0 ? Direction.UP : Direction.DOWN;
-		return rel.x > 0 ? Direction.EAST : Direction.WEST;
+		return MachineFaceQuadrants.worldDirectionAt(state.getValue(FACING), pos, clickLocation);
 	}
 
 	// ========== 光照规则（仿 Create 机器，同充能器/场控） ==========

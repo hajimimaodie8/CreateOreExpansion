@@ -93,6 +93,34 @@ public final class WaveLevels {
 		};
 	}
 
+	/**
+	 * <b>等级 → 指示色（ARGB；本模组唯一一份"标准 5 档配色"表）</b>：
+	 * 1（α）= 黄 {@code 0xFFFF55}、2（β）= 绿 {@code 0x55FF55}、3（γ）= 蓝 {@code 0x5555FF}、
+	 * 4（ε）= 紫粉 {@code 0xFF66E0}、5（ω）= 玫红 {@code 0xFF4073}。
+	 *
+	 * <p>供充能器指示灯、护目镜能量条填充色、JEI 等级徽章共用——这三类点位的颜色值逐档完全一致，
+	 * 故只留本表一处实现。<b>任何新增的指示色点位都必须调本方法</b>，不得再抄一张 switch。</p>
+	 *
+	 * <p><b>与粒子/渲染色是两个家族</b>：能量波的渲染色/粒子色是另一套更饱和的 RGB 0-1 配色
+	 * （{@code AbstractChargerWaveEntity#getWaveColorForLevel}）：1 级 (1,1,0)、2 级 (0,1,0)、
+	 * 3 级 (0,0.5,1)、4 级 (1,0.35,0.85)、5 级 (1,0.25,0.45)——与本表色相口径相同
+	 * （α 黄 / β 绿 / γ 蓝 / ε 紫粉 / ω 玫红）但数值只有 5 级重合；合并会改变粒子观感，
+	 * 故刻意保留为两套（本表 = 指示灯 / 能量条 / 徽章；实体那套 = 粒子）。</p>
+	 *
+	 * <p><b>容错</b>：越界（&lt;1 或 &gt;5，例如 0 = 未接入应力、老存档坏数据）回落为 α 黄
+	 * {@code 0xFFFF55}——与 JEI 分类改造前的默认值一致；需要"越界显灰"的点位
+	 * （如充能器的指示灯）自行用 {@link #isValid(int)} 判定后另取灰。</p>
+	 */
+	public static int indicatorColor(int level) {
+		return switch (level) {
+			case HIGH -> 0x55FF55;
+			case GAMMA -> 0x5555FF;
+			case EPSILON -> 0xFF66E0;
+			case OMEGA -> 0xFF4073;
+			default -> 0xFFFF55;
+		};
+	}
+
 	/** 等级是否合法（1~5）。 */
 	public static boolean isValid(int level) {
 		return level >= LOW && level <= MAX_LEVEL;
