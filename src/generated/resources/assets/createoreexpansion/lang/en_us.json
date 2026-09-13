@@ -155,7 +155,7 @@
   "createoreexpansion.jei.charging.level.3": "γ Charging",
   "createoreexpansion.jei.charging.level.4": "ε Charging",
   "createoreexpansion.jei.charging.level.5": "ω Charging",
-  "createoreexpansion.jei.lightning_rod.ways": "Ways to gain a lightning strike: ① Be struck by a real natural lightning bolt; ② Absorb Gamma energy waves to fill the progress (10/10)",
+  "createoreexpansion.jei.lightning_rod.ways": "Ways to gain a lightning strike: ① Be struck by a real natural lightning bolt; ② Absorb γ-level (or higher) energy waves to fill the progress (10/10)",
   "createoreexpansion.jei.transmuter.line1": "1) A horizontal energy wave entering the side is converted into a variant wave that exits on the opposite side; hitting the top/bottom face behaves like a wall.",
   "createoreexpansion.jei.transmuter.line2": "2) The variant carries the scanned machines' recipe types plus the heat read from lit Blaze Burners in range (heated/superheated, enabling heated mixing and other heat-gated recipes); chain steps = wave level (minus 1 per successful craft).",
   "createoreexpansion.jei.transmuter.line3": "3) Payload: up to 5 items (5 kinds), 2 B fluid, FE energy (cap = the most expensive CC&A charging recipe) and lightning strikes (taken from FULLY CHARGED reinforced lightning rods; the wave strikes wherever it hits, and the strike is processed by the lightning strike system).",

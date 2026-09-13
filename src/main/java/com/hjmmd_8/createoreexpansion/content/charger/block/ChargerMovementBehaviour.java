@@ -13,7 +13,7 @@ import net.minecraft.world.phys.Vec3;
  * 翡翠应力充能器的 Create 动态结构（contraption）行为 —— 充能器装进
  * 动力轴承 / 矿车装配站等结构后<b>随结构自行工作</b>（像钻头/动力锯一样）。
  *
- * <p><b>固定行为（简化版）</b>：每 3 秒发射一个<b>中能量波</b>（高充能档），
+ * <p><b>固定行为（简化版）</b>：每 3 秒发射一个<b>β 级能量波</b>（= 2 级充能态），
  * 发射方向 = 方块 FACING 经 {@code context.rotation}（contraption 旋转）换算到世界，
  * 波出生在 {@code context.world}（主世界）。不做 RPM 分档/blockstate 更新
  * （contraption 方块模型不随 blockstate 重烘焙，转速读取也不稳定，保持最简单可靠的行为）。</p>
@@ -27,7 +27,7 @@ public class ChargerMovementBehaviour implements MovementBehaviour {
 	/** 蓄力间隔（tick）：3 秒一发。 */
 	private static final int CHARGE_INTERVAL = 60;
 
-	/** 固定充能态：2 = 高充能（中能量波）。 */
+	/** 固定充能态：2 = β（发射 β 级能量波）。 */
 	private static final int MOUNTED_MODE = 2;
 
 	@Override

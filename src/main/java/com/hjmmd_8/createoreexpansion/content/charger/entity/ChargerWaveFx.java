@@ -408,7 +408,7 @@ public final class ChargerWaveFx {
 	 * 触发一次范围能量爆炸（不破坏地形）：
 	 * <ul>
 	 *   <li><b>爆炸半径 = 爆炸等级（格）</b>：水平正方形范围半径（1→3×3、2→5×5、3→7×7、
-	 *       4→9×9、5→11×11）——4 级伊普西龙波爆炸 4 格、5 级欧米伽波爆炸 5 格；</li>
+	 *       4→9×9、5→11×11）——4 级 ε 波爆炸 4 格、5 级 ω 波爆炸 5 格；</li>
 	 *   <li>区域内生物受该等级撞击伤害（查 {@link net.minecraft.world.damagesource.DamageSource} 前
 	 *       见 {@link #damageForLevel}：4/6/8/10/12）；</li>
 	 *   <li>区域内掉落物 / 置物台物品按该等级直接充能加工；</li>
@@ -475,7 +475,7 @@ public final class ChargerWaveFx {
 			center.x + r, center.y + 0.5, center.z + r);
 		ChargerWaveProcessor boomProcessor = new ChargerWaveProcessor(level, boomLevel);
 
-		// 范围内生物：受到该等级波对应的撞击伤害（低 4 / 高 6 / 伽马 8 / 伊普西龙 10 / 欧米伽 12）
+		// 范围内生物：受到该等级波对应的撞击伤害（α 4 / β 6 / γ 8 / ε 10 / ω 12）
 		for (LivingEntity target : level.getEntitiesOfClass(LivingEntity.class, area, e -> e.isAlive())) {
 			if (!(target instanceof Player player) || !player.isCreative()) {
 				target.hurt(level.damageSources()
@@ -497,7 +497,7 @@ public final class ChargerWaveFx {
 		for (int x = minX; x <= maxX; x++) {
 			for (int z = minZ; z <= maxZ; z++) {
 				BlockPos pos = new BlockPos(x, y, z);
-				// 伽马能量加工（等级 ≥3）：范围内强化避雷针获得 1 次 γ 充能
+				// γ 级能量加工（等级 ≥3）：范围内强化避雷针获得 1 次 γ 充能
 				if (boomLevel >= 3
 					&& level.getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 					rod.onGammaWaveHit();
@@ -509,7 +509,7 @@ public final class ChargerWaveFx {
 		}
 	}
 
-	/** 按等级取命中伤害（低 4 / 高 6 / 伽马 8 / 伊普西龙 10 / 欧米伽 12）。 */
+	/** 按等级取命中伤害（α 4 / β 6 / γ 8 / ε 10 / ω 12）。 */
 	static float damageForLevel(int level) {
 		return WaveLevels.damage(level);
 	}

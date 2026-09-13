@@ -44,7 +44,7 @@ import net.minecraft.world.phys.Vec3;
  * </ul>
  *
  * <p><b>调制效果由子类实现</b>（{@link #applyModulation}）：
- * 调级器 = 等级 ±1（升级/降级 + 伽马/低级爆炸边缘）；波速调节器 = 速度 ±offset（按转速分档）。
+ * 调级器 = 等级 ±1（升级/降级 + γ 级/α 级爆炸边缘）；波速调节器 = 速度 ±offset（按转速分档）。
  * 基类只判定"通道动作 + 是否调制 + 调制方向"，具体效果交子类。</p>
  */
 public abstract class AbstractWaveGateRegulation {

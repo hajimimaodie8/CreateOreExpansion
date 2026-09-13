@@ -44,7 +44,7 @@ public record BorrowedChargingSource(BlockPos pos, int waveLevel) {
 	 *
 	 * <p><b>读取口</b>：等级一律取
 	 * {@link StellarstoneStressChargerBlockEntity#getManualLevel()}（公开只读方法：
-	 * 手动发射波级 1~5，槽未就绪时回退伽马 3）。<b>不使用反射</b>——
+	 * 手动发射波级 1~5，槽未就绪时回退 γ，即 3 级）。<b>不使用反射</b>——
 	 * 需要镜像内部状态时应当补公开读取口，而不是绕过封装。</p>
 	 *
 	 * <p><b>调用时机</b>：只允许在<b>命中时</b>调用（掉落物命中 / 方块物品槽命中），

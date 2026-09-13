@@ -66,7 +66,7 @@ public final class WaveHitResolver {
 				.getBlockState(pos);
 			if (state.isAir())
 				continue;
-			// 伽马能量加工（≥3 级）：伽马/伊普西龙/欧米伽波命中强化避雷针各 +1 充能，波消散
+			// γ 级能量加工（≥3 级）：γ/ε/ω 波命中强化避雷针各 +1 充能，波消散
 			if (wave.level()
 				.getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 				if (wave.getWaveLevel() >= 3)

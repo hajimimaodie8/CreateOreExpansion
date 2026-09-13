@@ -86,7 +86,7 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 		// —— 槽 2：手动发射波等级（1~5 整数滚动；独立 BehaviourType/NBT 键，可与模式槽并存） ——
 		levelSelection = new StellarstoneChargerLevelScrollBehaviour(
 			Component.translatable("createoreexpansion.charger.manual_level"), this, new StellarstoneChargerLevelSlot());
-		levelSelection.value = WaveLevels.GAMMA; // 默认 3（伽马）
+		levelSelection.value = WaveLevels.GAMMA; // 默认 3（γ）
 		behaviours.add(levelSelection);
 	}
 
@@ -107,7 +107,7 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 		return storingMode;
 	}
 
-	/** 当前手动发射波等级（1~5；槽未就绪时回退伽马 3）。 */
+	/** 当前手动发射波等级（1~5；槽未就绪时回退 γ，即 3 级）。 */
 	public int getManualLevel() {
 		if (levelSelection == null)
 			return WaveLevels.GAMMA;

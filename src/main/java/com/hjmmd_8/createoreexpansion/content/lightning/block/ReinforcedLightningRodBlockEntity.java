@@ -21,12 +21,12 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * 强化避雷针方块实体：伽马能量波充能状态（全部<b>私有封装</b>，仅通过公开方法读写）。
+ * 强化避雷针方块实体：γ 级能量波充能状态（全部<b>私有封装</b>，仅通过公开方法读写）。
  *
  * <p>两条充能路径互不冲突：</p>
  * <ul>
  *     <li>路径 A【原版原生】：被自然闪电击中——原版方块逻辑（Block 层）自动生效，维持原版全部行为；</li>
- *     <li>路径 B【伽马能量波】：{@link #onGammaWaveHit()} 每次 +1，攒满 {@link #MAX_CHARGE}
+ *     <li>路径 B【γ 级能量波】：{@link #onGammaWaveHit()} 每次 +1，攒满 {@link #MAX_CHARGE}
  *         获得 1 次可手动释放的引雷机会并重置进度。</li>
  * </ul>
  *
@@ -41,7 +41,7 @@ public class ReinforcedLightningRodBlockEntity extends BlockEntity implements IH
 	/** 有充能时金色粒子的播放间隔（tick） */
 	private static final int PARTICLE_INTERVAL = 10;
 
-	/** 伽马能量波充能进度（私有，仅方法读写） */
+	/** γ 级能量波充能进度（私有，仅方法读写） */
 	private int gammaChargeProgress;
 	/** 已获得的、可手动释放的引雷次数（私有） */
 	private int readyCharges;
@@ -54,10 +54,10 @@ public class ReinforcedLightningRodBlockEntity extends BlockEntity implements IH
 		super(type, pos, state);
 	}
 
-	// ========== 充能（路径 B：伽马能量波） ==========
+	// ========== 充能（路径 B：γ 级能量波） ==========
 
 	/**
-	 * 伽马能量波命中充能：进度 +1；攒满 {@link #MAX_CHARGE} 获得 1 次引雷机会。
+	 * γ 级能量波命中充能：进度 +1；攒满 {@link #MAX_CHARGE} 获得 1 次引雷机会。
 	 * 就绪后（进度满格）停止充能，等待释放后才重新开始攒。
 	 * 外部事件（能量波实体/附属模组）直接调用，不与该波实体耦合。
 	 */

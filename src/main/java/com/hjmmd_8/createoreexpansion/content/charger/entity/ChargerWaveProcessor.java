@@ -31,7 +31,7 @@ import net.neoforged.neoforge.items.wrapper.RecipeWrapper;
  * <p>加工规则：</p>
  * <ul>
  *     <li><b>配方匹配</b>（{@link #findRecipe}）：遍历全部 charging 配方，取「等级 ≤ 当前能量波等级」
- *         中等级最高者——伽马波（3）可加工 level 1/2/3 配方，低波（1）只加工 level 1 配方；</li>
+ *         中等级最高者——γ 波（3）可加工 level 1/2/3 配方，α 波（1）只加工 level 1 配方；</li>
  *     <li><b>能量工具/凝能佩</b>（{@link ToolEnergy#hasEnergy}）：不消耗物品，直接充能
  *         （充能点数 = {@link ChargingRecipe#energyForLevel}）；</li>
  *     <li><b>普通物品</b>：消耗 1 个输入，按配方 {@code rollResults} 产出（掉落物原地掉落 /
@@ -41,7 +41,7 @@ import net.neoforged.neoforge.items.wrapper.RecipeWrapper;
 public final class ChargerWaveProcessor {
 
 	private final Level level;
-	/** 当前能量波等级（1=低、2=高、3=伽马），决定可匹配的配方等级上限 */
+	/** 当前能量波等级（1=α、2=β、3=γ），决定可匹配的配方等级上限 */
 	private final int waveLevel;
 
 	public ChargerWaveProcessor(Level level, int waveLevel) {
@@ -134,7 +134,7 @@ public final class ChargerWaveProcessor {
 	}
 
 	/** 查询物品对应的充能配方：遍历全部 charging 配方，取「等级 ≤ 本能量波等级」中等级最高者。
-	 * <p>例如伽马波（3）命中工具：匹配 level 3 配方（充 1000 点）；低波（1）命中：只匹配
+	 * <p>例如 γ 波（3）命中工具：匹配 level 3 配方（充 1000 点）；α 波（1）命中：只匹配
 	 * level 1 配方（充 100 点）。等级不够的配方（level &gt; 本波等级）跳过，不加工。</p>
 	 * @return 匹配到的配方，无匹配返回 null */
 	public ChargingRecipe findRecipe(ItemStack stack) {

@@ -55,11 +55,11 @@ import net.neoforged.neoforge.items.IItemHandler;
  * <p>通用行为（模板方法）：服务端飞行、命中判定（生物伤害/掉落物加工/置物台加工/撞墙消散）、
  * 粒子拖尾与命中绽放、加工完成音效；客户端在消散时补充球面均匀扩散绽放。</p>
  *
- * <p>能量波颜色统一按等级（1~5：低=黄、高=绿、伽马=蓝、伊普西龙=紫粉、欧米伽=玫红+金拖尾），
+ * <p>能量波颜色统一按等级（1~5：α=黄、β=绿、γ=蓝、ε=紫粉、ω=玫红+金拖尾），
  * 与机型无关——翡翠/蓝宝石等所有应力充能器发射的都是同一种能量波（{@link ChargerWaveEntity}），
  * 粒子统一用原版染色粒子（DustParticleOptions），无需注册任何自定义粒子类型。</p>
  *
- * <p>等级 1~5 见 {@link WaveLevels}：速度 2/4/6/7/8 格/秒、伤害 4/6/10/14/18。</p>
+ * <p>等级 1~5 见 {@link WaveLevels}：速度 2/4/6/7/8 格/秒、伤害 4/6/8/10/12。</p>
  */
 public abstract class AbstractChargerWaveEntity extends Entity
 	implements com.hjmmd_8.createoreexpansion.content.energyfield.FieldedEntity {
@@ -69,7 +69,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 防止充能器持续发射导致波实体无限累积（日志曾见波 tick=683 仍在飞行），
 	 * 这是"加机器后卡顿"的主要来源之一。
 	 *
-	 * <p>10 秒足够覆盖绝大多数用法：低波飞 20 格、高波 40 格、伽马 60 格；
+	 * <p>10 秒足够覆盖绝大多数用法：α 波飞 20 格、β 波 40 格、γ 波 60 格；
 	 * 也给波波碰撞留出足够的相遇窗口（两波从相对充能器射出到相遇通常 &lt; 5 秒）。</p>
 	 */
 	protected static final int MAX_LIFETIME_TICKS = 200;
@@ -156,7 +156,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * @param level       出生世界（主世界；结构场景由调用方转换好世界坐标后传入）
 	 * @param pos         出生位置（世界坐标）
 	 * @param movementDir 飞行方向（任意向量，无需单位化，内部 normalize）
-	 * @param waveLevel   波等级（1=低，2=高，3=伽马）
+	 * @param waveLevel   波等级（1=α，2=β，3=γ）
 	 */
 	protected AbstractChargerWaveEntity(EntityType<?> type, Level level, Vec3 pos, Vec3 movementDir, int waveLevel) {
 		this(type, level);
@@ -291,7 +291,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 		// 调级器增强延迟：穿过顺基准调级器后累计飞行距离，满 0.5 格（= 1/(2v) 秒）后等级 +boostStep
 		// （翡翠/蓝宝石恒 +1；星辉石按授予时的转速可为 +2）。提升等级封顶于 WaveLevels.MAX_LEVEL（5），
-		// 星辉石 +2 从 4 级升到 6 时实际停在 5（欧米伽），不会超上限。
+		// 星辉石 +2 从 4 级升到 6 时实际停在 5（ω），不会超上限。
 		if (boostRemaining > 0) {
 			boostRemaining -= (float) (getSpeedBlocks() / 20d);
 			if (boostRemaining <= 0) {
@@ -311,11 +311,11 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (renderColor.distanceToSqr(targetColor) < 1.0E-5d)
 			renderColor = targetColor;
 
-		// 飞行粒子（密集，沿移动方向散布）：主体 = 当前渲染色（欧米伽=玫红），颜色由本波的拖尾风格决定——
+		// 飞行粒子（密集，沿移动方向散布）：主体 = 当前渲染色（ω=玫红），颜色由本波的拖尾风格决定——
 		// 服务端走 ChargerWaveFx.sendTrail、Ponder 场景走 ChargerWaveFx.addTrailParticles，
 		// 此处只负责把风格（getWaveType().trailStyle()）与原有的位置/数量/散布/速度原样传过去，
 		// 风格带来的颜色变换与点缀粒子全部在 ChargerWaveFx 的风格映射表里定义。
-		// 欧米伽（5 级）额外每 tick 叠 1 颗金色尾迹点缀 —— 金色是刻意叠加的装饰色（不是波的渲染色），
+		// ω（5 级）额外每 tick 叠 1 颗金色尾迹点缀 —— 金色是刻意叠加的装饰色（不是波的渲染色），
 		// 故继续用无风格重载，保持金饰不被染色、只占少数，避免整条波看起来发黄。
 		if (level() instanceof ServerLevel server) {
 			ChargerWaveFx.sendTrail(server, position(), getWaveType().trailStyle(), renderColor, 0.45f, 6,
@@ -457,7 +457,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 *   <li><b>爆炸等级</b> = 两个波等级的较小值（min）；</li>
 	 *   <li><b>爆炸范围</b> = 以碰撞点为中心、半径 = 爆炸等级的水平正方形区域
 	 *       （半径 1 → 3×3，半径 2 → 5×5，半径 3 → 7×7），不破坏地形；</li>
-	 *   <li><b>区域内生物</b>：受到该等级波撞击生物的等量伤害（低 4 / 高 6 / 伽马 10）；</li>
+	 *   <li><b>区域内生物</b>：受到该等级波撞击生物的等量伤害（α 4 / β 6 / γ 8）；</li>
 	 *   <li><b>区域内掉落物 / 置物台物品</b>：按爆炸等级直接执行充能加工（复用
 	 *       {@link ChargerWaveProcessor}，含能量工具充能与普通物品配方转化）；</li>
 	 *   <li><b>粒子</b>：比撞墙绽放（30 个）更密集的爆炸扩散粒子。</li>
@@ -496,8 +496,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	protected static final double MAX_SPEED = 10.0d;
 
 	/**
-	 * 移动速度（格/秒）：等级基础速度（查 {@link WaveLevels#baseSpeed}，低 2 / 高 4 /
-	 * 伽马 6 / 伊普西龙 7 / 欧米伽 8）+ 速度修正值（波速调节器叠加），
+	 * 移动速度（格/秒）：等级基础速度（查 {@link WaveLevels#baseSpeed}，α 2 / β 4 /
+	 * γ 6 / ε 7 / ω 8）+ 速度修正值（波速调节器叠加），
 	 * 夹在 {@link #MIN_SPEED} ~ {@link WaveLevels#maxSpeed}（4/5 级 12，1~3 级 10）之间。
 	 * 子类可覆写基础速度（如雷鸣波更快）。
 	 */
@@ -573,7 +573,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	// 注意：Jade 在客户端运行，读到的是客户端实体实例——普通字段（waveLevel/speedOffset）
 	// 不会同步，必须从 SynchedEntityData（WAVE_LEVEL/SPEED_OFFSET）读取。
 
-	/** 波等级（1=低、2=高、3=伽马）。 */
+	/** 波等级（1=α、2=β、3=γ）。 */
 	public int getWaveLevel() {
 		return this.entityData.get(WAVE_LEVEL);
 	}
@@ -678,12 +678,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	public void setBoostStep(int boostStep) {
 		this.boostStep = boostStep;
 	}
-	/** 命中伤害：低 4、高 6、伽马 10、伊普西龙 14、欧米伽 18 —— 查 {@link WaveLevels#damage}。 */
+	/** 命中伤害：α 4、β 6、γ 8、ε 10、ω 12 —— 查 {@link WaveLevels#damage}。 */
 	protected float getDamage() {
 		return WaveLevels.damage(waveLevel);
 	}
 
-	/** 能量波颜色（RGB 0-1），随波等级统一：1 低=黄、2 高=绿、3 伽马=蓝、4 伊普西龙=紫粉、5 欧米伽=玫红 */
+	/** 能量波颜色（RGB 0-1），随波等级统一：1 α=黄、2 β=绿、3 γ=蓝、4 ε=紫粉、5 ω=玫红 */
 	protected Vec3 getWaveColor() {
 		return getWaveColorForLevel(waveLevel);
 	}
@@ -691,24 +691,24 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/** 指定等级的波颜色（供调级器渐变提前取下一等级色用）——颜色由等级决定，与机型无关 */
 	protected Vec3 getWaveColorForLevel(int level) {
 		return switch (level) {
-			case 2 -> new Vec3(0, 1, 0); // 高：绿
-			case 3 -> new Vec3(0, 0.5f, 1); // 伽马：蓝
-			case 4 -> new Vec3(1f, 0.35f, 0.85f); // 伊普西龙：紫粉
-			case 5 -> new Vec3(1f, 0.25f, 0.45f); // 欧米伽：玫红（主体红，偏粉紫）
-			default -> new Vec3(1, 1, 0); // 低/其它：黄
+			case 2 -> new Vec3(0, 1, 0); // β：绿
+			case 3 -> new Vec3(0, 0.5f, 1); // γ：蓝
+			case 4 -> new Vec3(1f, 0.35f, 0.85f); // ε：紫粉
+			case 5 -> new Vec3(1f, 0.25f, 0.45f); // ω：玫红（主体红，偏粉紫）
+			default -> new Vec3(1, 1, 0); // α/其它：黄
 		};
 	}
 
-	/** 是否欧米伽（5 级）波：粒子拖尾用金色。 */
+	/** 是否 ω（5 级）波：粒子拖尾用金色。 */
 	public boolean isOmega() {
 		return waveLevel >= 5;
 	}
 
-	/** 欧米伽拖尾金色（RGB 0-1）。 */
+	/** ω 拖尾金色（RGB 0-1）。 */
 	public static final Vec3 OMEGA_GOLD = new Vec3(1f, 0.85f, 0.2f);
 
 	/**
-	 * 飞行拖尾粒子颜色（RGB 0-1）：欧米伽（5 级）波用金色，其余等级用当前渲染色。
+	 * 飞行拖尾粒子颜色（RGB 0-1）：ω（5 级）波用金色，其余等级用当前渲染色。
 	 */
 	protected Vec3 getTrailParticleColor() {
 		return isOmega() ? OMEGA_GOLD : renderColor;

@@ -49,7 +49,7 @@ public final class SixFaceDispersal {
 	 * @param movement  波的飞行方向（单位向量，运动方向；与 state 同坐标系）
 	 * @param wavePos   波前中心（与 state 同坐标系，用于 4×4 入口中心判定）
 	 * @param pos       差器方块位置（与 state 同坐标系）
-	 * @param waveLevel 波的当前等级（1=低，2=高，3=伽马）
+	 * @param waveLevel 波的当前等级（1=α，2=β，3=γ）
 	 * @return 判定结果；TURN/SPLIT 的出口面列表见 {@link #exitsOf(BlockState, Vec3)}
 	 */
 	public static Result handle(BlockState state, Vec3 movement, Vec3 wavePos, BlockPos pos, int waveLevel) {

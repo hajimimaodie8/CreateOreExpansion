@@ -68,7 +68,7 @@ public class WaveMachineActions {
 				return true;
 			}
 			case VANISH_GAMMA_BOOM -> {
-				// 伽马波（3级）顺基准升级无路可升 → 3 级伽马爆炸后湮灭
+				// γ 波（3 级）顺基准升级无路可升 → 触发 3 级 γ 爆炸后湮灭
 				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
 					wave.getRenderColor(), null, 3);
 				return true;

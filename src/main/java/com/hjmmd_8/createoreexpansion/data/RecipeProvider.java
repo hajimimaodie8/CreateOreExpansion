@@ -101,7 +101,7 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
 
     /** 工具充能配方：翡翠/蓝宝石应力充能器能量波给能量工具/凝能佩充能。
      * <p>物品来源为 {@link ChargingRecipeTools}（在 AllItems 注册处统一挂接，单一数据源）。
-     * 每个物品 × <b>5 个充能等级</b>各一条配方（低/高/伽马/伊普西龙/欧米伽 = level 1~5），
+     * 每个物品 × <b>5 个充能等级</b>各一条配方（α/β/γ/ε/ω = level 1~5），
      * 等级由配方 JSON 的 {@code level} 字段区分，统一放在 {@code tool_charge/} 下，
      * 文件名后缀 _low/_high/_gamma/_epsilon/_omega 仅保证 id 唯一。</p> */
     private void toolCharging(RecipeOutput output) {
@@ -120,7 +120,7 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
     }
 
     /** 单条工具充能配方：输入单个能量物品，输出=输入工具本身（充能后仍是该工具，JEI 直观显示）。
-     * @param level 配方要求的充能等级（1=低、2=高、3=伽马、4=伊普西龙、5=欧米伽） */
+     * @param level 配方要求的充能等级（1=α、2=β、3=γ、4=ε、5=ω） */
     private void charging(RecipeOutput output, ItemLike item, String name, int level) {
         new ChargingRecipe.Builder(CreateOreExpansion.modLoc(name))
             .withLevel(level)

@@ -21,11 +21,11 @@ import net.minecraft.world.phys.BlockHitResult;
  * 下雨天吸引闪电（tick）、被自然闪电击中（onLightningStrike）、露天判定、红石信号、
  * 三叉戟引雷交互、铁砧工艺等，原版逻辑完全保留。
  *
- * <p>叠加新增（不改动原版行为）：伽马能量波充能——攒满 {@code MAX_CHARGE} 获得
+ * <p>叠加新增（不改动原版行为）：γ 级能量波充能——攒满 {@code MAX_CHARGE} 获得
  * 1 次手动引雷机会，右键释放闪电（带冷却、露天校验）。</p>
  *
  * <p>两条充能路径互不冲突：路径 A = 被自然闪电击中（原版原生，继承自动生效）；
- * 路径 B = 伽马能量波充能（{@link ReinforcedLightningRodBlockEntity#onGammaWaveHit()}）。</p>
+ * 路径 B = γ 级能量波充能（{@link ReinforcedLightningRodBlockEntity#onGammaWaveHit()}）。</p>
  */
 public class ReinforcedLightningRodBlock extends LightningRodBlock implements IBE<ReinforcedLightningRodBlockEntity> {
 

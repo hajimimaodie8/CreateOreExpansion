@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
  * <ul>
  *   <li><b>64 RPM 起调制</b>（翡翠为 FAST 100 RPM）——{@link SapphireWaveRegulatorBlockEntity}
  *       覆写 {@code getModulationSpeedThreshold()} = 64；</li>
- *   <li><b>最大可把波提升至 5 级（欧米伽）</b>——1~4 级波顺向逐级 +1 至 5
+ *   <li><b>最大可把波提升至 5 级（ω）</b>——1~4 级波顺向逐级 +1 至 5
  *       （翡翠封顶 3，见 {@code getMaxBoostLevel()}）。</li>
  * </ul>
  * 本类仅绑定方块实体。

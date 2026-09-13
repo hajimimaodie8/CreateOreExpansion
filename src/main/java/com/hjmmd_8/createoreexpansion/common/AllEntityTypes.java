@@ -18,7 +18,7 @@ public final class AllEntityTypes {
 	private static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
 		DeferredRegister.create(Registries.ENTITY_TYPE, CreateOreExpansion.MOD_ID);
 
-	/** 能量波（1~5 级：低/高/伽马/伊普西龙/欧米伽；翡翠/蓝宝石充能器通用，不渲染模型，视觉靠粒子） */
+	/** 能量波（1~5 级：α/β/γ/ε/ω；翡翠/蓝宝石充能器通用，不渲染模型，视觉靠粒子） */
 	public static final DeferredHolder<EntityType<?>, EntityType<ChargerWaveEntity>> CHARGER_WAVE =
 		ENTITY_TYPES.register("charger_wave",
 			() -> EntityType.Builder.<ChargerWaveEntity>of(ChargerWaveEntity::new, MobCategory.MISC)

@@ -46,7 +46,7 @@ public abstract class AbstractWaveGateBlockEntity extends SimpleKineticBlockEnti
 		return IRotate.SpeedLevel.FAST.getSpeedValue();
 	}
 
-	/** 调级器可提升到的最大波等级（1~5）：翡翠 3（伽马），蓝宝石 5（欧米伽）。 */
+	/** 调级器可提升到的最大波等级（1~5）：翡翠 3（γ），蓝宝石 5（ω）。 */
 	public int getMaxBoostLevel() {
 		return 3;
 	}
@@ -63,7 +63,7 @@ public abstract class AbstractWaveGateBlockEntity extends SimpleKineticBlockEnti
 
 	/**
 	 * 该机型<b>可承载/允许输出</b>的最高波等级（1~5）：
-	 * 翡翠线 = 3（伽马），蓝宝石线 = 5（欧米伽）。
+	 * 翡翠线 = 3（γ），蓝宝石线 = 5（ω）。
 	 * <p>翡翠调级器/波速调节器遇到 4/5 级波（蓝宝石专属）时，只有把波降级到本上限内的
 	 * 操作才有效；维持/升级/原样穿过 4/5 级波一律操作无效（波湮灭）。蓝宝石机型不受限。</p>
 	 */

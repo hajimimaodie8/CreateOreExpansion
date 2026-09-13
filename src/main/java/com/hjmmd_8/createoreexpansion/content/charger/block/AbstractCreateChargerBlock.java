@@ -30,8 +30,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock {
 
 	/**
-	 * 模式/蓄力阶段：0=未接入应力（展示），1/2/3=蓄力阶段（低/高/伽马），
-	 * 4=伊普西龙 / 5=欧米伽（仅蓝宝石充能器会写入；翡翠机器只使用 0~3，行为不变）。
+	 * 模式/蓄力阶段：0=未接入应力（展示），1/2/3=蓄力阶段（α/β/γ），
+	 * 4=ε / 5=ω（仅蓝宝石充能器会写入；翡翠机器只使用 0~3，行为不变）。
 	 */
 	public static final IntegerProperty MODE = IntegerProperty.create("mode", 0, 5);
 

@@ -645,7 +645,7 @@ public final class AllBlocks {
 		.build()
 		.register();
 
-	/** 蓝宝石能量调级器：蓝宝石科技线专属（64 RPM 起调制、最大可把波提升至 5 级欧米伽）。 */
+	/** 蓝宝石能量调级器：蓝宝石科技线专属（64 RPM 起调制、最大可把波提升至 5 级 ω）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
 	public static final BlockEntry<SapphireWaveRegulatorBlock> SAPPHIRE_WAVE_REGULATOR = CreateOreExpansion.REGISTRATE
 		.block("sapphire_wave_regulator", SapphireWaveRegulatorBlock::new)
@@ -839,7 +839,7 @@ public final class AllBlocks {
 		.build()
 		.register();
 
-	/** 星辉石能量调级器：星辉石科技线专属（32 RPM 起调制、单次提升级数随转速 +1/+2、最大升至 5 级欧米伽）。 */
+	/** 星辉石能量调级器：星辉石科技线专属（32 RPM 起调制、单次提升级数随转速 +1/+2、最大升至 5 级 ω）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
 	public static final BlockEntry<StellarstoneWaveRegulatorBlock> STELLARSTONE_WAVE_REGULATOR =
 		CreateOreExpansion.REGISTRATE
@@ -1108,7 +1108,7 @@ public final class AllBlocks {
 	// ===== 能量感应灯（EnergySensingLamp）：暂时下架 —— 待作者重做模型后恢复注册。
 	// 贴图/模型文件保留在 resources（assets/.../energy_wave_machine/jade_energy_sensing_lamp_*.json + png）。
 
-	/** 强化避雷针：继承原版 LightningRodBlock（全部原版行为保留），叠加伽马能量波充能；
+	/** 强化避雷针：继承原版 LightningRodBlock（全部原版行为保留），叠加 γ 级能量波充能；
 	 * 加入原版 lightning_rods tag（三叉戟引雷、铁砧工艺等交互正常作用）。 */
 	public static final BlockEntry<ReinforcedLightningRodBlock> REINFORCED_LIGHTNING_ROD = CreateOreExpansion.REGISTRATE
 		.block("reinforced_lightning_rod", ReinforcedLightningRodBlock::new)

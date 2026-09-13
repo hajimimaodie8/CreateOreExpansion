@@ -21,7 +21,7 @@ import net.minecraft.network.chat.MutableComponent;
  * <p>所有机器/波实体/渲染/Jade/JEI 均查本表，避免等级数值散落各处 switch。</p>
  *
  * <p><b>等级 → 符号</b>：对外一律只显示希腊字母（{@link #glyph(int)} / {@link #displayName(int)}），
- * 不显示"低/高/伽马/伊普西龙/欧米伽"这类文字——映射实现仅此一处，任何显示点都不得再写 switch。</p>
+ * 不显示任何非符号的等级文字（旧称与中文名一律不用）——映射实现仅此一处，任何显示点都不得再写 switch。</p>
  */
 public final class WaveLevels {
 

@@ -20,9 +20,9 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeInput;
 
 /**
- * 充能配方 JEI 集成：低/高/伽马三个充能等级共用**一个**分类
+ * 充能配方 JEI 集成：α/β/γ 三个充能等级共用**一个**分类
  * （{@code createoreexpansion:charging}），等级是配方自带的 {@code level} 字段，
- * 在配方卡片上以等级徽章区分（低=黄、高=绿、伽马=蓝）。
+ * 在配方卡片上以等级徽章区分（α=黄、β=绿、γ=蓝）。
  *
  * <p>第三方适配本模组的充能加工只需在数据包添加带 {@code level} 字段的配方 JSON，
  * 无需新增配方类型或分类。</p>

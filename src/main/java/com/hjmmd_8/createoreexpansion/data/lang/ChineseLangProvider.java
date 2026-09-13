@@ -346,7 +346,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("block.createoreexpansion.octa_energy_wave_differencer", "八面能量波差器");
         add("block.createoreexpansion.reinforced_lightning_rod", "强化避雷针");
         // JEI 提示：两种获取引雷能力的途径
-        add("createoreexpansion.jei.lightning_rod.ways", "引雷能力获取途径：① 被真实自然闪电击中；② 接收伽马能量波攒满进度（10/10）");
+        add("createoreexpansion.jei.lightning_rod.ways", "引雷能力获取途径：① 被真实自然闪电击中；② 接收 γ 级及以上能量波攒满进度（10/10）");
         add("createoreexpansion.tooltip.lightning_rod.charge", "γ 充能进度：");
         add("createoreexpansion.tooltip.lightning_rod.ready", "引雷充能就绪！右键释放闪电");
         add("createoreexpansion.msg.cannot_open_cover", "由于空间不足，无法开盖");

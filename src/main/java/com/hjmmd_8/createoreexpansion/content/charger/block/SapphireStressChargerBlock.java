@@ -18,7 +18,7 @@ import net.minecraft.world.phys.BlockHitResult;
  * <p>继承 {@link AbstractCreateChargerBlock} 复用全部通用行为（放置朝向、MODE、传动轴接入），
  * 仅绑定蓝宝石充能器方块实体。</p>
  *
- * <p><b>与翡翠的区别</b>：可蓄力至 4 级（伊普西龙）/5 级（欧米伽）并发射蓝宝石波
+ * <p><b>与翡翠的区别</b>：可蓄力至 4 级（ε）/5 级（ω）并发射蓝宝石波
  * （等级映射与双模式逻辑见 {@link SapphireStressChargerBlockEntity}）。</p>
  *
  * <p><b>交互</b>：右键切换模式（普通 ⇄ 储存）；储存模式蓄满后右键触发簇射。

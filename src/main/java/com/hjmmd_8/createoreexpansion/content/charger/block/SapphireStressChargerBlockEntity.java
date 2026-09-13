@@ -28,7 +28,7 @@ import net.minecraft.world.phys.Vec3;
  * <p><b>与翡翠的区别</b>：</p>
  * <ul>
  *   <li><b>可蓄至 4/5 级</b>：普通模式按转速映射 1~4 级波（转速越高等级越高），
- *       满转速（≥ 上限 RPM）蓄力为 5 级欧米伽波（发射 {@link ChargerWaveEntity}）；</li>
+ *       满转速（≥ 上限 RPM）蓄力为 5 级 ω 波（发射 {@link ChargerWaveEntity}）；</li>
  *   <li><b>发射间隔更快</b>：转速 1 → 6 秒，满转速 → 0.5 秒（翡翠为 10 秒 ~ 1 秒）；</li>
  *   <li><b>储存模式</b>（{@link #isStoringMode()}，默认 false = 普通模式）：持续输入应力时
  *       把应力储存为能量（不逐发发射），蓄满后等待玩家点击 / 红石信号触发一簇（多连发）能量波
@@ -206,7 +206,7 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 
 	/**
 	 * 转速 → 波等级（普通模式）：上限转速取 Create 配置 maxRotationSpeed（默认 256，可自定义）：
-	 * 0 → 未接入（0）；≥ 上限 → 欧米伽（5）；否则 1 ~ 上限-1 RPM 在 1~4 级间均匀分档
+	 * 0 → 未接入（0）；≥ 上限 → ω（5）；否则 1 ~ 上限-1 RPM 在 1~4 级间均匀分档
 	 * （与 {@link #getStateName} 显示的档位区间同源，不会出现提示与实际不符）。
 	 */
 	@Override

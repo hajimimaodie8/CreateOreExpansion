@@ -11,7 +11,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
  * <ul>
  *   <li><b>32 RPM 起调制</b>（蓝宝石为 64）——{@link StellarstoneWaveRegulatorBlockEntity}
  *       覆写 {@code getModulationSpeedThreshold()} = 32；</li>
- *   <li><b>最大可把波提升至 5 级（欧米伽）</b>；</li>
+ *   <li><b>最大可把波提升至 5 级（ω）</b>；</li>
  *   <li><b>单次提升级数随转速</b>：32~128 RPM 每次 +1、129~256 RPM 每次 +2
  *       （蓝宝石恒为每次 +1），见 {@link StellarstoneWaveRegulatorBlockEntity#getBoostStepForSpeed()}。</li>
  * </ul>

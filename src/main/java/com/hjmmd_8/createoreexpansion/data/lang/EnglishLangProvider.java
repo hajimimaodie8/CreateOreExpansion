@@ -184,7 +184,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllItems.TRANSMUTE_MECHANISM.get(), "Transmute Mechanism");
         add(AllItems.INCOMPLETE_TRANSMUTE_MECHANISM.get(), "Incomplete Transmute Mechanism");
         // JEI tooltip: two ways to obtain a lightning strike
-        add("createoreexpansion.jei.lightning_rod.ways", "Ways to gain a lightning strike: ① Be struck by a real natural lightning bolt; ② Absorb Gamma energy waves to fill the progress (10/10)");
+        add("createoreexpansion.jei.lightning_rod.ways", "Ways to gain a lightning strike: ① Be struck by a real natural lightning bolt; ② Absorb γ-level (or higher) energy waves to fill the progress (10/10)");
         add("createoreexpansion.tooltip.lightning_rod.charge", "γ Charge: ");
         add("createoreexpansion.tooltip.lightning_rod.ready", "Lightning ready! Right-click to release");
         add("createoreexpansion.msg.cannot_open_cover", "Cannot open the cover: not enough space");

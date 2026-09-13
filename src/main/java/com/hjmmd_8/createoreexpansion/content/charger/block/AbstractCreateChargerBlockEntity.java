@@ -32,7 +32,7 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>通用行为（模板方法，子类无需改动）：</p>
  * <ul>
- *     <li>充能态解析：0=未接入应力；1=低（≤½ 上限转速）；2=高（½~上限转速）；3=伽马（≥上限转速）；
+ *     <li>充能态解析：0=未接入应力；1=α（≤½ 上限转速）；2=β（½~上限转速）；3=γ（≥上限转速）；
  *         上限转速读取 Create 配置 {@code maxRotationSpeed}（默认 256 RPM，可调，不硬编码）；</li>
  *     <li>发射间隔：转速 1 → 10 秒，256 → 1 秒，线性插值；</li>
  *     <li>服务端蓄力计数并通过 {@code sendData} 同步进度给客户端（两端一致）；</li>
@@ -42,7 +42,7 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p>子类（翡翠充能器/雷鸣充能器）只需覆写：</p>
  * <ul>
- *     <li>{reateWave(Level, Vec3, Direction, int)} —— 发射各自的能量波实体；</li>
+ *     <li>{@link #createWave(Level, Vec3, Vec3, int)} —— 发射各自的能量波实体；</li>
  *     <li>{@link #getWaveColor(int)} —— 档位指示色（默认查 {@link WaveLevels#indicatorColor(int)}
  *         标准 5 档表，翡翠子类覆写为只认 α~γ）；</li>
  *     <li>{@link #getMachineName()} —— 护目镜标题；</li>
@@ -168,7 +168,7 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 	}
 
 	/**
-	 * 按转速解析充能态：0=无应力，1=低（≤½ 上限转速），2=高（½~上限转速），3=伽马（≥上限转速）。
+	 * 按转速解析充能态：0=无应力，1=α（≤½ 上限转速），2=β（½~上限转速），3=γ（≥上限转速）。
 	 *
 	 * <p>档位按 Create 配置的转速上限 {@code maxRotationSpeed}（默认 256 RPM）等比划分，
 	 * 上限可调（config 修改/整合包覆盖）时档位自动跟随，不硬编码数值。</p>
@@ -196,7 +196,7 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 	/**
 	 * 沿 FACING 方向发射指定等级的能量波（含 Sable 物理结构坐标换算）。
 	 *
-	 * @param mode 能量波等级（1=低/2=高/3=伽马/4=伊普西龙/5=欧米伽）；供蓝宝石
+	 * @param mode 能量波等级（1=α/2=β/3=γ/4=ε/5=ω）；供蓝宝石
 	 *             储存模式的簇射 / 红石触发发射指定等级波复用
 	 */
 	protected void launchWave(int mode) {

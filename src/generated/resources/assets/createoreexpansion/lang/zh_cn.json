@@ -165,7 +165,7 @@
   "createoreexpansion.jei.charging.level.3": "γ 充能",
   "createoreexpansion.jei.charging.level.4": "ε 充能",
   "createoreexpansion.jei.charging.level.5": "ω 充能",
-  "createoreexpansion.jei.lightning_rod.ways": "引雷能力获取途径：① 被真实自然闪电击中；② 接收伽马能量波攒满进度（10/10）",
+  "createoreexpansion.jei.lightning_rod.ways": "引雷能力获取途径：① 被真实自然闪电击中；② 接收 γ 级及以上能量波攒满进度（10/10）",
   "createoreexpansion.jei.transmuter.line1": "① 水平飞行的能量波从侧面射入，被转成“变体波”并从对侧穿出；竖直撞上下面会像撞墙一样消散。",
   "createoreexpansion.jei.transmuter.line2": "② 变体波携带扫描到的机器配方类型，以及半径内点燃的烈焰燃烧室提供的加热能力（普通/超级加热 → 加热搅拌等加热配方可用）；链式加工次数 = 波等级（每次成功加工 −1）。",
   "createoreexpansion.jei.transmuter.line3": "③ 波还携带载荷：辅料物品（最多 5 个/5 种）、流体（最多 2 B）、电量（上限 = CC&A 充电配方里最贵那条的耗电量）与避雷针引雷次数（穿波时从**满充能**的强化避雷针抽取；波打中哪里就在哪里落雷，闪电加工由闪电落地统一加工接管）。",

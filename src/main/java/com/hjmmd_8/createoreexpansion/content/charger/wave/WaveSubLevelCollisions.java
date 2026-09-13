@@ -84,7 +84,7 @@ public class WaveSubLevelCollisions {
 				// 波前中心（结构本地坐标，与 pos 同坐标系——4×4 入口判定依赖）
 				Vec3 localWavePos = bridge.toLocal(hit, wave.getBoundingBox()
 					.getCenter());
-				// 伽马能量加工（≥3 级）：伽马/伊普西龙/欧米伽波命中强化避雷针各 +1，波消散
+				// γ 级能量加工（≥3 级）：γ/ε/ω 波命中强化避雷针各 +1，波消散
 				if (bridge.getBlockEntity(hit, pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 					if (wave.getWaveLevel() >= 3)
 						rod.onGammaWaveHit();
