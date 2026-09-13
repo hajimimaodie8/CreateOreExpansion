@@ -5,6 +5,7 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlock;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.payload.TransmuterPayloadCollector;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -108,10 +109,10 @@ public final class StellarWaveTransmuterPass {
 		// 读取半径随波携带：命中后"就地补料"的生效范围与变器读取范围一致（用户 2026-09 定义）
 		variant.setCarriedRadius(be.getScanRadius());
 		variant.setChain(wave.getWaveLevel());
-		// 载荷在"波穿过的这一瞬间"才真正从扫描区容器抽取（上限：物品 5 个/5 种、
-		// 流体 500 mB、可抽电量全抽）。扫描阶段只做估算，避免箱子被持续抽空。
+		// 载荷在"波穿过的这一瞬间"才真正从扫描区容器抽取（上限：物品/种类/流体 mB 见配置、
+		// 电量上限见 WavePayloadGather#resolveEnergyCap）。扫描阶段只做估算，避免箱子被持续抽空。
 		// 同时带上"取料来源位置"：载荷消散时把剩余物还回这些容器（而不是丢进正在加工的工作盆）。
-		StellarWaveTransmuterBlockEntity.Payload payload = be.collectPayloadForWave();
+		TransmuterPayloadCollector.Payload payload = be.collectPayloadForWave();
 		variant.attachPayload(payload.items(), payload.fluid(), payload.energy(), payload.sources());
 		variant.setRodCharges(drainRodCredit(level, be.getChargedRodPositions()));
 		// 继承速度修正/电荷/渲染色，保证表现连续（波速调节器与能量场修正贯穿转换）

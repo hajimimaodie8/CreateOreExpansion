@@ -11,6 +11,8 @@ import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightnin
 import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.display.TransmuterGoggles;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.payload.TransmuterPayloadCollector;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.payload.TransmuterPayloadCollector.Payload;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.scan.TransmuterScanner;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.scan.TransmuterScanner.HeatReading;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
@@ -75,20 +77,6 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	/** 扫描刷新间隔（tick；8 tick ≈ 160ms 响应）。 */
 	private static final int SCAN_INTERVAL = 8;
 
-	/** 载荷上限：辅料物品总数 / 种类数 / 流体 mB。<b>数值来自配置</b>（{@code [wave] maxPayloadItems /
-	 *  maxPayloadKinds / maxPayloadFluidMb}，默认 5 / 5 / 500；见 {@link AllConfig}），
-	 *  与"波命中后就地补料"共用同一口径，所以两处都必须读配置而不是常量。 */
-	private static int maxPayloadItems() {
-		return com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadItems;
-	}
-
-	private static int maxPayloadTypes() {
-		return com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadKinds;
-	}
-
-	private static int maxPayloadFluid() {
-		return com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadFluidMb;
-	}
 
 	/** 扫描到的加工机器数量（客户端同步用）。 */
 	private int scannedCount;
@@ -441,27 +429,25 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 * </ul>
 	 */
 	/**
-	 * 扫描区可携带载荷的<b>估算</b>（不改变任何容器内容）：供护目镜摘要显示。
-	 *
-	 * <p><b>2026-09 行为修正</b>：原实现每 8 tick 就<b>真实抽取</b>一次扫描区容器
-	 * （{@code extractItem/drain/extractEnergy} 全部实抽），导致玩家往箱子里放东西后
-	 * 会被"漏斗式"连续抽空。现在扫描阶段只做 simulate 估算，真实抽取推迟到
-	 * <b>波穿过变器的瞬间</b>（见 {@link #collectPayloadForWave()}）。</p>
+	 * 扫描区可携带载荷的<b>估算</b>（不改变任何容器内容）：供护目镜摘要显示；真实抽取推迟到
+	 * <b>波穿过变器的瞬间</b>（见 {@link #collectPayloadForWave()}）。规则与上限见
+	 * {@link TransmuterPayloadCollector#estimate}。
 	 */
 	private void estimatePayload(int radius) {
-		Payload p = collectPayload(radius, true);
+		Payload p = TransmuterPayloadCollector.estimate(level, worldPosition, radius, payloadGatherSkip());
 		auxItems = p.items();
 		auxFluid = p.fluid();
 		auxEnergy = p.energy();
 	}
 
 	/**
-	 * 穿波瞬间<b>真实抽取</b>扫描区载荷（上限：物品 5 个/5 种、流体 500 mB、可抽电量全抽）。
+	 * 穿波瞬间<b>真实抽取</b>扫描区载荷（上限见 {@link TransmuterPayloadCollector}），
+	 * 并顺手刷新摘要（护目镜显示"最近一次携带"数字）。
 	 * 由 {@code StellarWaveTransmuterPass} 在把波转成变体波时调用一次。
 	 */
 	public Payload collectPayloadForWave() {
-		Payload p = collectPayload(Math.max(1, scanRadius), false);
-		// 摘要同步更新（护目镜显示"最近一次携带"数字）
+		Payload p = TransmuterPayloadCollector.gather(level, worldPosition, Math.max(1, scanRadius),
+			payloadGatherSkip());
 		auxItems = p.items();
 		auxFluid = p.fluid();
 		auxEnergy = p.energy();
@@ -469,55 +455,13 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	}
 
 	/**
-	 * 一次载荷收集结果（物品 / 流体 / 电量 / <b>取料来源方块位置</b>）。
-	 *
-	 * <p>{@code sources} 用于"载荷消散时还回原容器"：波把剩余载荷还回这些位置，
-	 * 而不是丢在消散点（消散点常常就是波正在加工的工作盆上方，会被盆吸进去）。</p>
+	 * 载荷取料跳过口径：<b>加工机 + 玩家加工容器（工作盆）</b>——前者是机器不该被抽料，
+	 * 后者是玩家摆的原料（口径实现见 {@link TransmuterPayloadCollector#isPlayerProcessingStation}）。
 	 */
-	public record Payload(List<ItemStack> items, FluidStack fluid, int energy, List<BlockPos> sources) {
+	private Predicate<BlockPos> payloadGatherSkip() {
+		return pos -> isMachinery(pos) || TransmuterPayloadCollector.isPlayerProcessingStation(level, pos);
 	}
 
-	/**
-	 * 扫描区内<b>非加工机、非玩家加工容器</b>的载荷收集。
-	 *
-	 * <p>取料顺序与"波命中后就地补料"共用同一套实现
-	 * （{@link com.hjmmd_8.createoreexpansion.content.charger.entity.WavePayloadGather}）：
-	 * <b>先每种各 1（铺开种类），再按存量补数量</b>；流体取第一种抽到 500 mB；电量抽干可抽取储能
-	 * （特斯拉线圈走内部接口）。</p>
-	 *
-	 * @param simulate true = 只估算（不动容器）；false = 真实抽取
-	 */
-	private Payload collectPayload(int radius, boolean simulate) {
-		List<ItemStack> items = new ArrayList<>();
-		List<BlockPos> sources = new ArrayList<>();
-		int r = Math.max(1, radius);
-		Predicate<BlockPos> skip = pos -> isMachinery(pos) || isPlayerProcessingStation(pos);
-		WavePayloadGather.gatherItems(level, worldPosition, r, items, sources, maxPayloadItems(), maxPayloadTypes(),
-			simulate, skip);
-		FluidStack fluid = WavePayloadGather.gatherFluid(level, worldPosition, r, FluidStack.EMPTY, sources,
-			maxPayloadFluid(), simulate, skip);
-		// 电量上限：配置固定值，或（默认）CC&A 充电配方里最贵那条的耗电量——见 WavePayloadGather#resolveEnergyCap
-		int energy = WavePayloadGather.gatherEnergy(level, worldPosition, r, sources, simulate, skip,
-			WavePayloadGather.resolveEnergyCap(level));
-		return new Payload(items, fluid, energy, sources);
-	}
-
-
-	/**
-	 * 该位置是否为"玩家正在加工的容器"（工作盆等）：这类容器虽然带物品/流体能力，
-	 * <b>但不是载荷源</b>——盆里是玩家摆的原料与配方流体，波不该把它们当辅料抽走
-	 * （2026-09 修正：旧实现把工作盆也当普通容器抽料，导致盆里的料会莫名少掉几个）。
-	 *
-	 * <p>波命中工作盆时走的是<b>另一条路</b>：命中容器的槽位与盆内流体作为"通道 B"直接参与加工
-	 * （见 {@code StellarWaveEntity#evalCandidate}），根本不需要载荷。</p>
-	 */
-	private boolean isPlayerProcessingStation(BlockPos pos) {
-		try {
-			return level.getBlockEntity(pos) instanceof com.simibubi.create.content.processing.basin.BasinBlockEntity;
-		} catch (Throwable ignored) {
-			return false; // 判定异常：按"不是"处理（保守，不影响正常容器）
-		}
-	}
 
 
 	// ================= 应力 =================
