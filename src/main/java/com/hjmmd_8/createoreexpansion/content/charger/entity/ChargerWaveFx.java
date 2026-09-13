@@ -28,7 +28,7 @@ import org.joml.Vector3f;
  * <p>从 {@link AbstractChargerWaveEntity} 拆出（该实体曾同时承担实体状态/碰撞判定/
  * 机器交互/视觉效果的职责）；本类只负责"波产生的声光效果"，无实体字段依赖。</p>
  */
-final class ChargerWaveFx {
+public final class ChargerWaveFx {
 
 	private ChargerWaveFx() {
 	}
@@ -41,7 +41,7 @@ final class ChargerWaveFx {
 	 * @param pos   绽放中心（世界坐标）
 	 * @param color 粒子颜色（RGB 0-1）
 	 */
-	static void burst(Level level, Vec3 pos, Vec3 color) {
+	public static void burst(Level level, Vec3 pos, Vec3 color) {
 		if (!(level instanceof ServerLevel server))
 			return;
 		server.sendParticles(waveParticle(color, 0.6f), pos.x, pos.y, pos.z, 30,

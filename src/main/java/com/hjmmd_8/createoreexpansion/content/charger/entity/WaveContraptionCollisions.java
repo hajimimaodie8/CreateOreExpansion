@@ -31,7 +31,7 @@ import net.minecraft.world.phys.Vec3;
  * 复用波闸/差波器的<b>纯 blockstate 判定</b>（contraption 上无 BE 实例/转速 →
  * 波闸仅通道不调制）。判定结果方向经 {@code entity.applyRotation} 转回世界。</p>
  *
- * <p><b>坐标系</b>：本类内 {@code wave.movement} 临时切换为 contraption 本地方向参与判定，
+ * <p><b>坐标系</b>：本类内 {@code wave.getMovement()} 临时切换为 contraption 本地方向参与判定，
  * 判定结束（finally）经 {@code applyRotation} 转回世界方向；分裂子波在 contraption 本地
  * 出生（位置/方向），经 {@code toGlobalVector/applyRotation} 转回世界坐标（随 contraption 旋转）。</p>
  */
@@ -64,7 +64,7 @@ public class WaveContraptionCollisions {
 			// 波中心/方向 → contraption 本地坐标系
 			Vec3 localCenter = entity.toLocalVector(wave.getBoundingBox()
 				.getCenter(), 0);
-			Vec3 localMove = entity.reverseRotation(wave.movement, 0);
+			Vec3 localMove = entity.reverseRotation(wave.getMovement(), 0);
 			double h = 0.1; // 波盒半宽
 			BlockPos min = BlockPos.containing(localCenter.x - h, localCenter.y - h, localCenter.z - h);
 			BlockPos max = BlockPos.containing(localCenter.x + h, localCenter.y + h, localCenter.z + h);
@@ -74,19 +74,19 @@ public class WaveContraptionCollisions {
 				if (state.isAir())
 					continue;
 				// 判定前：movement 临时切换为 contraption 本地方向
-				wave.movement = localMove;
+				wave.setMovement(localMove);
 				try {
 					// Energy wave gate (regulator/speed, jade/sapphire): on contraption no BE/speed -> channel only,
 					// no modulation. Match via base Block; modulatesWaveLevel() picks level vs speed channel.
 					if (state.getBlock() instanceof AbstractWaveGateBlock waveGate) {
 						if (waveGate.modulatesWaveLevel()) {
 						EnergyWaveRegulation.Result r = EnergyWaveRegulation.get()
-							.resolve(state, pos, localCenter, wave.movement, wave.waveLevel);
+							.resolve(state, pos, localCenter, wave.getMovement(), wave.getWaveLevel());
 						if (handleGateResult(r, entity, pos))
 							return true;
 						} else {
 						WaveSpeedRegulation.Result r = WaveSpeedRegulation.get()
-							.resolve(state, pos, localCenter, wave.movement, wave.waveLevel);
+							.resolve(state, pos, localCenter, wave.getMovement(), wave.getWaveLevel());
 						if (handleSpeedGateResult(r, entity, pos))
 							return true;
 						}
@@ -96,12 +96,12 @@ public class WaveContraptionCollisions {
 					// 出口为模型侧面（NORTH/EAST/SOUTH/WEST），须经 worldDirOf(FACING)
 					// 转成本地方向再发射（同主世界 WaveMachineActions 的映射）。
 					if (state.getBlock() instanceof EnergyWaveDisperserBlock) {
-						EnergyWaveDispersal.Result r = EnergyWaveDispersal.handle(state, wave.movement, localCenter,
-							pos, wave.waveLevel);
+						EnergyWaveDispersal.Result r = EnergyWaveDispersal.handle(state, wave.getMovement(), localCenter,
+							pos, wave.getWaveLevel());
 						if (r == EnergyWaveDispersal.Result.SPLIT) {
 							Direction facing = state.getValue(EnergyWaveDisperserBlock.FACING);
 							List<Direction> localExits = new ArrayList<>(3);
-							for (Direction modelSide : EnergyWaveDispersal.exitsOf(state, wave.movement)) {
+							for (Direction modelSide : EnergyWaveDispersal.exitsOf(state, wave.getMovement())) {
 								Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, modelSide);
 								if (worldOut != null)
 									localExits.add(worldOut);
@@ -116,10 +116,10 @@ public class WaveContraptionCollisions {
 					}
 					// 六面能量波差器：反弹/拐弯/分裂（降级量 3-4 口 1 级、5-6 口 2 级）
 					if (state.getBlock() instanceof SixFaceDisperserBlock) {
-						SixFaceDispersal.Result r = SixFaceDispersal.handle(state, wave.movement, localCenter, pos,
-							wave.waveLevel);
+						SixFaceDispersal.Result r = SixFaceDispersal.handle(state, wave.getMovement(), localCenter, pos,
+							wave.getWaveLevel());
 						if (r == SixFaceDispersal.Result.SPLIT) {
-							if (splitContraptionChildren(SixFaceDispersal.exitsOf(state, wave.movement),
+							if (splitContraptionChildren(SixFaceDispersal.exitsOf(state, wave.getMovement()),
 								SixFaceDispersal.decrementOf(state), entity, pos))
 								return true;
 							continue;
@@ -128,19 +128,19 @@ public class WaveContraptionCollisions {
 							return true;
 						continue;
 					}
-					// 八面能量波差器：8 口（4 正交 + 4 斜）。wave.movement 此刻= contraption 本地方向，
+					// 八面能量波差器：8 口（4 正交 + 4 斜）。wave.getMovement() 此刻= contraption 本地方向，
 					// 再按 blockstate AXIS 换算到机器本地（站姿语义）判定。
 					if (state.getBlock() instanceof OctaEnergyWaveDifferencerBlock) {
 						Direction.Axis axis = state.getValue(OctaEnergyWaveDifferencerBlock.AXIS);
-						Vec3 octaLocalMove = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, wave.movement);
+						Vec3 octaLocalMove = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, wave.getMovement());
 						Vec3 relCenter = OctaEnergyWaveDifferencerBlock.toLocalVec(axis,
 							localCenter.subtract(Vec3.atCenterOf(pos)));
 						OctaEnergyWaveDispersal.Result r = OctaEnergyWaveDispersal.handle(state, octaLocalMove, relCenter,
-							wave.waveLevel);
+							wave.getWaveLevel());
 						if (r == OctaEnergyWaveDispersal.Result.SPLIT) {
-							int childLevel = wave.waveLevel - OctaEnergyWaveDispersal.decrementOf(state);
+							int childLevel = wave.getWaveLevel() - OctaEnergyWaveDispersal.decrementOf(state);
 							if (childLevel <= 0) {
-								ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+								ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 								wave.discard();
 								return true;
 							}
@@ -154,9 +154,9 @@ public class WaveContraptionCollisions {
 									contraptionDir, childLevel, outIndex, octaOuts.size());
 								if (child != null) {
 									child.setPos(entity.toGlobalVector(child.position(), 0));
-									child.spawnPos = entity.toGlobalVector(child.spawnPos, 0);
-									child.movement = entity.applyRotation(child.movement, 0);
-									child.addSpeedOffset(wave.speedOffset);
+									child.setSpawnPos(entity.toGlobalVector(child.getSpawnPos(), 0));
+									child.setMovement(entity.applyRotation(child.getMovement(), 0));
+									child.addSpeedOffset(wave.getSpeedOffset());
 									wave.level()
 										.addFreshEntity(child);
 								}
@@ -169,12 +169,12 @@ public class WaveContraptionCollisions {
 						continue;
 					}
 					// contraption 上的其它方块：视为撞墙
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 					wave.discard();
 					return true;
 				} finally {
 					// 判定结果（反弹/穿出方向）从本地方向转回世界方向
-					wave.movement = entity.applyRotation(wave.movement, 0);
+					wave.setMovement(entity.applyRotation(wave.getMovement(), 0));
 				}
 			}
 		}
@@ -185,25 +185,25 @@ public class WaveContraptionCollisions {
 	private boolean handleGateResult(EnergyWaveRegulation.Result r, AbstractContraptionEntity entity, BlockPos pos) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			case PASS_UNCHANGED -> {
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
 				// 调制结果（VANISH_GAMMA_BOOM/VANISH_LOW_BOOM/PASS_BOOST_LATER/PASS_DOWNGRADE/BOUNCE_DOWNGRADE）
 				// 依赖转速，纯 state 判定（speed=0）不会产生；防御性按撞墙
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -214,24 +214,24 @@ public class WaveContraptionCollisions {
 	private boolean handleSpeedGateResult(WaveSpeedRegulation.Result r, AbstractContraptionEntity entity, BlockPos pos) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			case PASS_UNCHANGED -> {
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
 				// PASS_SPEED_UP/DOWN 依赖转速，纯 state 判定不会产生；防御性按撞墙
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -243,14 +243,14 @@ public class WaveContraptionCollisions {
 		BlockPos pos, Direction.Axis axis, Vec3 localMove, Vec3 relCenter, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			case TURN -> {
@@ -258,10 +258,10 @@ public class WaveContraptionCollisions {
 				List<Vec3> outs = OctaEnergyWaveDispersal.otherOpenDirs(state, localMove, relCenter);
 				if (!outs.isEmpty()) {
 					Vec3 contraptionOut = OctaEnergyWaveDifferencerBlock.toWorldVec(axis, outs.get(0));
-					wave.movement = contraptionOut;
+					wave.setMovement(contraptionOut);
 				}
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
@@ -279,26 +279,26 @@ public class WaveContraptionCollisions {
 		BlockPos pos, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			case TURN -> {
 				// 拐弯：朝另一个开口的模型侧面方向发射（纯函数不写 movement，此处显式计算）
 				Direction facing = state.getValue(EnergyWaveDisperserBlock.FACING);
-				Direction modelSide = EnergyWaveDispersal.exitsOf(state, wave.movement)
+				Direction modelSide = EnergyWaveDispersal.exitsOf(state, wave.getMovement())
 					.get(0);
 				Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, modelSide);
 				if (worldOut != null)
-					wave.movement = Vec3.atLowerCornerOf(worldOut.getNormal());
+					wave.setMovement(Vec3.atLowerCornerOf(worldOut.getNormal()));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
@@ -312,23 +312,23 @@ public class WaveContraptionCollisions {
 		BlockPos pos, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			case TURN -> {
 				// 拐弯：朝另一个开口方向发射（六面无 FACING，出口即世界方向）
-				Direction worldOut = SixFaceDispersal.exitsOf(state, wave.movement)
+				Direction worldOut = SixFaceDispersal.exitsOf(state, wave.getMovement())
 					.get(0);
-				wave.movement = Vec3.atLowerCornerOf(worldOut.getNormal());
+				wave.setMovement(Vec3.atLowerCornerOf(worldOut.getNormal()));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.movement.scale(1.0d)), 0));
+					.add(wave.getMovement().scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
@@ -349,10 +349,10 @@ public class WaveContraptionCollisions {
 	 */
 	private boolean splitContraptionChildren(List<Direction> exits, int decrement,
 		AbstractContraptionEntity entity, BlockPos pos) {
-		int childLevel = wave.waveLevel - decrement;
+		int childLevel = wave.getWaveLevel() - decrement;
 		if (childLevel <= 0) {
 			// 波级不足分裂：撞墙消散
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 			wave.discard();
 			return true;
 		}
@@ -365,10 +365,10 @@ public class WaveContraptionCollisions {
 			if (child != null) {
 				// 本地 → 世界（位置/方向，随 contraption 旋转）
 				child.setPos(entity.toGlobalVector(child.position(), 0));
-				child.spawnPos = entity.toGlobalVector(child.spawnPos, 0);
-				child.movement = entity.applyRotation(child.movement, 0);
+				child.setSpawnPos(entity.toGlobalVector(child.getSpawnPos(), 0));
+				child.setMovement(entity.applyRotation(child.getMovement(), 0));
 				// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
-				child.addSpeedOffset(wave.speedOffset);
+				child.addSpeedOffset(wave.getSpeedOffset());
 				wave.level()
 					.addFreshEntity(child);
 			}

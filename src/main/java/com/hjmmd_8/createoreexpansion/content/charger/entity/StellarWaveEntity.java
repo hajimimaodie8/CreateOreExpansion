@@ -871,7 +871,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	 * （{@code createoreexpansion:lightning_block}）也能远程执行。波仍按原逻辑在此消散。
 	 */
 	@Override
-	protected void onSolidBlockHit(BlockPos pos) {
+	public void onSolidBlockHit(BlockPos pos) {
 		summonLightningAt(pos);
 	}
 
@@ -1138,7 +1138,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	 * @return true = 本 tick 已处理（加工成功并继续/已消散）；false = 无可加工，撞墙消散
 	 */
 	@Override
-	protected boolean handleItemInventoryBlock(IItemHandler handler, BlockPos pos) {
+	public boolean handleItemInventoryBlock(IItemHandler handler, BlockPos pos) {
 		if (level().isClientSide)
 			return true;
 		if (attributes.isEmpty() && recipeTypes.isEmpty())
@@ -1915,7 +1915,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 				craftDebug("载荷释放异常（余料未能全部处置）：{}", t);
 			}
 		}
-		ChargerWaveFx.burst(level(), position(), renderColor);
+		ChargerWaveFx.burst(level(), position(), getRenderColor());
 		discard();
 	}
 

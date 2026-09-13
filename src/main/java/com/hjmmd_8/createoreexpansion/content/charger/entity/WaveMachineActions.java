@@ -59,7 +59,7 @@ public class WaveMachineActions {
 	 */
 	public boolean handleRegulator(AbstractWaveGateBlockEntity regulator, BlockPos pos, Vec3 wavePos) {
 		EnergyWaveRegulation.Result result = EnergyWaveRegulation.get()
-			.resolve(regulator, wavePos, wave.movement, wave.waveLevel);
+			.resolve(regulator, wavePos, wave.getMovement(), wave.getWaveLevel());
 		switch (result) {
 			case VANISH -> {
 				// 齿轮端/入口关闭：如撞墙消失，无爆炸
@@ -67,12 +67,12 @@ public class WaveMachineActions {
 			}
 			case VANISH_GAMMA_BOOM -> {
 				// 伽马波（3级）顺基准升级无路可升 → 3 级伽马爆炸后湮灭
-				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.renderColor, null, 3);
+				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getRenderColor(), null, 3);
 				return true;
 			}
 			case VANISH_LOW_BOOM -> {
 				// 1 级波逆基准降级无路可降 → 1 级小范围爆炸后湮灭
-				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.renderColor, null, 1);
+				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getRenderColor(), null, 1);
 				return true;
 			}
 			case PASS_UNCHANGED -> {
@@ -80,7 +80,7 @@ public class WaveMachineActions {
 			}
 			case BOUNCE -> {
 				// 无应力单开口：等级不变，原路遣返（折 180° 原路返回）
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 			}
 			case PASS_BOOST_LATER -> {
 				// 顺基准双开口：穿过，延迟升级（飞行 0.5 格 = 1/(2v) 秒后等级提升）。
@@ -90,12 +90,12 @@ public class WaveMachineActions {
 			}
 			case PASS_DOWNGRADE -> {
 				// 逆基准双开口：穿过，立即降级
-				wave.setWaveLevel(wave.waveLevel - 1);
+				wave.setWaveLevel(wave.getWaveLevel() - 1);
 			}
 			case BOUNCE_DOWNGRADE -> {
 				// 有应力单开口：降级并原路遣返（1 级波已在判定层走 VANISH_LOW_BOOM 爆炸，这里仅 ≥2 级）
-				wave.setWaveLevel(wave.waveLevel - 1);
-				wave.movement = wave.movement.scale(-1);
+				wave.setWaveLevel(wave.getWaveLevel() - 1);
+				wave.setMovement(wave.getMovement().scale(-1));
 			}
 		}
 		return false;
@@ -118,14 +118,14 @@ public class WaveMachineActions {
 	 */
 	public boolean handleWaveSpeedRegulator(AbstractWaveGateBlockEntity speedRegulator, BlockPos pos, Vec3 wavePos) {
 		WaveSpeedRegulation.Result result = WaveSpeedRegulation.get()
-			.resolve(speedRegulator, wavePos, wave.movement, wave.waveLevel);
+			.resolve(speedRegulator, wavePos, wave.getMovement(), wave.getWaveLevel());
 		switch (result) {
 			case VANISH -> {
 				return true; // 齿轮端/入口关闭：撞墙湮灭
 			}
 			case BOUNCE -> {
 				// 单开口：纯折返，速度不变
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				return false;
 			}
 			case PASS_UNCHANGED -> {
@@ -175,17 +175,17 @@ public class WaveMachineActions {
 	public boolean handleOctaDisperser(BlockState state, BlockPos pos, Vec3 wavePos, SubLevelBridge.Hit frame) {
 		Direction.Axis axis = state.getValue(OctaEnergyWaveDifferencerBlock.AXIS);
 		// 世界（或结构本地）→ 机器本地（站姿语义）：判定纯函数只认识本地方向/偏移
-		Vec3 localMove = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, wave.movement);
+		Vec3 localMove = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, wave.getMovement());
 		Vec3 localRel = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, wavePos.subtract(Vec3.atCenterOf(pos)));
 
-		OctaEnergyWaveDispersal.Result result = OctaEnergyWaveDispersal.handle(state, localMove, localRel, wave.waveLevel);
+		OctaEnergyWaveDispersal.Result result = OctaEnergyWaveDispersal.handle(state, localMove, localRel, wave.getWaveLevel());
 		switch (result) {
 			case VANISH -> {
 				return true; // 机壳 / 入口口关闭 / 波级不足分裂
 			}
 			case BOUNCE -> {
 				// 单开口：原路遣返（反弹），等级不变（世界方向直接取反）
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				return false;
 			}
 			case TURN -> {
@@ -194,12 +194,12 @@ public class WaveMachineActions {
 				if (outs.isEmpty())
 					return true;
 				// 出口方向（本地）→ 世界
-				wave.movement = OctaEnergyWaveDifferencerBlock.toWorldVec(axis, outs.get(0));
+				wave.setMovement(OctaEnergyWaveDifferencerBlock.toWorldVec(axis, outs.get(0)));
 				return false;
 			}
 			case SPLIT -> {
 				// ≥3 开口：其余每个开口均摊发射降级子波（出口斜口 = 45° 对角）
-				int childLevel = wave.waveLevel - OctaEnergyWaveDispersal.decrementOf(state);
+				int childLevel = wave.getWaveLevel() - OctaEnergyWaveDispersal.decrementOf(state);
 				Vec3 center = Vec3.atCenterOf(pos);
 				// 先取出口列表：载荷要按"子波总数"分份，故需要 index/total（见 createChildWave 注释）
 				List<Vec3> octaOuts = OctaEnergyWaveDispersal.otherOpenDirs(state, localMove, localRel);
@@ -217,12 +217,12 @@ public class WaveMachineActions {
 							SubLevelBridge b = SableBridges.get();
 							if (b != null) {
 								child.setPos(b.toWorld(frame, child.position()));
-								child.spawnPos = b.toWorld(frame, child.spawnPos);
-								child.movement = b.toWorldDir(frame, child.movement);
+								child.setSpawnPos(b.toWorld(frame, child.getSpawnPos()));
+								child.setMovement(b.toWorldDir(frame, child.getMovement()));
 							}
 						}
 						// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
-						child.addSpeedOffset(wave.speedOffset);
+						child.addSpeedOffset(wave.getSpeedOffset());
 						wave.level()
 							.addFreshEntity(child);
 					}
@@ -247,7 +247,7 @@ public class WaveMachineActions {
 	 *         调用方负责推出方块外；若本波已被静默 discard——分裂场景——调用方检测 isAlive()==false 直接结束）
 	 */
 	public boolean handleDisperser(BlockState state, BlockPos pos, Vec3 wavePos, SubLevelBridge.Hit frame) {
-		EnergyWaveDispersal.Result result = EnergyWaveDispersal.handle(state, wave.movement, wavePos, pos, wave.waveLevel);
+		EnergyWaveDispersal.Result result = EnergyWaveDispersal.handle(state, wave.getMovement(), wavePos, pos, wave.getWaveLevel());
 		Direction facing = state.getValue(EnergyWaveDisperserBlock.FACING);
 
 		switch (result) {
@@ -257,21 +257,21 @@ public class WaveMachineActions {
 			}
 			case BOUNCE -> {
 				// 单开口：原路遣返（反弹），等级不变
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				return false;
 			}
 			case TURN -> {
 				// 双开口：从入口进、从另一开口出（拐弯），等级不变
 				Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing,
-					EnergyWaveDispersal.exitsOf(state, wave.movement).get(0));
-				wave.movement = Vec3.atLowerCornerOf(worldOut.getNormal());
+					EnergyWaveDispersal.exitsOf(state, wave.getMovement()).get(0));
+				wave.setMovement(Vec3.atLowerCornerOf(worldOut.getNormal()));
 				return false;
 			}
 			case SPLIT -> {
 				// ≥3 开口：其余每个开口均摊发射降一级的波
-				int childLevel = wave.waveLevel - 1;
+				int childLevel = wave.getWaveLevel() - 1;
 				Vec3 center = Vec3.atCenterOf(pos);
-				List<Direction> disperserOuts = EnergyWaveDispersal.exitsOf(state, wave.movement);
+				List<Direction> disperserOuts = EnergyWaveDispersal.exitsOf(state, wave.getMovement());
 				for (int outIndex = 0; outIndex < disperserOuts.size(); outIndex++) {
 					Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, disperserOuts.get(outIndex));
 					Vec3 outDir = Vec3.atLowerCornerOf(worldOut.getNormal());
@@ -285,12 +285,12 @@ public class WaveMachineActions {
 							SubLevelBridge b = SableBridges.get();
 							if (b != null) {
 								child.setPos(b.toWorld(frame, child.position()));
-								child.spawnPos = b.toWorld(frame, child.spawnPos);
-								child.movement = b.toWorldDir(frame, child.movement);
+								child.setSpawnPos(b.toWorld(frame, child.getSpawnPos()));
+								child.setMovement(b.toWorldDir(frame, child.getMovement()));
 							}
 						}
 						// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
-						child.addSpeedOffset(wave.speedOffset);
+						child.addSpeedOffset(wave.getSpeedOffset());
 						wave.level()
 							.addFreshEntity(child);
 					}
@@ -316,27 +316,27 @@ public class WaveMachineActions {
 	 * @return true = 波应撞墙湮灭；false = 波继续（调用方推出方块外；分裂时本波已静默 discard）
 	 */
 	public boolean handleSixFaceDisperser(BlockState state, BlockPos pos, Vec3 wavePos, SubLevelBridge.Hit frame) {
-		SixFaceDispersal.Result result = SixFaceDispersal.handle(state, wave.movement, wavePos, pos, wave.waveLevel);
+		SixFaceDispersal.Result result = SixFaceDispersal.handle(state, wave.getMovement(), wavePos, pos, wave.getWaveLevel());
 		switch (result) {
 			case VANISH -> {
 				return true; // 入口关闭 / 波级不足分裂 → 撞墙湮灭
 			}
 			case BOUNCE -> {
 				// 单开口：原路遣返（反弹），等级不变
-				wave.movement = wave.movement.scale(-1);
+				wave.setMovement(wave.getMovement().scale(-1));
 				return false;
 			}
 			case TURN -> {
 				// 双开口：从入口进、从另一开口出（拐弯），等级不变
-				Direction worldOut = SixFaceDispersal.exitsOf(state, wave.movement).get(0);
-				wave.movement = Vec3.atLowerCornerOf(worldOut.getNormal());
+				Direction worldOut = SixFaceDispersal.exitsOf(state, wave.getMovement()).get(0);
+				wave.setMovement(Vec3.atLowerCornerOf(worldOut.getNormal()));
 				return false;
 			}
 			case SPLIT -> {
 				// 3-4 开口降一级、5-6 开口降二级：其余每个开口均摊发射子波
-				int childLevel = wave.waveLevel - SixFaceDispersal.decrementOf(state);
+				int childLevel = wave.getWaveLevel() - SixFaceDispersal.decrementOf(state);
 				Vec3 center = Vec3.atCenterOf(pos);
-				List<Direction> sixOuts = SixFaceDispersal.exitsOf(state, wave.movement);
+				List<Direction> sixOuts = SixFaceDispersal.exitsOf(state, wave.getMovement());
 				for (int outIndex = 0; outIndex < sixOuts.size(); outIndex++) {
 					Vec3 outDir = Vec3.atLowerCornerOf(sixOuts.get(outIndex)
 						.getNormal());
@@ -350,12 +350,12 @@ public class WaveMachineActions {
 							SubLevelBridge b = SableBridges.get();
 							if (b != null) {
 								child.setPos(b.toWorld(frame, child.position()));
-								child.spawnPos = b.toWorld(frame, child.spawnPos);
-								child.movement = b.toWorldDir(frame, child.movement);
+								child.setSpawnPos(b.toWorld(frame, child.getSpawnPos()));
+								child.setMovement(b.toWorldDir(frame, child.getMovement()));
 							}
 						}
 						// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
-						child.addSpeedOffset(wave.speedOffset);
+						child.addSpeedOffset(wave.getSpeedOffset());
 						wave.level()
 							.addFreshEntity(child);
 					}

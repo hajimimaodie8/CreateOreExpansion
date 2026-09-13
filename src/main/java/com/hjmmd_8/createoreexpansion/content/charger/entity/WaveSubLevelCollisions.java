@@ -56,14 +56,14 @@ public class WaveSubLevelCollisions {
 	/**
 	 * 以结构本地坐标系遍历波覆盖的方块并执行机器判定。
 	 *
-	 * <p><b>坐标约定</b>：本方法内 {@code wave.movement} 临时切换为结构本地方向参与判定
+	 * <p><b>坐标约定</b>：本方法内 {@code wave.getMovement()} 临时切换为结构本地方向参与判定
 	 * （判定函数读写 movement），判定结束后经位姿矩阵转回世界方向；推出方块、分裂子波等
 	 * 产出位置同样转回世界。</p>
 	 */
 	private void handle(SubLevelBridge bridge, SubLevelBridge.Hit hit) {
 		Vec3 localCenter = bridge.toLocal(hit, wave.getBoundingBox()
 			.getCenter());
-		Vec3 localMove = bridge.toLocalDir(hit, wave.movement);
+		Vec3 localMove = bridge.toLocalDir(hit, wave.getMovement());
 		double h = 0.1; // 波盒半宽（sized 0.2）
 		AABB localBox = new AABB(localCenter.x - h, localCenter.y - h, localCenter.z - h,
 			localCenter.x + h, localCenter.y + h, localCenter.z + h);
@@ -77,16 +77,16 @@ public class WaveSubLevelCollisions {
 				continue;
 
 			// 判定前：把波方向临时切换为结构本地方向（判定函数读写 movement）
-			wave.movement = localMove;
+			wave.setMovement(localMove);
 			try {
 				// 波前中心（结构本地坐标，与 pos 同坐标系——4×4 入口判定依赖）
 				Vec3 localWavePos = bridge.toLocal(hit, wave.getBoundingBox()
 					.getCenter());
 				// 伽马能量加工（≥3 级）：伽马/伊普西龙/欧米伽波命中强化避雷针各 +1，波消散
 				if (bridge.getBlockEntity(hit, pos) instanceof ReinforcedLightningRodBlockEntity rod) {
-					if (wave.waveLevel >= 3)
+					if (wave.getWaveLevel() >= 3)
 						rod.onGammaWaveHit();
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 					wave.discard();
 					return;
 				}
@@ -98,65 +98,65 @@ public class WaveSubLevelCollisions {
 						? actions.handleRegulator(gateBe, pos, localWavePos)
 						: actions.handleWaveSpeedRegulator(gateBe, pos, localWavePos);
 					if (vanish) {
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 						wave.discard();
 						return;
 					}
 					wave.setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos)
-						.add(wave.movement.scale(1.0d))));
+						.add(wave.getMovement().scale(1.0d))));
 					return;
 				}
 				// 能量波差器：反弹/拐弯/分裂（分裂子波在结构本地出生，经 frame 转回世界后加入主世界）
 				if (state.getBlock() instanceof EnergyWaveDisperserBlock) {
 					boolean vanish = actions.handleDisperser(state, pos, localWavePos, hit);
 					if (vanish) {
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 						wave.discard();
 						return;
 					}
 					if (!wave.isAlive())
 						return; // 分裂：母波静默消散
 					wave.setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos)
-						.add(wave.movement.scale(1.0d))));
+						.add(wave.getMovement().scale(1.0d))));
 					return;
 				}
 				// 六面能量波差器
 				if (state.getBlock() instanceof SixFaceDisperserBlock) {
 					boolean vanish = actions.handleSixFaceDisperser(state, pos, localWavePos, hit);
 					if (vanish) {
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 						wave.discard();
 						return;
 					}
 					if (!wave.isAlive())
 						return;
 					wave.setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos)
-						.add(wave.movement.scale(1.0d))));
+						.add(wave.getMovement().scale(1.0d))));
 					return;
 				}
 				// 八面能量波差器（8 口：4 正交 + 4 斜；姿态换算在 actions 内完成）
 				if (state.getBlock() instanceof OctaEnergyWaveDifferencerBlock) {
 					boolean vanish = actions.handleOctaDisperser(state, pos, localWavePos, hit);
 					if (vanish) {
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 						wave.discard();
 						return;
 					}
 					if (!wave.isAlive())
 						return; // 分裂：母波静默消散
 					wave.setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos)
-						.add(wave.movement.scale(1.0d))));
+						.add(wave.getMovement().scale(1.0d))));
 					return;
 				}
 				// 结构上的其它方块（含能量感应灯/置物台——本地无 Capability 查询入口）→ 视为撞墙
 				hitSolid = true;
 			} finally {
 				// 判定结果（反弹/穿出方向）从本地方向转回世界方向
-				wave.movement = bridge.toWorldDir(hit, wave.movement);
+				wave.setMovement(bridge.toWorldDir(hit, wave.getMovement()));
 			}
 		}
 		if (hitSolid) {
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.renderColor);
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
 			wave.discard();
 		}
 	}
