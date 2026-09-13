@@ -2,10 +2,10 @@ package com.hjmmd_8.createoreexpansion.content.charger.wave;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
-import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveTransmuterPass;
-import com.hjmmd_8.createoreexpansion.content.charger.entity.WaveContraptionCollisions;
-import com.hjmmd_8.createoreexpansion.content.charger.entity.WaveMachineActions;
-import com.hjmmd_8.createoreexpansion.content.charger.entity.WaveSubLevelCollisions;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineActions;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveSubLevelCollisions;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlock;

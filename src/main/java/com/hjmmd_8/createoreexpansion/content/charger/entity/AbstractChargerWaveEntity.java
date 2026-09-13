@@ -4,6 +4,10 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineActions;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveSubLevelCollisions;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlock;
@@ -449,7 +453,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/** 施加一次速度修正（叠加语义：在此值上增加 amount，可正可负）。 */
-	protected void addSpeedOffset(double amount) {
+	public void addSpeedOffset(double amount) {
 		this.speedOffset += amount;
 		// 同步到客户端（Jade 速度显示）
 		this.entityData.set(SPEED_OFFSET, (float) this.speedOffset);
@@ -542,7 +546,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 设置能量波等级并同步核心加工逻辑（等级决定可匹配配方上限、伤害、波速）。
 	 * 调级器升级/降级、以及增强延迟到期升级时调用。
 	 */
-	protected void setWaveLevel(int level) {
+	public void setWaveLevel(int level) {
 		this.waveLevel = level;
 		this.processor = new ChargerWaveProcessor(level(), level);
 		// 同步到客户端（Jade 等级显示）
@@ -600,6 +604,26 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	public double getSpeedOffset() {
 		return speedOffset;
 	}
+
+	/** 加速场剩余作用距离（格；>0 表示本 tick 处于加速场中）。 */
+	public float getBoostRemaining() {
+		return boostRemaining;
+	}
+
+	/** 覆写加速场剩余作用距离（波闸/能量场写入）。 */
+	public void setBoostRemaining(float boostRemaining) {
+		this.boostRemaining = boostRemaining;
+	}
+
+	/** 加速场档位（每 tick 提速的等级）。 */
+	public int getBoostStep() {
+		return boostStep;
+	}
+
+	/** 覆写加速场档位。 */
+	public void setBoostStep(int boostStep) {
+		this.boostStep = boostStep;
+	}
 	/** 命中伤害：低 4、高 6、伽马 10、伊普西龙 14、欧米伽 18 —— 查 {@link WaveLevels#damage}。 */
 	protected float getDamage() {
 		return WaveLevels.damage(waveLevel);
@@ -653,7 +677,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 差器既有语义是"能量<b>均摊</b>分发到子波"，所以载荷也必须按份均摊
 	 * （见 {@code StellarWaveEntity#createChildWave}）。</p>
 	 */
-	protected abstract AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index,
+	public abstract AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index,
 		int total);
 
 	/**

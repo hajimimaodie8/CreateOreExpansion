@@ -1,7 +1,10 @@
-package com.hjmmd_8.createoreexpansion.content.charger.entity;
+package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter;
 
 import java.util.List;
 
+import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlock;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlockEntity;

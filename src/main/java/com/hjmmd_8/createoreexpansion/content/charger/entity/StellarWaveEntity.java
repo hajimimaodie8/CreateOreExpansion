@@ -8,6 +8,7 @@ import java.util.Map;
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.Candidate;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveAuxResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftConsumption;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftExecutor;
@@ -949,7 +950,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * </ul>
 	 */
 	@Override
-	protected AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
+	public AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
 		StellarWaveEntity child = new StellarWaveEntity(level(), pos, dir, level);
 		child.attributes = new ArrayList<>(attributes);
 		child.recipeTypes = new ArrayList<>(recipeTypes);

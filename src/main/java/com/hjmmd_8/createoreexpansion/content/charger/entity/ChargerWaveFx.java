@@ -80,7 +80,7 @@ public final class ChargerWaveFx {
 	 * @param color2    第二粒子颜色（null = 单色）
 	 * @param boomLevel 爆炸等级（1~5；两波碰撞取较低等级）
 	 */
-	static void triggerBoom(Level level, Entity source, Vec3 center, Vec3 color, Vec3 color2, int boomLevel) {
+	public static void triggerBoom(Level level, Entity source, Vec3 center, Vec3 color, Vec3 color2, int boomLevel) {
 		if (level instanceof ServerLevel server) {
 			// 密集球面扩散粒子（等级越高越密）
 			int count = 30 + boomLevel * 25; // 55 / 80 / 105 个

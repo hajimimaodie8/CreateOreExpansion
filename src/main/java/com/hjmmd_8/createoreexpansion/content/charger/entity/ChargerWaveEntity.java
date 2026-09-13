@@ -27,7 +27,7 @@ public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 	 * 普通能量波不带载荷，故 index/total（载荷均摊份额）在这里用不上。
 	 */
 	@Override
-	protected AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
+	public AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
 		return new ChargerWaveEntity(level(), pos, dir, level);
 	}
 }

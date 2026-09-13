@@ -1,10 +1,12 @@
-package com.hjmmd_8.createoreexpansion.content.charger.entity;
+package com.hjmmd_8.createoreexpansion.content.charger.wave;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlock;

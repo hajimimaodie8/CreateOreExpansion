@@ -1,7 +1,9 @@
-package com.hjmmd_8.createoreexpansion.content.charger.entity;
+package com.hjmmd_8.createoreexpansion.content.charger.wave;
 
 import java.util.List;
 
+import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlock;
@@ -85,8 +87,8 @@ public class WaveMachineActions {
 			case PASS_BOOST_LATER -> {
 				// 顺基准双开口：穿过，延迟升级（飞行 0.5 格 = 1/(2v) 秒后等级提升）。
 				// 提升级数按机型参数：翡翠/蓝宝石恒 1；星辉石按本机转速 1 或 2（波侧封顶 MAX_LEVEL=5）
-				wave.boostRemaining = BOOST_DISTANCE;
-				wave.boostStep = regulator.getBoostStepForSpeed();
+				wave.setBoostRemaining(BOOST_DISTANCE);
+				wave.setBoostStep(regulator.getBoostStepForSpeed());
 			}
 			case PASS_DOWNGRADE -> {
 				// 逆基准双开口：穿过，立即降级
