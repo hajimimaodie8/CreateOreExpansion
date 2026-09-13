@@ -10,7 +10,8 @@ import net.minecraft.world.phys.Vec3;
  * <p><b>职责</b>：把波实体（世界坐标）换算到波闸自身坐标系，用于：</p>
  * <ul>
  *   <li><b>入口判定</b>：波前在入口面板上的<b>面内偏移</b>是否落在中心区域
- *       （中心正方形 4×4，见 {@link AbstractWaveGateRegulation#ENTRY_CENTER_HALF}），
+ *       （中心正方形 4×4，见
+ *       {@link com.hjmmd_8.createoreexpansion.content.wave.regulation.AbstractWaveGateRegulation#ENTRY_CENTER_HALF}），
  *       决定"斜射/偏移射"容错度；</li>
  *   <li><b>方向换算</b>：本地方向（反弹/穿出/分裂出口）↔ 世界方向。</li>
  * </ul>

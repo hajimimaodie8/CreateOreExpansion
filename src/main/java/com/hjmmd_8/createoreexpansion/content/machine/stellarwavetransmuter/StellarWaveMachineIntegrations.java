@@ -20,14 +20,14 @@ import net.minecraft.world.level.Level;
  *
  * <p>幂等（各模块内部保证只尝试一次）；在变器 BE 首次扫描时调用。</p>
  *
- * <p>同时承载<b>载荷侧联动入口</b>（本包唯一对外门面，避免 content 直接引用第三方类）：
+ * <p>同时承载<b>载荷侧联动入口</b>（本包唯一对外门面，避免 content 直接引用第三方类）：</p>
  * <ul>
  *   <li>{@link #drainTeslaCoilFully(Level, BlockPos)}——CC&amp;A 特斯拉线圈全抽（载荷电量源）；</li>
  *   <li>{@link #recipeEnergyRequired(Recipe)}——配方条目的 FE 电量需求（CC&amp;A charging /
  *       Vintage 激光 energy 条目）；</li>
- *   <li>{@link #energyExtraRecipeTypes()}——携带电量波可追加执行的耗电配方类型（CCA charging）。</li>
+ *   <li>{@link #energyExtraRecipeTypes(boolean)}——携带电量波可追加执行的耗电配方类型（CCA charging）。</li>
  * </ul>
- * 各方法内部 try/catch + 各 compat 模块 ModList 守卫：未安装对应 mod 时静默返回空/0。</p>
+ * <p>各方法内部 try/catch + 各 compat 模块 ModList 守卫：未安装对应 mod 时静默返回空/0。</p>
  */
 public final class StellarWaveMachineIntegrations {
 

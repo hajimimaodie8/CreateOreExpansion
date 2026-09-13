@@ -23,7 +23,7 @@ import net.minecraft.world.phys.Vec3;
  * <p>波实体本身始终在主世界（位置/渲染/粒子用世界坐标）；本类把波中心/方向换算到
  * 结构本地坐标系（经 {@link SubLevelBridge} 位姿矩阵），遍历波覆盖的结构方块，
  * 命中机器时执行与主世界相同的判定（复用 {@link WaveMachineActions}），
- * 产出位置/方向再转回世界。坐标换算细节见 {@link #handle()}。</p>
+ * 产出位置/方向再转回世界。坐标换算细节见 {@code handle(SubLevelBridge, SubLevelBridge.Hit)}。</p>
  *
  * <p>波闸的 4×4 入口中心判定在本地坐标系天然正确：BE 的 pos/FACING 是本地，波中心
  * 换算成本地后，{@code StaticWaveGateFrame} 用本地 FACING 与本地坐标判定面内偏移。</p>

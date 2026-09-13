@@ -28,13 +28,13 @@ import net.minecraft.network.chat.Component;
  * 能量场控制器（Energy Field Controller）：六向应力机器（可水平/竖直放置）。
  *
  * <p><b>开盖才配对产场</b>：机器有一块可开/关的能量接收盖（FACING 正面的面板，
- * 开盖贴图 = {@code energy_field_controller_receiver_open}，关盖 = {@code ..._close}）：
+ * 开盖贴图 = {@code energy_field_controller_receiver_open}，关盖 = {@code ..._close}）：</p>
  * <ul>
  *   <li><b>空手右键</b> → 开盖 / 关盖（{@link #OPEN}）；盖关闭时<b>不参与配对、不产场</b>；</li>
  *   <li><b>扳手右键</b>（{@link IWrenchable}）→ 切换能量场类型：<b>加速场 ↔ 偏转场</b>
  *       （{@link EnergyFieldType}），并在快捷栏上方提示当前类型；</li>
  *   <li>接口极性、当前场强档位可通过<b>护目镜</b>查看（BE 逻辑）。</li>
- * </ul></p>
+ * </ul>
  *
  * <p><b>传动轴口</b>：传动轴从 FACING 的<b>反面（底部）</b>接入（与充能器同约定，
  * {@code hasShaftTowards} 只认 FACING 反面），放置自动对轴。</p>
@@ -117,7 +117,8 @@ public class EnergyFieldControllerBlock extends DirectionalKineticBlock
 
 	/**
 	 * 手持右键兜底：Create 扳手（非潜行）→ 切换场类型（IWrenchable 分发若被
-	 * {@link WrenchItem} 先截走，此处不会被执行——两条路径互斥，不会重复切换）。
+	 * {@link com.simibubi.create.content.equipment.wrench.WrenchItem} 先截走，此处不会被执行
+	 * ——两条路径互斥，不会重复切换）。
 	 * 其余物品/潜行扳手 → 放行给默认逻辑（拆机/放置方块等）。
 	 */
 	@Override

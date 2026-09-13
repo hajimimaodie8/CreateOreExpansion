@@ -66,16 +66,18 @@ public final class WaveCraftResults {
 
 	/**
 	 * 产物推导所需的<b>实体侧状态</b>（每次推导现场构造一个；不跨载荷变更缓存复用）。
-	 *
-	 * @param level 世界（族产物推导 / RecipeApplier / 原版锻造配方检索用，即实体的 {@code level()}）
-	 * @param aux   辅料解析器（即实体每次现场构造的 {@code auxResolver()}）
-	 * @param debug 调试日志出口（实体的 {@code this::craftDebug}）
+	 * 逐字段说明见构造器的 {@code @param}。
 	 */
 	public static final class Context {
 		public final Level level;
 		public final WaveAuxResolver aux;
 		public final DebugLog debug;
 
+		/**
+		 * @param level 世界（族产物推导 / RecipeApplier / 原版锻造配方检索用，即实体的 {@code level()}）
+		 * @param aux   辅料解析器（即实体每次现场构造的 {@code auxResolver()}）
+		 * @param debug 调试日志出口（实体的 {@code this::craftDebug}）
+		 */
 		public Context(Level level, WaveAuxResolver aux, DebugLog debug) {
 			this.level = level;
 			this.aux = aux;

@@ -15,7 +15,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 /**
- * 星辉石系列客户端效果：物品实体处于虚空（y < -3）或液体（岩浆/嬗化液）中时，
+ * 星辉石系列客户端效果：物品实体处于虚空（y &lt; -3）或液体（岩浆/嬗化液）中时，
  * 照搬 Create 暗影钢的白色粒子（END_ROD），方便定位。
  */
 @EventBusSubscriber(value = Dist.CLIENT)

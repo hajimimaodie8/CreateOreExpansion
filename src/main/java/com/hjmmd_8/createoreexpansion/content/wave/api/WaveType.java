@@ -10,8 +10,10 @@ import net.minecraft.resources.ResourceLocation;
  * {@link WaveTypes#register} 注册，就得到一个可被本模组全部机制识别的新波型——
  * 例如"雷波"（只伤害、不加工）、"冰波"（会充能加工且不伤害）之类，<b>无需修改本模组源码</b>。</p>
  *
- * <p>本接口只描述<b>能力开关</b>与<b>表现风格</b>，不持有任何世界状态；波实体侧的
- * 状态读写见 {@code AbstractChargerWaveEntity#getWaveType()} 与 {@link WaveAttributes}。</p>
+ * <p>本接口只描述<b>能力开关</b>与<b>表现风格</b>，不持有任何世界状态；波实体侧的读取面
+ * （另外三个波情要素）见 {@code AbstractChargerWaveEntity#getWaveType()}、
+ * {@code #getWaveLevel()}、{@code #getWaveSpeed()}，波载荷见
+ * {@code StellarWaveEntity#getPayloadItems/Fluid/Energy}（只有变体波带载荷）。</p>
  *
  * <p><b>中立性约束</b>（本仓库 hard rule）：实现方与调用方都只允许使用中立类型
  * （{@code ResourceLocation} / 原版 / NeoForge / Create 基础类型），

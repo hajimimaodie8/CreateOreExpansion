@@ -31,8 +31,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * <p><b>方向铁律（核心逻辑实现时必须严格遵守，勿弄反）</b>——模型各部件经
  * blockstate 旋转（{@code AllBlocks} 中 xRot/yRot）后的世界方向：</p>
  * <ul>
- *     <li><b>齿轮轴</b>：沿 {@code FACING} 方向（{@link #getRotationAxis()} = FACING 的轴）；
- *         传动轴从 FACING 对面接入（{@link #hasShaftTowards()}）。</li>
+ *     <li><b>齿轮轴</b>：沿 {@code FACING} 方向（{@link #getRotationAxis} = FACING 的轴）；
+ *         传动轴从 FACING 对面接入（{@link #hasShaftTowards}）。</li>
  *     <li><b>顶能量接收面板</b>（模型 up 面，{@code wave_receiver} 纹理）：<b>朝 {@code FACING}</b>——
  *         竖直放置（UP）朝上、倒放（DOWN）朝下、水平放置朝 FACING 方向（模型 xRot=270 躺倒 + yRot 转向）。</li>
  *     <li><b>底能量接收面板</b>（模型 down 面）：<b>朝 {@code FACING} 对面</b>（顶面板对立面）。</li>

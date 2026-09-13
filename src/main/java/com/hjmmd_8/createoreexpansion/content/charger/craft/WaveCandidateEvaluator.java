@@ -58,18 +58,7 @@ public final class WaveCandidateEvaluator {
 
 	/**
 	 * 候选检索所需的<b>实体侧状态</b>（每次检索现场构造一个；载荷字段持调用方集合的引用，
-	 * 不要跨载荷变更缓存复用）。
-	 *
-	 * @param level          世界（BlockEntity 查过滤器 / 配方检索 / 材料匹配 / 环境判定用，即实体的 {@code level()}）
-	 * @param aux            辅料解析器（即实体每次现场构造的 {@code auxResolver()}）
-	 * @param carriedHeat    变器携带的加热档位（环境判定用，即实体字段 {@code carriedHeat}）
-	 * @param waveOrigin     波源位置（环境判定的第二中心，即实体字段 {@code waveOrigin}；可为 null）
-	 * @param debug          [变体波加工] 诊断日志出口（实体的静态方法 {@code craftDebug}）
-	 * @param trace          [变体波轨迹] 轨迹日志出口（实体的静态方法 {@code craftTrace}）
-	 * @param allowedTypeIds 波当前携带到的配方类型 id 集合（配方类型门白名单，即实体的 {@code allowedTypeIds()}）
-	 * @param payloadItems   波载荷物品（按引用读取；仅诊断日志需要其条数）
-	 * @param payloadFluid   波载荷流体（仅诊断日志需要）
-	 * @param payloadEnergy  波载荷电量（仅诊断日志需要）
+	 * 不要跨载荷变更缓存复用）。逐字段说明见构造器的 {@code @param}。
 	 */
 	public static final class Context {
 		public final Level level;
@@ -83,6 +72,18 @@ public final class WaveCandidateEvaluator {
 		public final FluidStack payloadFluid;
 		public final int payloadEnergy;
 
+		/**
+		 * @param level          世界（BlockEntity 查过滤器 / 配方检索 / 材料匹配 / 环境判定用，即实体的 {@code level()}）
+		 * @param aux            辅料解析器（即实体每次现场构造的 {@code auxResolver()}）
+		 * @param carriedHeat    变器携带的加热档位（环境判定用，即实体字段 {@code carriedHeat}）
+		 * @param waveOrigin     波源位置（环境判定的第二中心，即实体字段 {@code waveOrigin}；可为 null）
+		 * @param debug          [变体波加工] 诊断日志出口（实体的静态方法 {@code craftDebug}）
+		 * @param trace          [变体波轨迹] 轨迹日志出口（实体的静态方法 {@code craftTrace}）
+		 * @param allowedTypeIds 波当前携带到的配方类型 id 集合（配方类型门白名单，即实体的 {@code allowedTypeIds()}）
+		 * @param payloadItems   波载荷物品（按引用读取；仅诊断日志需要其条数）
+		 * @param payloadFluid   波载荷流体（仅诊断日志需要）
+		 * @param payloadEnergy  波载荷电量（仅诊断日志需要）
+		 */
 		public Context(Level level, WaveAuxResolver aux, BlazeBurnerBlock.HeatLevel carriedHeat, BlockPos waveOrigin,
 			DebugLog debug, DebugLog trace, java.util.Set<ResourceLocation> allowedTypeIds, List<ItemStack> payloadItems,
 			FluidStack payloadFluid, int payloadEnergy) {

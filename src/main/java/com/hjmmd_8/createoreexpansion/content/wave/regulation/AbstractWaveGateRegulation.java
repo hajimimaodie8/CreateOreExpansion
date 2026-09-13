@@ -43,7 +43,8 @@ import net.minecraft.world.phys.Vec3;
  *   <li><b>减弱</b>（等级-1 / 减速） ⟺ 从波前方看齿轮逆时针 ⟺ movement·FACING 与 speed 异号</li>
  * </ul>
  *
- * <p><b>调制效果由子类实现</b>（{@link #applyModulation}）：
+ * <p><b>调制效果由子类实现</b>（{@link #handle} 返回的 {@link Result} 里
+ * {@link Result#modulate()} / {@link Result#boost()} 即判定结论）：
  * 调级器 = 等级 ±1（升级/降级 + γ 级/α 级爆炸边缘）；波速调节器 = 速度 ±offset（按转速分档）。
  * 基类只判定"通道动作 + 是否调制 + 调制方向"，具体效果交子类。</p>
  */

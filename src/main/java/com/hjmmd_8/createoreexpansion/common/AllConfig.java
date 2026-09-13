@@ -198,7 +198,7 @@ public final class AllConfig {
     public static int waveMaxPayloadKinds = 5;
     /** 波载荷流体上限（mB；默认 2000 = 2 B） */
     public static int waveMaxPayloadFluidMb = 2000;
-    /** 波载荷电量上限（FE；-1 = 自动：CC&A 充电配方里最贵那条的耗电量；其余 = 固定上限） */
+    /** 波载荷电量上限（FE；-1 = 自动：CC&amp;A 充电配方里最贵那条的耗电量；其余 = 固定上限） */
     public static int waveMaxPayloadEnergyFe = -1;
     /** 波命中目标后是否再在命中点自动补料（初值 = 默认 false：只在变器穿波时取一次） */
     public static boolean waveRefillPayloadOnHit = false;

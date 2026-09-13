@@ -14,7 +14,7 @@ import java.util.List;
  * {@code data/createoreexpansion/loot_table/inject/}（子表）。</p>
  *
  * <p>本类只做<b>文档化登记</b>：把"哪个 modifier 注入哪些目标表、产出什么"集中描述，
- * 改权重/数量/概率只需改对应子表 JSON（路径见 {@link #table}），新增目标位置
+ * 改权重/数量/概率只需改对应子表 JSON（路径见 {@link LootInjection#table()}），新增目标位置
  * 只需新增 modifier JSON 并注册到
  * {@code data/neoforge/loot_modifiers/global_loot_modifiers.json}。</p>
  *

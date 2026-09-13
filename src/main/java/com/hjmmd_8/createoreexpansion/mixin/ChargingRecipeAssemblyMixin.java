@@ -18,15 +18,15 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.ItemLike;
 
 /**
- * 让 CC&A 的充电配方（特斯拉线圈）可以作为序列加工步骤使用。
+ * 让 CC&amp;A 的充电配方（特斯拉线圈）可以作为序列加工步骤使用。
  *
  * <p>Create 的序列装配分类（JEI）对每个步骤调用
  * {@code SequencedRecipe.getAsAssemblyRecipe()}，内部直接
- * {@code checkcast IAssemblyRecipe} —— CC&A 的 ChargingRecipe 只继承
+ * {@code checkcast IAssemblyRecipe} —— CC&amp;A 的 ChargingRecipe 只继承
  * ProcessingRecipe、未实现该接口，一旦放进 sequence 就抛 ClassCastException，
  * 整个序列装配 JEI 分类崩溃消失。</p>
  *
- * <p>本 Mixin 给 CC&A ChargingRecipe 注入 IAssemblyRecipe 的全部抽象方法
+ * <p>本 Mixin 给 CC&amp;A ChargingRecipe 注入 IAssemblyRecipe 的全部抽象方法
  * （supportsAssembly 用接口默认值 true）：</p>
  * <ul>
  *     <li>{@link #getDescriptionForAssembly} —— 序列步骤悬停文字（特斯拉线圈充电）；</li>

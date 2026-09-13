@@ -19,7 +19,8 @@ import net.minecraft.world.phys.Vec3;
  *       在结构的本地子世界中查方块/方块实体并复用现有机器判定逻辑。</li>
  * </ul>
  *
- * <p><b>实现与加载</b>：{@link SableSubLevelBridge} 引用 Sable 类型，仅在 Sable 已安装时
+ * <p><b>实现与加载</b>：
+ * {@link com.hjmmd_8.createoreexpansion.compat.sable.SableSubLevelBridge} 引用 Sable 类型，仅在 Sable 已安装时
  * （{@code ModList.isLoaded("sable")}）由主类反射加载并注册；未装 Sable 时本接口无实现，
  * 调用方判空即可（与 Jade 可选集成的隔离模式一致）。</p>
  */

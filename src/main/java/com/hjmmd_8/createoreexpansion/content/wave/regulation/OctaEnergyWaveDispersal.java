@@ -24,7 +24,7 @@ import net.minecraft.world.phys.Vec3;
  * 入口口与开口开闭独立：波落在中心区则正交口须开，落在斜口区则斜口须开，
  * 否则撞墙消失（即使另一个口开着也不能从该区进入）。</p>
  *
- * <p><b>规则</b>（按 8 口开口总数）：
+ * <p><b>规则</b>（按 8 口开口总数）：</p>
  * <ul>
  *   <li>入口口关闭 → 撞墙消失（VANISH）；</li>
  *   <li><b>1 开口</b>：原路遣返（反弹），等级不变；</li>
@@ -34,7 +34,7 @@ import net.minecraft.world.phys.Vec3;
  *   <li><b>7~8 开口</b>：其余每个开口各发一个<b>降三级</b>子波；</li>
  *   <li>降级后等级 &le; 0 → 母波湮灭（VANISH）。</li>
  * </ul>
- * 出口为斜口时子波沿 45° 对角方向飞行（{@link #dirOf(OctaCorner)}）。</p>
+ * <p>出口为斜口时子波沿 45° 对角方向飞行（{@link #dirOf(OctaCorner)}）。</p>
  *
  * <p><b>坐标系</b>：全部输入输出为<b>机器本地（站姿语义）</b>——开口属性=本地，
  * 斜口方向=本地对角；AXIS 姿态的 world↔local 换算由调用方（{@code WaveMachineActions}/

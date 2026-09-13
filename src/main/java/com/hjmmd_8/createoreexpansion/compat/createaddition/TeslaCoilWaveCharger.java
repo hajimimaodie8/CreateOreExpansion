@@ -23,14 +23,14 @@ import net.neoforged.neoforge.energy.IEnergyStorage;
  * 与 CC&amp;A（Create Crafts &amp; Additions）<b>特斯拉线圈</b>的联动：给路过的能量波赋电荷。
  *
  * <p>规则（用户 2026-09 定义）：线圈检测自身周围<b>半径 1 格立方体</b>内是否有一条
- * <b>不带电</b>的能量波 —— 有则给它赋一次<b>随机极性</b>的电荷；每赋一次：
+ * <b>不带电</b>的能量波 —— 有则给它赋一次<b>随机极性</b>的电荷；每赋一次：</p>
  * <ul>
  *   <li>消耗线圈 {@value #ENERGY_COST_FE} FE 电量；</li>
  *   <li>播放一次<b>放电动画</b>（POWERED 通电模型保持约半秒，复用 CC&amp;A 充能时的
  *       通电表现；随后由 CC&amp;A 自身 tick 自动断电）+ 放电音效（跟随 CC&amp;A 全局声音开关）；</li>
  *   <li>进入 {@value #COOLDOWN_TICKS} tick（1 秒）冷却，期间不再赋电荷。</li>
  * </ul>
- * 波赋上电荷后即带电飞行（能量加速/偏转场开始作用），不再重复赋。</p>
+ * <p>波赋上电荷后即带电飞行（能量加速/偏转场开始作用），不再重复赋。</p>
  *
  * <p>CC&amp;A 为<b>可选</b>联动：未安装时本类方法第一行即返回（波照常飞行），
  * 不引用任何 CC&amp;A 常量初始化，无崩溃风险。</p>

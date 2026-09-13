@@ -33,8 +33,10 @@ import net.minecraft.world.phys.Vec3;
  * <p>避雷针释放机会在穿波瞬间<b>真正抽取</b>：把"已蓄满待释放"的避雷针储层清零
  * （波拿到的是一次模拟闪电加工额度；波不引雷、不能远程让避雷针真引雷）。</p>
  *
- * <p>与 {@link WaveMachineActions} 同包，可读写 {@link AbstractChargerWaveEntity} 的
- * package/protected 状态（movement/speedOffset/renderColor 等），保持实体字段封装。</p>
+ * <p>机器侧命中动作与
+ * {@link com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineActions} 同源；
+ * 波的状态（movement / speedOffset / renderColor 等）一律经 {@link AbstractChargerWaveEntity}
+ * 的公开访问器读写，不触碰实体私有字段，保持实体封装。</p>
  */
 public final class StellarWaveTransmuterPass {
 

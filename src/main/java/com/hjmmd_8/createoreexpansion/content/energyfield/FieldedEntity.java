@@ -9,7 +9,7 @@ import net.minecraft.world.phys.Vec3;
  * 实现本接口，由场应用器在每 tick 读取位置/速度/电荷并调用
  * {@link EnergyField#apply(Vec3, ChargePolarity, double)} 修正运动。</p>
  *
- * <p>实现约定：{@link #getFieldVelocity()} 返回实体<b>当前运动速度（格/秒）</b>；
+ * <p>实现约定：{@link #fieldVelocity()} 返回实体<b>当前运动速度（格/秒）</b>；
  * {@link #setFieldVelocity(Vec3)} 写入修正后的速度。波实体把"场速"与内部 tick 位移挂钩。</p>
  */
 public interface FieldedEntity {

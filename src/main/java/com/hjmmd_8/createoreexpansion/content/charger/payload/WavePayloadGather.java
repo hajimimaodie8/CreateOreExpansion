@@ -21,7 +21,7 @@ import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
- * <b>波载荷取料工具</b>：从某个中心点周围的立方体里"抽辅料/流体/电量"的<b>唯一实现</b>，
+ * <p><b>波载荷取料工具</b>：从某个中心点周围的立方体里"抽辅料/流体/电量"的<b>唯一实现</b>，
  * 供两处共用（口径必须一致，否则"变器抽到什么"和"波在半路补到什么"会对不上）：</p>
  * <ol>
  *   <li><b>变器</b>：穿波瞬间在自身扫描半径内抽载荷（{@code StellarWaveTransmuterBlockEntity#collectPayloadForWave}）；</li>

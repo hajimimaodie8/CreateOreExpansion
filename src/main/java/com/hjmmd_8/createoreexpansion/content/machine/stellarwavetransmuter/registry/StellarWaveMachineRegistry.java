@@ -134,7 +134,7 @@ public final class StellarWaveMachineRegistry {
 	}
 
 	/**
-	 * <b>"这个位置的方块算不算加工机"——变器扫描与波侧取料排除的<b>唯一口径</b></b>
+	 * <b>"这个位置的方块算不算加工机"</b>——变器扫描与波侧取料排除的<b>唯一口径</b>
 	 * （2026-09 统一：此前两边各写一份，导致 registry 登记的<b>非动能</b>加工机
 	 * ——Create 注液器 Spout / 物品排放器 Item Drain——被变器当载荷源抽、却被波侧跳过）。
 	 *
