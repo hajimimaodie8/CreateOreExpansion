@@ -303,4 +303,42 @@ public final class WaveEnvironmentChecks {
 			return null;
 		}
 	}
+
+	// ================= 环境读数（轨迹/诊断用，只读） =================
+
+	/**
+	 * 供轨迹日志展示的"加热档位说明"：本条配方需要什么热档、以及当前是哪一处、
+	 * 什么档位的烈焰人在满足它（不需要加热的配方返回空串）。
+	 *
+	 * <p>存在意义：把「普通搅拌 / 普通加热搅拌 / 超级加热搅拌」这套阶梯做成<b>可见</b>的——
+	 * 玩家一眼能看到"当前实际可用档位是多少、来源在哪"，而不是只在不满足时看到一句失败。</p>
+	 */
+	public static String describeHeat(Level level, BlockPos around, Recipe<?> recipe, BlockPos waveOrigin,
+		BlazeBurnerBlock.HeatLevel carriedHeat) {
+		if (!(recipe instanceof ProcessingRecipe<?, ?> pr) || pr.getRequiredHeat() == HeatCondition.NONE)
+			return "";
+		return "，需加热 " + pr.getRequiredHeat() + "（命中点 " + heatSourceLabel(level, around) + " / 波源 "
+			+ heatSourceLabel(level, waveOrigin) + " / 变器携带 " + carriedHeat + "）";
+	}
+
+	/** 某中心邻域内最强烈焰人的档位与位置（无则返回"无烈焰人"）。 */
+	public static String heatSourceLabel(Level level, BlockPos center) {
+		if (center == null)
+			return "无";
+		BlazeBurnerBlock.HeatLevel best = BlazeBurnerBlock.HeatLevel.NONE;
+		BlockPos bestPos = null;
+		for (BlockPos bp : WaveAuxResolver.envBlocks(center)) {
+			try {
+				BlazeBurnerBlock.HeatLevel heat = BlazeBurnerBlock.getHeatLevelOf(level.getBlockState(bp));
+				if (heat != BlazeBurnerBlock.HeatLevel.NONE && heat.ordinal() > best.ordinal()) {
+					best = heat;
+					bestPos = bp;
+				}
+			} catch (Throwable ignored) {
+				// 单个方块判定异常：跳过
+			}
+		}
+		return best == BlazeBurnerBlock.HeatLevel.NONE ? "无烈焰人"
+			: best + "@" + (bestPos == null ? "?" : bestPos.toShortString());
+	}
 }

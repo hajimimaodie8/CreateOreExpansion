@@ -30,7 +30,6 @@ import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.regi
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
-import com.simibubi.create.content.processing.recipe.HeatCondition;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
@@ -860,7 +859,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 			craftTrace("加工 {} → 选中 {} [{}]（候选 {} 条，辅料 {}）产出 {}{}", input.getItem(), chosen.id,
 				typeKeyString(chosen.recipe), ordered.size(), WaveAuxResolver.describeAuxes(chosen.auxes),
 				WaveCraftResults.describeResults(results),
-				describeHeat(pos, chosen.recipe));
+				WaveEnvironmentChecks.describeHeat(level(), pos, chosen.recipe, waveOrigin, carriedHeat));
 			chainLeft--;
 			return chosen;
 		}
@@ -869,42 +868,8 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	}
 
 	// 产物列表描述（describeResults）/ 容器内容摘要（describeHandler）/ 产物回位提示（productSlotHint）/
-	// 配方类型判定（isUpgradeTransformationRecipe 等）已随"产物推导"一族搬入 WaveCraftResults。
-
-	/**
-	 * 供轨迹日志展示的"加热档位说明"：本条配方需要什么热档、以及当前是哪一处、
-	 * 什么档位的烈焰人在满足它（不需要加热的配方返回空串）。
-	 *
-	 * <p>存在意义：把「普通搅拌 / 普通加热搅拌 / 超级加热搅拌」这套阶梯做成<b>可见</b>的——
-	 * 玩家一眼能看到"当前实际可用档位是多少、来源在哪"，而不是只在不满足时看到一句失败。</p>
-	 */
-	private String describeHeat(BlockPos around, Recipe<?> recipe) {
-		if (!(recipe instanceof ProcessingRecipe<?, ?> pr) || pr.getRequiredHeat() == HeatCondition.NONE)
-			return "";
-		return "，需加热 " + pr.getRequiredHeat() + "（命中点 " + heatSourceLabel(around) + " / 波源 "
-			+ heatSourceLabel(waveOrigin) + " / 变器携带 " + carriedHeat + "）";
-	}
-
-	/** 某中心邻域内最强烈焰人的档位与位置（无则返回"无烈焰人"）。 */
-	private String heatSourceLabel(BlockPos center) {
-		if (center == null)
-			return "无";
-		BlazeBurnerBlock.HeatLevel best = BlazeBurnerBlock.HeatLevel.NONE;
-		BlockPos bestPos = null;
-		for (BlockPos bp : WaveAuxResolver.envBlocks(center)) {
-			try {
-				BlazeBurnerBlock.HeatLevel heat = BlazeBurnerBlock.getHeatLevelOf(level().getBlockState(bp));
-				if (heat != BlazeBurnerBlock.HeatLevel.NONE && heat.ordinal() > best.ordinal()) {
-					best = heat;
-					bestPos = bp;
-				}
-			} catch (Throwable ignored) {
-				// 单个方块判定异常：跳过
-			}
-		}
-		return best == BlazeBurnerBlock.HeatLevel.NONE ? "无烈焰人"
-			: best + "@" + (bestPos == null ? "?" : bestPos.toShortString());
-	}
+	// 配方类型判定（isUpgradeTransformationRecipe 等）已随"产物推导"一族搬入 WaveCraftResults；
+	// 加热档位说明（describeHeat / heatSourceLabel）属"环境读数"，已随环境判定搬入 WaveEnvironmentChecks。
 
 	// 产物回位目标槽（⑥，productSlotHint）的实现已搬入 WaveCraftResults（见其 javadoc：
 	// "辅料即产物来源"的推导类配方——auto_upgrade / auto_smithing——产物优先放回首辅料所在的容器槽）。
