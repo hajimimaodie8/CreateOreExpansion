@@ -7,7 +7,8 @@ import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineActions;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveSubLevelCollisions;
-import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveState;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.WaveLevels;
@@ -180,47 +181,48 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private static final net.minecraft.network.syncher.EntityDataAccessor<Integer> CHARGE =
 		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.INT);
 
-	/** 波状态（普通态/变体态/攻击态）；客户端拖尾特效按它分风格，故必须同步。 */
-	private static final net.minecraft.network.syncher.EntityDataAccessor<Integer> WAVE_STATE =
-		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.INT);
+	/** 波型 id（同步给客户端：拖尾特效按波型分风格；用 id 字符串，因为扩展模组注册的波型没有序数）。 */
+	private static final net.minecraft.network.syncher.EntityDataAccessor<String> WAVE_TYPE =
+		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.STRING);
 
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 		builder.define(WAVE_LEVEL, 0);
 		builder.define(SPEED_OFFSET, 0f);
 		builder.define(CHARGE, 0);
-		builder.define(WAVE_STATE, WaveState.NORMAL.ordinal());
+		builder.define(WAVE_TYPE, "");
 	}
 
-	/** 波状态（服务端权威值；见 {@link #getWaveState()} 的客户端分支）。 */
-	private WaveState waveState = WaveState.NORMAL;
+	/** 波型（服务端权威值；见 {@link #getWaveType()} 的客户端分支）。 */
+	private WaveType waveType = WaveTypes.NORMAL;
 
 	/**
-	 * 波当前状态：服务端读本字段；客户端读同步值（拖尾/绽放特效在客户端播，必须能拿到）。
+	 * 波当前所属<b>波型</b>：服务端读本字段，客户端按同步 id 现查注册表
+	 * （拖尾/绽放特效在客户端播，必须能拿到）。
 	 *
-	 * <p>服务端与同步值同源——只有 {@link #trySetWaveState(WaveState)} 会改动它们，
-	 * 且两者一起写，故不存在"服务端与客户端看到不同状态"的窗口（构造/读档同理）。</p>
+	 * <p>服务端与同步值同源——只有 {@link #trySetWaveType(WaveType)} 会改动它们，且两者一起写，
+	 * 故不存在"服务端与客户端看到不同波型"的窗口（构造与读档同理）。</p>
 	 */
-	public WaveState getWaveState() {
+	public WaveType getWaveType() {
 		if (level() != null && level().isClientSide)
-			return WaveState.byOrdinal(this.entityData.get(WAVE_STATE));
-		return waveState;
+			return WaveTypes.byIdString(this.entityData.get(WAVE_TYPE));
+		return waveType;
 	}
 
 	/**
-	 * 尝试改变波的状态（<b>一生只能变一次</b>）：当前已是非普通态则拒绝。
+	 * 尝试改变波的<b>波型</b>（<b>一生只能变一次</b>）：当前已不是普通波则拒绝。
 	 *
-	 * <p>转换与场都走它：变器"加工波变态"穿波转换 → {@link WaveState#OMNI}；
-	 * "攻击波变态"的场点燃 → {@link WaveState#ATTACK}。{@link WaveState#NORMAL} 只能作为初值，
-	 * 不能作为目标（否则"变一次"的语义会被绕开）。</p>
+	 * <p>变器"加工波变态"穿波转换 → {@link WaveTypes#OMNI}；"攻击波变态"的场点燃 → {@link WaveTypes#ATTACK}。
+	 * 普通波只能作为初值、不能作为目标（否则"变一次"的语义会被绕开）。</p>
 	 *
-	 * @return 是否真的改变了状态
+	 * @return 是否真的改变了波型
 	 */
-	public boolean trySetWaveState(WaveState target) {
-		if (target == null || target == WaveState.NORMAL || getWaveState().isLocked())
+	public boolean trySetWaveType(WaveType target) {
+		if (target == null || target == WaveTypes.NORMAL || getWaveType() != WaveTypes.NORMAL)
 			return false;
-		this.waveState = target;
-		this.entityData.set(WAVE_STATE, target.ordinal());
+		this.waveType = target;
+		this.entityData.set(WAVE_TYPE, target.id()
+			.toString());
 		return true;
 	}
 
@@ -347,7 +349,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 		// 命中生物：<b>只有攻击态</b>才造成伤害（伤害值沿用原普通能量波的公式）；
 		// 普通态（只会充能加工）与变体态从生物身上穿过——它们专事加工，不兼职武器。
-		if (getWaveState().dealsDamage()) {
+		if (getWaveType().dealsDamage()) {
 			List<LivingEntity> entities = level().getEntitiesOfClass(LivingEntity.class, hitBox, e -> e.isAlive());
 			if (!entities.isEmpty()) {
 				LivingEntity target = entities.get(0);
@@ -382,7 +384,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	protected void onItemHit(List<ItemEntity> items) {
 		// 充能加工是"普通态专属"：攻击态是纯攻击（不理掉落物、不消散），
 		// 变体态则覆写本方法走远程加工（见 StellarWaveEntity）。
-		if (!getWaveState().allowsChargingRecipes())
+		if (!getWaveType().allowsChargingProcessing())
 			return;
 		// 核心加工逻辑已抽取至 ChargerWaveProcessor（配方匹配 → 消耗输入 → 产出结果）
 		if (processor.processItemEntity(items.get(0))) {
@@ -425,7 +427,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	public boolean handleItemInventoryBlock(IItemHandler handler, BlockPos pos) {
 		// 充能加工是"普通态专属"：攻击态不加工（返回 false → 调用方按撞墙处理，波在方块处消散）
-		if (!getWaveState().allowsChargingRecipes())
+		if (!getWaveType().allowsChargingProcessing())
 			return false;
 		processor.processBlockHandler(handler, pos);
 		return false; // 普通波：无论匹配与否都按撞墙消散（调用方处理特效）
@@ -763,9 +765,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		this.entityData.set(SPEED_OFFSET, (float) speedOffset);
 		this.entityData.set(CHARGE, chargeCode);
 		// 波状态：老存档没有该键 → 保持构造时的状态（变体波的构造/覆写会保证它是变体态）
-		if (tag.contains("WaveState"))
-			waveState = WaveState.byId(tag.getString("WaveState"));
-		this.entityData.set(WAVE_STATE, waveState.ordinal());
+		if (tag.contains("WaveType"))
+			waveType = WaveTypes.byIdString(tag.getString("WaveType"));
+		this.entityData.set(WAVE_TYPE, waveType.id().toString());
 	}
 
 	@Override
@@ -777,7 +779,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		tag.putFloat("BoostRemaining", boostRemaining);
 		tag.putInt("BoostStep", boostStep);
 		tag.putDouble("SpeedOffset", speedOffset);
-		tag.putString("WaveState", waveState.id());
+		tag.putString("WaveType", waveType.id().toString());
 		tag.putInt("Charge", charge == null ? 0
 			: charge == com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE ? 1 : 2);
 		if (spawnPos != null) {

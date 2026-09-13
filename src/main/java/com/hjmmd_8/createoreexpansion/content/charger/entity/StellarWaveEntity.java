@@ -24,7 +24,8 @@ import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.Energy
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.EnergySource;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidRef;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidSource;
-import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveState;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadRelease;
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
@@ -233,7 +234,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		super(AllEntityTypes.STELLAR_WAVE.get(), level, pos, movementDir, waveLevel);
 		this.waveOrigin = BlockPos.containing(pos);
 		// 变体波即"变体态／全能态"：构造即定型（一生只变一次，此后不再受任何场/变器影响）
-		trySetWaveState(WaveState.OMNI);
+		trySetWaveType(WaveTypes.OMNI);
 	}
 
 	/**
@@ -1065,9 +1066,9 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	@Override
 	protected void readAdditionalSaveData(CompoundTag tag) {
 		super.readAdditionalSaveData(tag);
-		// 变体波永远是"变体态／全能态"：老存档没有 WaveState 键时兜住（新存档由基类还原）
-		if (getWaveState() == WaveState.NORMAL)
-			trySetWaveState(WaveState.OMNI);
+		// 变体波永远是"全能波"：老存档没有 WaveType 键时兜住（新存档由基类按 id 还原）
+		if (getWaveType() == WaveTypes.NORMAL)
+			trySetWaveType(WaveTypes.OMNI);
 		attributes = new ArrayList<>();
 		ListTag list = tag.getList("WaveAttributes", Tag.TAG_STRING);
 		for (int i = 0; i < list.size(); i++) {
