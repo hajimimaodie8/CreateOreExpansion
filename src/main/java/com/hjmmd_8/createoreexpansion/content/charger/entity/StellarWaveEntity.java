@@ -10,6 +10,7 @@ import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.Candidate;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveAuxResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftConsumption;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftExecutor;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateEvaluator;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveOutputPlacer;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateOrdering;
@@ -47,7 +48,6 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -76,7 +76,7 @@ import net.neoforged.neoforge.items.IItemHandler;
  *       → 产物继续可续链。</li>
  * </ul>
  */
-public class StellarWaveEntity extends AbstractChargerWaveEntity implements WaveCraftConsumption.Host {
+public class StellarWaveEntity extends AbstractChargerWaveEntity implements WaveCraftConsumption.Host, WaveCraftExecutor.Host {
 
 	/** 变器赋予的加工机属性（方块 id 快照）；可为空 = 波未携带加工属性（退化为普通波）。 */
 	private List<ResourceLocation> attributes = new ArrayList<>();
@@ -307,7 +307,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * <p><b>不抽的东西</b>：命中点自身所在方块（那是正在加工的目标）、工作盆（玩家在用的加工容器）、
 	 * 各类动能机器（内部库存）。</p>
 	 */
-	private void refillPayloadAround(BlockPos center) {
+	public void refillPayloadAround(BlockPos center) {
 		if (!com.hjmmd_8.createoreexpansion.common.AllConfig.waveRefillPayloadOnHit)
 			return; // 默认关闭：载荷只在变器穿波时取一次（见方法注释）
 		if (level().isClientSide || center == null || carriedScanRadius <= 0)
@@ -489,32 +489,9 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		return types;
 	}
 
-	/** 单次加工尝试：全库检索候选，选 1 条执行；返回是否成功加工。 */
+	/** 单次加工尝试（掉落物路径）：全库检索候选，选 1 条执行；返回是否成功加工。编排见 `WaveCraftExecutor`。 */
 	private boolean tryCraft(ItemEntity item) {
-		ItemStack input = item.getItem();
-		if (input.isEmpty())
-			return false;
-		StellarWaveMachineIntegrations.ensureRegistered();
-
-		// 强化避雷针释放机会：本次命中最多引一道雷（2026-09 审计修复）。
-		// 旧实现逐件掉落物都调一次：一次 sweep 命中多件时会把引雷额度全烧光、在多处各落一道雷，
-		// 且逐件复位 strikeOwnsTypes 会让"同一件物品只被雷/波加工一遍"的护栏对后续掉落物失效。
-		// 这里用 strikeOwnsTypes 兼作"本次命中已引雷"，不再逐件复位（方块路径每次命中仍会复位）。
-		if (!strikeOwnsTypes)
-			summonLightningAt(item.blockPosition());
-
-		// 环境判定以命中点为中心（掉落物自身位置），供配方机器环境前置条件使用。
-		// 掉落物路径没有容器上下文 → 物品容器/流体容器都传 null、主料槽 = -1
-		// （辅料与流体只可能来自波载荷）。
-		List<Candidate> candidates = collectCandidates(input, item.blockPosition(), null, -1, null);
-		if (candidates.isEmpty())
-			return false;
-
-		Candidate chosen = pickCandidate(candidates, input, null);
-		if (!applyCraft(item, chosen))
-			return false;
-		rememberCraftLock(input, chosen); // 同种物品批次锁定：下次同输入直接复用该配方
-		return true;
+		return executor().tryCraft(item);
 	}
 
 	/**
@@ -556,7 +533,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * 候选评估所需状态（现场构造一个：载荷按引用读取，故不跨载荷变更缓存复用）。
 	 * 两个诊断出口分别是变体的 {@code craftDebug}（加工诊断）与 {@code craftTrace}（轨迹），二者开关与前缀不同。
 	 */
-	private WaveCandidateEvaluator.Context candidateContext() {
+	public WaveCandidateEvaluator.Context candidateContext() {
 		return new WaveCandidateEvaluator.Context(level(), auxResolver(), carriedHeat, waveOrigin,
 			(msg, args) -> craftDebug(msg, args), (msg, args) -> craftTrace(msg, args), allowedTypeIds(),
 			payloadItems, payloadFluid, payloadEnergy);
@@ -583,7 +560,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 *
 	 * @return 是否真的引了一道雷（没机会 / 客户端 / 位置为空则 false）
 	 */
-	private boolean summonLightningAt(BlockPos pos) {
+	public boolean summonLightningAt(BlockPos pos) {
 		if (rodCharges <= 0 || pos == null || level().isClientSide)
 			return false;
 		rodCharges--;
@@ -609,51 +586,8 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		return WaveCraftResults.typeKeyOf(recipe);
 	}
 
-	/** 执行一次加工：主料 −1；命中第二/第三输入时逐个消耗对应辅料（手持物类配方不消耗；产物推导类
-	 * 辅料被"变形/锻入"产物）；流体输入按需消耗；产物生成在命中点（流体产物就近注罐，注不进浪费）；链 −1。 */
-	private boolean applyCraft(ItemEntity item, Candidate candidate) {
-		ItemStack input = item.getItem();
-		ItemStack single = input.copy();
-		single.setCount(1);
-
-		// 产物计算：产物推导类（③b auto_upgrade 变形升级 / ③c auto_smithing 锻造融合：results 为空）
-		// 产物需从当前候选主料+辅料推导；普通类走 RecipeApplier 滚结果。
-		// 掉落物路径没有容器上下文，故 handler 传 null（辅料只可能来自波载荷）。
-		List<ItemStack> results = WaveCraftResults.compute(craftResultsContext(), candidate, single, null,
-			item.blockPosition());
-		if (results == null)
-			return false; // 无可执行产物（不消耗任何东西）
-
-		input.shrink(1);
-		if (input.isEmpty())
-			item.discard();
-		// 消耗资源（辅料逐个扣 / 流体 / 电量）——与方块槽路径共用同一实现
-		// （此路径无容器上下文：辅料与流体都只可能来自载荷）
-		consumeForCraft(candidate, null, null);
-
-		Vec3 pos = item.isRemoved() ? position() : item.position();
-		for (ItemStack result : results) {
-			if (result.isEmpty())
-				continue;
-			ItemEntity out = new ItemEntity(level(), pos.x, pos.y, pos.z, result);
-			out.setDeltaMovement(Vec3.ZERO);
-			level().addFreshEntity(out);
-		}
-		// 流体产物就近注入储罐（无处可存则浪费，不回波）
-		if (candidate.recipe instanceof ProcessingRecipe<?, ?> pr && !pr.getFluidResults()
-			.isEmpty()) {
-			for (FluidStack fr : pr.getFluidResults())
-				if (!fr.isEmpty())
-					WaveOutputPlacer.fillNearestTank(level(), blockPosition(), fr.copy());
-		} else {
-			// 非 ProcessingRecipe 族（拆解等）的流体产物：掉落物路径无容器上下文，只能就近注入
-			for (FluidStack fr : WaveCraftResults.familyFluidResults(level(), candidate, single, item.blockPosition()))
-				if (!fr.isEmpty())
-					WaveOutputPlacer.fillNearestTank(level(), blockPosition(), fr.copy());
-		}
-		chainLeft--;
-		return true;
-	}
+	// 掉落物路径的一次加工执行（applyCraft：产物推导 → 主料 −1 → 消耗 → 掉落产物 → 流体产物就近注罐 → 链 −1）
+	// 已随"加工编排"一族搬入 WaveCraftExecutor。
 
 	/**
 	 * 波当前"携带到的"配方类型 id 集合（= 配方类型门的白名单）。
@@ -715,157 +649,103 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 */
 	@Override
 	public boolean handleItemInventoryBlock(IItemHandler handler, BlockPos pos) {
-		if (level().isClientSide)
-			return true;
-		if (attributes.isEmpty() && recipeTypes.isEmpty())
-			return super.handleItemInventoryBlock(handler, pos); // 无加工能力：维持普通波行为
-		if (chainLeft <= 0) {
-			finishAndDiscard();
-			return true;
-		}
-		StellarWaveMachineIntegrations.ensureRegistered();
-
-		// 记录"最近加工过的方块"：余料处置（配置 wave.payloadRelease=NEAREST_CONTAINER）以它为圆心，
-		// 在变器读取半径内找最近的可存容器（见 releasePayload）
-		lastProcessedBlock = pos.immutable();
-
-		// 引雷：携带强化避雷针释放机会时，命中哪个方块就在那里落雷
-		// （闪电加工由本模组"闪电落地统一加工"接管该落点 1 格内的掉落物/置物台/工作盆）
-		strikeOwnsTypes = false; // 每次命中复位：本命中是否引雷，决定要不要摘掉雷击类类型
-		summonLightningAt(pos);
-
-		// 命中后先"就地补料"（范围 = 变器读取半径）：让波能在加工现场补到辅料/流体/电量
-		refillPayloadAround(pos);
-
-		// 命中点流体能力（可空：置物台/无流体能力的方块返回 null → 流体只能来自载荷）
-		IFluidHandler containerFluid = level().getCapability(Capabilities.FluidHandler.BLOCK, pos, null);
-
-		// 循环加工：链允许时尽量把该方块槽内可加工的物品处理完（一次碰撞处理一"批"），
-		// 链尽才消散；与掉落物"逐 tick 一件"不同——方块槽静止，波一次扫过应清空可加工项。
-		// batchLock：<b>单次方块命中处理生命周期内的候选锁</b>（不跨 tick）——同一批同种物品
-		// 反复进循环时优先复用首次成功的配方，杜绝一锅混出两种产物（①修复）。
-		boolean any = false;
-		Candidate batchLock = null;
-		while (chainLeft > 0) {
-			int slot = findCraftableSlot(handler, pos, containerFluid);
-			if (slot < 0)
-				break;
-			Candidate done = craftFromSlot(handler, slot, pos, batchLock, containerFluid);
-			if (done == null)
-				break; // 该槽无可执行（如环境不满足/无产物/并发变化）：不再原地空转，结束本批处理
-			batchLock = done; // 记住本批本次使用的配方，同批后续同种物品优先复用
-			any = true;
-		}
-		if (any) {
-			if (chainLeft <= 0)
-				finishAndDiscard(); // 链尽：释放载荷并消散
-			return true; // 已处理（波不在此消散，继续飞行/穿出）
-		}
-		craftTrace("命中 {} 无任何可加工候选 → 按撞墙消散；容器内容 {}（属性 {} 个 / 配方类型 {} 个）", pos,
-			WaveCraftResults.describeHandler(handler), attributes.size(), recipeTypes.size());
-		return false; // 槽内无一可加工 → 调用方按撞墙消散
+		// 编排（无加工能力退化 / 引雷 / 就地补料 / 批次循环与批锁 / 链尽释放）全在
+		// WaveCraftExecutor；本类只作为它的 Host 提供状态与动作。
+		return executor().handleInventoryBlock(handler, pos);
 	}
 
-	/** 找第一个存在可加工候选（含环境前置）的槽（不真取）。
-	 *  候选评估带上本容器（物品槽 + 流体槽）与主料槽：辅料优先取<b>本容器其它槽</b>、载荷兜底；
-	 *  流体优先取<b>本容器流体槽</b>、载荷兜底。 */
-	private int findCraftableSlot(IItemHandler handler, BlockPos pos, IFluidHandler containerFluid) {
-		for (int slot = 0; slot < handler.getSlots(); slot++) {
-			ItemStack stack = handler.getStackInSlot(slot);
-			if (stack.isEmpty())
-				continue;
-			ItemStack probe = stack.copy();
-			probe.setCount(1);
-			if (!collectCandidates(probe, pos, handler, slot, containerFluid).isEmpty())
-				return slot;
-		}
-		return -1;
+	/** 加工编排器（每次现场构造：它不持状态，状态全经 Host 回到本类）。 */
+	private WaveCraftExecutor executor() {
+		return new WaveCraftExecutor(this);
 	}
 
-	/**
-	 * 从槽取 1 个主料执行一次配方（产物优先放回原槽；"辅料即产物来源"类放回辅料槽）。
-	 *
-	 * @param preferred 本批方块处理已锁定的候选（可为 null = 尚无锁）；当前槽物品仍匹配它时直接复用，
-	 *                  否则重新按输入种类锁定（参见 {@link #pickCandidate}）
-	 * @param containerFluid 命中点流体能力（可空）
-	 * @return 成功返回所用候选（调用方用于批锁）；无可执行（含环境/产物问题）返回 null
-	 */
-	private Candidate craftFromSlot(IItemHandler handler, int slot, BlockPos pos, Candidate preferred,
-		IFluidHandler containerFluid) {
-		ItemStack stack = handler.getStackInSlot(slot);
-		if (stack.isEmpty())
-			return null;
-		ItemStack probe = stack.copy();
-		probe.setCount(1);
-		List<Candidate> candidates = collectCandidates(probe, pos, handler, slot, containerFluid);
-		if (candidates.isEmpty())
-			return null;
+	// ========== WaveCraftExecutor.Host：编排所需的实体侧状态与动作 ==========
 
-		// 逐条候选试执行（按 批锁 → 输入种类 LRU → 专用度 排序，见 orderCandidates）：
-		// 材料匹配但"推不出产物"的候选（某些 mod 的 results 为空配方、辅料在派生期间被并发取走、
-		// 或升级映射不到目标物品）只跳过该条，不再像以前那样直接中断整批——
-		// "命中一条空产物候选 → 整锅罢工"是"放了料却什么都没发生"的来源之一。
-		List<Candidate> ordered = orderCandidates(candidates, probe, preferred);
-		for (Candidate chosen : ordered) {
-			List<ItemStack> results = WaveCraftResults.compute(craftResultsContext(), chosen, probe.copy(), handler, pos);
-			if (results == null) {
-				craftTrace("跳过候选 {} [{}]：材料匹配但推不出产物（输入 {}）", chosen.id, typeKeyString(chosen.recipe),
-					probe.getItem());
-				continue;
-			}
-
-			// 真取 1 个主料；取空（并发变化）则跳过此槽
-			ItemStack input = handler.extractItem(slot, 1, false);
-			if (input.isEmpty())
-				return null;
-
-			consumeForCraft(chosen, handler, containerFluid);
-			rememberCraftLock(probe, chosen); // 批锁（同输入种类后续复用）
-			// 产物回位（⑥）：产物优先放回<b>被消耗辅料所在的槽</b>（变形升级/锻造融合的产物在语义上
-			// 就是"辅料被加工成的新物"——如下界合金工具/带纹饰盔甲），主料槽作次选，都放不下才掉落在
-			// 方块上方。这样"钻石工具/盔甲那一个盆槽"里直接出现产物，而不是堆到主料槽。
-			int target = WaveCraftResults.productSlotHint(chosen, slot);
-			if (target < 0 || target >= handler.getSlots())
-				target = slot; // 防御：槽号失效则回主料槽
-			if (target != slot)
-				craftDebug("产物回位：优先槽 {}（辅料槽），主料槽 {}；辅料 {}", target, slot, WaveAuxResolver.describeAuxes(chosen.auxes));
-			for (ItemStack result : results) {
-				if (result.isEmpty())
-					continue;
-				ItemStack leftover = WaveOutputPlacer.insertBack(handler, target, result);
-				if (!leftover.isEmpty() && target != slot)
-					leftover = WaveOutputPlacer.insertBack(handler, slot, leftover); // 次选：主料槽
-				if (!leftover.isEmpty())
-					WaveOutputPlacer.dropAtBlock(level(), pos, leftover);
-			}
-			// 流体产物：优先注入命中方块自身储罐（真空室等），放不下/无处可存再就近
-			if (chosen.recipe instanceof ProcessingRecipe<?, ?> pr && !pr.getFluidResults()
-				.isEmpty()) {
-				for (FluidStack fr : pr.getFluidResults())
-					if (!fr.isEmpty()) {
-						FluidStack rest = WaveOutputPlacer.fillBlock(level(), pos, fr.copy());
-						if (!rest.isEmpty())
-							WaveOutputPlacer.fillNearby(level(), blockPosition(), rest); // 尽力而为，剩余浪费
-					}
-			} else {
-				// 非 ProcessingRecipe 族（拆解等）的流体产物：同样"命中方块储罐优先 → 就近"
-				for (FluidStack fr : WaveCraftResults.familyFluidResults(level(), chosen, probe, pos))
-					if (!fr.isEmpty()) {
-						FluidStack rest = WaveOutputPlacer.fillBlock(level(), pos, fr.copy());
-						if (!rest.isEmpty())
-							WaveOutputPlacer.fillNearby(level(), blockPosition(), rest);
-					}
-			}
-			craftTrace("加工 {} → 选中 {} [{}]（候选 {} 条，辅料 {}）产出 {}{}", input.getItem(), chosen.id,
-				typeKeyString(chosen.recipe), ordered.size(), WaveAuxResolver.describeAuxes(chosen.auxes),
-				WaveCraftResults.describeResults(results),
-				WaveEnvironmentChecks.describeHeat(level(), pos, chosen.recipe, waveOrigin, carriedHeat));
-			chainLeft--;
-			return chosen;
-		}
-		craftTrace("槽 {} 的 {} 匹配到 {} 条候选但全部推不出产物 → 本槽放弃", slot, probe.getItem(), ordered.size());
-		return null;
+	@Override
+	public BlockPos wavePos() {
+		return blockPosition();
 	}
+
+	@Override
+	public Vec3 waveVec() {
+		return position();
+	}
+
+	@Override
+	public WaveCraftConsumption consumption() {
+		if (consumption == null)
+			consumption = new WaveCraftConsumption(this, (msg, args) -> craftDebug(msg, args));
+		return consumption;
+	}
+
+	/** 资源扣减器实例（惰性持有：其构造引用了本类，不能放在字段初始化器里）。 */
+	private WaveCraftConsumption consumption;
+
+	@Override
+	public int chainLeft() {
+		return chainLeft;
+	}
+
+	@Override
+	public void setChainLeft(int chainLeft) {
+		this.chainLeft = chainLeft;
+	}
+
+	@Override
+	public boolean strikeOwnsTypes() {
+		return strikeOwnsTypes;
+	}
+
+	@Override
+	public void setStrikeOwnsTypes(boolean owns) {
+		this.strikeOwnsTypes = owns;
+	}
+
+	@Override
+	public void setLastProcessedBlock(BlockPos pos) {
+		this.lastProcessedBlock = pos;
+	}
+
+	@Override
+	public boolean hasCraftingAbility() {
+		return !(attributes.isEmpty() && recipeTypes.isEmpty());
+	}
+
+	@Override
+	public int carriedMachineCount() {
+		return attributes.size();
+	}
+
+	@Override
+	public int carriedRecipeTypeCount() {
+		return recipeTypes.size();
+	}
+
+	@Override
+	public boolean handleInventoryBlockAsPlainWave(IItemHandler handler, BlockPos pos) {
+		return super.handleItemInventoryBlock(handler, pos);
+	}
+
+	@Override
+	public BlockPos waveOrigin() {
+		return waveOrigin;
+	}
+
+	@Override
+	public WaveCraftResults.DebugLog debug() {
+		return (msg, args) -> craftDebug(msg, args);
+	}
+
+	@Override
+	public WaveCraftResults.DebugLog trace() {
+		return (msg, args) -> craftTrace(msg, args);
+	}
+
+	// 方块槽路径的编排（找槽 findCraftableSlot / 逐条试执行 craftFromSlot）与掉落物路径的执行
+	// （applyCraft）已随"加工编排"一族搬入 WaveCraftExecutor。
+
+	// 从槽取主料执行配方（craftFromSlot：逐条候选试执行、产物回位优先辅料槽、流体产物"方块储罐优先→就近"）
+	// 已随"加工编排"一族搬入 WaveCraftExecutor。
 
 	// 产物列表描述（describeResults）/ 容器内容摘要（describeHandler）/ 产物回位提示（productSlotHint）/
 	// 配方类型判定（isUpgradeTransformationRecipe 等）已随"产物推导"一族搬入 WaveCraftResults；
@@ -908,17 +788,17 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	}
 
 	/** 挑选本次要执行的候选（排序策略见 {@link WaveCandidateOrdering#pick}）。 */
-	private Candidate pickCandidate(List<Candidate> candidates, ItemStack input, Candidate preferred) {
+	public Candidate pickCandidate(List<Candidate> candidates, ItemStack input, Candidate preferred) {
 		return WaveCandidateOrdering.pick(candidates, preferred, rememberedRecipeId(input), waveSpeedMode());
 	}
 
 	/** 候选排序（排序策略见 {@link WaveCandidateOrdering#order}）。 */
-	private List<Candidate> orderCandidates(List<Candidate> candidates, ItemStack input, Candidate preferred) {
+	public List<Candidate> orderCandidates(List<Candidate> candidates, ItemStack input, Candidate preferred) {
 		return WaveCandidateOrdering.order(candidates, preferred, rememberedRecipeId(input), waveSpeedMode());
 	}
 
 	/** 成功加工后记录该输入种类的配方锁（供后续同种输入复用）。 */
-	private void rememberCraftLock(ItemStack input, Candidate chosen) {
+	public void rememberCraftLock(ItemStack input, Candidate chosen) {
 		String key = inputKey(input);
 		if (!key.isEmpty() && chosen != null && chosen.id != null)
 			lastRecipeByInputKey.put(key, chosen.id);
@@ -942,7 +822,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	}
 
 	/** 链用尽：释放剩余载荷（先入容器/储罐/储能，否则掉落/浪费）并消散。 */
-	private void finishAndDiscard() {
+	public void finishAndDiscard() {
 		if (!payloadReleased) {
 			payloadReleased = true;
 			try {
@@ -998,7 +878,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	/** 产物推导的实体侧上下文（每次现场构造：世界 + 辅料解析器 + 调试日志出口）。
 	 *  {@code craftDebug} 是静态方法，故调试出口用 lambda 绑定（{@code this::craftDebug} 对静态方法不合法）。 */
-	private WaveCraftResults.Context craftResultsContext() {
+	public WaveCraftResults.Context craftResultsContext() {
 		return new WaveCraftResults.Context(level(), auxResolver(), (msg, args) -> craftDebug(msg, args));
 	}
 
