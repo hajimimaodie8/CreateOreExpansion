@@ -311,20 +311,23 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (renderColor.distanceToSqr(targetColor) < 1.0E-5d)
 			renderColor = targetColor;
 
-		// 飞行粒子（密集，沿移动方向散布）：主体 = 当前渲染色（欧米伽=玫红），
-		// 欧米伽（5 级）额外每 tick 叠 1 颗金色尾迹点缀 —— 金色只占少数，避免整条波看起来发黄
+		// 飞行粒子（密集，沿移动方向散布）：主体 = 当前渲染色（欧米伽=玫红），颜色由本波的拖尾风格决定——
+		// 服务端走 ChargerWaveFx.sendTrail、Ponder 场景走 ChargerWaveFx.addTrailParticles，
+		// 此处只负责把风格（getWaveType().trailStyle()）与原有的位置/数量/散布/速度原样传过去，
+		// 风格带来的颜色变换与点缀粒子全部在 ChargerWaveFx 的风格映射表里定义。
+		// 欧米伽（5 级）额外每 tick 叠 1 颗金色尾迹点缀 —— 金色是刻意叠加的装饰色（不是波的渲染色），
+		// 故继续用无风格重载，保持金饰不被染色、只占少数，避免整条波看起来发黄。
 		if (level() instanceof ServerLevel server) {
-			server.sendParticles(ChargerWaveFx.waveParticle(renderColor, 0.45f), getX(), getY(), getZ(), 6,
-				movement.x * 0.12, movement.y * 0.12, movement.z * 0.12, 0.03);
+			ChargerWaveFx.sendTrail(server, position(), getWaveType().trailStyle(), renderColor, 0.45f, 6,
+				movement.scale(0.12), 0.03);
 			if (isOmega())
 				server.sendParticles(ChargerWaveFx.waveParticle(OMEGA_GOLD, 0.5f), getX(), getY(), getZ(), 1,
 					movement.x * 0.3, movement.y * 0.3, movement.z * 0.3, 0.05);
 		} else if (ponderScene) {
-			// Ponder 场景：客户端粒子（PonderLevel.addParticle 已实现，会渲染在场景中）
-			for (int i = 0; i < 6; i++) {
-				level().addParticle(ChargerWaveFx.waveParticle(renderColor, 0.45f), getX(), getY(), getZ(),
-					movement.x * 0.12, movement.y * 0.12, movement.z * 0.12);
-			}
+			// Ponder 场景：客户端粒子（PonderLevel.addParticle 已实现，会渲染在场景中）；
+			// 仍是每 tick 6 颗主粒子（与原 6 次 addParticle 循环等量），只是改成一次调用发完
+			ChargerWaveFx.addTrailParticles(level(), position(), getWaveType().trailStyle(), renderColor, 0.45f, 6,
+				movement.scale(0.12));
 			if (isOmega())
 				level().addParticle(ChargerWaveFx.waveParticle(OMEGA_GOLD, 0.5f), getX(), getY(), getZ(),
 					movement.x * 0.3, movement.y * 0.3, movement.z * 0.3);
@@ -357,7 +360,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 					target.hurt(level().damageSources()
 						.indirectMagic(this, null), getDamage());
 				}
-				ChargerWaveFx.burst(level(), position(), renderColor);
+				ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
 				discard();
 				return;
 			}
@@ -388,7 +391,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			return;
 		// 核心加工逻辑已抽取至 ChargerWaveProcessor（配方匹配 → 消耗输入 → 产出结果）
 		if (processor.processItemEntity(items.get(0))) {
-			ChargerWaveFx.burst(level(), position(), renderColor);
+			ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
 			discard();
 		}
 	}
@@ -468,7 +471,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		Vec3 center = position().add(other.position()).scale(0.5);
 
 		// 1. 范围爆炸：粒子 + 音效 + 区域效果
-		ChargerWaveFx.triggerBoom(level(), this, center, renderColor, other.renderColor, boomLevel);
+		ChargerWaveFx.triggerBoom(level(), this, center, getWaveType().trailStyle(), renderColor,
+			other.renderColor, boomLevel);
 
 		// 2. 两波相互湮灭（标记防对方同 tick 重复触发）
 		this.collided = true;
@@ -481,7 +485,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	public void remove(RemovalReason reason) {
 		// 客户端在实体消散时补充球面均匀扩散绽放
 		if (reason == RemovalReason.DISCARDED && level().isClientSide) {
-			ChargerWaveFx.burstParticles(level(), position(), renderColor);
+			ChargerWaveFx.burstParticles(level(), position(), getWaveType().trailStyle(), renderColor);
 		}
 		super.remove(reason);
 	}

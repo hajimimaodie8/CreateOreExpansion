@@ -28,6 +28,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadRelease;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.BorrowedChargingSource;
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
@@ -205,6 +206,108 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	private static void craftTrace(String msg, Object... args) {
 		if (CRAFT_TRACE)
 			com.hjmmd_8.createoreexpansion.CreateOreExpansion.LOGGER.info("[变体波轨迹] " + msg, args);
+	}
+
+	// ================= 借用充能（全能波的外部条件放行） =================
+
+	/**
+	 * 本次命中已解析出的<b>借来的充能源</b>（{@code null} = 本次命中没有可借的充能器）。
+	 *
+	 * <p><b>为什么要有这个字段</b>：解析要扫一遍方块，而波每 tick 都在飞且每 tick 都可能命中——
+	 * 若在命中处理里对每件掉落物、每次方块命中各扫一遍，同一 tick 的同一批命中会重复付出扫描成本。
+	 * 所以本字段只做<b>单次命中生命周期内的复用</b>：见
+	 * {@link #borrowedChargingSource()}（每个 tick 至多解析一次）。</p>
+	 */
+	private BorrowedChargingSource borrowedSource;
+
+	/**
+	 * {@link #borrowedSource} 对应的 tick（{@code -1} = 本 tick 还没解析过）。
+	 *
+	 * <p><b>失效策略：每个 tick 重算一次</b>（tick 一变即失效）。为什么选"每 tick"而不是
+	 * "命中一次算一次"或"N tick 失效"：</p>
+	 * <ul>
+	 *   <li>扫描<b>只在真的有命中时</b>才发生——没命中的 tick 连本方法都不会被调用，
+	 *       所以"每 tick 重算"在最坏情况下也只等于"每 tick 一次命中扫一遍"，不会变成每 tick 扫；</li>
+	 *   <li>同一 tick 内同一批掉落物/同一次方块命中要试多件物品，复用结果把它们合并成一次扫描；</li>
+	 *   <li>不跨 tick 复用 = 玩家拆掉/挪走充能器、或给它改等级后，<b>下一个 tick 就生效</b>，
+	 *       不需要额外写"方块变化时让缓存失效"的监听，也就没有一处可能漏掉的失效路径。</li>
+	 * </ul>
+	 *
+	 * <p><b>不落盘、不同步</b>：这两个字段都是纯运行态，{@code addAdditionalSaveData} /
+	 * {@code defineSynchedData} 里都没有它们（借用充能是每命中的瞬时外部条件）。</p>
+	 */
+	private int borrowedSourceTick = -1;
+
+	/**
+	 * 取本次命中的借来的充能源（<b>本类唯一的借用判定入口</b>：判定与取值全部委托
+	 * {@link BorrowedChargingSource#resolve}，实体侧不做任何等级比较或方块扫描）。
+	 */
+	private BorrowedChargingSource borrowedChargingSource() {
+		if (borrowedSourceTick != tickCount) {
+			borrowedSourceTick = tickCount;
+			borrowedSource = BorrowedChargingSource.resolve(level(), waveOrigin, Math.max(1, carriedScanRadius));
+		}
+		return borrowedSource;
+	}
+
+	/**
+	 * <b>借用充能（掉落物路径）</b>：全能波自身没有充能加工，但变器读取半径内若有星辉石应力充能器，
+	 * 就用<b>那台充能器的发射等级</b>执行一次 charging 配方加工。
+	 *
+	 * <p><b>语义（必须守住）</b>：这是"外部条件放行"，不是"本性改变"——
+	 * <b>不改变波型</b>（仍是 {@link WaveTypes#OMNI}），也<b>不让
+	 * {@link WaveType#allowsChargingProcessing()} 的返回值变化</b>（那个方法回答"这是什么波"，
+	 * 而借用回答"波此刻恰好站在谁旁边"）。因此这里只在<b>调用点</b>判断"有没有可借的充能源"，
+	 * 从不把结果写回波型或任何持久状态。</p>
+	 *
+	 * <p><b>为什么加工逻辑一行都不抄</b>：充能加工的实现是 {@link ChargerWaveProcessor}
+	 * （普通波那套：配方匹配 → 充能/消耗输入 → 产出），这里只是"借来等级 → 造一个处理器"，
+	 * 见 {@link BorrowedChargingSource#processor(Level)}。</p>
+	 *
+	 * <p><b>命中即消散</b>：借用走的是普通波语义——命中掉落物即绽放消散
+	 * （掉落物会被加工掉的充能行为，与普通波完全一致；变体波自己的远程加工路径不受影响，
+	 * 见 {@link #onItemHit}）。</p>
+	 *
+	 * @return 是否真的完成了一次充能加工（false = 无充能源 / 无匹配配方 → 本次命中不消耗波）
+	 */
+	private boolean tryBorrowedItemCharging(ItemEntity item) {
+		// 本性闸门 + 可借来源（每 tick 至多解析一次）先判，再谈加工：
+		// 普通波自己就能充能，不需要借（也不该借）；攻击波既不充能也不加工。
+		if (getWaveType().allowsChargingProcessing())
+			return false;
+		BorrowedChargingSource source = borrowedChargingSource();
+		if (source == null || !source.processor(level())
+			.processItemEntity(item))
+			return false;
+		craftTrace("借用充能（掉落物）：波源 {} 半径 {} 内的充能器 [{}] 发射等级 {} → 命中 {} 完成充能加工",
+			waveOrigin, Math.max(1, carriedScanRadius), source.pos(), source.waveLevel(),
+			item.getItem()
+				.getItem());
+		ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), getRenderColor());
+		discard();
+		return true;
+	}
+
+	/**
+	 * <b>借用充能（方块物品槽路径）</b>：与 {@link #tryBorrowedItemCharging(ItemEntity)} 同一口径，
+	 * 只是把槽内物品交给处理器（{@link ChargerWaveProcessor#processBlockHandler}）。
+	 *
+	 * <p><b>返回 {@code false} 的语义与普通波一致</b>：无论是"没有可借的充能源"还是"借到了但槽里
+	 * 没有匹配的 charging 配方"，都交给基类默认路径处理（基类的本性闸门会挡住它自己的充能加工），
+	 * 调用方 {@code WaveHitResolver} 随后按撞墙让波绽放消散——这就是普通波命中置物台的既有行为。</p>
+	 *
+	 * @return true = 已用借来的波级完成一次充能加工（调用方不再走默认路径）
+	 */
+	private boolean tryBorrowedBlockCharging(IItemHandler handler, BlockPos pos) {
+		if (getWaveType().allowsChargingProcessing())
+			return false;
+		BorrowedChargingSource source = borrowedChargingSource();
+		if (source == null || !source.processor(level())
+			.processBlockHandler(handler, pos))
+			return false;
+		craftTrace("借用充能（方块槽）：波源 {} 半径 {} 内的充能器 [{}] 发射等级 {} → 命中 {} 完成充能加工",
+			waveOrigin, Math.max(1, carriedScanRadius), source.pos(), source.waveLevel(), pos);
+		return true;
 	}
 
 	/** 配方类型 id 字符串（诊断日志用；取不到返回 {@code "?"}）。实现见 {@link WaveCraftResults#typeKeyString}。 */
@@ -442,28 +545,39 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	@Override
 	protected void onItemHit(List<ItemEntity> items) {
-		if (attributes.isEmpty() && recipeTypes.isEmpty()) {
-			// 未携带任何加工信息：退化为普通波行为（charging 配方加工后绽放消散）
-			super.onItemHit(items);
-			return;
-		}
-		if (level().isClientSide)
-			return;
-		// 命中掉落物后同样"就地补料"（范围 = 变器读取半径）
+		// 命中掉落物后同样"就地补料"（范围 = 变器读取半径）——无携带加工信息时也照做（与原实现一致）
 		if (!items.isEmpty())
 			refillPayloadAround(items.get(0)
 				.blockPosition());
-		for (ItemEntity item : items) {
-			if (chainLeft <= 0) {
-				finishAndDiscard();
+		// ① 自身携带的远程加工优先（属性集/配方类型集非空时；链已尽则释放载荷消散，与原有语义一致）
+		if (!(attributes.isEmpty() && recipeTypes.isEmpty())) {
+			if (level().isClientSide)
 				return;
-			}
-			if (tryCraft(item)) {
-				if (chainLeft <= 0)
+			for (ItemEntity item : items) {
+				if (chainLeft <= 0) {
 					finishAndDiscard();
-				return; // 本 tick 只加工一个物品（链式在多 tick 内逐级推进）
+					return;
+				}
+				if (tryCraft(item)) {
+					if (chainLeft <= 0)
+						finishAndDiscard();
+					return; // 本 tick 只加工一个物品（链式在多 tick 内逐级推进）
+				}
 			}
 		}
+		// ② 借用充能（外部条件放行）：变器读取半径内有星辉石应力充能器时，用那台充能器的
+		// 发射等级做一次普通波式的充能加工（详见 tryBorrowedItemCharging 的注释）。
+		// 顺序理由：远程加工是变体态"本职工作"、链式且有载荷/辅料/流体/环境一整套判定，
+		// 先跑它才能保证"能远程加工的波不被充能加工抢走"；借用充能是兜底——
+		// 只有当本波<b>没有</b>任何携带能力（如变器扫描圈里一台机器都没有，退化波）
+		// 或远程加工对这些物品一件都不匹配时，才轮得到它。
+		if (level().isClientSide)
+			return;
+		for (ItemEntity item : items)
+			if (tryBorrowedItemCharging(item))
+				return;
+		// ③ 两者都无：退化到普通波行为（基类的波型闸门会挡住它自己的充能加工）
+		super.onItemHit(items);
 	}
 
 	/**
@@ -656,7 +770,22 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	public boolean handleItemInventoryBlock(IItemHandler handler, BlockPos pos) {
 		// 编排（无加工能力退化 / 引雷 / 就地补料 / 批次循环与批锁 / 链尽释放）全在
 		// WaveCraftExecutor；本类只作为它的 Host 提供状态与动作。
-		return executor().handleInventoryBlock(handler, pos);
+		boolean handled = executor().handleInventoryBlock(handler, pos);
+		if (handled)
+			return true;
+		// 远程加工编排判定"槽内无一可加工"（返回 false）时的**唯一**补充判定：借用充能。
+		// 放在编排之后而不是之前，同样是为了不让借用抢走远程加工的机会：编排内部已经
+		// 记过"最近加工方块"、引过雷、补过料，并把槽内容按携带能力逐条试过；
+		// 只有它明确说"这里没有我可加工的"之后，才轮到借来的充能器出手。
+		// 借用成功 → 返回 true（本 tick 已处理，波不在此消散）；
+		// 借用失败（无可借来源 / 槽内无匹配 charging 配方）→ 返回 false，维持"撞墙消散"。
+		// 链数不受影响：走到这里时编排要么一步没加工（槽内无一可加工），要么根本没进加工循环
+		// （无携带能力时 Executor 直接把本方法交回基类实现，见 WaveCraftExecutor#handleInventoryBlock）。
+		if (tryBorrowedBlockCharging(handler, pos))
+			return true;
+		// 无借用来源（或借了也不匹配）时，与改动前完全一致：按普通波行为收尾（基类的波型闸门
+		// 会挡住它自己的充能加工，本波不重复做任何加工）
+		return super.handleItemInventoryBlock(handler, pos);
 	}
 
 	/** 加工编排器（每次现场构造：它不持状态，状态全经 Host 回到本类）。 */
@@ -837,7 +966,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 				craftDebug("载荷释放异常（余料未能全部处置）：{}", t);
 			}
 		}
-		ChargerWaveFx.burst(level(), position(), getRenderColor());
+		ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), getRenderColor());
 		discard();
 	}
 

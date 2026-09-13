@@ -71,7 +71,7 @@ public final class WaveHitResolver {
 				.getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 				if (wave.getWaveLevel() >= 3)
 					rod.onGammaWaveHit();
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return;
 			}
@@ -90,7 +90,7 @@ public final class WaveHitResolver {
 						.getCenter());
 				}
 				if (vanish) {
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return;
 				}
@@ -106,7 +106,7 @@ public final class WaveHitResolver {
 				boolean vanish = actions.handleDisperser(state, pos, wave.getBoundingBox()
 					.getCenter(), null);
 				if (vanish) {
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return;
 				}
@@ -123,7 +123,7 @@ public final class WaveHitResolver {
 				boolean vanish = actions.handleSixFaceDisperser(state, pos, wave.getBoundingBox()
 					.getCenter(), null);
 				if (vanish) {
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return;
 				}
@@ -139,7 +139,7 @@ public final class WaveHitResolver {
 				boolean vanish = actions.handleOctaDisperser(state, pos, wave.getBoundingBox()
 					.getCenter(), null);
 				if (vanish) {
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return;
 				}
@@ -178,7 +178,7 @@ public final class WaveHitResolver {
 				if (wave.handleItemInventoryBlock(handler, pos))
 					return; // 钩子已处理（可能加工成功并继续/已消散），本 tick 结束
 				// 无匹配物品：同样视为撞墙，波在此消散（不穿过置物台/工作台）
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return;
 			}
@@ -187,7 +187,7 @@ public final class WaveHitResolver {
 		}
 		if (hitSolid) {
 			wave.onSolidBlockHit(solidPos); // 钩子：变体波在此引雷（见方法注释）
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 			wave.discard();
 			return;
 		}

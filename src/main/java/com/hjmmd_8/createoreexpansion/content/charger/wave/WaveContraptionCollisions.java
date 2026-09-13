@@ -142,7 +142,7 @@ public class WaveContraptionCollisions {
 						if (r == OctaEnergyWaveDispersal.Result.SPLIT) {
 							int childLevel = wave.getWaveLevel() - OctaEnergyWaveDispersal.decrementOf(state);
 							if (childLevel <= 0) {
-								ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+								ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 								wave.discard();
 								return true;
 							}
@@ -171,7 +171,7 @@ public class WaveContraptionCollisions {
 						continue;
 					}
 					// contraption 上的其它方块：视为撞墙
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return true;
 				} finally {
@@ -187,7 +187,7 @@ public class WaveContraptionCollisions {
 	private boolean handleGateResult(EnergyWaveRegulation.Result r, AbstractContraptionEntity entity, BlockPos pos) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -205,7 +205,7 @@ public class WaveContraptionCollisions {
 			default -> {
 				// 调制结果（VANISH_GAMMA_BOOM/VANISH_LOW_BOOM/PASS_BOOST_LATER/PASS_DOWNGRADE/BOUNCE_DOWNGRADE）
 				// 依赖转速，纯 state 判定（speed=0）不会产生；防御性按撞墙
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -216,7 +216,7 @@ public class WaveContraptionCollisions {
 	private boolean handleSpeedGateResult(WaveSpeedRegulation.Result r, AbstractContraptionEntity entity, BlockPos pos) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -233,7 +233,7 @@ public class WaveContraptionCollisions {
 			}
 			default -> {
 				// PASS_SPEED_UP/DOWN 依赖转速，纯 state 判定不会产生；防御性按撞墙
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -245,7 +245,7 @@ public class WaveContraptionCollisions {
 		BlockPos pos, Direction.Axis axis, Vec3 localMove, Vec3 relCenter, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -281,7 +281,7 @@ public class WaveContraptionCollisions {
 		BlockPos pos, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -314,7 +314,7 @@ public class WaveContraptionCollisions {
 		BlockPos pos, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -354,7 +354,7 @@ public class WaveContraptionCollisions {
 		int childLevel = wave.getWaveLevel() - decrement;
 		if (childLevel <= 0) {
 			// 波级不足分裂：撞墙消散
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 			wave.discard();
 			return true;
 		}

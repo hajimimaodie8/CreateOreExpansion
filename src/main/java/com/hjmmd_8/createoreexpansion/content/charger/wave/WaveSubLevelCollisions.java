@@ -88,7 +88,7 @@ public class WaveSubLevelCollisions {
 				if (bridge.getBlockEntity(hit, pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 					if (wave.getWaveLevel() >= 3)
 						rod.onGammaWaveHit();
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return;
 				}
@@ -100,7 +100,7 @@ public class WaveSubLevelCollisions {
 						? actions.handleRegulator(gateBe, pos, localWavePos)
 						: actions.handleWaveSpeedRegulator(gateBe, pos, localWavePos);
 					if (vanish) {
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 						wave.discard();
 						return;
 					}
@@ -112,7 +112,7 @@ public class WaveSubLevelCollisions {
 				if (state.getBlock() instanceof EnergyWaveDisperserBlock) {
 					boolean vanish = actions.handleDisperser(state, pos, localWavePos, hit);
 					if (vanish) {
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 						wave.discard();
 						return;
 					}
@@ -126,7 +126,7 @@ public class WaveSubLevelCollisions {
 				if (state.getBlock() instanceof SixFaceDisperserBlock) {
 					boolean vanish = actions.handleSixFaceDisperser(state, pos, localWavePos, hit);
 					if (vanish) {
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 						wave.discard();
 						return;
 					}
@@ -140,7 +140,7 @@ public class WaveSubLevelCollisions {
 				if (state.getBlock() instanceof OctaEnergyWaveDifferencerBlock) {
 					boolean vanish = actions.handleOctaDisperser(state, pos, localWavePos, hit);
 					if (vanish) {
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 						wave.discard();
 						return;
 					}
@@ -158,7 +158,7 @@ public class WaveSubLevelCollisions {
 			}
 		}
 		if (hitSolid) {
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 			wave.discard();
 		}
 	}

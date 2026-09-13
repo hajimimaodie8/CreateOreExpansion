@@ -69,12 +69,14 @@ public class WaveMachineActions {
 			}
 			case VANISH_GAMMA_BOOM -> {
 				// 伽马波（3级）顺基准升级无路可升 → 3 级伽马爆炸后湮灭
-				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getRenderColor(), null, 3);
+				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
+					wave.getRenderColor(), null, 3);
 				return true;
 			}
 			case VANISH_LOW_BOOM -> {
 				// 1 级波逆基准降级无路可降 → 1 级小范围爆炸后湮灭
-				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getRenderColor(), null, 1);
+				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
+					wave.getRenderColor(), null, 1);
 				return true;
 			}
 			case PASS_UNCHANGED -> {
