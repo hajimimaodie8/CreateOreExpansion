@@ -10,6 +10,9 @@ import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.family.WaveRecipeFamilies;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.Candidate;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveAuxResolver;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateOrdering;
+import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxRef;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxSource;
@@ -30,7 +33,6 @@ import com.simibubi.create.content.processing.recipe.HeatCondition;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
-import com.simibubi.create.foundation.recipe.RecipeApplier;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -49,8 +51,6 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraft.world.item.crafting.SmithingRecipe;
-import net.minecraft.world.item.crafting.SmithingRecipeInput;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
@@ -242,10 +242,9 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			com.hjmmd_8.createoreexpansion.CreateOreExpansion.LOGGER.info("[变体波轨迹] " + msg, args);
 	}
 
-	/** 配方类型 id 字符串（诊断日志用；取不到返回 {@code "?"}）。 */
+	/** 配方类型 id 字符串（诊断日志用；取不到返回 {@code "?"}）。实现见 {@link WaveCraftResults#typeKeyString}。 */
 	private static String typeKeyString(Recipe<?> recipe) {
-		ResourceLocation key = typeKeyOf(recipe);
-		return key == null ? "?" : key.toString();
+		return WaveCraftResults.typeKeyString(recipe);
 	}
 
 	/**
@@ -679,13 +678,14 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			if (filterAllows(filter, declared))
 				return true;
 			// ② results 为空的"产物推导"类（auto_upgrade / auto_smithing）：用与执行时同一套
-			//    computeCraftResults 算出真实产物再测。注意这里**不再以 declared 为空为前提**——
+			//    WaveCraftResults.compute 算出真实产物再测。注意这里**不再以 declared 为空为前提**——
 			//    否则"声明了产物但推导产物才是真产物"的配方一旦 declared 不在过滤器内就直接被判死，
 			//    表现为"设了过滤器就不加工，清空过滤器又好了"（用户 2026-09 实测反馈）。
 			if (input != null && !input.isEmpty()) {
 				ItemStack probe = input.copy();
 				probe.setCount(1);
-				List<ItemStack> derived = computeCraftResults(probe, candidate, handler, around);
+				List<ItemStack> derived = WaveCraftResults.compute(craftResultsContext(), candidate, probe, handler,
+					around);
 				if (derived != null)
 					for (ItemStack out : derived)
 						if (filterAllows(filter, out))
@@ -786,7 +786,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		// auxes 按 ingredient 升序压缩存储：auxes.get(k) 对应 ingredients.get(k+1)。
 		List<AuxRef> auxes = new ArrayList<>(Math.max(0, itemInputs - 1));
 		for (int i = 1; i < itemInputs; i++) {
-			AuxRef aux = findAux(recipe.getIngredients()
+			AuxRef aux = auxResolver().findAux(recipe.getIngredients()
 				.get(i), auxes, handler, mainSlot);
 			if (aux == null) {
 				craftDebug("淘汰 {} [{}]：辅料 {}（第 {} 号输入）在容器（{} 槽）与载荷（{} 件）中都缺货", id,
@@ -799,7 +799,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			auxes.add(aux);
 		}
 		// 流体输入（≤2）：同样"容器流体槽优先 → 载荷流体兜底"，各自独立解析并记账防超领
-		List<FluidRef> fluidRefs = resolveFluidRefs(recipe, containerFluid);
+		List<FluidRef> fluidRefs = auxResolver().resolveFluidRefs(recipe, containerFluid);
 		if (fluidRefs == null) {
 			craftDebug("淘汰 {} [{}]：流体输入不满足（容器流体 {} / 载荷 {}）", id, typeKeyString(recipe),
 				containerFluid == null ? "无" : containerFluid.getTanks() + " 罐", payloadFluid);
@@ -813,7 +813,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		} catch (Throwable ignored) {
 			// 联动读取异常：按无电量需求处理
 		}
-		List<EnergyDraw> energies = resolveEnergyDraws(energyRequired, around);
+		List<EnergyDraw> energies = auxResolver().resolveEnergyDraws(energyRequired, around);
 		if (energies == null) {
 			craftDebug("淘汰 {} [{}]：需电量 {} FE，邻域储能 + 载荷电量（{} FE）合计不足", id, typeKeyString(recipe),
 				energyRequired, payloadEnergy);
@@ -829,7 +829,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			return null;
 		}
 		craftDebug("命中候选 {} [{}]：主料 {} + 辅料 {}（流体 {} / 电量 {}）", id, typeKeyString(recipe),
-			input.getItem(), describeAuxes(auxes), describeFluids(fluidRefs), describeEnergies(energies));
+			input.getItem(), WaveAuxResolver.describeAuxes(auxes), WaveAuxResolver.describeFluids(fluidRefs), WaveAuxResolver.describeEnergies(energies));
 		return new Candidate(id, recipe, List.copyOf(auxes), List.copyOf(fluidRefs), List.copyOf(energies), familyOwner);
 	}
 
@@ -905,328 +905,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	}
 
 	/**
-	 * 找到能命中给定 Ingredient 的辅料（按<b>双通道优先级</b>；找不到返回 null）。
-	 *
-	 * <p><b>搜索顺序（2026-09 反转）</b>：先通道 B <b>命中容器自身的其它槽</b>
-	 * （{@code handler != null} 时；排除主料槽 {@code mainSlot}），再通道 A 波载荷
-	 * {@link #payloadItems}。语义：玩家把原料摆在盆/置物台里时就用盆里的，
-	 * <b>绝不会</b>去动扫描圈箱子的载荷物品；只有容器里凑不齐辅料才回退用载荷。
-	 * （掉落物路径无容器 → 仍然只有载荷可用。）</p>
-	 *
-	 * <p><b>去重</b>：{@code occupied} 已收录本次候选已占用的辅料引用（容器槽号 + 载荷下标两套），
-	 * 同一个容器槽 / 同一条载荷条目不会被两个 ingredient 重复占用——否则多输入配方可用 1 件辅料
-	 * 冒充多件，门槛形同虚设。（同一物品类型的两个不同槽仍可分别充当两个 ingredient，
-	 * 这在实际场景里是必要的，故按"槽/条目"而非按"物品种类"去重。）</p>
-	 *
-	 * @param occupied 本次候选已占用的辅料引用集合（可为空表，不可为 null）
-	 */
-	private AuxRef findAux(Ingredient ingredient, List<AuxRef> occupied, IItemHandler handler, int mainSlot) {
-		// 通道 B（优先）：命中容器自身的其它槽（排除主料槽与已占用槽）
-		if (handler != null) {
-			for (int slot = 0; slot < handler.getSlots(); slot++) {
-				if (slot == mainSlot)
-					continue;
-				if (isOccupied(occupied, AuxSource.CONTAINER, slot))
-					continue;
-				ItemStack stack = handler.getStackInSlot(slot);
-				if (stack == null || stack.isEmpty())
-					continue;
-				if (ingredient.test(stack))
-					return new AuxRef(AuxSource.CONTAINER, slot);
-			}
-		}
-		// 通道 A（兜底）：波载荷
-		for (int i = 0; i < payloadItems.size(); i++) {
-			if (isOccupied(occupied, AuxSource.PAYLOAD, i))
-				continue;
-			ItemStack stack = payloadItems.get(i);
-			if (!stack.isEmpty() && ingredient.test(stack))
-				return new AuxRef(AuxSource.PAYLOAD, i);
-		}
-		return null;
-	}
-
-	/** 该来源+下标是否已被本次候选占用。 */
-	private static boolean isOccupied(List<AuxRef> occupied, AuxSource source, int index) {
-		for (AuxRef ref : occupied)
-			if (ref.source() == source && ref.index() == index)
-				return true;
-		return false;
-	}
-
-	// ================= 流体输入双通道（容器流体槽优先 → 载荷流体兜底） =================
-
-	/**
-	 * 解析配方的全部流体输入（≤{@link #MAX_FLUID_INPUTS} 条），每条独立选来源与需求量。
-	 *
-	 * <p><b>来源优先级（2026-09 反转）</b>：先命中容器的流体槽（工作盆的盆内流体），
-	 * 不足才回退波载荷流体。语义与物品输入一致——玩家把水倒进盆里就该用盆里的水。</p>
-	 *
-	 * <p><b>防超领记账</b>：同一流体种类可能被多条 ingredient 引用（或容器有多个同种流体的罐），
-	 * 故容器侧按"已认领量"累计后与实际可用量比较；载荷侧同理用 {@code payloadFluidReserved}
-	 * 累计。这样两条流体 ingredient 各自"独立通过"也不会合计超过实际存量。</p>
-	 *
-	 * @return 全部流体输入的来源清单；任一 unsatified 返回 null（调用方按不可执行淘汰）
-	 */
-	private List<FluidRef> resolveFluidRefs(ProcessingRecipe<?, ?> recipe, IFluidHandler containerFluid) {
-		List<net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient> needs = recipe.getFluidIngredients();
-		if (needs.isEmpty())
-			return List.of();
-		List<FluidRef> refs = new ArrayList<>(needs.size());
-		int payloadReserved = 0;
-		for (net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient need : needs) {
-			int amount = need.amount();
-			FluidRef ref = null;
-			// 通道 B（优先）：命中容器的流体槽
-			FluidStack tankType = firstMatchingTankFluid(containerFluid, need);
-			if (!tankType.isEmpty()) {
-				FluidStack demand = tankType.copyWithAmount(amount);
-				int available = fluidAmountIn(containerFluid, demand) - claimedFluidAmount(refs, FluidSource.CONTAINER, demand);
-				if (available >= amount)
-					ref = new FluidRef(FluidSource.CONTAINER, demand);
-			}
-			// 通道 A（兜底）：波载荷流体
-			if (ref == null && !payloadFluid.isEmpty() && need.test(payloadFluid)
-				&& payloadFluid.getAmount() - payloadReserved >= amount) {
-				ref = new FluidRef(FluidSource.PAYLOAD, payloadFluid.copyWithAmount(amount));
-				payloadReserved += amount;
-			}
-			if (ref == null)
-				return null;
-			refs.add(ref);
-		}
-		return refs;
-	}
-
-	/** 容器流体槽里第一个满足该流体 ingredient 的流体（返回其真实种类+组件，数量置为需求量）；无则 EMPTY。 */
-	private static FluidStack firstMatchingTankFluid(IFluidHandler fluids,
-		net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient need) {
-		if (fluids == null)
-			return FluidStack.EMPTY;
-		try {
-			for (int tank = 0; tank < fluids.getTanks(); tank++) {
-				FluidStack in = fluids.getFluidInTank(tank);
-				if (!in.isEmpty() && need.test(in))
-					return in.copyWithAmount(need.amount());
-			}
-		} catch (Throwable ignored) {
-			// 个别流体能力实现异常：按"无匹配流体"处理
-		}
-		return FluidStack.EMPTY;
-	}
-
-	/** 容器内所有罐中与 {@code want} 同种（含组件）的流体总量。 */
-	private static int fluidAmountIn(IFluidHandler fluids, FluidStack want) {
-		if (fluids == null || want == null || want.isEmpty())
-			return 0;
-		int total = 0;
-		try {
-			for (int tank = 0; tank < fluids.getTanks(); tank++) {
-				FluidStack in = fluids.getFluidInTank(tank);
-				if (!in.isEmpty() && FluidStack.isSameFluidSameComponents(in, want))
-					total += in.getAmount();
-			}
-		} catch (Throwable ignored) {
-			return 0;
-		}
-		return total;
-	}
-
-	/** 已解析的流体输入里，来自同一来源且同种（含组件）流体的已认领量。 */
-	private static int claimedFluidAmount(List<FluidRef> refs, FluidSource source, FluidStack want) {
-		int claimed = 0;
-		for (FluidRef ref : refs)
-			if (ref.source() == source && FluidStack.isSameFluidSameComponents(ref.fluid(), want))
-				claimed += ref.fluid()
-					.getAmount();
-		return claimed;
-	}
-
-	/** 流体输入清单的可读描述（诊断日志用）。 */
-	private static String describeFluids(List<FluidRef> refs) {
-		if (refs == null || refs.isEmpty())
-			return "无";
-		StringBuilder sb = new StringBuilder();
-		for (FluidRef ref : refs) {
-			if (sb.length() > 0)
-				sb.append('+');
-			sb.append(ref.source())
-				.append('#')
-				.append(ref.fluid()
-					.getAmount())
-				.append("mB")
-				.append(ref.fluid()
-					.getHoverName()
-					.getString());
-		}
-		return sb.toString();
-	}
-
-	// ================= 电量双通道（邻域储能优先 → 载荷电量兜底；用户："电量也是一种特殊辅料"） =================
-
-	/**
-	 * 解析配方电量需求的来源清单（<b>把电量当"特殊辅料"处理</b>，与物品/流体来源完全对称）：
-	 * <ol>
-	 *   <li><b>通道 1｜命中点邻域储能（优先）</b>：{@link #envBlocks}／{@link #ENV_RADIUS}（3×3×3，
-	 *       与"加热烈焰人 / 压弯机头 / fan 媒介"同一口径）内的可抽储能，按扫描顺序<b>贪心取电</b>——
-	 *       多个源可以合力凑够需求（"之和 ≥ 需求"）。两类源：
-	 *       <ul>
-	 *         <li>通用 {@code IEnergyStorage}（需 {@code canExtract()}）；</li>
-	 *         <li>CC&amp;A <b>特斯拉线圈</b>——对外 {@code canExtract=false}（{@code getMaxOut()==0}），
-	 *             只能走其内部储能（{@link StellarWaveMachineIntegrations#teslaCoilEnergy} 只读反射）。</li>
-	 *       </ul>
-	 *   </li>
-	 *   <li><b>通道 2｜波载荷电量（兜底）</b>：{@link #payloadEnergy}（穿波瞬间从变器扫描圈抽来的）。</li>
-	 * </ol>
-	 *
-	 * <p><b>估算阶段零副作用</b>：通用储能用 {@code extractEnergy(need, true)}（模拟）估，
-	 * 线圈用只读的 {@code getEnergyStored()} 估；<b>绝不</b>在估算时调用
-	 * {@code extractEnergy(need, false)} 或 {@code drainTeslaCoilFully}（会真扣电）。
-	 * 不可抽且非线圈的储能（机器内部缓冲等）一律按 0 计——它们本来也拿不出来，
-	 * 计进去会导致"门槛过了却抽不到电"的白嫖加工。</p>
-	 *
-	 * @return 电量来源清单；合计仍不足返回 {@code null}（候选淘汰，不消耗任何东西）
-	 */
-	private List<EnergyDraw> resolveEnergyDraws(int required, BlockPos around) {
-		if (required <= 0)
-			return List.of();
-		List<EnergyDraw> draws = new ArrayList<>(2);
-		int remaining = required;
-		if (around != null) {
-			for (BlockPos bp : envBlocks(around)) {
-				if (remaining <= 0)
-					break;
-				int available = availableEnergyAt(bp, remaining);
-				if (available <= 0)
-					continue;
-				int take = Math.min(available, remaining);
-				// betweenClosed 会复用可变游标，必须 immutable() 后长期持有
-				draws.add(new EnergyDraw(EnergySource.NEARBY, take, bp.immutable()));
-				remaining -= take;
-			}
-		}
-		if (remaining > 0 && payloadEnergy > 0) {
-			int take = Math.min(payloadEnergy, remaining);
-			draws.add(new EnergyDraw(EnergySource.PAYLOAD, take, null));
-			remaining -= take;
-		}
-		return remaining <= 0 ? draws : null;
-	}
-
-	/**
-	 * 估算某方块当前可供抽取的电量（<b>只读/模拟，绝不真扣</b>）：
-	 * 通用可抽储能 → {@code extractEnergy(need, true)} 模拟（按 NeoForge 约定不真扣电，
-	 * 且能尊重该储能的 {@code maxExtract} 限流），再与只读的 {@code getEnergyStored()} 取小，
-	 * 双保险地避免"估算虚高 → 门槛过了却抽不到电"；非可抽者 → 仅当是 CC&amp;A 特斯拉线圈时
-	 * 读其内部储能（只读反射）；其余（机器输入缓冲等不可抽储能）→ 0。
-	 */
-	private int availableEnergyAt(BlockPos pos, int need) {
-		if (pos == null || need <= 0 || level().isClientSide)
-			return 0;
-		try {
-			IEnergyStorage storage = level().getCapability(Capabilities.EnergyStorage.BLOCK, pos, null);
-			if (storage != null && storage.canExtract()) {
-				int simulated = Math.max(0, storage.extractEnergy(need, true)); // simulate = true：不扣电
-				int stored = Math.max(0, storage.getEnergyStored());
-				return Math.min(simulated, stored);
-			}
-		} catch (Throwable ignored) {
-			// 单个储能异常：按不可用处理
-		}
-		// 对外不可抽的储能：只认 CC&amp;A 特斯拉线圈（内部只读反射；非线圈/未安装返回 0）
-		try {
-			return StellarWaveMachineIntegrations.teslaCoilEnergy(level(), pos);
-		} catch (Throwable ignored) {
-			return 0;
-		}
-	}
-
-	/**
-	 * 从指定位置真取电（消耗阶段）：通用可抽储能 → {@code extractEnergy(need, false)}；
-	 * 否则走 CC&amp;A 线圈内部<b>按需</b>扣减（{@code internalConsumeEnergy} 自带钳制，取多少扣多少，
-	 * 不会像"全抽"那样掏空线圈）。返回实取 FE。
-	 */
-	private int extractNearbyEnergy(BlockPos pos, int need) {
-		if (pos == null || need <= 0)
-			return 0;
-		try {
-			IEnergyStorage storage = level().getCapability(Capabilities.EnergyStorage.BLOCK, pos, null);
-			if (storage != null && storage.canExtract()) {
-				int got = storage.extractEnergy(need, false);
-				if (got > 0)
-					return got;
-			}
-		} catch (Throwable ignored) {
-			// 单个储能异常：继续尝试线圈路径
-		}
-		try {
-			return StellarWaveMachineIntegrations.consumeTeslaCoil(level(), pos, need);
-		} catch (Throwable ignored) {
-			return 0;
-		}
-	}
-
-	/** 电量来源清单的可读描述（诊断日志用）。 */
-	private static String describeEnergies(List<EnergyDraw> draws) {
-		if (draws == null || draws.isEmpty())
-			return "无";
-		StringBuilder sb = new StringBuilder();
-		for (EnergyDraw draw : draws) {
-			if (sb.length() > 0)
-				sb.append('+');
-			sb.append(draw.source())
-				.append('#')
-				.append(draw.amount())
-				.append("FE");
-			if (draw.pos() != null)
-				sb.append('@')
-					.append(draw.pos()
-						.toShortString());
-		}
-		return sb.toString();
-	}
-
-	/**
-	 * 按辅料引用取出<b>真实物品</b>（读操作，不改动来源）：
-	 * {@code PAYLOAD} → 载荷条目；{@code CONTAINER} → 容器槽（索引自身即槽号）。
-	 * 取不到（越界 / 空槽 / 无容器）一律返回 {@link ItemStack#EMPTY}，绝不抛异常。
-	 * 容器实现可能返回活对象（vanilla {@code Container#getStackInSlot}），调用方只读不写。
-	 */
-	private ItemStack resolveAux(AuxRef ref, IItemHandler handler) {
-		if (ref == null)
-			return ItemStack.EMPTY;
-		if (ref.source() == AuxSource.PAYLOAD) {
-			int i = ref.index();
-			return i >= 0 && i < payloadItems.size() ? payloadItems.get(i) : ItemStack.EMPTY;
-		}
-		if (handler == null)
-			return ItemStack.EMPTY;
-		int slot = ref.index();
-		if (slot < 0 || slot >= handler.getSlots())
-			return ItemStack.EMPTY;
-		ItemStack stack = handler.getStackInSlot(slot);
-		return stack == null ? ItemStack.EMPTY : stack;
-	}
-
-	/** 辅料引用的简短可读描述（诊断日志用）。 */
-	private static String describeAux(AuxRef ref) {
-		return ref == null ? "无" : ref.source() + "#" + ref.index();
-	}
-
-	/** 辅料引用列表的可读描述（诊断日志用）。 */
-	private static String describeAuxes(List<AuxRef> auxes) {
-		if (auxes == null || auxes.isEmpty())
-			return "无";
-		StringBuilder sb = new StringBuilder();
-		for (AuxRef ref : auxes) {
-			if (sb.length() > 0)
-				sb.append('+');
-			sb.append(describeAux(ref));
-		}
-		return sb.toString();
-	}
-
-	/**
 	 * 判定配方是否命中当前物品（兼容 Create 6.0.10 各配方输入类型）。
 	 *
 	 * <p>Create 6.0.x 起不同配方类要求的 {@link RecipeInput} 子类不一致：
@@ -1295,7 +973,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			new net.neoforged.neoforge.items.ItemStackHandler(Math.max(2, 1 + auxes.size()));
 		handlerProbe.setStackInSlot(0, input);
 		for (int k = 0; k < auxes.size(); k++) {
-			ItemStack aux = resolveAux(auxes.get(k), handler);
+			ItemStack aux = auxResolver().resolveAux(auxes.get(k), handler);
 			if (!aux.isEmpty())
 				handlerProbe.setStackInSlot(k + 1, aux.copy());
 		}
@@ -1309,13 +987,9 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		return genericIngredientsMatch(recipe, input, auxes, handler);
 	}
 
-	/** 配方类型 id（BuiltIn 注册表查 key；查不到返回 null）。 */
+	/** 配方类型 id（BuiltIn 注册表查 key；查不到返回 null）。实现见 {@link WaveCraftResults#typeKeyOf}。 */
 	private static ResourceLocation typeKeyOf(Recipe<?> recipe) {
-		try {
-			return BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
-		} catch (Throwable ignored) {
-			return null;
-		}
+		return WaveCraftResults.typeKeyOf(recipe);
 	}
 
 	/**
@@ -1339,7 +1013,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			int slot = i - 1;
 			if (auxes == null || slot >= auxes.size())
 				return false; // 辅料数不足：该 ingredient 无料可对应
-			ItemStack stack = resolveAux(auxes.get(slot), handler);
+			ItemStack stack = auxResolver().resolveAux(auxes.get(slot), handler);
 			if (stack.isEmpty() || !ingredients.get(i)
 				.test(stack))
 				return false;
@@ -1369,7 +1043,8 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		// 产物计算：产物推导类（③b auto_upgrade 变形升级 / ③c auto_smithing 锻造融合：results 为空）
 		// 产物需从当前候选主料+辅料推导；普通类走 RecipeApplier 滚结果。
 		// 掉落物路径没有容器上下文，故 handler 传 null（辅料只可能来自波载荷）。
-		List<ItemStack> results = computeCraftResults(single, candidate, null, item.blockPosition());
+		List<ItemStack> results = WaveCraftResults.compute(craftResultsContext(), candidate, single, null,
+			item.blockPosition());
 		if (results == null)
 			return false; // 无可执行产物（不消耗任何东西）
 
@@ -1396,7 +1071,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 					nearestFluidHandlerFill(fr.copy());
 		} else {
 			// 非 ProcessingRecipe 族（拆解等）的流体产物：掉落物路径无容器上下文，只能就近注入
-			for (FluidStack fr : familyFluidResults(candidate, single, item.blockPosition()))
+			for (FluidStack fr : WaveCraftResults.familyFluidResults(level(), candidate, single, item.blockPosition()))
 				if (!fr.isEmpty())
 					nearestFluidHandlerFill(fr.copy());
 		}
@@ -1445,88 +1120,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			return true; // 兼容开关：关闭时回到全库检索
 		ResourceLocation key = typeKeyOf(recipe);
 		return key != null && allowedTypeIds.contains(key);
-	}
-
-	/** 非 ProcessingRecipe 族的流体产物（无族认领 / 族实现异常时返回空表）。
-	 *
-	 *  @param around 命中点（透传给族，供需要世界上下文的族使用） */
-	private List<FluidStack> familyFluidResults(Candidate candidate, ItemStack input, BlockPos around) {
-		Recipe<?> owner = candidate.familyTarget();
-		WaveRecipeFamilies.Family family = WaveRecipeFamilies.familyOf(owner);
-		if (family == null)
-			return List.of();
-		try {
-			List<FluidStack> fluids = family.fluidResults(level(), around, candidate.id, owner, input);
-			return fluids == null ? List.of() : fluids;
-		} catch (Throwable ignored) {
-			return List.of();
-		}
-	}
-
-	/**
-	 * 计算一次加工的产物列表；返回 {@code null} = 无可执行产物（调用方须放弃且不消耗任何东西）。
-	 * <ul>
-	 *   <li><b>变形升级</b>（③b，{@code vintageimprovements:auto_upgrade}）→ {@link #upgradeResultOf}
-	 *       （辅料钻石工具原位升级为下界合金版）；</li>
-	 *   <li><b>锻造融合</b>（③c，{@code vintageimprovements:auto_smithing}）→ {@link #smithingBridgeResult}
-	 *       （借原版锻造配方产出纹饰盔甲）；</li>
-	 *   <li>其余普通类 → RecipeApplier 滚结果（杵锤 hammering 等 results 非空者即走此路）。</li>
-	 * </ul>
-	 * @param handler 命中容器（解析 CONTAINER 来源辅料的真实物品用；掉落物路径传 null）
-	 * @param around  命中点（透传给非 ProcessingRecipe 族，见 {@link WaveRecipeFamilies}）
-	 */
-	private List<ItemStack> computeCraftResults(ItemStack single, Candidate candidate, IItemHandler handler,
-		BlockPos around) {
-		// ===== 非 ProcessingRecipe 族（{@link WaveRecipeFamilies} 登记：拆解 / 序列装配）=====
-		// 产物推导交给族自己（拆解 = floor(材料数 × 剩余耐久比)；序列装配 = 推进进度或收尾抽产物）；
-		// 空表/null = 推不出产物 → 跳过该候选。若族只产流体（无物品产物）但声明了流体产物，仍算成功。
-		Recipe<?> familyRecipe = candidate.familyTarget();
-		WaveRecipeFamilies.Family family = WaveRecipeFamilies.familyOf(familyRecipe);
-		if (family != null) {
-			List<ItemStack> familyResults;
-			try {
-				familyResults = family.results(level(), around, candidate.id, familyRecipe, single);
-			} catch (Throwable ignored) {
-				craftDebug("无产物：族配方 {} 推导异常", candidate.id);
-				return null;
-			}
-			if (familyResults != null && !familyResults.isEmpty())
-				return familyResults;
-			if (!familyFluidResults(candidate, single, around).isEmpty())
-				return new ArrayList<>(); // 只产流体也算成功（物品产物为空表）
-			craftDebug("无产物：族配方 {} [{}] 推不出产物（输入 {}）", candidate.id, typeKeyString(familyRecipe),
-				single.getItem());
-			return null;
-		}
-		if (isUpgradeTransformationRecipe(candidate.recipe)) {
-			AuxRef ref = candidate.firstAux();
-			ItemStack auxStack = resolveAux(ref, handler);
-			if (auxStack.isEmpty())
-				return null;
-			ItemStack upgraded = upgradeResultOf(auxStack);
-			if (upgraded.isEmpty()) {
-				craftDebug("无产物：变形升级辅料 {} 无法映射为下界合金版", auxStack.getItem());
-				return null;
-			}
-			List<ItemStack> one = new ArrayList<>(1);
-			one.add(upgraded);
-			return one;
-		}
-		if (isAutoSmithingRecipe(candidate.recipe))
-			return smithingBridgeResult(single, candidate, handler);
-		List<ItemStack> results = RecipeApplier.applyRecipeOn(level(), single, candidate.recipe, false);
-		if (results.isEmpty() && !hasFluidOutput(candidate.recipe) && candidate.fluids.isEmpty()) {
-			craftDebug("无产物：{} [{}] 的 RecipeApplier 结果为空且无流体产物", candidate.id,
-				typeKeyString(candidate.recipe));
-			return null;
-		}
-		return results;
-	}
-
-	/** 配方是否有流体产物（纯流体产物配方如 硫磺→SO₂：物品结果为空但可执行）。 */
-	private static boolean hasFluidOutput(Recipe<?> recipe) {
-		return recipe instanceof ProcessingRecipe<?, ?> pr && !pr.getFluidResults()
-			.isEmpty();
 	}
 
 	// ================= 方块槽（工作盆/置物台/弹射置物台）链式加工 =================
@@ -1593,7 +1186,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			return true; // 已处理（波不在此消散，继续飞行/穿出）
 		}
 		craftTrace("命中 {} 无任何可加工候选 → 按撞墙消散；容器内容 {}（属性 {} 个 / 配方类型 {} 个）", pos,
-			describeHandler(handler), attributes.size(), recipeTypes.size());
+			WaveCraftResults.describeHandler(handler), attributes.size(), recipeTypes.size());
 		return false; // 槽内无一可加工 → 调用方按撞墙消散
 	}
 
@@ -1638,7 +1231,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		// "命中一条空产物候选 → 整锅罢工"是"放了料却什么都没发生"的来源之一。
 		List<Candidate> ordered = orderCandidates(candidates, probe, preferred);
 		for (Candidate chosen : ordered) {
-			List<ItemStack> results = computeCraftResults(probe.copy(), chosen, handler, pos);
+			List<ItemStack> results = WaveCraftResults.compute(craftResultsContext(), chosen, probe.copy(), handler, pos);
 			if (results == null) {
 				craftTrace("跳过候选 {} [{}]：材料匹配但推不出产物（输入 {}）", chosen.id, typeKeyString(chosen.recipe),
 					probe.getItem());
@@ -1655,11 +1248,11 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			// 产物回位（⑥）：产物优先放回<b>被消耗辅料所在的槽</b>（变形升级/锻造融合的产物在语义上
 			// 就是"辅料被加工成的新物"——如下界合金工具/带纹饰盔甲），主料槽作次选，都放不下才掉落在
 			// 方块上方。这样"钻石工具/盔甲那一个盆槽"里直接出现产物，而不是堆到主料槽。
-			int target = productSlotHint(chosen, slot);
+			int target = WaveCraftResults.productSlotHint(chosen, slot);
 			if (target < 0 || target >= handler.getSlots())
 				target = slot; // 防御：槽号失效则回主料槽
 			if (target != slot)
-				craftDebug("产物回位：优先槽 {}（辅料槽），主料槽 {}；辅料 {}", target, slot, describeAuxes(chosen.auxes));
+				craftDebug("产物回位：优先槽 {}（辅料槽），主料槽 {}；辅料 {}", target, slot, WaveAuxResolver.describeAuxes(chosen.auxes));
 			for (ItemStack result : results) {
 				if (result.isEmpty())
 					continue;
@@ -1680,7 +1273,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 					}
 			} else {
 				// 非 ProcessingRecipe 族（拆解等）的流体产物：同样"命中方块储罐优先 → 就近"
-				for (FluidStack fr : familyFluidResults(chosen, probe, pos))
+				for (FluidStack fr : WaveCraftResults.familyFluidResults(level(), chosen, probe, pos))
 					if (!fr.isEmpty()) {
 						FluidStack rest = fillBlockOrNearby(pos, fr.copy());
 						if (!rest.isEmpty())
@@ -1688,7 +1281,8 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 					}
 			}
 			craftTrace("加工 {} → 选中 {} [{}]（候选 {} 条，辅料 {}）产出 {}{}", input.getItem(), chosen.id,
-				typeKeyString(chosen.recipe), ordered.size(), describeAuxes(chosen.auxes), describeResults(results),
+				typeKeyString(chosen.recipe), ordered.size(), WaveAuxResolver.describeAuxes(chosen.auxes),
+				WaveCraftResults.describeResults(results),
 				describeHeat(pos, chosen.recipe));
 			chainLeft--;
 			return chosen;
@@ -1697,38 +1291,8 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		return null;
 	}
 
-	/** 产物列表的简短描述（轨迹日志用）。 */
-	private static String describeResults(List<ItemStack> results) {
-		if (results == null || results.isEmpty())
-			return "（无物品产物）";
-		StringBuilder sb = new StringBuilder();
-		for (ItemStack s : results) {
-			if (s.isEmpty())
-				continue;
-			if (sb.length() > 0)
-				sb.append(" + ");
-			sb.append(s.getItem()).append('×').append(s.getCount());
-		}
-		return sb.length() == 0 ? "（无物品产物）" : sb.toString();
-	}
-
-	/** 容器内容摘要（轨迹日志用；最多列 6 个非空槽）。 */
-	private static String describeHandler(IItemHandler handler) {
-		if (handler == null)
-			return "（无容器）";
-		StringBuilder sb = new StringBuilder();
-		int shown = 0;
-		for (int i = 0; i < handler.getSlots() && shown < 6; i++) {
-			ItemStack s = handler.getStackInSlot(i);
-			if (s.isEmpty())
-				continue;
-			if (sb.length() > 0)
-				sb.append(", ");
-			sb.append('[').append(i).append(']').append(s.getItem()).append('×').append(s.getCount());
-			shown++;
-		}
-		return sb.length() == 0 ? "（空）" : sb.toString();
-	}
+	// 产物列表描述（describeResults）/ 容器内容摘要（describeHandler）/ 产物回位提示（productSlotHint）/
+	// 配方类型判定（isUpgradeTransformationRecipe 等）已随"产物推导"一族搬入 WaveCraftResults。
 
 	/**
 	 * 供轨迹日志展示的"加热档位说明"：本条配方需要什么热档、以及当前是哪一处、
@@ -1750,7 +1314,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			return "无";
 		BlazeBurnerBlock.HeatLevel best = BlazeBurnerBlock.HeatLevel.NONE;
 		BlockPos bestPos = null;
-		for (BlockPos bp : envBlocks(center)) {
+		for (BlockPos bp : WaveAuxResolver.envBlocks(center)) {
 			try {
 				BlazeBurnerBlock.HeatLevel heat = BlazeBurnerBlock.getHeatLevelOf(level().getBlockState(bp));
 				if (heat != BlazeBurnerBlock.HeatLevel.NONE && heat.ordinal() > best.ordinal()) {
@@ -1765,25 +1329,8 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			: best + "@" + (bestPos == null ? "?" : bestPos.toShortString());
 	}
 
-	/**
-	 * 产物回位目标槽（⑥）：对"辅料即产物来源"的推导类配方——{@code auto_upgrade}（钻石工具 → 下界合金版）
-	 * 与 {@code auto_smithing}（盔甲 + 纹饰 → 带纹饰盔甲）——产物在语义上就是<b>辅料被加工成的新物</b>，
-	 * 故优先放回<b>首个辅料所在的容器槽</b>（{@code auxes.get(0)} 恰好是配方 JSON 里承担"被改造物"角色的
-	 * ingredient[1]：auto_upgrade = 工具、auto_smithing = 可锻造盔甲）。
-	 * 该辅料来自波载荷（通道 A）或没有容器上下文（掉落物路径）时，回退主料槽 {@code mainSlot}。
-	 * 普通配方（产物 = 全新物品）一律回主料槽，行为与改动前一致。
-	 *
-	 * @param mainSlot 主料槽（回退目标）
-	 * @return 产物优先插入的槽号
-	 */
-	private int productSlotHint(Candidate candidate, int mainSlot) {
-		if (!isUpgradeTransformationRecipe(candidate.recipe) && !isAutoSmithingRecipe(candidate.recipe))
-			return mainSlot;
-		AuxRef first = candidate.firstAux();
-		if (first != null && first.source() == AuxSource.CONTAINER && first.index() >= 0)
-			return first.index();
-		return mainSlot;
-	}
+	// 产物回位目标槽（⑥，productSlotHint）的实现已搬入 WaveCraftResults（见其 javadoc：
+	// "辅料即产物来源"的推导类配方——auto_upgrade / auto_smithing——产物优先放回首辅料所在的容器槽）。
 
 	/** 消耗一次加工的资源（辅料/流体/电量），掉落物路径与方块槽路径共用。
 	 *  @param handler        命中容器物品能力（扣减 CONTAINER 来源辅料用；掉落物路径传 null）
@@ -1810,7 +1357,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		// 直接用自守卫的 craftDebug（不要写 if (CRAFT_DEBUG)：常量 false 会让 javac 整块消除，
 		// 打开开关后必须重新编译才生效，容易误导排查）
 		craftDebug("电量扣减：本配方合计 {} FE，来源 {}（载荷余量 {} FE）", candidate.energyRequired(),
-			describeEnergies(candidate.energies), payloadEnergy);
+			WaveAuxResolver.describeEnergies(candidate.energies), payloadEnergy);
 		for (EnergyDraw draw : candidate.energies) {
 			int amount = draw.amount();
 			if (amount <= 0)
@@ -1819,7 +1366,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 				payloadEnergy = Math.max(0, payloadEnergy - amount);
 				continue;
 			}
-			int taken = extractNearbyEnergy(draw.pos(), amount);
+			int taken = auxResolver().extractNearbyEnergy(draw.pos(), amount);
 			if (taken < amount) {
 				int shortfall = amount - taken;
 				payloadEnergy = Math.max(0, payloadEnergy - shortfall);
@@ -2058,102 +1605,22 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	}
 
 	/**
-	 * 从候选集中挑选本次要执行的候选（= {@link #orderCandidates} 的首位）。
-	 *
-	 * @see #orderCandidates 排序规则（批锁 → 输入种类 LRU → 专用度，绝不再随机）
+	 * 候选排序的<b>状态入参</b>：该输入种类最近一次成功的配方（有界 LRU，状态保存在本类）。
+	 * 排序规则本身是纯策略，见 {@link WaveCandidateOrdering}（不持字段、可单独推理与验证）。
 	 */
+	private ResourceLocation rememberedRecipeId(ItemStack input) {
+		String key = inputKey(input);
+		return key.isEmpty() ? null : lastRecipeByInputKey.get(key);
+	}
+
+	/** 挑选本次要执行的候选（排序策略见 {@link WaveCandidateOrdering#pick}）。 */
 	private Candidate pickCandidate(List<Candidate> candidates, ItemStack input, Candidate preferred) {
-		List<Candidate> ordered = orderCandidates(candidates, input, preferred);
-		return ordered.isEmpty() ? null : ordered.get(0);
+		return WaveCandidateOrdering.pick(candidates, preferred, rememberedRecipeId(input), waveSpeedMode());
 	}
 
-	/**
-	 * 候选排序：把本次要执行的那条排在最前，其余按"<b>转速档匹配 → 专用度</b>"降序
-	 * （见 {@link #compareCandidates} / {@link #compareSpecificity}）。
-	 *
-	 * <p>顺序规则：{@code preferred}（本次方块命中的批锁）→ 该输入种类最近一次成功的配方
-	 * （波实体生命期内的有界 LRU）→ <b>转速档匹配者</b>（Vintage 抛光 {@code speed_limits}
-	 * ↔ 波携带的变器转速档）→ <b>专用度最高者</b>。</p>
-	 *
-	 * <p><b>任何情况下都不再随机抽取</b>。原实现无锁时用 {@code random.nextInt} 随机挑一条，
-	 * 而"同一输入同时匹配多条配方"恰恰是最常见的场景：铜锭既匹配"压成铜板"（1 输入）
-	 * 又匹配"铜+锌→黄铜"（2 输入，需加热）；下界合金锭既匹配"辊成下界合金板"（1 输入）
-	 * 又匹配"下界合金锭+钻石工具→下界合金工具"（2 输入）。随机抽取让后者大概率抽不到，
-	 * 玩家看到的就是"放齐了料却搓不出黄铜／升级不生效"（用户 2026-09 实测反馈的两例）。</p>
-	 */
+	/** 候选排序（排序策略见 {@link WaveCandidateOrdering#order}）。 */
 	private List<Candidate> orderCandidates(List<Candidate> candidates, ItemStack input, Candidate preferred) {
-		List<Candidate> rest = new ArrayList<>(candidates);
-		List<Candidate> ordered = new ArrayList<>(candidates.size());
-		if (preferred != null) {
-			Candidate locked = candidateById(rest, preferred.id);
-			if (locked != null) {
-				ordered.add(locked);
-				rest.remove(locked);
-			}
-		}
-		if (ordered.isEmpty()) {
-			String key = inputKey(input);
-			Candidate locked = candidateById(rest, key.isEmpty() ? null : lastRecipeByInputKey.get(key));
-			if (locked != null) {
-				ordered.add(locked);
-				rest.remove(locked);
-			}
-		}
-		rest.sort(this::compareCandidates);
-		ordered.addAll(rest);
-		return ordered;
-	}
-
-	/**
-	 * 候选比较（排序用，越小越优先）：<b>① 转速档匹配优先</b> → ② 专用度（{@link #compareSpecificity}）。
-	 *
-	 * <p>① 与 Vintage 自身口径一致：抛光配方 {@code speed_limits} 匹配当前转速档的进优选桶，
-	 * 一条都不匹配时才用兜底桶（{@code GrinderBlockEntity} 的桶选择逻辑，去混淆字节码核对）。
-	 * 这里用的是波携带的<b>变器转速</b>算出的档位；无转速要求的配方一律与"不匹配"同档位
-	 * （Vintage 里它们同样落在兜底桶），于是不影响其它任何排序结论。</p>
-	 */
-	private int compareCandidates(Candidate a, Candidate b) {
-		int bySpeedBand = Integer.compare(speedBandRank(a), speedBandRank(b));
-		if (bySpeedBand != 0)
-			return bySpeedBand;
-		return compareSpecificity(a, b);
-	}
-
-	/** 候选的转速档排序档位：0 = 与波转速档匹配（优先）；1 = 无要求或档位不匹配（兜底）。 */
-	private int speedBandRank(Candidate candidate) {
-		int required;
-		try {
-			required = StellarWaveMachineIntegrations.recipeSpeedMode(candidate.recipe);
-		} catch (Throwable ignored) {
-			return 1; // 读取异常：按兜底处理，绝不让联动异常影响排序
-		}
-		if (required <= 0)
-			return 1;
-		return required == waveSpeedMode() ? 0 : 1;
-	}
-
-	/**
-	 * 候选"专用度"比较（越小越优先）：
-	 * <ol>
-	 *   <li><b>物品输入数多者优先</b>——2 输入的搅拌/升级压过 1 输入的压制/辊压；</li>
-	 *   <li>其次流体输入数多者优先；</li>
-	 *   <li>最后按配方数据包 id 字典序——保证"同种输入 → 同一种产物"，不随 random 抖动。</li>
-	 * </ol>
-	 * 若玩家确实要走"不那么专用"的那条（例如只想把铜锭压成铜板），用工作盆的配方过滤器
-	 * 把目标产物列进去即可：过滤器闸门在候选集生成之后、排序之前生效，语义不变。
-	 */
-	private static int compareSpecificity(Candidate a, Candidate b) {
-		int byItems = Integer.compare(b.recipe.getIngredients()
-			.size(), a.recipe.getIngredients()
-				.size());
-		if (byItems != 0)
-			return byItems;
-		int byFluids = Integer.compare(b.fluids.size(), a.fluids.size());
-		if (byFluids != 0)
-			return byFluids;
-		String idA = a.id == null ? "" : a.id.toString();
-		String idB = b.id == null ? "" : b.id.toString();
-		return idA.compareTo(idB);
+		return WaveCandidateOrdering.order(candidates, preferred, rememberedRecipeId(input), waveSpeedMode());
 	}
 
 	/** 成功加工后记录该输入种类的配方锁（供后续同种输入复用）。 */
@@ -2163,163 +1630,11 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			lastRecipeByInputKey.put(key, chosen.id);
 	}
 
-	/** 按配方数据包 id 在候选集中找同一候选（找不到 = 该配方当前已不可执行 → null）。 */
-	private static Candidate candidateById(List<Candidate> candidates, ResourceLocation id) {
-		if (id == null)
-			return null;
-		for (Candidate c : candidates)
-			if (id.equals(c.id))
-				return c;
-		return null;
-	}
-
-	// ================= 变形升级配方（③b：Vintage auto_upgrade） =================
-
-	/**
-	 * 是否"变形升级"配方：results 为空、产物 = 辅料原位升级（钻石工具 → 下界合金版）。
-	 * Vintage 杵锤的 {@code auto_upgrade} 配方即此形态（RecipeApplier 拿不到物品结果）。
-	 * 用配方类型 id 判定（Vintage 可选 mod，content 不得 import 其类）。
-	 */
-	private static boolean isUpgradeTransformationRecipe(Recipe<?> recipe) {
-		if (!(recipe instanceof ProcessingRecipe<?, ?>))
-			return false;
-		ResourceLocation typeKey = typeKeyOf(recipe);
-		return typeKey != null && "vintageimprovements".equals(typeKey.getNamespace())
-			&& "auto_upgrade".equals(typeKey.getPath());
-	}
-
-	/**
-	 * 由辅料（钻石工具）推导升级产物：把物品注册 id 路径中的 {@code diamond_} 替换为
-	 * {@code netherite_}（helmet/chestplate/leggings/boots/sword/pickaxe/axe/shovel/hoe 全覆盖），
-	 * 保留附魔等数据组件；映射不到有效物品返回 EMPTY（该候选不可执行）。
-	 */
-	@SuppressWarnings("deprecation") // BuiltInRegistries.ITEM.get(ResourceLocation)：NeoForge 旧注册表 API（仅有取用方式）
-	private static ItemStack upgradeResultOf(ItemStack auxTool) {
-		if (auxTool == null || auxTool.isEmpty())
-			return ItemStack.EMPTY;
-		ResourceLocation id = BuiltInRegistries.ITEM.getKey(auxTool.getItem());
-		if (id == null || !"minecraft".equals(id.getNamespace()))
-			return ItemStack.EMPTY;
-		String path = id.getPath();
-		if (!path.startsWith("diamond_"))
-			return ItemStack.EMPTY;
-		ResourceLocation targetId =
-			ResourceLocation.fromNamespaceAndPath("minecraft", "netherite_" + path.substring("diamond_".length()));
-		Item target = BuiltInRegistries.ITEM.get(targetId); // 默认注册表：缺失项返回默认值 AIR
-		if (target == null || target == Items.AIR)
-			return ItemStack.EMPTY;
-		// 等价"锻造升级"：换物品但保留附魔/自定义名等组件
-		return new ItemStack(target.builtInRegistryHolder(), 1, auxTool.getComponentsPatch());
-	}
-
-	// ================= 锻造融合配方（③c：Vintage auto_smithing → 借原版锻造配方产出） =================
-
-	/**
-	 * 是否"锻造融合"配方（{@code vintageimprovements:auto_smithing}）：3 输入
-	 * （锻造模板 → 可锻造盔甲 → 锻造材料），<b>results 为空</b>——真实产物来自原版锻造配方。
-	 * 用配方类型 id 判定（Vintage 可选 mod，content 不得 import 其类）。
-	 */
-	private static boolean isAutoSmithingRecipe(Recipe<?> recipe) {
-		if (!(recipe instanceof ProcessingRecipe<?, ?>))
-			return false;
-		ResourceLocation typeKey = typeKeyOf(recipe);
-		return typeKey != null && "vintageimprovements".equals(typeKey.getNamespace())
-			&& "auto_smithing".equals(typeKey.getPath());
-	}
-
-	/**
-	 * 角色排列表：{@code {templateStacksIdx, baseStacksIdx, additionStacksIdx}}——
-	 * {@code stacks} 内的 3 件物品在 {@link SmithingRecipeInput} 三个角色上的<b>全部 6 种分配</b>。
-	 */
-	private static final int[][] SMITHING_ROLE_ORDERS = {
-		{ 0, 1, 2 }, { 0, 2, 1 }, { 1, 0, 2 }, { 1, 2, 0 }, { 2, 0, 1 }, { 2, 1, 0 }
-	};
-
-	/**
-	 * <b>锻造融合（auto_smithing）真实产物推导</b>：该配方 JSON 的 {@code results} 为空，
-	 * Vintage 的真实产物逻辑在机器实体里——{@code HelveBlockEntity} 持有 {@code lastSmithingRecipe}
-	 * （原版 {@code net.minecraft.world.item.crafting.SmithingRecipe}），并构造原版
-	 * {@link SmithingRecipeInput} 调 {@code assemble} 产出（就是"给盔甲加纹饰"）。变体波没有
-	 * 机器实体，这里等价复用<b>原版锻造配方</b>本身：遍历 {@link RecipeType#SMITHING} 全部配方
-	 * （含 {@code smithing_transform} 与 {@code smithing_trim} 两类），找到能匹配的就 assemble 出产物。
-	 *
-	 * <p><b>三件物品的角色映射依据（实证，非猜测）</b>：</p>
-	 * <ol>
-	 *   <li>{@code javap} 确认构造器签名为
-	 *       {@code SmithingRecipeInput(ItemStack template, ItemStack base, ItemStack addition)}
-	 *       （record 访问器 {@code template()/base()/addition()} 同序），即"模板、底材、附加材料"；</li>
-	 *   <li>{@code auto_smithing.json} 的 ingredients 顺序为
-	 *       {@code #minecraft:trim_templates} → {@code #minecraft:trimmable_armor} →
-	 *       {@code #minecraft:trim_materials}，与上述 template/base/addition 顺序<b>一一对应</b>；
-	 *       原版 {@code *_smithing_trim.json} 的字段顺序（template/base/addition）也完全一致；</li>
-	 *   <li>Vintage 自己的 {@code HelveBlockEntity.processSmith()} 字节码显示：它<b>不按槽位顺序</b>，
-	 *       而是用配方的 {@code isTemplateIngredient / isBaseIngredient / isAdditionIngredient}
-	 *       逐件归类（归到 bufInv 的 0/1/2 号槽），再
-	 *       {@code new SmithingRecipeInput(buf0, buf1, buf2)} + {@code assemble(input, level.registryAccess())}
-	 *       + {@code matches(input, level())} 复核——即角色由<b>配方判定</b>决定，与来源槽位无关。</li>
-	 * </ol>
-	 * <p>因此本方法采用"<b>排列穷举 + matches 复核</b>"：把 {@code stacks = [主料, 辅料1, 辅料2]}
-	 * 的 6 种角色分配逐个代入原版 {@code SmithingRecipe.matches(...)}（该方法即
-	 * {@code template.test(t) && base.test(b) && addition.test(a)}），只要有一种成立即为正确映射，
-	 * 比硬编码下标顺序更稳（等价于 Vintage 的角色判定，且以原版 matches 为准绳，不会张冠李戴）。</p>
-	 *
-	 * <p>找不到任何匹配配方（或 API 异常）→ 返回 {@code null}：调用方按"无产物可执行"放弃，
-	 * <b>不消耗任何物品</b>，绝不硬造产物、不抛异常。</p>
-	 *
-	 * @param single   主料（命中物品/槽内物品，count 已置 1）
-	 * @param candidate 已确认的候选（{@code auxes} 指向载荷或命中容器中的其余 2 件）
-	 * @param handler  命中容器（解析 CONTAINER 来源辅料用；掉落物路径传 null）
-	 */
-	private List<ItemStack> smithingBridgeResult(ItemStack single, Candidate candidate, IItemHandler handler) {
-		List<ItemStack> stacks = new ArrayList<>(1 + candidate.auxes.size());
-		stacks.add(single);
-		for (AuxRef ref : candidate.auxes) {
-			ItemStack aux = resolveAux(ref, handler);
-			if (aux.isEmpty())
-				return null;
-			ItemStack one = aux.copy();
-			one.setCount(1);
-			stacks.add(one);
-		}
-		if (stacks.size() < 3) {
-			craftDebug("无产物：锻造融合需要 3 件（模板/盔甲/材料），实得 {} 件", stacks.size());
-			return null;
-		}
-		try {
-			for (RecipeHolder<SmithingRecipe> holder : level().getRecipeManager()
-				.getAllRecipesFor(RecipeType.SMITHING)) {
-				SmithingRecipe smithing = holder.value();
-				if (smithing == null)
-					continue;
-				for (int[] roles : SMITHING_ROLE_ORDERS) {
-					if (roles[0] >= stacks.size() || roles[1] >= stacks.size() || roles[2] >= stacks.size())
-						continue;
-					SmithingRecipeInput input = new SmithingRecipeInput(stacks.get(roles[0]), stacks.get(roles[1]),
-						stacks.get(roles[2]));
-					if (!smithing.matches(input, level()))
-						continue; // 该角色分配不成立（原版 matches 即三角色 ingredient 全测）
-					ItemStack out = smithing.assemble(input, level().registryAccess());
-					if (out.isEmpty())
-						continue;
-					craftDebug("锻造融合产物：原版配方 {} 命中（角色分配 {}/{}/{}）→ {} ×{}", holder.id(), roles[0],
-						roles[1], roles[2], out.getItem(), out.getCount());
-					List<ItemStack> one = new ArrayList<>(1);
-					one.add(out);
-					return one;
-				}
-			}
-		} catch (Throwable ignored) {
-			// 配方管理器不可用 / 个别原版锻造配方 assemble 异常：按"无可执行产物"放弃（不消耗、不抛）
-			return null;
-		}
-		craftDebug("无产物：原版 SMITHING 配方中找不到能匹配当前 3 件物品者（模板/盔甲/材料组合无效）");
-		return null;
-	}
+	// 变形升级 / 锻造融合配方（③b auto_upgrade / ③c auto_smithing）的判定与产物推导已随
+	// "产物推导"一族搬入 WaveCraftResults（isUpgradeTransformationRecipe / upgradeResultOf /
+	// isAutoSmithingRecipe / smithingBridgeResult）。
 
 	// ================= 机器环境前置条件（④） =================
-
-	/** 环境判定扫描半径（格）：命中点 3×3×3 立方体（含自身格）。 */
-	private static final int ENV_RADIUS = 1;
 
 	/**
 	 * 配方所需"机器环境"是否在命中点附近满足（④）：
@@ -2431,7 +1746,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		if (required.testBlazeBurner(carriedHeat))
 			return true;
 		BlazeBurnerBlock.HeatLevel best = BlazeBurnerBlock.HeatLevel.NONE;
-		for (BlockPos bp : envBlocks(center)) {
+		for (BlockPos bp : WaveAuxResolver.envBlocks(center)) {
 			try {
 				BlazeBurnerBlock.HeatLevel heat = BlazeBurnerBlock.getHeatLevelOf(level().getBlockState(bp));
 				if (heat == BlazeBurnerBlock.HeatLevel.NONE)
@@ -2457,7 +1772,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	 * （逐一以命中点邻域方块调用 Create 现成 {@code FanProcessingType.isValidAt}）。
 	 */
 	private boolean nearbyMediaSatisfies(BlockPos center, FanProcessingType type) {
-		for (BlockPos bp : envBlocks(center)) {
+		for (BlockPos bp : WaveAuxResolver.envBlocks(center)) {
 			try {
 				if (type.isValidAt(level(), bp))
 					return true;
@@ -2510,7 +1825,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 			// 无 mode 字段/反射失败
 		}
 
-		for (BlockPos bp : envBlocks(center)) {
+		for (BlockPos bp : WaveAuxResolver.envBlocks(center)) {
 			BlockEntity be = level().getBlockEntity(bp);
 			if (be == null || !isCurvingPressEntity(be))
 				continue;
@@ -2589,12 +1904,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 		}
 	}
 
-	/** 环境扫描立方体（3×3×3，含中心格）。 */
-	private static Iterable<BlockPos> envBlocks(BlockPos center) {
-		return BlockPos.betweenClosed(center.offset(-ENV_RADIUS, -ENV_RADIUS, -ENV_RADIUS),
-			center.offset(ENV_RADIUS, ENV_RADIUS, ENV_RADIUS));
-	}
-
 	/** 链用尽：释放剩余载荷（先入容器/储罐/储能，否则掉落/浪费）并消散。 */
 	private void finishAndDiscard() {
 		if (!payloadReleased) {
@@ -2645,6 +1954,17 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity {
 	 * 工作盆、目录登记的加工机（含注液器/物品排放器这类<b>非动能</b>机）与动能方块一律不算可存目标。
 	 * 判定实现收敛在 {@link WavePayloadRelease#isStoreTarget}（变器扫描与波侧同源）。
 	 */
+	/** 杈呮枡瑙ｆ瀽鍣細鎸夊綋鍓嶈浇鑽风幇鍦烘瀯閫狅紙杞借嵎鍒楄〃鎸夊紩鐢ㄨ鍙栵紝鏁呭垪琛ㄥ唴瀹瑰彉鍖栫珛鍗冲彲瑙侊級銆?*/
+	private WaveAuxResolver auxResolver() {
+		return new WaveAuxResolver(level(), payloadItems, payloadFluid, payloadEnergy);
+	}
+
+	/** 产物推导的实体侧上下文（每次现场构造：世界 + 辅料解析器 + 调试日志出口）。
+	 *  {@code craftDebug} 是静态方法，故调试出口用 lambda 绑定（{@code this::craftDebug} 对静态方法不合法）。 */
+	private WaveCraftResults.Context craftResultsContext() {
+		return new WaveCraftResults.Context(level(), auxResolver(), (msg, args) -> craftDebug(msg, args));
+	}
+
 	private java.util.function.Predicate<BlockPos> payloadGatherSkip(BlockPos center) {
 		return pos -> pos.equals(center) || !WavePayloadRelease.isStoreTarget(level(), pos);
 	}

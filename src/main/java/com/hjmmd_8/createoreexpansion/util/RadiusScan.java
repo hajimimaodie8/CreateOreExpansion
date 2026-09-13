@@ -51,6 +51,29 @@ public final class RadiusScan {
 	}
 
 	/**
+	 * 同 {@link #forEachInRadius}，但 {@code action} 返回 {@code false} 时<b>提前结束整轮遍历</b>。
+	 *
+	 * <p>用于"取满就收手"的取料循环（例如流体抽到上限、电量取到额度上限）——以前那些循环里
+	 * 各写一个 {@code break}，语义与守卫散在各处。</p>
+	 */
+	public static void forEachInRadiusWhile(Level level, BlockPos center, int radius, Predicate<BlockPos> skip,
+		Predicate<BlockPos> action) {
+		if (level == null || center == null || action == null)
+			return;
+		int r = Math.max(1, radius);
+		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
+			if (pos.equals(center))
+				continue;
+			if (!level.isLoaded(pos))
+				continue;
+			if (skip != null && skip.test(pos))
+				continue;
+			if (!action.test(pos))
+				return;
+		}
+	}
+
+	/**
 	 * 同 {@link #forEachInRadius}，但只统计满足 {@code filter} 的位置数（不收集位置）。
 	 * 用于"台数"这类只关心数量的读数，避免为计数而建列表。
 	 */

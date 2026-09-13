@@ -75,17 +75,12 @@ public final class TransmuterScanner {
 	 */
 	public static List<BlockPos> collectMachines(Level level, BlockPos origin, int radius) {
 		List<BlockPos> list = new ArrayList<>();
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-r, -r, -r), origin.offset(r, r, r))) {
-			if (pos.equals(origin))
-				continue;
-			if (!level.isLoaded(pos))
-				continue; // 未加载区块：读方块状态/方块实体都会触发同步加载
+		RadiusScan.forEachInRadius(level, origin, radius, null, pos -> {
 			if (level.getBlockEntity(pos) == null)
-				continue;
+				return;
 			if (StellarWaveMachineRegistry.isMachinery(level, pos))
 				list.add(pos.immutable());
-		}
+		});
 		return list;
 	}
 
@@ -97,15 +92,10 @@ public final class TransmuterScanner {
 	 */
 	public static List<BlockPos> collectChargedRods(Level level, BlockPos origin, int radius) {
 		List<BlockPos> rods = new ArrayList<>();
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-r, -r, -r), origin.offset(r, r, r))) {
-			if (pos.equals(origin))
-				continue;
-			if (!level.isLoaded(pos))
-				continue; // 未加载区块：getBlockEntity 会触发同步加载
+		RadiusScan.forEachInRadius(level, origin, radius, null, pos -> {
 			if (level.getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod && rod.hasReadyCharge())
 				rods.add(pos.immutable());
-		}
+		});
 		return rods;
 	}
 
@@ -124,47 +114,36 @@ public final class TransmuterScanner {
 	 * <p><b>只读</b>：储能只调 {@code getEnergyStored()}，绝不在此处抽电——真实抽取发生在波穿过的瞬间。</p>
 	 */
 	public static DeviceCounts scanDeviceCounts(Level level, BlockPos origin, int radius) {
-		int itemContainers = 0;
-		int fluidContainers = 0;
-		int energyStorages = 0;
-		int energyStoredFe = 0;
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(origin.offset(-r, -r, -r), origin.offset(r, r, r))) {
-			if (pos.equals(origin))
-				continue;
-			if (!level.isLoaded(pos))
-				continue; // 未加载区块：capability 查询会触发同步加载
-			if (StellarWaveMachineRegistry.isMachinery(level, pos))
-				continue; // 加工机内部库存不算载荷源
-			if (level.getBlockEntity(pos) instanceof BasinBlockEntity)
-				continue; // 工作盆：玩家在用的加工容器
-			try {
-				var items = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
-					pos, null);
-				if (items != null && items.getSlots() > 0)
-					itemContainers++;
-			} catch (Throwable ignored) {
-				// 单个方块能力查询异常：跳过
-			}
-			try {
-				var tank = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.BLOCK,
-					pos, null);
-				if (tank != null && tank.getTanks() > 0)
-					fluidContainers++;
-			} catch (Throwable ignored) {
-				// 同上
-			}
-			try {
-				var storage = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK,
-					pos, null);
-				if (storage != null) {
-					energyStorages++;
-					energyStoredFe += Math.max(0, storage.getEnergyStored());
+		int[] counts = { 0, 0, 0, 0 }; // 物品容器 / 流体容器 / 储能台数 / 可读电量合计
+		RadiusScan.forEachInRadius(level, origin, radius, pos -> StellarWaveMachineRegistry.isMachinery(level, pos)
+			|| level.getBlockEntity(pos) instanceof BasinBlockEntity, pos -> {
+				try {
+					var items = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.BLOCK,
+						pos, null);
+					if (items != null && items.getSlots() > 0)
+						counts[0]++;
+				} catch (Throwable ignored) {
+					// 单个方块能力查询异常：跳过
 				}
-			} catch (Throwable ignored) {
-				// 同上
-			}
-		}
-		return new DeviceCounts(itemContainers, fluidContainers, energyStorages, energyStoredFe);
+				try {
+					var tank = level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.FluidHandler.BLOCK,
+						pos, null);
+					if (tank != null && tank.getTanks() > 0)
+						counts[1]++;
+				} catch (Throwable ignored) {
+					// 同上
+				}
+				try {
+					var storage = level
+						.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.BLOCK, pos, null);
+					if (storage != null) {
+						counts[2]++;
+						counts[3] += Math.max(0, storage.getEnergyStored());
+					}
+				} catch (Throwable ignored) {
+					// 同上
+				}
+			});
+		return new DeviceCounts(counts[0], counts[1], counts[2], counts[3]);
 	}
 }

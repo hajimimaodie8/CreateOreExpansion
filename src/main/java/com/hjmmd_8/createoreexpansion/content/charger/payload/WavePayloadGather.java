@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import com.hjmmd_8.createoreexpansion.util.RadiusScan;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -95,17 +97,10 @@ public final class WavePayloadGather {
 		if (level == null || center == null)
 			return;
 		List<SlotRef> slots = new ArrayList<>();
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			if (pos.equals(center))
-				continue;
-			if (!level.isLoaded(pos))
-				continue; // 未加载区块：capability 查询会触发同步加载（2026-09 审计修复）
-			if (skip != null && skip.test(pos))
-				continue;
+		RadiusScan.forEachInRadius(level, center, radius, skip, pos -> {
 			IItemHandler handler = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
 			if (handler == null)
-				continue;
+				return;
 			BlockPos immutable = pos.immutable();
 			for (int slot = 0; slot < handler.getSlots(); slot++) {
 				ItemStack stack = handler.getStackInSlot(slot);
@@ -113,7 +108,7 @@ public final class WavePayloadGather {
 					continue;
 				slots.add(new SlotRef(handler, slot, immutable));
 			}
-		}
+		});
 		if (slots.isEmpty())
 			return;
 
@@ -192,43 +187,36 @@ public final class WavePayloadGather {
 		FluidStack fluid = current == null || current.isEmpty() ? FluidStack.EMPTY : current.copy();
 		if (level == null || center == null)
 			return fluid;
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			if (pos.equals(center))
-				continue;
-			if (!level.isLoaded(pos))
-				continue; // 未加载区块：capability 查询会触发同步加载
-			if (skip != null && skip.test(pos))
-				continue;
+		FluidStack[] acc = { fluid };
+		RadiusScan.forEachInRadiusWhile(level, center, radius, skip, pos -> {
 			IFluidHandler tank = level.getCapability(Capabilities.FluidHandler.BLOCK, pos, null);
 			if (tank == null)
-				continue;
+				return true;
 			for (int i = 0; i < tank.getTanks(); i++) {
 				FluidStack fs = tank.getFluidInTank(i);
 				if (fs.isEmpty())
 					continue;
-				if (!fluid.isEmpty() && fluid.getFluid() != fs.getFluid())
+				if (!acc[0].isEmpty() && acc[0].getFluid() != fs.getFluid())
 					continue;
-				int want = maxMb - fluid.getAmount();
+				int want = maxMb - acc[0].getAmount();
 				if (want <= 0)
 					break;
 				FluidStack drained = tank.drain(new FluidStack(fs.getFluid(), want),
 					simulate ? IFluidHandler.FluidAction.SIMULATE : IFluidHandler.FluidAction.EXECUTE);
 				if (drained.isEmpty())
 					continue;
-				if (fluid.isEmpty())
-					fluid = drained.copy();
+				if (acc[0].isEmpty())
+					acc[0] = drained.copy();
 				else
-					fluid.grow(drained.getAmount());
+					acc[0].grow(drained.getAmount());
 				if (!simulate)
 					recordSource(sources, pos);
-				if (fluid.getAmount() >= maxMb)
+				if (acc[0].getAmount() >= maxMb)
 					break;
 			}
-			if (fluid.getAmount() >= maxMb)
-				break;
-		}
-		return fluid;
+			return acc[0].getAmount() < maxMb; // 抽满即结束整轮
+		});
+		return acc[0];
 	}
 
 	/**
@@ -245,22 +233,15 @@ public final class WavePayloadGather {
 		boolean simulate, Predicate<BlockPos> skip, int maxFe) {
 		if (level == null || center == null)
 			return 0;
-		int energy = 0;
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			int room = roomLeft(energy, maxFe);
+		int[] energy = { 0 };
+		RadiusScan.forEachInRadiusWhile(level, center, radius, skip, pos -> {
+			int room = roomLeft(energy[0], maxFe);
 			if (room == 0)
-				break; // 已取满
-			if (pos.equals(center))
-				continue;
-			if (!level.isLoaded(pos))
-				continue; // 未加载区块：capability 查询会触发同步加载
-			if (skip != null && skip.test(pos))
-				continue;
+				return false; // 已取满，结束整轮
 			IEnergyStorage storage = level.getCapability(Capabilities.EnergyStorage.BLOCK, pos, null);
 			if (storage != null && storage.canExtract()) {
 				int got = storage.extractEnergy(room < 0 ? Integer.MAX_VALUE : room, simulate);
-				energy += got;
+				energy[0] += got;
 				if (!simulate && got > 0)
 					recordSource(sources, pos);
 			} else if (!simulate) {
@@ -268,16 +249,17 @@ public final class WavePayloadGather {
 				// （consumeTeslaCoil 内部自带钳制，max = Integer.MAX_VALUE 等价于旧的"全抽"）
 				int got = com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations
 					.consumeTeslaCoil(level, pos, room < 0 ? Integer.MAX_VALUE : room);
-				energy += got;
+				energy[0] += got;
 				if (got > 0)
 					recordSource(sources, pos);
 			} else if (storage != null) {
 				// 估算：纯输入储能按当前储量计（同样受上限截断）
 				int stored = storage.getEnergyStored();
-				energy += room < 0 ? stored : Math.min(stored, room);
+				energy[0] += room < 0 ? stored : Math.min(stored, room);
 			}
-		}
-		return energy;
+			return true;
+		});
+		return energy[0];
 	}
 
 	/** 还能取多少：{@code maxFe < 0} 返回 -1（不设上限），取满返回 0。 */

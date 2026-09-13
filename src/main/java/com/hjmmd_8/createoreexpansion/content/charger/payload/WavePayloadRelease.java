@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
+import com.hjmmd_8.createoreexpansion.util.RadiusScan;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
 
 import net.minecraft.core.BlockPos;
@@ -139,14 +140,8 @@ public final class WavePayloadRelease {
 	/** 圆心半径内的可存目标，按到圆心距离由近到远排序（供整轮释放复用）。 */
 	private static List<BlockPos> sortedStoreTargets(Level level, BlockPos center, int radius) {
 		List<BlockPos> list = new ArrayList<>();
-		int r = Math.max(1, radius);
-		for (BlockPos pos : BlockPos.betweenClosed(center.offset(-r, -r, -r), center.offset(r, r, r))) {
-			if (pos.equals(center))
-				continue;
-			if (!isStoreTarget(level, pos))
-				continue;
-			list.add(pos.immutable());
-		}
+		// 排除口径交给 RadiusScan 的 skip（中心格与未加载区块由工具自身排除）
+		RadiusScan.forEachInRadius(level, center, radius, pos -> !isStoreTarget(level, pos), pos -> list.add(pos.immutable()));
 		list.sort(Comparator.comparingDouble(center::distSqr));
 		return list;
 	}
