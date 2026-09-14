@@ -68,7 +68,7 @@ public class AreaUtil {
 
     /**
      * 判断方块能否被 AOE 破坏。新建工具时<b>无需修改</b>。
-     * 规则：不破坏流体、不破坏带 TileEntity 的方块（箱子、熔炉等）。
+     * 规则：不破坏流体、不破坏带方块实体（BlockEntity）的方块（箱子、熔炉等）。
      * 硬度判断在 BlockBreaker 中由创造/生存模式决定。
      */
     public static boolean canDestroy(BlockState targetState, Level level, BlockPos pos) {

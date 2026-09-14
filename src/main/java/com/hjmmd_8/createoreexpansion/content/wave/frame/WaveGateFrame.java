@@ -19,13 +19,16 @@ import net.minecraft.world.phys.Vec3;
  * <p><b>坐标系约定</b>：本地 Z 轴 = 面板轴（波闸 FACING 法向量），
  * 本地 X/Y 轴 = 面板面内两个正交轴。本地坐标原点 = 机器参考中心（通常为方块中心）。</p>
  *
- * <p><b>实现分层</b>（按实现深度递增）：</p>
+ * <p><b>实现分层</b>（按本接口的实现深度递增；下面 2、3 层<b>不是"功能没做"</b>——那两种场景
+ * 由别的路径承载，见各条末尾的交叉引用）：</p>
  * <ol>
  *   <li><b>静态方块</b>（{@link StaticWaveGateFrame}）：由 blockstate 的 FACING 推导三轴
  *       —— 波每 tick 从方块实体读当前 FACING，轻量、无新依赖；</li>
- *   <li><b>Create 动态结构</b>（待实现）：动力轴承 / 矿车装配站装配的实体，
- *       读取结构旋转矩阵，波方向随结构任意旋转；</li>
- *   <li><b>航空学结构</b>（待实现，条件加载）：飞机 / 船，读结构矩阵 + 本地坐标转换。</li>
+ *   <li><b>Create 动态结构</b>（本接口尚无实现）：动力轴承 / 矿车装配站装配的实体。
+ *       现状：波撞结构走 {@code WaveContraptionCollisions}（把波换算进结构本地坐标系后复用同一套
+ *       机器判定），不经本接口；</li>
+ *   <li><b>航空学 / Sable 结构</b>（本接口尚无实现）：飞机 / 船等 sub-level。现状：走
+ *       {@code WaveSubLevelCollisions} + {@code SableBridges}（反射隔离的可选集成），同样不经本接口。</li>
  * </ol>
  *
  * <p>实现方只需提供三轴基向量与原点，{@link #toLocal}/{@link #toWorldDir} 等换算
