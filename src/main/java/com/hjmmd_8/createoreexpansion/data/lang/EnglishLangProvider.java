@@ -175,9 +175,12 @@ public class EnglishLangProvider extends LanguageProvider {
         // per-wave-type appendix (kept in lang so both languages control their own punctuation).
         add("createoreexpansion.wave_gauge.readout", "Wave Speed: %s blocks/s · Wave Level: %s · Wave Payload: %s · Wave Type: %s");
         add("createoreexpansion.wave_gauge.join", " · ");
-        add("createoreexpansion.wave_gauge.payload_items", "items %s");
-        add("createoreexpansion.wave_gauge.payload_fluid", "fluid %s %s mB");
-        add("createoreexpansion.wave_gauge.payload_energy", "energy %s FE");
+        // Payload shorthands are deliberately terse ("items x3 / water 2000 mB / 1200 FE"): the
+        // grouped four-element line is already long and action-bar text gets clipped at large GUI
+        // scales, so words the unit already implies ("fluid", "energy") are dropped
+        add("createoreexpansion.wave_gauge.payload_items", "items x%s");
+        add("createoreexpansion.wave_gauge.payload_fluid", "%s %s mB");
+        add("createoreexpansion.wave_gauge.payload_energy", "%s FE");
         // Empty payload must be stated: the four elements are grouped, so "nothing carried" needs a placeholder
         add("createoreexpansion.wave_gauge.payload_none", "empty");
         // Appendix by wave type: normal -> none, omni -> processable recipe TYPES, attack -> damage

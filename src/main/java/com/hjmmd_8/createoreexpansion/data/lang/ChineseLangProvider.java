@@ -346,13 +346,16 @@ public class ChineseLangProvider extends LanguageProvider {
         // join 是"按波型追加项"前的连接符（放词条里，便于中英各自控制标点）
         add("createoreexpansion.wave_gauge.readout", "波速：%s 格/秒 · 波级：%s · 波载荷：%s · 波型：%s");
         add("createoreexpansion.wave_gauge.join", " · ");
-        add("createoreexpansion.wave_gauge.payload_items", "物品 %s 件");
-        add("createoreexpansion.wave_gauge.payload_fluid", "流体 %s %s mB");
-        add("createoreexpansion.wave_gauge.payload_energy", "电量 %s FE");
+        // 载荷三段刻意压短（"物品×3 / 水 2000 mB / 1200 FE"）：四要素成组后整行本就偏长，
+        // 动作栏在 GUI 放大档位下容易被裁，去掉"流体/电量"这类可由单位推出的字
+        add("createoreexpansion.wave_gauge.payload_items", "物品×%s");
+        add("createoreexpansion.wave_gauge.payload_fluid", "%s %s mB");
+        add("createoreexpansion.wave_gauge.payload_energy", "%s FE");
         // 空载要占位：四要素成组显示，玩家需能分辨"没带东西"与"没读出来"
         add("createoreexpansion.wave_gauge.payload_none", "空载");
-        // 按波型追加：普通波不追加；全能波给可加工配方"种类"数；攻击波给攻击伤害
-        add("createoreexpansion.wave_gauge.tail_omni", "可加工配方种类：%s");
+        // 按波型追加：普通波不追加；全能波给可加工配方**类型**数（与英文 "types" 同口径，
+        // 不写"种类"以免被读成配方条目数）；攻击波给攻击伤害
+        add("createoreexpansion.wave_gauge.tail_omni", "可加工配方类型：%s 种");
         add("createoreexpansion.wave_gauge.tail_attack", "攻击伤害：%s");
         add("createoreexpansion.wave_gauge.no_wave", "附近没有能量波");
         add("createoreexpansion.wave_gauge.tooltip", "右键查询最近的波情");

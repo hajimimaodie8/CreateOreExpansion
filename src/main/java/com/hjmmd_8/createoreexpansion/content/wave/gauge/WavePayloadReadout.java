@@ -58,9 +58,12 @@ public record WavePayloadReadout(int itemCount, FluidStack fluid, int energy) {
 	}
 
 	/**
-	 * 载荷摘要文案："物品 3 件 · 流体 水 500 mB · 电量 1200 FE"
+	 * 载荷摘要文案："物品×3 · 水 500 mB · 1200 FE"
 	 * （三段各自判空、有才拼；一段都没有时给"空载"占位——四要素成组显示，
 	 * 空载也要占位，否则玩家分不清"没带东西"和"没读出来"）。
+	 *
+	 * <p>三段刻意写得短（单位已能推出的字就不写）：整行是"波速 / 波级 / 波载荷 / 波型 / 按型追加"
+	 * 的一次性读数，动作栏在 GUI 放大档位下会裁长行，压缩这里比拆行更划算。</p>
 	 */
 	public Component summary() {
 		List<Component> parts = new ArrayList<>(3);

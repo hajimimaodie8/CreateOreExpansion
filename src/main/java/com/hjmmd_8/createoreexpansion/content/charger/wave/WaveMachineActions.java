@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlock;
@@ -18,6 +19,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.regulation.WaveSpeedRegulatio
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
@@ -51,6 +53,19 @@ public class WaveMachineActions {
 	}
 
 	/**
+	 * <b>爆炸等级取值（唯一实现）</b>：一律用<b>波自身等级</b>，并夹到波速/伤害表的合法档位
+	 * （{@link WaveLevels#LOW}~{@link WaveLevels#MAX_LEVEL}）——爆炸粒子量按等级线性放大
+	 * （见 {@code ChargerWaveFx#triggerBoom} 的 {@code 30 + boomLevel × 25}），越界值不得直接传下去。
+	 *
+	 * <p>口径与"波波碰撞取两波较低等级"一致：爆炸规模表达的始终是"这只波现在几级"，
+	 * 而不是"哪台机器炸的"——所以同一台翡翠调级器（上限 3）与蓝宝石/星辉石（上限 5）
+	 * 触发过载时，规模自然不同（3 级 vs 5 级），无需调用方再判断机型。</p>
+	 */
+	private int boomLevel() {
+		return Mth.clamp(wave.getWaveLevel(), WaveLevels.LOW, WaveLevels.MAX_LEVEL);
+	}
+
+	/**
 	 * 处理一次调级器判定。
 	 *
 	 * @param regulator 调级器方块实体
@@ -69,16 +84,16 @@ public class WaveMachineActions {
 			}
 			case VANISH_OVERLOAD_BOOM -> {
 				// 顺基准且已达机型承载上限（翡翠 3 = γ / 蓝宝石·星辉石 5 = ω）→ 过载爆炸后湮灭。
-				// 爆炸规模固定 3 级（与旧版一致：旧上限本来就是 3 级）；4/5 级波在蓝宝石/星辉石上
-				// 触发时是否该放大到本级规模，属游戏表现取舍，未擅自改动。
+				// 爆炸规模按波自身等级放大（用户 2026-09-14 定稿）：翡翠机 3 级（105 颗），
+				// 蓝宝石/星辉石机 5 级（155 颗）——与"波波碰撞取较低等级"同一套取值口径。
 				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
-					wave.getRenderColor(), null, 3);
+					wave.getRenderColor(), null, boomLevel());
 				return true;
 			}
 			case VANISH_FLOOR_BOOM -> {
-				// 1 级（α）波逆基准 / 单开口遣返：降级无路可降 → 1 级小范围爆炸后湮灭
+				// 1 级（α）波逆基准 / 单开口遣返：降级无路可降 → 爆炸后湮灭（等级恒为 1，即 α 级规模）
 				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
-					wave.getRenderColor(), null, 1);
+					wave.getRenderColor(), null, boomLevel());
 				return true;
 			}
 			case PASS_UNCHANGED -> {
