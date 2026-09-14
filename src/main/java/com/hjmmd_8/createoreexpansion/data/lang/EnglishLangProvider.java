@@ -329,8 +329,9 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "Energy payload: %s FE");
         add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "Charged rods: %s (1 strike drawn per wave; the wave strikes wherever it hits)");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "Recent wave can process:");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "Linked to %s machines. Hold [%s] for recipes");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint_shift", "Linked to %s machines. Holding [%s] shows recipes");
+        // Staged expansion: hint at the end of stage 1 (summary) so stage 2 is discoverable
+        add("createoreexpansion.goggles.transmuter_expand_hint", "Hold [%s] again for all readouts");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "Linked to %s machines · recipes");
         // Single-line recipe list: separator and overflow suffix (comma-joined, "etc" past 10)
         add("createoreexpansion.goggles.list_separator", ", ");
         add("createoreexpansion.goggles.list_etc", " etc.");

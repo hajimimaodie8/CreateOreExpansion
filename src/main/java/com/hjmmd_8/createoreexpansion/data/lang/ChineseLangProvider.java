@@ -222,8 +222,9 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "电量载荷：%s FE");
         add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "已蓄满避雷针：%s 台（每发波抽取 1 次，波打中哪里就在哪里落雷）");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "最近波可加工：");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "已绑定 %s 台机器。按 [%s] 显示加工配方");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint_shift", "已绑定 %s 台机器。按住 [%s] 显示加工配方");
+        // 分档展开：第 1 档（概要）末尾的一行提示——玩家据此知道还有第 2 档可看
+        add("createoreexpansion.goggles.transmuter_expand_hint", "再按住 [%s] 一次展开全部读数");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "已绑定 %s 台机器 · 可加工配方");
         // 配方清单单行汇总：分隔符与超量省略（顿号连接，超 10 项补"等"）
         add("createoreexpansion.goggles.list_separator", "、");
         add("createoreexpansion.goggles.list_etc", "等");
