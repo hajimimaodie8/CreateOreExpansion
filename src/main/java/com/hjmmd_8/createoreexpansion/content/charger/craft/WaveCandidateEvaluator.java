@@ -620,19 +620,33 @@ public final class WaveCandidateEvaluator {
 
 	// ================= 全库检索与类型门 =================
 
+	/**
+	 * 全库检索的<b>专属缓存键</b>（本模组唯一持有者）。
+	 *
+	 * <p><b>为什么不用 {@code RecipeFinder.class} 之类"看起来唯一"的现成对象</b>：Create 的
+	 * {@code RecipeFinder.CACHED_SEARCHES} 是一个<b>进程级全局</b> Guava 缓存，命中条件<b>只有 key</b>——
+	 * 既不比较 {@code level} 也不比较谓词（源码注释原文："using the same object instance as the cacheKey
+	 * will retrieve the cached result from the first search"）。所以只要另一个模组也拿
+	 * {@code RecipeFinder.class}（一个谁都写得出、且语义上很自然的字面量）当 key，两边就会互相拿到
+	 * 对方的配方表，且症状是"某类配方莫名不加工"，极难排查。这里用一个<b>本类私有的新对象</b>做键：
+	 * 身份唯一（{@code Object} 用 == 语义），外部不可能撞上，也不需要靠"别人不会这么写"来保证正确性。</p>
+	 *
+	 * <p>（本仓另一处 {@code PowerAngleGrinderBlockEntity} 按 {@code typeInfo} 对象作键，同样唯一；
+	 * 数据包重载时 Create 自己的 {@code LISTENER} 会 {@code invalidateAll()}，故缓存不会跨数据包陈旧。）</p>
+	 */
+	private static final Object WAVE_RECIPE_CACHE_KEY = new Object();
+
 	/** 当前世界全部"<b>波可执行</b>"配方（RecipeFinder 带缓存；数据包重载后自动失效重查）。
 	 *  范围 = Create ProcessingRecipe 族（主路径全库管线）∪ {@link WaveRecipeFamilies} 登记的非
 	 *  ProcessingRecipe 族（拆解等）；仍排除本 mod 闪电类——闪电加工不走全库命中，
 	 *  只能由"波在命中点引雷 → 本模组闪电落地统一加工"承担（见 {@code StellarWaveEntity#summonLightningAt}）。
 	 *
-	 *  <p>缓存 key 仍用 {@code RecipeFinder.class}（本类独占该 key，见
-	 *  {@code PowerAngleGrinderBlockEntity} 的注释：对方按 typeInfo 对象作 key，互不冲突）；
-	 *  谓词放宽后同一 JVM 会话内只会以新谓词构建一次缓存。</p> */
+	 *  <p>缓存键见 {@link #WAVE_RECIPE_CACHE_KEY}（私有新对象 = 身份唯一，不与任何外部调用方冲突）；
+	 *  谓词固定，故同一会话内每个 key 只会构建一次缓存。</p> */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private static List<RecipeHolder<?>> allWaveRecipes(Context ctx) {
 		try {
-			return (List) com.simibubi.create.foundation.recipe.RecipeFinder.get(
-				com.simibubi.create.foundation.recipe.RecipeFinder.class, ctx.level,
+			return (List) com.simibubi.create.foundation.recipe.RecipeFinder.get(WAVE_RECIPE_CACHE_KEY, ctx.level,
 				r -> r.value() instanceof Recipe<?> recipe
 					&& WaveRecipeFamilies.isExecutable(recipe)
 					&& !isLightningRecipe(r));
