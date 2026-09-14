@@ -26,10 +26,17 @@ import net.minecraft.world.phys.Vec3;
  *       "瞬移前落点 → 瞬移后落点"这一段被跳过（瞬移<b>之前</b>的合法历史照旧保留——
  *       把整条折线清掉会连带丢掉"瞬移前刚穿过场"的记录，那是一次真穿越）；</li>
  *   <li><b>还没压入的"尾点 → 实时位置"那一段</b>：瞬移可能发生在一次观测之后、下一次压点之前，
- *       此时观测者看到的"最新落点 → 实时位置"仍然是那一跳。所以瞬移必须<b>当场</b>把
- *       {@link #markLiveBreak} 置上（{@code crosses} 随即跳过这最后一段），而不是等到下一次压点。
+ *       此时观测者看到的"最新落点 → 实时位置"仍然是那一跳。所以这一跳必须<b>当场</b>生效：
+ *       波实体在 {@code setPos} 里置一个标志并把它作为 {@link #crosses} 的 {@code liveBroken}
+ *       参数传进来，这一段随即被跳过，而不是等到下一次压点。
  *       （2026-09 验证脚本实测：只做第 1 条时，瞬移误判样本一个都没减少。）</li>
  * </ol>
+ *
+ * <p><b>为什么不给本类加 {@code markLiveBreak()} setter</b>：那个写法踩过一个真实的坑——波实体在
+ * {@code setPos} 里调用它，而 {@code setPos} 会被<b>父类 {@code Entity} 的构造器</b>调用
+ * （{@code Entity.<init>} 内部 {@code setPos(0,0,0)}），那一刻字段初始化器还没跑、本对象还是 null，
+ * 于是开炮即 NPE（{@code crash-2026-09-14_09.47.56-server.txt}）。现在瞬移标志是波实体自己的
+ * <b>原始类型字段</b>（构造期赋值天然安全），本类只被"构造完成之后"的代码触碰。</p>
  *
  * <p><b>出生同理</b>：波出生那一刻由构造函数 {@code setPos} 触发同一个标记，第一段因此从出生点开始，
  * 折线起点不会是实体默认坐标 (0,0,0)（2026-09 前的旧实现读 {@code xo/yo/zo}，对刚出生的波就是原点，
@@ -49,10 +56,12 @@ import net.minecraft.world.phys.Vec3;
  * <ul>
  *   <li>与旧判定（只看"上一 tick → 当前"）逐观测点对比：<b>旧为真而新为假 = 0</b>（严格不回归），
  *       旧为假而新为真 = 2006 次（都是擦棱/擦角落在观测空档里，正是本类要补的漏）；</li>
- *   <li>节拍 1~4：漏报 0、误报 0；节拍 5/6 才开始漏报 → {@link #MAX_OBSERVATION_GAP_TICKS} 取 4
- *       是<b>实测出来的紧上限</b>，不是估的；</li>
+ *   <li>节拍扫描（对<b>两种观测时机</b>各测一遍）：观测恰好落在采样之后（此时"实时段"是零长度，
+ *       覆盖最短）→ 安全上限 <b>4</b>；观测落在两次采样之间（实时段有效，多覆盖一段）→ 安全上限 5。
+ *       取最坏的那个，故 {@link #MAX_OBSERVATION_GAP_TICKS} = 4——它是<b>实测出来的紧上限</b>，
+ *       不是估的；</li>
  *   <li>瞬移误判样本：只做"下次压点时断开"时一个都没减少（76 → 76），补上
- *       {@link #markLiveBreak()} 的即时断开后才归零——本文件开头那两条缺一不可。</li>
+ *       "实时段当场断开"（本类 {@code liveBroken} 参数）后才归零——本文件开头那两条缺一不可。</li>
  * </ul>
  */
 public final class WavePath {
@@ -82,18 +91,13 @@ public final class WavePath {
 	/** 当前有效落点数（0 ~ {@link #POINT_COUNT}）。 */
 	private int size;
 
-	/** 自上次 {@link #push} 以来发生过瞬移 → "尾点 → 实时位置"这一段同样要跳过。 */
-	private boolean liveBroken;
-
 	/**
 	 * 压入一个落点（<b>只由波实体每 tick 调用</b>：包内可见，外部只能查询，改不了轨迹）。
 	 *
-	 * <p>断点标记取自 {@link #liveBroken}："自上次压点以来是否发生过瞬移"——是则"上一落点 → 本次落点"
-	 * 这一段不算位移。压完即清标记。</p>
-	 *
-	 * @param point 本 tick 结束时的实际位置
+	 * @param point       本 tick 结束时的实际位置
+	 * @param breakBefore 与该点之前的落点之间<b>不是飞行位移</b>（机器瞬移 / 出生）→ 这一段判定时跳过
 	 */
-	void push(Vec3 point) {
+	void push(Vec3 point, boolean breakBefore) {
 		if (point == null)
 			return;
 		if (size == POINT_COUNT) {
@@ -101,19 +105,8 @@ public final class WavePath {
 			System.arraycopy(brokenBefore, 1, brokenBefore, 0, POINT_COUNT - 1);
 			size--;
 		}
-		brokenBefore[size] = liveBroken;
+		brokenBefore[size] = breakBefore;
 		points[size++] = point;
-		liveBroken = false;
-	}
-
-	/**
-	 * 标记"刚刚发生一次外力搬运"（波实体在非自走的 {@code setPos} 里调用）。
-	 *
-	 * <p>立刻生效：从这一刻起到下一次 {@link #push} 之前，"折线尾点 → 实时位置"这一段不参与判定
-	 * （否则观测者会把整段瞬移路径当成飞行穿过）。已压入的合法历史不受影响。</p>
-	 */
-	void markLiveBreak() {
-		liveBroken = true;
 	}
 
 	/**
@@ -121,11 +114,16 @@ public final class WavePath {
 	 *
 	 * <p>{@code live} = 波形<b>当前实时位置</b>，作为折线最后一点参与判定：观测发生在 tick 中间时，
 	 * 本 tick 已经走出的位移同样要算进去（否则又会出现"最后一个 tick 没人管"的小空档）。
-	 * 标了断点的那一段（含 {@link #markLiveBreak} 之后的实时段）只做"点是否在盒内"的判定，不按线段算。</p>
+	 * {@code liveBroken} = 自上次采样以来发生过外力搬运 → 最后这一段（尾点 → 实时位置）只做
+	 * "点是否在盒内"的判定，不按线段算。</p>
+	 *
+	 * <p><b>为什么把"实时段是否断"做成参数，而不是本类的一个 setter</b>：波实体要在
+	 * {@code setPos} 里上报瞬移，而 {@code setPos} 会被<b>父类构造器</b>调用（见波实体里的说明），
+	 * 那一刻本对象还不存在。改由调用方在查询时把标志传进来，本类就只被"构造完成之后"的代码触碰。</p>
 	 *
 	 * <p>本方法只回答几何问题，不判断波型、不改任何状态——"是不是普通波、要不要点燃"由调用方决定。</p>
 	 */
-	public boolean crosses(AABB box, Vec3 live) {
+	public boolean crosses(AABB box, Vec3 live, boolean liveBroken) {
 		if (box == null)
 			return false;
 		Vec3 previous = null;

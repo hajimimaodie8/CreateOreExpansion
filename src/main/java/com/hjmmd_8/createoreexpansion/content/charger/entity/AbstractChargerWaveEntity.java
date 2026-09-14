@@ -117,9 +117,21 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 *
 	 * <p>{@code false} 期间的任何 {@link #setPos} 都算"外力搬运"——机器把波推出方块外、原路遣返、
 	 * 结构场景坐标换算等。那种一跳不是飞行位移，不能参与"穿过判定"，否则攻击场会把整段瞬移路径上的
-	 * 场盒都误算成穿过（断开语义见 {@link WavePath#markLiveBreak()}）。</p>
+	 * 场盒都误算成穿过（断开语义见 {@link #pathBroken}）。</p>
 	 */
 	private boolean selfPropelled;
+
+	/**
+	 * 自上次压入落点以来是否发生过外力搬运（瞬移）：下一次 {@link WavePath#push} 把该段标为断点，
+	 * 同时 {@link #pathCrosses} 连带跳过"尾点 → 实时位置"这一段。
+	 *
+	 * <p><b>刻意用原始类型</b>：{@link #setPos} 会被<b>父类 {@code Entity} 的构造器</b>调用
+	 * （{@code Entity.<init>} 内部就会 {@code setPos(0,0,0)}），那一刻字段初始化器还没执行——
+	 * boolean 有默认值 false 所以安全；换成任何对象字段、或在这里碰 {@code wavePath}，都会 NPE
+	 * （2026-09 真实崩溃 {@code crash-2026-09-14_09.47.56-server.txt}）。
+	 * <b>{@link #setPos} 里只能碰原始类型——这条约束改不得。</b></p>
+	 */
+	private boolean pathBroken;
 
 	/**
 	 * 调级器增强延迟（格）：穿过能量调级器（顺基准）后还需飞行 0.5 格
@@ -248,15 +260,21 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 所以自走位移（tick 里唯一的 {@code setPos(position().add(step))}）与所有外力搬运都必然经过这里，
 	 * 不必去 20 多处调用点逐个加标记（漏一处就等于漏一个误判窗口）。</p>
 	 *
-	 * <p>非自走写入会<b>当场</b>把轨迹标断（{@link WavePath#markLiveBreak()}）：瞬移那一跳不能当作
-	 * 飞行位移参与攻击场的穿过判定，而且必须立刻生效——瞬移可能落在"一次观测之后、下一次采样之前"，
-	 * 等到下次采样才断就已经晚了一步（验证脚本实测过这一点）。<b>不改变任何位置/速度行为。</b></p>
+	 * <p>非自走写入只置一个原始类型标志（{@link #pathBroken}）：瞬移那一跳不能当作飞行位移参与攻击场的
+	 * 穿过判定，而且必须"当场"生效——瞬移可能落在"一次观测之后、下一次采样之前"，等到下次采样才断就
+	 * 已经晚了一步（验证脚本实测过这一点）。<b>不改变任何位置/速度行为。</b></p>
+	 *
+	 * <p><b>为什么这里只能碰原始类型</b>：{@link net.minecraft.world.entity.Entity} 的构造器内部会
+	 * 调用 {@code setPos(0,0,0)}，而覆写方法在字段初始化器之前就已经可能被调用（对象还没构造完、
+	 * 对象字段全是 null）。2026-09 曾因此在 {@code wavePath} 上抛 NPE、开炮即服务端崩溃
+	 * （{@code crash-2026-09-14_09.47.56-server.txt}）。任何需要对象的动作都必须挪到
+	 * {@link #tick()} 或 {@code pathCrosses} 里去。</p>
 	 */
 	@Override
 	public void setPos(double x, double y, double z) {
 		super.setPos(x, y, z);
 		if (!selfPropelled)
-			wavePath.markLiveBreak();
+			pathBroken = true;
 	}
 
 	/**
@@ -268,7 +286,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * {@code xo/yo/zo}（那只有一 tick，且对刚出生的波是 (0,0,0)）。</p>
 	 */
 	public boolean pathCrosses(AABB box) {
-		return wavePath.crosses(box, position());
+		return wavePath.crosses(box, position(), pathBroken);
 	}
 
 	@Override
@@ -293,7 +311,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 路径采样（攻击场"穿过判定"用，见 WavePath）：此刻的位置 = 上一 tick 结束时的落点。
 		// 采样在移动之前做，本 tick 的位移由 pathCrosses 里的实时点补上；上次采样之后若发生外力搬运
 		// （机器推波/遣返/坐标换算），该段会被标成断点并在判定时跳过。
-		wavePath.push(position());
+		wavePath.push(position(), pathBroken);
+		pathBroken = false;
 
 		// 移动（速度随等级）。带电荷且身处能量场时，把"名义速度向量"交给场修正：
 		// 加速场沿场向增减速、偏转场横向弯折路径（每 tick 微调 movement 方向/速率，呈弧线）。
