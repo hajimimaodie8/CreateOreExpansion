@@ -166,10 +166,11 @@ public final class WaveCraftExecutor {
 		boolean any = false;
 		Candidate batchLock = null;
 		while (host.chainLeft() > 0) {
-			int slot = findCraftableSlot(handler, pos, containerFluid);
-			if (slot < 0)
+			// 找槽顺带取回候选表：执行方直接复用，避免对同一槽再全库评估一遍（性能，见 SlotPlan）
+			SlotPlan plan = findCraftableSlot(handler, pos, containerFluid);
+			if (plan.slot() < 0)
 				break;
-			Candidate done = craftFromSlot(handler, slot, pos, batchLock, containerFluid);
+			Candidate done = craftFromSlot(handler, plan.slot(), pos, batchLock, containerFluid, plan.candidates());
 			if (done == null)
 				break; // 该槽无可执行（如环境不满足/无产物/并发变化）：不再原地空转，结束本批处理
 			batchLock = done; // 记住本批本次使用的配方，同批后续同种物品优先复用
@@ -217,22 +218,37 @@ public final class WaveCraftExecutor {
 	}
 
 	/**
-	 * 找第一个存在可加工候选（含环境前置）的槽（不真取）。
+	 * <b>槽 + 该槽的候选表</b>：{@link #findCraftableSlot} 的返回值。
+	 *
+	 * <p>2026-09-14（性能，审计第 6 条第②半）：旧实现 findCraftableSlot 只回槽号、把候选表丢掉，
+	 * 紧接着 craftFromSlot 对<b>同一槽</b>再全库评估一遍 → 每加工一件跑两遍评估。
+	 * 现在把候选表一并带回给执行方复用。**安全性**：两次调用同属一次命中处理、同一 tick，
+	 * 中间不取料也不改容器（执行路径是在评估之后才 `extractItem`），故候选表不会过期。</p>
+	 */
+	private record SlotPlan(int slot, java.util.List<Candidate> candidates) {
+
+		/** 没有可加工槽（槽号 -1、候选表为空）。 */
+		static final SlotPlan NONE = new SlotPlan(-1, java.util.List.of());
+	}
+
+	/**
+	 * 找第一个存在可加工候选（含环境前置）的槽（不真取），并把<b>该槽的候选表</b>一并返回给调用方复用。
 	 * 候选评估带上本容器（物品槽 + 流体槽）与主料槽：辅料优先取<b>本容器其它槽</b>、载荷兜底；
 	 * 流体优先取<b>本容器流体槽</b>、载荷兜底。
 	 */
-	private int findCraftableSlot(IItemHandler handler, BlockPos pos, IFluidHandler containerFluid) {
+	private SlotPlan findCraftableSlot(IItemHandler handler, BlockPos pos, IFluidHandler containerFluid) {
 		for (int slot = 0; slot < handler.getSlots(); slot++) {
 			ItemStack stack = handler.getStackInSlot(slot);
 			if (stack.isEmpty())
 				continue;
 			ItemStack probe = stack.copy();
 			probe.setCount(1);
-			if (!WaveCandidateEvaluator.collect(host.candidateContext(), probe, pos, handler, slot, containerFluid)
-				.isEmpty())
-				return slot;
+			List<Candidate> candidates = WaveCandidateEvaluator.collect(host.candidateContext(), probe, pos, handler, slot,
+				containerFluid);
+			if (!candidates.isEmpty())
+				return new SlotPlan(slot, candidates);
 		}
-		return -1;
+		return SlotPlan.NONE;
 	}
 
 	/**
@@ -241,17 +257,19 @@ public final class WaveCraftExecutor {
 	 * @param preferred 本批方块处理已锁定的候选（可为 null = 尚无锁）；当前槽物品仍匹配它时直接复用，
 	 *                  否则重新按输入种类锁定（参见 {@link Host#pickCandidate}）
 	 * @param containerFluid 命中点流体能力（可空）
+	 * @param reused 由 {@link #findCraftableSlot} 预先算好的候选表（同 tick、未取料 → 可直接复用，
+	 *               省掉第二次全库评估）；传 null/空表则本方法自己再评估一次
 	 * @return 成功返回所用候选（调用方用于批锁）；无可执行（含环境/产物问题）返回 null
 	 */
 	private Candidate craftFromSlot(IItemHandler handler, int slot, BlockPos pos, Candidate preferred,
-		IFluidHandler containerFluid) {
+		IFluidHandler containerFluid, List<Candidate> reused) {
 		ItemStack stack = handler.getStackInSlot(slot);
 		if (stack.isEmpty())
 			return null;
 		ItemStack probe = stack.copy();
 		probe.setCount(1);
-		List<Candidate> candidates = WaveCandidateEvaluator.collect(host.candidateContext(), probe, pos, handler, slot,
-			containerFluid);
+		List<Candidate> candidates = reused != null && !reused.isEmpty() ? reused
+			: WaveCandidateEvaluator.collect(host.candidateContext(), probe, pos, handler, slot, containerFluid);
 		if (candidates.isEmpty())
 			return null;
 

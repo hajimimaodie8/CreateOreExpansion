@@ -34,6 +34,9 @@ import net.neoforged.fml.ModList;
  * 锤击，锻造台 = 锻造，都没有 = 整机不加工），同样以状态选择器按实时状态裁剪类型——
  * 依据与判据见 {@link #helveHammerTypes}。</p>
  *
+ * <p><b>离心机（centrifuge）结构门槛</b>：盆数 ≥ 4 才加工（该 mod 自身的判据，字节码实证），
+ * 同样以状态选择器裁剪——依据与覆盖范围见 {@link #centrifugeTypes}。</p>
+ *
  * <p><b>统一目录</b>：注册语句通过 {@link StellarWaveMachineCatalog#defer} 追加进
  * 集中目录（ModList 守卫内调用，未安装该 mod 时本类不加载任何 Vintage 类）。</p>
  */
@@ -78,6 +81,7 @@ public final class VintageImprovementsMachineIntegration {
 		StellarWaveMachineRegistry.register(
 			com.negodya1.vintageimprovements.VintageBlocks.CENTRIFUGE.get())
 			.addTypes(com.negodya1.vintageimprovements.VintageRecipes.CENTRIFUGATION)
+			.withSelector(VintageImprovementsMachineIntegration::centrifugeTypes)
 			.register();
 		StellarWaveMachineRegistry.register(
 			com.negodya1.vintageimprovements.VintageBlocks.VIBRATING_TABLE.get())
@@ -178,6 +182,38 @@ public final class VintageImprovementsMachineIntegration {
 			return base;
 		}
 	}
+
+	/**
+	 * <b>离心机状态选择器</b>：Vintage 的离心机是<b>结构门槛机</b>——盆数不够就不能加工。
+	 *
+	 * <p><b>判据（去混淆字节码实证，2026-09 补）</b>：{@code CentrifugeBlockEntity.getBasins()} 返回
+	 * 已装盆数（{@code addBasin} 每次 +1，NBT 键 {@code Basins}），{@code canProcess()} 里与常量
+	 * <b>4</b> 比较（{@code basins < 4} 即不加工），护目镜提示也按 {@code 4 − basins} 报缺几口
+	 * （{@code gui.goggles.not_enough_basins}）。所以本选择器：盆数 ≥ 4 给
+	 * {@code centrifugation}，否则给空表（这台机器此刻不工作）——与 {@link #helveHammerTypes}
+	 * 的"锤下没铁砧就整机不加工"同一口径。</p>
+	 *
+	 * <p><b>它管到哪、不管到哪（诚实说明）</b>：类型快照进入波的"携带配方类型"白名单，所以
+	 * <b>半径内只有盆数不足的离心机时，波不会拿到 {@code centrifugation}</b>；但白名单是<b>按波</b>
+	 * 聚合的——只要半径内另有一台盆够的离心机，波仍可能在盆不够的那台上执行（命中点不复查机器状态）。
+	 * 这是本仓所有状态选择器共有的粗粒度口径，不是离心机独有；若要做到"命中时复查"，需要在执行路径加
+	 * 一次机器能力检查（改动更大，待需要时再做）。</p>
+	 */
+	private static List<IRecipeTypeInfo> centrifugeTypes(net.minecraft.world.level.block.entity.BlockEntity machine,
+		List<IRecipeTypeInfo> base) {
+		if (!(machine instanceof com.negodya1.vintageimprovements.content.kinetics.centrifuge.CentrifugeBlockEntity centrifuge))
+			return base;
+		try {
+			return centrifuge.getBasins() >= CENTRIFUGE_REQUIRED_BASINS
+				? List.of(com.negodya1.vintageimprovements.VintageRecipes.CENTRIFUGATION)
+				: List.of();
+		} catch (Throwable ignored) {
+			return base; // 读状态异常：保守沿用静态全集，不让联动异常影响扫描
+		}
+	}
+
+	/** 离心机所需盆数（该 mod 的 {@code canProcess()} 硬编码值，见 {@link #centrifugeTypes}）。 */
+	private static final int CENTRIFUGE_REQUIRED_BASINS = 4;
 
 	/** 反射读取真空室 mode（boolean）；失败回退默认加压。 */
 	private static boolean readVacuumMode(

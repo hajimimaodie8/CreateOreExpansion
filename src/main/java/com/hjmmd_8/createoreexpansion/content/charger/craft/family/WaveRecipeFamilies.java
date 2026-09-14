@@ -291,7 +291,24 @@ public final class WaveRecipeFamilies {
 				.copyWithCount(1);
 			advanced.set(AllDataComponents.SEQUENCED_ASSEMBLY, new SequencedAssembly(recipeId, step + 1,
 				(step + 1f) / (length * Math.max(1, assembly.getLoops()))));
-			return List.of(advanced);
+			// 推进产出：与 Create 真机同款——`SequencedAssemblyRecipe.advance` 用 enforceNextResult 把
+			// **index 0** 换成"下一件中间产物"，步骤配方自身声明的其余产物照常产出
+			// （Create 的 ProcessingRecipe#getResults 只在 i==0 用 forcedResult，其余 index 照滚）。
+			// 2026-09-14 修复：旧实现只返回 advanced 一件，把步骤配方的第 2..n 个声明产物丢了
+			// ——仅第三方数据包可感知（官方数据包的步骤都只有单产物），故一直没被实测发现。
+			List<ItemStack> outputs = new ArrayList<>();
+			ProcessingRecipe<?, ?> stepRecipe = currentStepRecipe(recipeId, recipe, input);
+			if (stepRecipe != null)
+				for (ProcessingOutput out : stepRecipe.getRollableResults())
+					if (out != null && !out.getStack()
+						.isEmpty())
+						outputs.add(out.getStack()
+							.copy());
+			if (outputs.isEmpty())
+				outputs.add(advanced);
+			else
+				outputs.set(0, advanced); // index 0 恒为推进后的中间产物（与真机一致）
+			return outputs;
 		}
 
 		/** 该物品是否归属这条装配配方：带进度 → 中间产物 + id 相符；不带 → 起步料命中。 */

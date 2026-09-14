@@ -13,6 +13,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.craft.family.WaveRecipeFam
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
+import com.simibubi.create.content.processing.recipe.ProcessingOutput;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 
@@ -237,11 +238,25 @@ public final class WaveCandidateEvaluator {
 	}
 
 	/**
-	 * 配方产物是否被工作盆配方过滤器放行（语义对齐 Create {@code BasinRecipe.match}：
-	 * 主物品产物 = {@code getResultItem}（首个可滚结果）；无物品产物但有流体产物时测第一个流体产物；
-	 * results 为空的"产物推导"类配方（变形升级 / 锻造融合）按<b>与执行时同一套推导</b>
-	 * 实时算出真实产物再测；过滤器为空时 FilteringBehaviour 本身放行一切）。
-	 * 判定异常按放行处理，避免过滤器干扰让波无故停摆。
+	 * 配方产物是否被工作盆配方过滤器放行（语义对齐 Create {@code BasinRecipe.match}）。
+	 *
+	 * <p><b>Create 真机的口径（去混淆源码实证）</b>：{@code BasinRecipe.match} 只测
+	 * {@code filter.test(recipe.getResultItem(registryAccess()))}——即<b>声明的首个结果</b>，
+	 * <b>不摇随机</b>（权重产物只按声明值参与判定）；仅当该配方<b>没有物品产物</b>而只有流体产物时，
+	 * 改测第一个流体产物。本方法主路径与之一致。</p>
+	 *
+	 * <p><b>2026-09-14 修复：判定不再"现场摇一次随机"</b>。旧实现在声明产物没命中时会调
+	 * {@code WaveCraftResults.compute} 试算真实产物，而那条路径内部是
+	 * {@code RecipeApplier.applyRecipeOn → pr.rollResults(outputs, level.random)}——<b>当场掷一次</b>；
+	 * 执行时又掷一次（不同一次随机）。于是"设了过滤器"的机器表现为<b>好时坏时</b>（掷中就被挡、
+	 * 掷不中就放行）。现在改为测<b>声明产物全集</b>（{@code getRollableResults()} 的 {@code getStack()}，
+	 * 取声明值、不摇随机）：只要"这种配方<b>可能</b>产出玩家要的东西"就放行——判定与执行因此
+	 * 解耦且确定，同一状态永远同一结论。</p>
+	 *
+	 * <p>「产物推导」族（变形升级 / 锻造融合：声明产物为空且<b>不是</b> {@code ProcessingRecipe}）
+	 * 仍按与执行时同一套推导试算再测：这类配方的产物由输入决定、不含权重抽样，所以不会引入随机。</p>
+	 *
+	 * <p>判定异常按放行处理，避免过滤器干扰让波无故停摆。</p>
 	 *
 	 * @param input 命中物品（产物推导需要"主料"参与，如锻造融合的模板/盔甲/材料三件套）
 	 * @param handler 命中容器（推导产物时解析辅料真实物品用；掉落物路径传 null）
@@ -253,15 +268,28 @@ public final class WaveCandidateEvaluator {
 			return true;
 		Recipe<?> recipe = candidate.recipe;
 		try {
-			// ① 配方声明的产物（getResultItem = 首个可滚结果）
+			// ① 声明的首个产物（与 Create BasinRecipe.match 同款，确定性）
 			ItemStack declared = recipe.getResultItem(ctx.level.registryAccess());
 			if (filterAllows(filter, declared))
 				return true;
-			// ② results 为空的"产物推导"类（auto_upgrade / auto_smithing）：用与执行时同一套
-			//    WaveCraftResults.compute 算出真实产物再测。注意这里**不再以 declared 为空为前提**——
-			//    否则"声明了产物但推导产物才是真产物"的配方一旦 declared 不在过滤器内就直接被判死，
-			//    表现为"设了过滤器就不加工，清空过滤器又好了"（用户 2026-09 实测反馈）。
-			if (input != null && !input.isEmpty()) {
+			// ② 声明产物全集（确定性；覆盖权重随机产物）：只要有一种可能的产出被放行就算通过。
+			//    注意用 getStack() 而不是 rollOutput(random)——判定不掷随机，见上方 javadoc。
+			if (recipe instanceof ProcessingRecipe<?, ?> pr) {
+				for (ProcessingOutput output : pr.getRollableResults())
+					if (output != null && filterAllows(filter, output.getStack()))
+						return true;
+				// ③ 流体产物（Create 只在"无物品产物"时才看流体；这里放宽为"物品都没匹配上就再看流体"）
+				if (!pr.getFluidResults()
+					.isEmpty()) {
+					FluidStack fluid = pr.getFluidResults()
+						.get(0);
+					if (!fluid.isEmpty() && filter.test(fluid))
+						return true;
+				}
+			} else if (input != null && !input.isEmpty()) {
+				// ④「产物推导」族（声明为空、且不是 ProcessingRecipe：变形升级 / 锻造融合）：
+				//    用与执行时同一套推导算出真实产物再测。这类配方产物由输入决定、无权重抽样。
+				//    旧实现对本分支不加类型限制，导致带权重产物的 ProcessingRecipe 也走这里而被摇了一次。
 				ItemStack probe = input.copy();
 				probe.setCount(1);
 				List<ItemStack> derived = WaveCraftResults.compute(craftResultsContext(ctx), candidate, probe, handler,
@@ -271,18 +299,10 @@ public final class WaveCandidateEvaluator {
 						if (filterAllows(filter, out))
 							return true;
 			}
-			// ③ 流体产物
-			if (recipe instanceof ProcessingRecipe<?, ?> pr && !pr.getFluidResults()
-				.isEmpty()) {
-				FluidStack fluid = pr.getFluidResults()
-					.get(0);
-				if (!fluid.isEmpty() && filter.test(fluid))
-					return true;
-			}
 		} catch (Throwable ignored) {
 			return true; // 异常保守放行
 		}
-		ctx.trace.log("工作盆过滤器挡掉候选 {} [{}]：其产物不在过滤器内（若确需该产物，请把它加进过滤器，"
+		ctx.trace.log("工作盆过滤器挡掉候选 {} [{}]：其声明产物都不在过滤器内（若确需该产物，请把它加进过滤器，"
 			+ "或把过滤器切到白名单/关闭“匹配数据”）", candidate.id, WaveCraftResults.typeKeyString(recipe));
 		return false; // 过滤器非空但配方产物不在其中 → 不可执行
 	}
