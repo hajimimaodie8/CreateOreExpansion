@@ -24,15 +24,17 @@ import java.util.List;
  *
  * <pre>
  * 【Create 原生】{@link #registerCreateNatives()}
- *   机械压机  create:mechanical_press      → pressing + compacting（盆上压实同机）
+ *   机械压机  create:mechanical_press      → pressing + compacting（盆上压实同机）+ sequenced_assembly
  *   机械搅拌器 create:mechanical_mixer     → mixing
- *   机械锯    create:mechanical_saw        → cutting
+ *   机械锯    create:mechanical_saw        → cutting + sequenced_assembly
  *   石磨      create:millstone             → milling
  *   粉碎轮    create:crushing_wheel        → crushing
  *   鼓风机    create:encased_fan           → splashing / haunting / createoreexpansion:transmuting
- *   机械手    create:deployer              → deploying / item_application
- *   注液器    create:spout                 → filling
+ *   机械手    create:deployer              → deploying / item_application + sequenced_assembly
+ *   注液器    create:spout                 → filling + sequenced_assembly
  *   物品排放器 create:item_drain            → emptying
+ *   （2026-09-14 补记：压机/锯/机械手/注液器这四台同时也是装配线的常见步骤机，故一并提供
+ *     sequenced_assembly——此前这张表漏写了它，而本表自称"波能携带哪些能力的全部来源"。）
  *
  * 【本模组】{@link #registerOwnMachines()}
  *   动力角磨床 createoreexpansion:power_angle_grinder
@@ -42,12 +44,15 @@ import java.util.List;
  *
  * 【兼容模组】（各 compat 在 ModList 守卫内经 {@code defer} 追加）
  *   Vintage     卷簧机→coiling、冲压机→curving、砂带打磨机→polishing、
- *               离心机→centrifugation、振动台→vibrating+leaves_vibrating、
+ *               离心机→centrifugation（**结构门槛：盆数 ≥ 4 才给该类型**，状态选择器见
+ *               {@code compat.vintageimprovements.VintageImprovementsMachineIntegration#centrifugeTypes}）、
+ *               振动台→vibrating+leaves_vibrating、
  *               压缩机/真空室→pressurizing|vacuumizing（按 mode 选择器）、
  *               杠杆锤（两种）→hammering|auto_smithing|auto_upgrade（按锤下方块选择器）、
  *               车床（两种）→turning、激光→laser_cutting
  *   Optical     聚光器 → focusing
- *   CC&amp;A       轧机   → rolling
+ *   CC&amp;A       轧机   → rolling（登记在
+ *               {@code compat.createaddition.CreateAdditionTransmuterSupport#registerMachinesIntoCatalog}）
  *
  * 【不由本目录管】
  *   闪电加工 LIGHTNING / LIGHTNING_BLOCK：走"避雷针释放机会"专用路径，不入全库池
