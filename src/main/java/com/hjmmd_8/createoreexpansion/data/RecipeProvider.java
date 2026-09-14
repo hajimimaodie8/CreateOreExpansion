@@ -5,7 +5,6 @@ import com.hjmmd_8.createoreexpansion.common.AllItems;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
-import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;

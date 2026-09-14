@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.crystal;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

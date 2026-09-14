@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.regulation;
 
 import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.frame.WaveGateFrame;
 import com.simibubi.create.content.kinetics.base.IRotate;
 

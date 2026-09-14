@@ -10,18 +10,11 @@ import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveSubLevelCollision
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
-import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
-import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
 
 import net.createmod.catnip.levelWrappers.SchematicLevel;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
@@ -32,11 +25,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 
 /**
