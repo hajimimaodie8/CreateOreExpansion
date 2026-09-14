@@ -240,7 +240,7 @@
   "createoreexpansion.wave_gauge.payload_fluid": "%s %s mB",
   "createoreexpansion.wave_gauge.payload_items": "物品×%s",
   "createoreexpansion.wave_gauge.payload_none": "空载",
-  "createoreexpansion.wave_gauge.readout": "波速：%s 格/秒 · 波级：%s · 波载荷：%s · 波型：%s",
+  "createoreexpansion.wave_gauge.readout": "波速：%s 格/秒 · 波级：%s · 波载荷：%s · 波型：%s · 剩余寿命：%s 秒",
   "createoreexpansion.wave_gauge.tail_attack": "攻击伤害：%s",
   "createoreexpansion.wave_gauge.tail_omni": "可加工配方类型：%s 种",
   "createoreexpansion.wave_gauge.tooltip": "右键查询最近的波情",

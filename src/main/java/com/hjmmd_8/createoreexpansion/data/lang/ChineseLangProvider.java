@@ -345,7 +345,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.WAVE_QUERY_GAUGE.get(), "波情查询仪");
         // 波情四要素成组一行：波速 / 波级 / 波载荷 / 波型。波级实参只放希腊字母；
         // join 是"按波型追加项"前的连接符（放词条里，便于中英各自控制标点）
-        add("createoreexpansion.wave_gauge.readout", "波速：%s 格/秒 · 波级：%s · 波载荷：%s · 波型：%s");
+        add("createoreexpansion.wave_gauge.readout", "波速：%s 格/秒 · 波级：%s · 波载荷：%s · 波型：%s · 剩余寿命：%s 秒");
         add("createoreexpansion.wave_gauge.join", " · ");
         // 载荷三段刻意压短（"物品×3 / 水 2000 mB / 1200 FE"）：四要素成组后整行本就偏长，
         // 动作栏在 GUI 放大档位下容易被裁，去掉"流体/电量"这类可由单位推出的字

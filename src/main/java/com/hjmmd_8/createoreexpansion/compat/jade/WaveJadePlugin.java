@@ -42,7 +42,7 @@ import snownee.jade.api.config.IPluginConfig;
  * {@code Class.forName} 触发本类加载；未安装 Jade 时本类永不被 JVM 加载，
  * 不会出现"标注 optional 仍硬编码调用导致崩溃"的问题（农夫乐事教训）。</p>
  *
- * <p><b>显示内容</b>（行序固定，前四项为"波情"成组，其后才是附加读数）：</p>
+ * <p><b>显示内容</b>（行序固定，<b>前五项</b>为"波情"成组，其后才是附加读数）：</p>
  * <ol>
  *   <li><b>波速</b>（{@code jade.wave_speed}：格/秒，含波速调节器与能量场修正）；</li>
  *   <li><b>波级</b>（{@code jade.wave_level}：<b>只显示希腊字母</b> α/β/γ/ε/ω，
@@ -53,8 +53,11 @@ import snownee.jade.api.config.IPluginConfig;
  *       空载显示"无（空载）"）；</li>
  *   <li><b>波型</b>（{@code jade.wave_type}：普通波/全能波/攻击波，名字查
  *       {@code WaveType#displayName()}——<b>不在本类里对波型 id 写 switch</b>）；</li>
+ *   <li><b>剩余寿命</b>（{@code jade.wave_lifetime}：秒，1 位小数。用户 2026-09-14 新增的
+ *       <b>第五要素</b>——取值点是 {@code AbstractChargerWaveEntity#getRemainingLifetime()}，
+ *       与"波情查询仪"的动作栏读数同一个取值点，两处不会对不上；Jade 每帧重建本行，故数值是动态的）；</li>
  *   <li>其后依次：变体波"可加工"配方类型清单（{@link StellarWaveEntity} 独有）、
- *       剩余寿命（秒）、电荷状态（能量场作用前提）。</li>
+ *       电荷状态（能量场作用前提）。</li>
  * </ol>
  *
  * <p><b>排版</b>：每行都经 {@link GoggleUtil#indented} 取护目镜同口径缩进
@@ -175,6 +178,15 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 				.displayName())
 			.withStyle(ChatFormatting.GRAY)));
 
+		// 波情⑤ 剩余寿命（秒；用户 2026-09-14 新增的第五要素）：
+		// 取值 = AbstractChargerWaveEntity#getRemainingLifetime()（寿命上限 − 已存活 tick），
+		// 与查询仪的读数同一个取值点，两处不会对不上。Jade 每帧重建本行 → 数字是动态的。
+		// 注意它是"时间"寿命：波还会因飞满 MAX_TRAVEL_DISTANCE 提前消散，那个距离上限不折算进来。
+		double remaining = wave.getRemainingLifetime() / 20.0d;
+		tooltip.add(GoggleUtil.indented(Component
+			.translatable("createoreexpansion.jade.wave_lifetime", String.format("%.1f", remaining))
+			.withStyle(ChatFormatting.GRAY)));
+
 		// ===== 波情块之后的附加读数 =====
 
 		// 可加工配方类型（变体波的能力清单，逐条译名；与波变器护目镜"最近波可加工"同表，
@@ -194,12 +206,6 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 				}
 			}
 		}
-
-		// 剩余寿命（秒）
-		double remaining = wave.getRemainingLifetime() / 20.0d;
-		tooltip.add(GoggleUtil.indented(Component
-			.translatable("createoreexpansion.jade.wave_lifetime", String.format("%.1f", remaining))
-			.withStyle(ChatFormatting.GRAY)));
 
 		// 电荷状态（能量场作用前提）：正电荷 / 负电荷 / 未带电
 		var charge = wave.getChargePolarity();

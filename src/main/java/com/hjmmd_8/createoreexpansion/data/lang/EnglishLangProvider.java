@@ -173,7 +173,7 @@ public class EnglishLangProvider extends LanguageProvider {
         // The four wave profile elements are one grouped line: speed / level / payload / type.
         // The level argument is the Greek letter only; "join" is the separator used before the
         // per-wave-type appendix (kept in lang so both languages control their own punctuation).
-        add("createoreexpansion.wave_gauge.readout", "Wave Speed: %s blocks/s · Wave Level: %s · Wave Payload: %s · Wave Type: %s");
+        add("createoreexpansion.wave_gauge.readout", "Wave Speed: %s blocks/s · Wave Level: %s · Wave Payload: %s · Wave Type: %s · Lifetime: %s s");
         add("createoreexpansion.wave_gauge.join", " · ");
         // Payload shorthands are deliberately terse ("items x3 / water 2000 mB / 1200 FE"): the
         // grouped four-element line is already long and action-bar text gets clipped at large GUI

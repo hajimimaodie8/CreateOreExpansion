@@ -8,6 +8,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -84,6 +85,36 @@ public class WaveQueryGaugeItem extends Item {
 	public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
 		tooltip.add(Component.translatable(LANG + "tooltip")
 			.withStyle(ChatFormatting.DARK_GRAY));
+	}
+
+	/**
+	 * <b>扫描期间的动态读数</b>（用户 2026-09-14 要求"查询仪的显示是动态的"）：
+	 * 冷却期（= 动画一个完整循环 {@link #SCAN_TICKS} tick）内，只要这件仪器还握在手上（选中槽），
+	 * 就每 tick 重新查一次最近的波并刷新动作栏——于是读数里的<b>剩余寿命一秒一秒往下掉</b>、
+	 * 波速随调节器/能量场变化也跟着变，而不是右键那一刻的定格快照。
+	 *
+	 * <p>几处刻意的取舍：</p>
+	 * <ul>
+	 *   <li><b>只刷选中槽</b>（{@code isSelected}）：背包里躺着的那几把不刷，避免无谓的查询与发包
+	 *       （{@code inventoryTick} 对背包每一格都会调用）；</li>
+	 *   <li><b>只在服务端</b>：读数走 {@code displayClientMessage(..., true)}（动作栏），
+	 *       客户端不自行计算，与右键那一次同一条路径；</li>
+	 *   <li><b>查不到波时不覆盖</b>：波已经消散/飞出 {@link #SEARCH_RADIUS} 时保持最后一条读数不动，
+	 *       避免"打到一半突然变成『附近没有能量波』"的闪断；</li>
+	 *   <li><b>不重复取波也不延长冷却</b>：冷却仍由右键那一次挂上，本方法只负责刷新显示。</li>
+	 * </ul>
+	 */
+	@Override
+	public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
+		if (level.isClientSide || !isSelected || !(entity instanceof Player player))
+			return;
+		if (!player.getCooldowns()
+			.isOnCooldown(this))
+			return;
+		AbstractChargerWaveEntity nearest = findNearestWave(level, player);
+		if (nearest != null)
+			player.displayClientMessage(WaveReadout.of(nearest)
+				.line(), true);
 	}
 
 	/**

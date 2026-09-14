@@ -230,7 +230,7 @@
   "createoreexpansion.wave_gauge.payload_fluid": "%s %s mB",
   "createoreexpansion.wave_gauge.payload_items": "items x%s",
   "createoreexpansion.wave_gauge.payload_none": "empty",
-  "createoreexpansion.wave_gauge.readout": "Wave Speed: %s blocks/s · Wave Level: %s · Wave Payload: %s · Wave Type: %s",
+  "createoreexpansion.wave_gauge.readout": "Wave Speed: %s blocks/s · Wave Level: %s · Wave Payload: %s · Wave Type: %s · Lifetime: %s s",
   "createoreexpansion.wave_gauge.tail_attack": "Attack damage: %s",
   "createoreexpansion.wave_gauge.tail_omni": "Processable recipe types: %s",
   "createoreexpansion.wave_gauge.tooltip": "Right-click to scan the nearest wave",
