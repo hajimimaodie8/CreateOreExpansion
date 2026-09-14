@@ -61,18 +61,15 @@ public final class TransmuterGoggles {
 	/**
 	 * 渲染面板（"处理模式"那一行起，直到"最近一波"行）。
 	 *
-	 * <p><b>分档显示（2026-09-14 用户反馈后新增）</b>：档位由
-	 * {@link GoggleExpandStages#visibleStage} 给出——第 0 档<b>不调用本方法</b>（调用方只放机器名），
-	 * 第 1 档只给概要（模式 / 半径 / 加工机数 / 转速 / 应力 + 一行展开提示），
-	 * 第 2 档才是全部读数。理由见 {@link GoggleExpandStages} 的类注释：默认那一整坨会把
-	 * 玩家正要点的那一面挡住。</p>
+	 * <p><b>调用时机（2026-09-14 用户定稿，取代上一版"三档按次数展开"）</b>：只有玩家<b>按住 Shift</b>
+	 * 时才会被调用——没按住时调用方只放"机器名 + 一行『按住 Shift 查看机器详情』"。
+	 * 按住 Shift 就<b>一次性把全部读数显示出来</b>，不再有"再按一次才给全量"的隐藏档位
+	 * （上一版那个机制不可发现：用户实测反馈"面板里出现『查看概要』字样，可它本来就要按住 Shift 才看得见"）。</p>
 	 *
-	 * @param stage 展开档位（{@link GoggleExpandStages#SUMMARY} 或
-	 *              {@link GoggleExpandStages#FULL}；第 0 档不该走到这里）
+	 * @param sneaking 玩家是否正按住 Shift（护目镜渲染时机即为按键状态；恒为 true 才走到这里）
 	 * @return 恒 true（与 {@code IHaveGoggleInformation} 的约定一致）
 	 */
-	public static boolean append(List<Component> tooltip, Readout r, int stage) {
-		boolean full = stage >= GoggleExpandStages.FULL;
+	public static boolean append(List<Component> tooltip, Readout r, boolean sneaking) {
 		// 处理模式行放在最前：两态对波的行为完全不同（一个加工、一个是攻击场），
 		// 玩家第一眼要看到的就是"这台变器现在在干什么"
 		GoggleUtil.forGoggles(tooltip,
@@ -82,27 +79,6 @@ public final class TransmuterGoggles {
 					.displayColor()));
 		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_radius",
 			r.scanRadius()).withStyle(ChatFormatting.AQUA));
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_machines",
-			r.machineCount()).withStyle(ChatFormatting.GRAY));
-		// 波加工转速（= 本机转速）：Vintage 抛光配方的 speed_limits 档位判定依据（见设计文档 §5）
-		GoggleUtil.forGoggles(tooltip,
-			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_wave_rpm",
-				(int) Math.abs(r.speed())).withStyle(ChatFormatting.GRAY));
-		if (r.machineCount() > 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_stress",
-					(int) r.machineStress()).withStyle(ChatFormatting.GRAY));
-		}
-		// 第 1 档到此为止：给一行"再按住一次"的提示，让第 2 档可被发现（否则玩家以为没别的了）
-		if (!full) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.transmuter_expand_hint",
-					Component.translatable("create.tooltip.keyShift")
-						.withStyle(ChatFormatting.WHITE))
-					.withStyle(ChatFormatting.DARK_GRAY));
-			return true;
-		}
-		// ===== 第 2 档：以下为全部读数 =====
 		// 加热读数（烈焰燃烧室）：范围内有没有点着火的燃烧室、是哪一档——
 		// 修复前这里什么都不显示，玩家只能看到"加热配方不生效"却查不出原因。
 		if (r.heat() == BlazeBurnerBlock.HeatLevel.NONE) {
@@ -131,7 +107,18 @@ public final class TransmuterGoggles {
 				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_energy_storages",
 					r.energyStorages(), r.energyStoredFe()).withStyle(ChatFormatting.GRAY));
 		}
-		// ===== 绑定机器可加工配方（第 2 档：整份清单直接列出） =====
+		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_machines",
+			r.machineCount()).withStyle(ChatFormatting.GRAY));
+		// 波加工转速（= 本机转速）：Vintage 抛光配方的 speed_limits 档位判定依据（见设计文档 §5）
+		GoggleUtil.forGoggles(tooltip,
+			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_wave_rpm",
+				(int) Math.abs(r.speed())).withStyle(ChatFormatting.GRAY));
+		if (r.machineCount() > 0) {
+			GoggleUtil.forGoggles(tooltip,
+				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_stress",
+					(int) r.machineStress()).withStyle(ChatFormatting.GRAY));
+		}
+		// ===== 绑定机器可加工配方（按住 Shift 展开时整份清单直接列出） =====
 		if (r.machineCount() > 0) {
 			GoggleUtil.forGoggles(tooltip,
 				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", r.machineCount())
@@ -170,7 +157,7 @@ public final class TransmuterGoggles {
 				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_rods", r.rodCount())
 					.withStyle(ChatFormatting.GRAY));
 		}
-		// ===== 最近波携带的可加工属性（第 2 档；单行顿号连接） =====
+		// ===== 最近波携带的可加工属性（单行顿号连接） =====
 		if (!r.lastWaveTypeIds()
 			.isEmpty()) {
 			GoggleUtil.forGoggles(tooltip,

@@ -135,7 +135,7 @@
   "createoreexpansion.goggles.stellarstone_speed_regulator": "星辉石波速调节器",
   "createoreexpansion.goggles.stellarstone_wave_boost": "单次提升级数：+%s 级",
   "createoreexpansion.goggles.stellarstone_wave_regulator": "星辉石能量调级器",
-  "createoreexpansion.goggles.transmuter_expand_hint": "再按住 [%s] 一次展开全部读数",
+  "createoreexpansion.goggles.transmuter_expand_hint": "按住 [%s] 查看机器详情",
   "createoreexpansion.goggles.wave_speed_regulator": "翡翠波速调节器",
   "createoreexpansion.heat_level.fading": "将熄",
   "createoreexpansion.heat_level.kindled": "普通加热",

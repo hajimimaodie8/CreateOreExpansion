@@ -8,7 +8,6 @@ import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyField;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields;
 import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.display.GoggleExpandStages;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.display.TransmuterGoggles;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.payload.TransmuterPayloadCollector;
@@ -709,12 +708,19 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 			.withStyle(ChatFormatting.GRAY));
 		added = true;
 
-		// 三档展开（用户 2026-09-14 反馈："调侧面时面板把要看的那个面盖住了"）：
-		// 第 0 档 = 只留上面那行机器名；按住 Shift = 概要；松开后再按住 = 全部读数。
-		// 档位状态是"某玩家此刻的面板状态"，故走客户端侧状态机（见 GoggleExpandStages 的类注释）。
-		int stage = GoggleExpandStages.visibleStage(worldPosition, isPlayerSneaking);
-		if (stage < GoggleExpandStages.SUMMARY)
+		// 两态（用户 2026-09-14 定稿）：
+		//   没按住 Shift → 只给机器名 + 一行"按住 Shift 查看机器详情"（框小，不挡玩家正要点的那一面）；
+		//   按住 Shift   → 一次性把全部读数显示出来。
+		// 注：上一版是"按第 1 次给概要、按第 2 次给全量"的三档状态机，用户实测指出那个提示行
+		// 本身就藏在本该按住 Shift 才看得见的面板里（自相矛盾且不可发现），故整套撤掉。
+		if (!isPlayerSneaking) {
+			GoggleUtil.forGoggles(tooltip,
+				Component.translatable("createoreexpansion.goggles.transmuter_expand_hint",
+					Component.translatable("create.tooltip.keyShift")
+						.withStyle(ChatFormatting.WHITE))
+					.withStyle(ChatFormatting.DARK_GRAY));
 			return true;
+		}
 
 		if (Math.abs(getSpeed()) <= 0) {
 			GoggleUtil.forGoggles(tooltip,
@@ -725,7 +731,7 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		TransmuterGoggles.append(tooltip, new TransmuterGoggles.Readout(mode, scanRadius, getSpeed(), scannedHeat,
 			scannedItemContainers, scannedFluidContainers, scannedEnergyStorages, scannedEnergyStoredFe, scannedCount,
 			scannedStress, scannedTypeIds, recipeTypeCount, payloadItemCount, payloadTypeCount, payloadFluidMb,
-			payloadEnergyFe, rodCreditCount, lastWaveRecipeTypeIds), stage);
+			payloadEnergyFe, rodCreditCount, lastWaveRecipeTypeIds), true);
 		return true;
 	}
 	// ================= NBT =================

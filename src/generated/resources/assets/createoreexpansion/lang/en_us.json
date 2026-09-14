@@ -125,7 +125,7 @@
   "createoreexpansion.goggles.stellarstone_speed_regulator": "Stellarstone Speed Regulator",
   "createoreexpansion.goggles.stellarstone_wave_boost": "Level Boost: +%s per pass",
   "createoreexpansion.goggles.stellarstone_wave_regulator": "Stellarstone Wave Regulator",
-  "createoreexpansion.goggles.transmuter_expand_hint": "Hold [%s] again for all readouts",
+  "createoreexpansion.goggles.transmuter_expand_hint": "Hold [%s] for machine details",
   "createoreexpansion.goggles.wave_speed_regulator": "Jade Wave Speed Regulator",
   "createoreexpansion.heat_level.fading": "Fading",
   "createoreexpansion.heat_level.kindled": "Heated",
