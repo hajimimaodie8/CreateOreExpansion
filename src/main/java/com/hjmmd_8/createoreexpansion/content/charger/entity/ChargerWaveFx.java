@@ -69,10 +69,16 @@ public final class ChargerWaveFx {
 
 	// ==================== 风格调色板（纯色常量，供颜色变换函数取用） ====================
 
-	/** 钢灰色：机械风格的暗端（冷、去饱和的金属感）。 */
-	private static final Vec3 METAL_STEEL = new Vec3(0.62, 0.60, 0.56);
+	/**
+	 * 钢青色：机械风格的暗端。
+	 *
+	 * <p>2026-09-14 由原来的中性钢灰 {@code (0.62,0.60,0.56)} 改成<b>明显偏冷的钢青</b>——
+	 * 玩家反馈"加工波的色调看不出来，只能靠爆开特效判断"：中性灰近于"褪色"，与各级波色拉不开差距；
+	 * 偏青的钢色则是任何一级波色都不会出现的色相，一眼能认出这是加工波。</p>
+	 */
+	private static final Vec3 METAL_STEEL = new Vec3(0.52, 0.70, 0.82);
 	/** 黄铜色：机械风格的亮端（暖、偏黄的机加工感）。 */
-	private static final Vec3 METAL_BRASS = new Vec3(0.72, 0.55, 0.28);
+	private static final Vec3 METAL_BRASS = new Vec3(0.86, 0.62, 0.24);
 	/** 深血色：伤害风格的暗端。 */
 	private static final Vec3 HEAT_DEEP_RED = new Vec3(0.85, 0.15, 0.12);
 	/** 炽橙色：伤害风格的亮端。 */
@@ -135,7 +141,7 @@ public final class ChargerWaveFx {
 	 * <ul>
 	 *   <li><b>NORMAL</b>：颜色恒等变换、无点缀——纯粹是改造前的原版染色尘埃，
 	 *       保证旧重载（无风格参数）行为逐字不变。</li>
-	 *   <li><b>MECHANICAL</b>（机械感，用于全能波"读机器加工"）：颜色向钢灰/黄铜收敛
+	 *   <li><b>MECHANICAL</b>（机械感，用于全能波"读机器加工"）：颜色向<b>冷调钢青</b>收敛
 	 *       （见 {@link #metalTint}）；点缀 {@code ELECTRIC_SPARK} 表达"电学/机加工的火花"，
 	 *       少量 {@code SMOKE} 表达"机器运转的粉尘排气"。<b>刻意不用火焰/岩浆类</b>，
 	 *       避免被误解成"点燃机器"。</li>
@@ -150,10 +156,10 @@ public final class ChargerWaveFx {
 			new StyleProfile(UnaryOperator.identity(), List.of()));
 		profiles.put(WaveTrailStyle.MECHANICAL,
 			new StyleProfile(ChargerWaveFx::metalTint, List.of(
-				// 电火花：快、散、数量占主粒子的 1/4 —— 机械运转的"电"感
-				new Accent(ParticleTypes.ELECTRIC_SPARK, 0.25, 1.15, 1.6),
-				// 烟雾：慢、略散、数量占 1/8 —— 机器排气的"重"感（非火焰）
-				new Accent(ParticleTypes.SMOKE, 0.125, 1.35, 0.5))));
+				// 电火花：快、散、数量占主粒子的一半（2026-09-14 由 1/4 提到 1/2 —— 机械感的"电"是最显眼的标识）
+				new Accent(ParticleTypes.ELECTRIC_SPARK, 0.5, 1.15, 1.6),
+				// 烟雾：慢、略散、数量占 1/6 —— 机器排气的"重"感（非火焰）
+				new Accent(ParticleTypes.SMOKE, 0.1666, 1.35, 0.5))));
 		profiles.put(WaveTrailStyle.DAMAGE,
 			new StyleProfile(ChargerWaveFx::heatTint, List.of(
 				// 暴击星芒：快而散，数量占主粒子的 1/4 —— 打击瞬间的"脆"反馈
@@ -190,18 +196,22 @@ public final class ChargerWaveFx {
 	 *
 	 * <p>两步纯数学，无分支：</p>
 	 * <ol>
-	 *   <li><b>去饱和</b>：按亮度把基色向自身灰度插值 55%——金属的反射光很弱饱和，
+	 *   <li><b>去饱和</b>：按亮度把基色向自身灰度插值 <b>80%</b>——金属的反射光很弱饱和，
 	 *       这一步让任何波色（黄/绿/蓝/紫/玫红）先褪成"金属灰"的底色；</li>
-	 *   <li><b>合金化</b>：再向"钢灰→黄铜"的合金色插值 65%。合金色由基色亮度决定
-	 *       （暗 → 0.62,0.60,0.56 钢灰；亮 → 0.72,0.55,0.28 黄铜），
-	 *       于是"深色波偏冷钢、亮色波偏暖铜"，一眼能分辨仍是哪一级波，但整体是机械金属调。</li>
+	 *   <li><b>合金化</b>：再向"钢青→黄铜"的合金色插值 <b>0.88</b>。合金色由基色亮度决定
+	 *       （暗 → {@link #METAL_STEEL} 钢青；亮 → {@link #METAL_BRASS} 黄铜），
+	 *       于是"暗色波偏冷钢、亮色波偏暖铜"，仍能看出是哪一级波，但整体是机械金属调。</li>
 	 * </ol>
+	 *
+	 * <p><b>2026-09-14 调强</b>：原先"去饱和 55% + 合金 65%"，合成后仍留着约三成原色相，
+	 * 在高速飞行的短拖尾上几乎看不出来（玩家实测反馈）。现在合成后原色相只剩约 2%~3%
+	 * （{@code 0.2 × 0.12 ≈ 0.024}）——**颜色本身**就是加工波的标识，不必再等它爆开。</p>
 	 */
 	private static Vec3 metalTint(Vec3 base) {
 		double lum = Mth.clamp(luminance(base), 0.0, 1.0);
-		Vec3 desaturated = base.lerp(new Vec3(lum, lum, lum), 0.55);
+		Vec3 desaturated = base.lerp(new Vec3(lum, lum, lum), 0.80);
 		Vec3 alloy = METAL_STEEL.lerp(METAL_BRASS, lum);
-		return desaturated.lerp(alloy, 0.65);
+		return desaturated.lerp(alloy, 0.88);
 	}
 
 	/**

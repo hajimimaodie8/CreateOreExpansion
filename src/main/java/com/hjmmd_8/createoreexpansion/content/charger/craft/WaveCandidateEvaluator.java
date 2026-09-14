@@ -160,6 +160,11 @@ public final class WaveCandidateEvaluator {
 		List<Candidate> candidates = new ArrayList<>();
 		if (input.isEmpty())
 			return candidates;
+		// 「近似配方被挡」摘要（2026-09-14）：玩家最常问的是"我明明能做，为什么波没加工"。
+		// 逐条淘汰原因原本只在 CRAFT_DEBUG（编译期常量，默认 false）里，日志里什么都看不到；
+		// 这里把"主料能匹配上、却被某道门槛挡掉"的前几条记下来，一条候选都没选出来时随轨迹输出
+		// （轨迹日志默认开启）——于是"是没带这个配方类型、还是流体/材料不够"在日志里直接可读。
+		List<String> nearMiss = new ArrayList<>(NEAR_MISS_LIMIT);
 		// ===== 配方类型门（2026-09 修复"拆掉机器仍能加工"）=====
 		// 波携带的类型 = 变器扫描半径内读到的机器能力快照（见 activeRecipeTypes）。
 		// 旧实现只按材料做全库匹配，于是"把卷簧机拆了，波照样能卷簧"——因为执行侧根本不看类型。
@@ -172,13 +177,16 @@ public final class WaveCandidateEvaluator {
 				continue;
 			Recipe<?> candidateRecipe = holder.value();
 			if (!isTypeAllowed(candidateRecipe, allowedTypeIds)) {
+				noteNearMiss(nearMiss, candidateRecipe, input,
+					"类型未携带（本波只带了 " + allowedTypeIds.size() + " 种）");
 				ctx.debug.log("淘汰 {} [{}]：配方类型不在波携带范围内（携带 {} 种）", holder.id(),
 					WaveCraftResults.typeKeyString(candidateRecipe), allowedTypeIds.size());
 				continue;
 			}
 			// 族 0｜ProcessingRecipe 主路径：既有全库管线（辅料/流体/电量/环境/材料三段式）
 			if (candidateRecipe instanceof ProcessingRecipe<?, ?> recipe) {
-				Candidate c = evalCandidate(ctx, recipe, input, holder.id(), around, handler, mainSlot, containerFluid, null);
+				Candidate c = evalCandidate(ctx, recipe, input, holder.id(), around, handler, mainSlot, containerFluid, null,
+					nearMiss);
 				if (c != null)
 					candidates.add(c);
 				continue;
@@ -197,7 +205,7 @@ public final class WaveCandidateEvaluator {
 				}
 				if (step != null) {
 					Candidate stepCandidate = evalCandidate(ctx, step, input, holder.id(), around, handler, mainSlot,
-						containerFluid, candidateRecipe);
+						containerFluid, candidateRecipe, nearMiss);
 					if (stepCandidate != null)
 						candidates.add(stepCandidate);
 					continue;
@@ -220,7 +228,50 @@ public final class WaveCandidateEvaluator {
 		ctx.debug.log("命中 {}（容器物品{} 主料槽 {} 容器流体{}）→ 候选 {} 条{}", input.getItem(),
 			handler == null ? "无" : "有", mainSlot, containerFluid == null ? "无" : "有", candidates.size(),
 			recipeFilter == null ? "" : "（已过工作盆过滤器闸门）");
+		// 一条候选都没选出来、但有"主料匹配却被打回"的配方 → 把原因写进默认开启的轨迹日志
+		if (candidates.isEmpty() && !nearMiss.isEmpty())
+			ctx.trace.log("命中 {} 无可用候选；被打回的近似配方：{}", input.getItem(), String.join("；", nearMiss));
 		return candidates;
+	}
+
+	/** 近似配方摘要上限：只留前几条，避免一条日志刷屏。 */
+	private static final int NEAR_MISS_LIMIT = 3;
+
+	/**
+	 * 记一条"主料能匹配、却被门槛挡掉"的近似配方（用于"为什么没加工"的日志）。
+	 * 只记前 {@link #NEAR_MISS_LIMIT} 条、只记主料确实匹配的配方（否则全库无关配方会塞满日志）。
+	 */
+	private static void noteNearMiss(List<String> nearMiss, Recipe<?> recipe, ItemStack input, String reason) {
+		if (nearMiss == null || nearMiss.size() >= NEAR_MISS_LIMIT || !matchesFirstIngredient(recipe, input))
+			return;
+		nearMiss.add(WaveCraftResults.typeKeyString(recipe) + " " + reason);
+	}
+
+	/** 该配方的主料（{@code ingredients[0]}）是否匹配这个物品——"玩家本以为能做"的判定依据。 */
+	private static boolean matchesFirstIngredient(Recipe<?> recipe, ItemStack input) {
+		try {
+			java.util.List<net.minecraft.world.item.crafting.Ingredient> ingredients = recipe.getIngredients();
+			return !ingredients.isEmpty() && ingredients.get(0)
+				.test(input);
+		} catch (Throwable ignored) {
+			return false;
+		}
+	}
+
+	/** 配方流体需求的可读摘要（形如 {@code 1000 mB}）——用于"流体不足"那条日志。 */
+	private static String describeFluidNeeds(ProcessingRecipe<?, ?> recipe) {
+		try {
+			StringBuilder sb = new StringBuilder();
+			for (net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient need : recipe.getFluidIngredients()) {
+				if (sb.length() > 0)
+					sb.append(" + ");
+				sb.append(need.amount())
+					.append(" mB");
+			}
+			return sb.length() == 0 ? "0 mB" : sb.toString();
+		} catch (Throwable ignored) {
+			return "?";
+		}
 	}
 
 	// ================= 工作盆配方过滤器（用户 2026 要求） =================
@@ -364,7 +415,7 @@ public final class WaveCandidateEvaluator {
 	 *  @param familyOwner 步骤族路径下"本候选实际属于哪条族配方"（序列装配）；普通配方传 null */
 	private static Candidate evalCandidate(Context ctx, ProcessingRecipe<?, ?> recipe, ItemStack input,
 		ResourceLocation id, BlockPos around, IItemHandler handler, int mainSlot, IFluidHandler containerFluid,
-		Recipe<?> familyOwner) {
+		Recipe<?> familyOwner, java.util.List<String> nearMiss) {
 		int fluidInputs = recipe.getFluidIngredients()
 			.size();
 		if (fluidInputs > MAX_FLUID_INPUTS) {
@@ -404,6 +455,10 @@ public final class WaveCandidateEvaluator {
 		// 流体输入（≤2）：同样"容器流体槽优先 → 载荷流体兜底"，各自独立解析并记账防超领
 		List<FluidRef> fluidRefs = ctx.aux.resolveFluidRefs(recipe, containerFluid);
 		if (fluidRefs == null) {
+			noteNearMiss(nearMiss, recipe, input,
+				"流体不足（需 " + describeFluidNeeds(recipe) + "；命中容器 "
+					+ (containerFluid == null ? "无流体能力" : containerFluid.getTanks() + " 罐")
+					+ "、波载荷 " + ctx.payloadFluid.getAmount() + " mB）");
 			ctx.debug.log("淘汰 {} [{}]：流体输入不满足（容器流体 {} / 载荷 {}）", id, WaveCraftResults.typeKeyString(recipe),
 				containerFluid == null ? "无" : containerFluid.getTanks() + " 罐", ctx.payloadFluid);
 			return null;

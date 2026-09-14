@@ -365,10 +365,15 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		}
 
 		// 平滑渐变：目标色 = 当前等级色；待升级（boostRemaining>0）时提前渐变到提升后的等级色
-		// （按 boostStep 预览，封顶 MAX_LEVEL），使波穿出调级器后颜色即开始过渡，而非延迟结束瞬间跳变
-		Vec3 targetColor = boostRemaining > 0
+		// （按 boostStep 预览，封顶 MAX_LEVEL），使波穿出调级器后颜色即开始过渡，而非延迟结束瞬间跳变。
+		// 2026-09-14：目标色再过一遍**本波波型的拖尾风格变换**（ChargerWaveFx.styleColor）——
+		// 于是"波体本身 / 拖尾 / 绽放 / 爆炸"四处用同一套颜色，加工波一眼就是钢青-黄铜的机械色，
+		// 不必等它爆开才认得出（此前只有拖尾粒子被染色，玩家实测反馈"色调看不出来"）。
+		// 普通波的风格是恒等变换，故其颜色与改造前逐字不变。
+		Vec3 levelColor = boostRemaining > 0
 			? getWaveColorForLevel(Math.min(waveLevel + boostStep, WaveLevels.MAX_LEVEL))
 			: getWaveColor();
+		Vec3 targetColor = ChargerWaveFx.styleColor(getWaveType().trailStyle(), levelColor);
 		renderColor = renderColor.lerp(targetColor, 0.15d);
 		// 距离足够近则直接贴合目标色，避免无限逼近
 		if (renderColor.distanceToSqr(targetColor) < 1.0E-5d)
