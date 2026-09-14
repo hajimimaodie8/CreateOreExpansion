@@ -33,20 +33,24 @@ bin/
 .DS_Store
 
 ### Minecraft Modding ###
+# 注意（2026-09 教训）：路径模式**必须锚定到根目录**（前导 /）。裸写的目录名（如 data/、net）
+# 会匹配任意层级同名目录，把模组在 src/ 下的内容一并忽略，而 `git add <dir>` 对忽略文件是
+# 静默跳过——不会报错，也不会出现在 git status 里，于是文件"从没进过版本库"（已因此丢过 81 个）。
 run/
 !**/src/**/run/
 **/src/generated/**/.cache/
-repo/
+/repo/
 !**/src/**/repo/
-_create_src
-markdown_output
-.tmp-ca
-net
+/_create_src
+/markdown_output
+/.tmp-ca
+/net/
 # 本地依赖目录：从 bundled jar 提取的航空学编译期 jar 等（不提交，重新提取即可）
-libs/
+/libs/
 verify_combo.py
 verify_combo2.py
 package-lock.json
+/.run/
 # 根目录下的本地暂存目录（不提交）。必须写成 /data/ 只锚定根目录：
 # 裸写 data/ 会连 src/main/resources/data/（模组的配方/标签/战利品表）一起忽略，
 # 导致新增的数据文件被 git add 静默跳过、从没进过版本库（2026-09 发现的 5 个方块标签就是这样丢的）。

@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」，只放跨会话必须知道的事实与挂起事项；长文档都在 `markdown_output/`。
-> 最后更新：2026-09-10（技能内核对比分析完成后）。
+> 最后更新：2026-09-14（能量波系统收尾 + 工程坑补记）。
 
 ## 工程速览
 
@@ -15,6 +15,39 @@
   4. 校验 `build\libs\createoreexpansion-1.0.0.jar` 的时间与大小，再用 `dsh_im_return_file` 交付给用户
 - 崩溃排查：`run/crash-reports/*.txt`、`run/logs/latest.log`
 - 可选依赖（Jade / JEI / CC&A / Create Optical / Vintage Improvements / Aeronautics / Sable）一律通过 `compat/*` 层的 `ModList.isLoaded` + 反射隔离，**绝不在 `content` 包直接 import 可选模组类**。
+
+## 🧯 工程坑与自检（2026-09-14 补记，动手前后都用得上）
+
+**1）`.gitignore` 的目录模式必须锚定根目录**
+裸写 `data/`、`net` 这类模式会匹配**任意层级**同名目录：曾因此让 `src/main/resources/data/`、`src/generated/resources/data/` 整片被忽略，而 `git add <dir>` 对忽略文件是**静默跳过**（不报错、连 `git status` 都看不见），结果 **81 个数据文件**（64 个 ε/ω 充能配方 + 12 个机器掉落表 + 5 个方块标签）从没进过版本库。现已全部锚定（`/data/`、`/net/`、`/libs/`、`/repo/`、`/_create_src`、`/markdown_output`、`/.run/`）。
+自检（改 ignore 规则后必做）：
+```
+git ls-files --others --ignored --exclude-standard <目录>   # 本该提交却被忽略的文件
+git check-ignore -v <路径>                                  # 到底谁在忽略它
+git status --short                                          # git add 之后再复核一次暂存区
+```
+
+**2）javadoc 检查（本工程 javadoc 任务默认跑不通）**
+javadoc 用平台编码（本机 GBK）读 UTF-8 源码 → 满屏乱码 + 假告警，任务从建立起就是红的，于是编译不校验的文档缺陷长期无人发现。可用做法：
+```
+.\gradlew.bat javadoc        # 仅为生成 build\tmp\javadoc\javadoc.options
+cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build\patch\jd_out -Xdoclint:all,-missing -J-Duser.language=en -J-Duser.country=US > build\patch\jd.log 2>&1"
+```
+- options 文件需追加 `-encoding UTF-8 -docencoding UTF-8`；classpath 在同一文件首行（`-classpath '...'`，注意把 `\\` 还原成 `\`）。
+- 必须 `cmd /c` 直连：PowerShell 的 `*>` 会把 javadoc 的 stderr 包成 NativeCommandError 记录并按宽度折行，把绝对路径切成碎片、毁掉诊断行。
+- 现状（2026-09-14）：13 死链 + 6 处 HTML + 13 处非法 `@param` 已清，**仅剩 3 处错误且全在 `content/skill/*`**（按挂起事项未动）。
+
+**3）PowerShell 与全库盘点**
+- 全库文字盘点用 `Select-String`：**本仓 `grep` 会漏文件**（实测只扫出 71 行，实际更多）。
+- PS 5.1 读**无 BOM 的 UTF-8 `.ps1`** 会按 ANSI 解码：脚本里的中文注释可能吞掉引号 → ParserError。**一次性脚本一律写纯 ASCII**（中文用 `[regex]::Unescape('\uXXXX')`）。
+- 临时文件写 `%TEMP%` 或 `build/`（已忽略），别落进仓库——`git add -A` 会把它带进去。
+
+**4）构造期陷阱（2026-09-14 真实崩溃）**
+父类构造器会调用**可覆写**方法。`Entity` 的构造器就会调 `setPos(0,0,0)`（另有 `defineSynchedData` / `getBoundingBox` / `getFireImmuneTicks` / `getMaxAirSupply` / `getTeam` / `level()`），而覆写体在**字段初始化器之前**执行 → 碰任何对象字段都是 NPE。波实体曾在 `setPos` 里调 `wavePath.markLiveBreak()`，导致**开炮即服务端崩溃**（`run/crash-reports/crash-2026-09-14_09.47.56-server.txt`）。
+**规则：构造期可被调用的覆写体只能使用参数、静态成员与原始类型字段。** 已审计全仓（`Entity` 侧只有 `AbstractChargerWaveEntity` 覆写这两个方法；`BlockEntity` 构造器调的 `getType`/`isValidBlockState`/`validateBlockState`/`getNameForReporting` 在本仓无覆写），现在都合规。
+
+**5）静态关卡覆盖不到什么**
+`compileJava` / `runData` / javadoc **都不构造实体、不跑 tick**。改动涉及实体生命周期或玩家交互时，这三关全绿也不代表不崩——必须明确告知用户"这一步只能进游戏实测"。
 
 ## ⏸ 挂起事项（重要，动手前必读）
 
