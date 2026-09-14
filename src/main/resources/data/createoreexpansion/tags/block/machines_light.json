@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "createoreexpansion:energy_sensing_lamp",
+      "required": false
+    }
+  ]
+}

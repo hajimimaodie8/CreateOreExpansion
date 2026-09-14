@@ -1,0 +1,23 @@
+{
+  "replace": false,
+  "values": [
+    "createoreexpansion:jade_block",
+    "createoreexpansion:jade_ore",
+    "createoreexpansion:deepslate_jade_ore",
+    "createoreexpansion:raw_jade_block",
+    "createoreexpansion:jade_stress_charger",
+    "createoreexpansion:jade_small_bud",
+    "createoreexpansion:jade_medium_bud",
+    "createoreexpansion:jade_large_bud",
+    "createoreexpansion:jade_cluster",
+    "createoreexpansion:jade_budding_block",
+    "createoreexpansion:sapphire_block",
+    "createoreexpansion:nether_sapphire_ore",
+    "createoreexpansion:raw_sapphire_block",
+    "createoreexpansion:sapphire_small_bud",
+    "createoreexpansion:sapphire_medium_bud",
+    "createoreexpansion:sapphire_large_bud",
+    "createoreexpansion:sapphire_cluster",
+    "createoreexpansion:sapphire_budding_block"
+  ]
+}

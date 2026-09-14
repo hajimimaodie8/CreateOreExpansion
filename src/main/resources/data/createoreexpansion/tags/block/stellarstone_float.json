@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    "createoreexpansion:stellarstone_block",
+    "createoreexpansion:end_stellarstone_ore",
+    "createoreexpansion:raw_stellarstone_block"
+  ]
+}

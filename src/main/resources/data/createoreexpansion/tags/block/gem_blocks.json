@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "createoreexpansion:topaz_block",
+    "createoreexpansion:thunderite_block",
+    "createoreexpansion:ruby_block",
+    "createoreexpansion:sanctstone_block"
+  ]
+}

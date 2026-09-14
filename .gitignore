@@ -47,7 +47,7 @@ libs/
 verify_combo.py
 verify_combo2.py
 package-lock.json
-verify_combo.py
-verify_combo2.py
-package-lock.json
-data/
+# 根目录下的本地暂存目录（不提交）。必须写成 /data/ 只锚定根目录：
+# 裸写 data/ 会连 src/main/resources/data/（模组的配方/标签/战利品表）一起忽略，
+# 导致新增的数据文件被 git add 静默跳过、从没进过版本库（2026-09 发现的 5 个方块标签就是这样丢的）。
+/data/
