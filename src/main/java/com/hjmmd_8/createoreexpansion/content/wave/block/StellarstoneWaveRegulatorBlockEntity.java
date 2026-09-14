@@ -40,16 +40,26 @@ public class StellarstoneWaveRegulatorBlockEntity extends AbstractWaveGateBlockE
 	}
 
 	/**
+	 * <b>+2 档的转速门槛（RPM）</b>：32~128 给 +1，129 及以上给 +2。
+	 *
+	 * <p>取值出处：本机转速档位表（见类注释与 {@code AbstractWaveGateBlockEntity} 的门槛说明）
+	 * ——档位按 RPM 二分：调制门槛（{@link #getModulationSpeedThreshold()}，星辉石 = 32）到 128 为一档，
+	 * 129~256 为下一档。此前这个数字直接写在 {@link #getBoostStepForSpeed()} 里（魔法数），
+	 * 现在提成具名常量：护目镜/Jade 的档位说明文字与判定共用同一个数，改档位只需改这里。</p>
+	 */
+	private static final float BOOST_STEP2_MIN_RPM = 129f;
+
+	/**
 	 * 星辉石调级器：单次提升级数随本机转速（调制门槛 32 RPM 之上）——
 	 * <ul>
 	 *   <li>32 ~ 128 RPM（含 128）→ 每次穿过提升 <b>1</b> 级；</li>
-	 *   <li>129 ~ 256 RPM（含以上）→ 每次穿过提升 <b>2</b> 级。</li>
+	 *   <li>{@value #BOOST_STEP2_MIN_RPM} RPM 及以上 → 每次穿过提升 <b>2</b> 级。</li>
 	 * </ul>
 	 * 翡翠/蓝宝石调级器不覆写本方法（默认恒 1）。
 	 */
 	@Override
 	public int getBoostStepForSpeed() {
-		return Math.abs(getSpeed()) >= 129f ? 2 : 1;
+		return Math.abs(getSpeed()) >= BOOST_STEP2_MIN_RPM ? 2 : 1;
 	}
 
 	/** 星辉石调级器：最大可升等级 5（ω 充能）——提升封顶到 5（全局上限）。 */

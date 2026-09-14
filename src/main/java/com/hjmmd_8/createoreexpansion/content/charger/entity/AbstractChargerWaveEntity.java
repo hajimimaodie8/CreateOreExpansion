@@ -555,8 +555,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 	/** 速度下限（格/秒）：减速不能低于此值。 */
 	protected static final double MIN_SPEED = 0.5d;
-	/** 速度上限（格/秒）：加速不能超过此值。 */
-	protected static final double MAX_SPEED = 10.0d;
+	// 注意：这里**没有**速度上限常量——上限由等级速度表给（WaveLevels.maxSpeed：1~3 级 10、4/5 级 12）。
+	// 2026-09-14 删除了一处遗留的 `MAX_SPEED = 10.0d`：它全仓无人使用，而取值与速度表矛盾（表里 4/5 级是 12），
+	// 留着只会让读者以为加速被夹在 10。见 getSpeedBlocks() 的夹取表达式。
 
 	/**
 	 * 移动速度（格/秒）：等级基础速度（查 {@link WaveLevels#baseSpeed}，α 2 / β 4 /
