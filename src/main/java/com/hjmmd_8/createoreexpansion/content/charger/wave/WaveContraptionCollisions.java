@@ -203,7 +203,7 @@ public class WaveContraptionCollisions {
 				return true;
 			}
 			default -> {
-				// 调制结果（VANISH_GAMMA_BOOM/VANISH_LOW_BOOM/PASS_BOOST_LATER/PASS_DOWNGRADE/BOUNCE_DOWNGRADE）
+				// 调制结果（VANISH_OVERLOAD_BOOM/VANISH_FLOOR_BOOM/PASS_BOOST_LATER/PASS_DOWNGRADE/BOUNCE_DOWNGRADE）
 				// 依赖转速，纯 state 判定（speed=0）不会产生；防御性按撞墙
 				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
 				wave.discard();

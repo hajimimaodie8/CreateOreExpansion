@@ -16,23 +16,28 @@ import net.minecraft.world.phys.Vec3;
  * <b>应力调制方向</b>（增强/减弱 = dot*speed 符号）全部继承自
  * {@link AbstractWaveGateRegulation}。</p>
  *
- * <p><b>调制效果（本类实现）</b>——等级调制：</p>
+ * <p><b>调制效果（本类实现）</b>——等级调制。<b>能否升级由"机型承载上限"决定</b>
+ * （翡翠 3 = γ；蓝宝石 / 星辉石 5 = ω），不是"等级 3 就到顶"：</p>
  * <ul>
- *   <li>穿过 + 增强（顺基准）→ 升级：延迟 1/(2v) 秒后等级+1；γ 波（3 级）升级无路可升 → γ 爆炸湮灭；</li>
- *   <li>穿过 + 减弱（逆基准）→ 立即降级；1 级波降级无路可降 → α 级爆炸湮灭；</li>
- *   <li>反弹 + 调制 → 降级并原路遣返（1 级波走 α 级爆炸）。</li>
+ *   <li>穿过 + 增强（顺基准）→ 延迟 1/(2v) 秒后等级 +1；<b>已在机型上限</b> → 过载爆炸湮灭；</li>
+ *   <li>穿过 + 减弱（逆基准）→ 立即等级 −1；1 级波降级无路可降 → α 级爆炸湮灭；</li>
+ *   <li>反弹 + 调制 → 等级 −1 并原路遣返（1 级波同样走 α 级爆炸）；</li>
+ *   <li>波级<b>已超</b>机型上限（4/5 级波遇翡翠机）→ 只有"降到 ≤ 上限"的操作有效
+ *       （4→3 可以；5→4 仍超上限，无效），其余一律湮灭且不爆炸。</li>
  * </ul>
  *
- * <p>行为总表（升降级只在接入应力且转速达标时发生，门槛 = FAST，默认 100 RPM）：
+ * <p>行为总表（升降级只在接入应力且转速达标时发生，门槛 = FAST，默认 100 RPM；
+ * 列宽按"CJK 计 2 列"对齐）：</p>
  * <pre>
- * 无应力/转速不足 双开口  → 正常通道，等级不变，穿出（PASS_UNCHANGED）
- * 无应力/转速不足 单开口  → 等级不变，原路遣返（BOUNCE）
- * 有应力 顺基准 双开口    → 增强：穿过，延迟 1/(2v) 秒后等级+1（PASS_BOOST_LATER）
- * 有应力 逆基准 双开口    → 减弱：穿过，立即等级-1（PASS_DOWNGRADE）
- * 有应力 单开口          → 进入后等级-1，原路遣返（BOUNCE_DOWNGRADE）
- * γ 波（3 级）顺基准     → 升级无路可升：3 级 γ 爆炸，波湮灭（VANISH_GAMMA_BOOM）
- * 1 级波逆基准 / 1 级波单开口遣返 → 降级无路可降：1 级小范围爆炸，波湮灭（VANISH_LOW_BOOM）
- * 入口面板关闭 / 齿轮端进入 → 撞墙，波消失（VANISH）
+ * 无应力/转速不足 双开口      → 正常通道，等级不变，穿出（PASS_UNCHANGED）
+ * 无应力/转速不足 单开口      → 等级不变，原路遣返（BOUNCE）
+ * 有应力 顺基准 双开口        → 增强：穿过后延迟 1/(2v) 秒等级 +1（PASS_BOOST_LATER）
+ * 有应力 逆基准 双开口        → 减弱：穿过即等级 −1（PASS_DOWNGRADE）
+ * 有应力 单开口              → 等级 −1 并原路遣返（BOUNCE_DOWNGRADE）
+ * 顺基准 已达机型上限        → 过载爆炸后湮灭（VANISH_OVERLOAD_BOOM）
+ * 逆基准/单开口 且为 α       → α 级爆炸后湮灭（VANISH_FLOOR_BOOM）
+ * 超机型上限 非降级到限内     → 直接湮灭，无爆炸（VANISH）
+ * 入口关闭/齿轮端            → 撞墙湮灭，无爆炸（VANISH）
  * </pre>
  */
 public final class EnergyWaveRegulation extends AbstractWaveGateRegulation {
@@ -49,12 +54,12 @@ public final class EnergyWaveRegulation extends AbstractWaveGateRegulation {
 		PASS_DOWNGRADE,
 		/** 有应力单开口：进入后降级（等级-1），原路遣返（调用方反转 movement）。 */
 		BOUNCE_DOWNGRADE,
-		/** 消失：齿轮端、入口面板关闭。 */
+		/** 消失：齿轮端、入口面板关闭、或波级超机型上限且非降级到限内（不爆炸）。 */
 		VANISH,
-		/** γ 波（3 级）顺基准：升级无路可升 → 触发 3 级 γ 爆炸后湮灭（调用方处理）。 */
-		VANISH_GAMMA_BOOM,
-		/** 1 级波逆基准：降级无路可降 → 触发 1 级小范围爆炸后湮灭（调用方处理）。 */
-		VANISH_LOW_BOOM;
+		/** 顺基准且已达<b>机型承载上限</b>：升级无路可升 → 过载爆炸后湮灭（调用方处理）。 */
+		VANISH_OVERLOAD_BOOM,
+		/** 逆基准 / 单开口遣返且为 1 级：降级无路可降 → α 级小范围爆炸后湮灭（调用方处理）。 */
+		VANISH_FLOOR_BOOM;
 	}
 
 	private static final EnergyWaveRegulation INSTANCE = new EnergyWaveRegulation();
@@ -142,17 +147,17 @@ public final class EnergyWaveRegulation extends AbstractWaveGateRegulation {
 				if (!r.modulate())
 					return Result.BOUNCE;
 				// 有应力单开口：降级并遣返（1 级波降级无路可降 → α 级爆炸）
-				return waveLevel <= 1 ? Result.VANISH_LOW_BOOM : Result.BOUNCE_DOWNGRADE;
+				return waveLevel <= 1 ? Result.VANISH_FLOOR_BOOM : Result.BOUNCE_DOWNGRADE;
 			}
 			case PASS -> {
 				if (!r.modulate())
 					return Result.PASS_UNCHANGED;
 				if (r.boost()) {
 					// 顺基准：等级+1。达到机型上限（翡翠 3（γ）；蓝宝石 5（ω））→ 过载爆炸湮灭。
-					return waveLevel >= maxLevel ? Result.VANISH_GAMMA_BOOM : Result.PASS_BOOST_LATER;
+					return waveLevel >= maxLevel ? Result.VANISH_OVERLOAD_BOOM : Result.PASS_BOOST_LATER;
 				}
 				// 逆基准：等级-1。1 级波降级无路可降 → α 级爆炸。
-				return waveLevel <= 1 ? Result.VANISH_LOW_BOOM : Result.PASS_DOWNGRADE;
+				return waveLevel <= 1 ? Result.VANISH_FLOOR_BOOM : Result.PASS_DOWNGRADE;
 			}
 		}
 		return Result.VANISH;

@@ -67,14 +67,16 @@ public class WaveMachineActions {
 				// 齿轮端/入口关闭：如撞墙消失，无爆炸
 				return true;
 			}
-			case VANISH_GAMMA_BOOM -> {
-				// γ 波（3 级）顺基准升级无路可升 → 触发 3 级 γ 爆炸后湮灭
+			case VANISH_OVERLOAD_BOOM -> {
+				// 顺基准且已达机型承载上限（翡翠 3 = γ / 蓝宝石·星辉石 5 = ω）→ 过载爆炸后湮灭。
+				// 爆炸规模固定 3 级（与旧版一致：旧上限本来就是 3 级）；4/5 级波在蓝宝石/星辉石上
+				// 触发时是否该放大到本级规模，属游戏表现取舍，未擅自改动。
 				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
 					wave.getRenderColor(), null, 3);
 				return true;
 			}
-			case VANISH_LOW_BOOM -> {
-				// 1 级波逆基准降级无路可降 → 1 级小范围爆炸后湮灭
+			case VANISH_FLOOR_BOOM -> {
+				// 1 级（α）波逆基准 / 单开口遣返：降级无路可降 → 1 级小范围爆炸后湮灭
 				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
 					wave.getRenderColor(), null, 1);
 				return true;
@@ -97,7 +99,7 @@ public class WaveMachineActions {
 				wave.setWaveLevel(wave.getWaveLevel() - 1);
 			}
 			case BOUNCE_DOWNGRADE -> {
-				// 有应力单开口：降级并原路遣返（1 级波已在判定层走 VANISH_LOW_BOOM 爆炸，这里仅 ≥2 级）
+				// 有应力单开口：降级并原路遣返（1 级波已在判定层走 VANISH_FLOOR_BOOM 爆炸，这里仅 ≥2 级）
 				wave.setWaveLevel(wave.getWaveLevel() - 1);
 				wave.setMovement(wave.getMovement().scale(-1));
 			}

@@ -107,6 +107,21 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private boolean wasInsideField;
 
 	/**
+	 * <b>最近路径折线</b>：攻击场判定"这只波有没有真的从场盒里穿过"的依据（见 {@link WavePath}）。
+	 * 由本类每 tick 压入一个落点，对外只读（{@link #pathCrosses}）。
+	 */
+	private final WavePath wavePath = new WavePath();
+
+	/**
+	 * 本 tick 的位移是否由波<b>自己</b>走出（{@code true} 只包住 tick 里那一句自走 {@code setPos}）。
+	 *
+	 * <p>{@code false} 期间的任何 {@link #setPos} 都算"外力搬运"——机器把波推出方块外、原路遣返、
+	 * 结构场景坐标换算等。那种一跳不是飞行位移，不能参与"穿过判定"，否则攻击场会把整段瞬移路径上的
+	 * 场盒都误算成穿过（断开语义见 {@link WavePath#markLiveBreak()}）。</p>
+	 */
+	private boolean selfPropelled;
+
+	/**
 	 * 调级器增强延迟（格）：穿过能量调级器（顺基准）后还需飞行 0.5 格
 	 * 才升级（0.5 格 ÷ 波速 v = 1/(2v) 秒）。0 = 无待升级。
 	 */
@@ -226,6 +241,36 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return true;
 	}
 
+	/**
+	 * <b>位置写入总入口</b>（覆写：区分"自己飞"与"被机器挪"）。
+	 *
+	 * <p>{@link net.minecraft.world.entity.Entity#setPos(Vec3)} 是 {@code final}，它内部就会调到本方法，
+	 * 所以自走位移（tick 里唯一的 {@code setPos(position().add(step))}）与所有外力搬运都必然经过这里，
+	 * 不必去 20 多处调用点逐个加标记（漏一处就等于漏一个误判窗口）。</p>
+	 *
+	 * <p>非自走写入会<b>当场</b>把轨迹标断（{@link WavePath#markLiveBreak()}）：瞬移那一跳不能当作
+	 * 飞行位移参与攻击场的穿过判定，而且必须立刻生效——瞬移可能落在"一次观测之后、下一次采样之前"，
+	 * 等到下次采样才断就已经晚了一步（验证脚本实测过这一点）。<b>不改变任何位置/速度行为。</b></p>
+	 */
+	@Override
+	public void setPos(double x, double y, double z) {
+		super.setPos(x, y, z);
+		if (!selfPropelled)
+			wavePath.markLiveBreak();
+	}
+
+	/**
+	 * <b>波最近一段路径是否与给定盒相交</b>——攻击场"真的穿过场盒"的唯一判定入口。
+	 *
+	 * <p>把几何问题转交轨迹对象（{@link WavePath#crosses}）：调用方只问"有没有穿过"，
+	 * 拿不到也改不了轨迹本身。判定覆盖"最近 {@link WavePath#MAX_OBSERVATION_GAP_TICKS} tick 的
+	 * 全部位移 + 当前实时位置"，因此不再依赖"观测节拍 × 波速"的赛跑，也不必读原版
+	 * {@code xo/yo/zo}（那只有一 tick，且对刚出生的波是 (0,0,0)）。</p>
+	 */
+	public boolean pathCrosses(AABB box) {
+		return wavePath.crosses(box, position());
+	}
+
 	@Override
 	public void tick() {
 		super.tick();
@@ -245,6 +290,11 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			return;
 		}
 
+		// 路径采样（攻击场"穿过判定"用，见 WavePath）：此刻的位置 = 上一 tick 结束时的落点。
+		// 采样在移动之前做，本 tick 的位移由 pathCrosses 里的实时点补上；上次采样之后若发生外力搬运
+		// （机器推波/遣返/坐标换算），该段会被标成断点并在判定时跳过。
+		wavePath.push(position());
+
 		// 移动（速度随等级）。带电荷且身处能量场时，把"名义速度向量"交给场修正：
 		// 加速场沿场向增减速、偏转场横向弯折路径（每 tick 微调 movement 方向/速率，呈弧线）。
 		Vec3 nominal = movement.scale(getSpeedBlocks()); // 格/秒（当前名义速度向量）
@@ -255,7 +305,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			setFieldVelocity(corrected);
 			step = corrected.scale(1.0 / 20.0);
 		}
+		// 这一段是唯一的"自走"位移；selfPropelled 之外的一切 setPos 都记为外力搬运（见 setPos 覆写）
+		selfPropelled = true;
 		setPos(position().add(step));
+		selfPropelled = false;
 
 		// 诊断日志（仅服务端；控制器方块完成后移除）：带电波进出场状态翻转 + 场内每 10 tick 修正摘要
 		if (level() instanceof net.minecraft.server.level.ServerLevel server) {

@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.WavePath;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
@@ -68,52 +69,56 @@ public enum TransmuterMode {
 		/**
 		 * <b>本模式的场节拍</b>：攻击场按"波不可能整段穿过场盒"的最短间隔单独跑
 		 * （公式与推导见 {@link #shortestSafeFieldInterval()}），与每
-		 * {@link StellarWaveTransmuterBlockEntity#scanIntervalTicks()} tick 一次的重扫描解耦。
+		 * {@link StellarWaveTransmuterBlockEntity#scanIntervalTicks()} tick 一次的重扫描解耦；
+		 * 再按波形轨迹能覆盖的观测间隔夹紧（{@link WavePath#MAX_OBSERVATION_GAP_TICKS}）。
 		 */
 		@Override
 		public int fieldIntervalTicks() {
-			return shortestSafeFieldInterval();
+			// 夹紧的理由：轨迹折线只覆盖最近 MAX_OBSERVATION_GAP_TICKS tick 的位移，
+			// 观测间隔一旦超过它，两次观测之间又会冒出"没被任何线段覆盖"的空档。
+			// 波速表或公式将来被放宽时，这里也不会漏（两处耦合只此一处，两侧都写了注释）。
+			return Math.min(shortestSafeFieldInterval(), WavePath.MAX_OBSERVATION_GAP_TICKS);
 		}
 
 		/**
 		 * 攻击场：把"本轮确实穿过场盒"的普通波点燃成攻击波（{@link WaveTypes#ATTACK}）。
 		 *
-		 * <p><b>本轮只做两件事</b>：一次实体查询（只找波实体）+ 逐个候选的"最近一 tick 位移线段
-		 * 是否与场盒相交"判定（见 {@link #crossedField}）。<b>不做任何方块遍历</b>，也不给波增加
-		 * 任何状态（位置全读原版 {@code Entity} 已有的 {@code xo/yo/zo}）——这是"场提速到 2 tick
-		 * 仍然廉价"的全部根据。</p>
+		 * <p><b>本场只做两件事</b>：一次实体查询（只找波实体）+ 逐个候选的"波最近走过的路径是否与
+		 * 场盒相交"判定（{@link AbstractChargerWaveEntity#pathCrosses}）。<b>不做任何方块遍历</b>；
+		 * 路径折线本身由波自己在 tick 里维护（每 tick 一个落点，见 {@link WavePath}），
+		 * 变器侧不持有任何"每波状态"——这是"场提速到 2 tick 仍然廉价"的全部根据。</p>
 		 *
 		 * <p><b>为什么重扫描仍是 8 tick、场却要更短的节拍</b>：重扫描那一套（热源 / 机器 /
 		 * 设备计数 / 载荷估算）是<b>读数</b>，8 tick（≈160ms）玩家已看不出差别，也没有正确性要求；
-		 * 场是<b>穿过判定</b>，它的正确性上限由"两次场扫描之间波能走多远"决定：判定只覆盖
-		 * "最近一 tick 的位移线段"，两次场扫描之间还有 {@code 节拍 − 1} tick <b>完全没有被任何线段
-		 * 覆盖</b>，波只要在这段空档里整段穿过场盒，就一次都不会被点燃。按旧实现（场挂在 8 tick
-		 * 的重扫描上）空档有 7 tick 以上（Create 的 lazyTick 计数让实际周期略长于声明值），
+		 * 场是<b>穿过判定</b>，观测越稀越可能漏判。按最早的实现（场挂在 8 tick 的重扫描上、判定只看
+		 * "上一 tick 的位移线段"）空档有 7 tick 以上（Create 的 lazyTick 计数让实际周期略长于声明值），
 		 * 而半径 1 的场盒棱长只有 3 格（最高波速 12 格/秒
 		 * = 0.6 格/tick，正面穿场只要 5 tick &lt; 7）——这就是"被波速调节器加速过的波在半径 1 的
 		 * 变器上可能整段穿过而不被点燃"的根因。现在场按 {@link #fieldIntervalTicks()}
-		 * （攻击波变态 = 2 tick，空档 1 tick）单独跑，重扫描仍每
+		 * （攻击波变态 = 2 tick）单独跑，重扫描仍每
 		 * {@link StellarWaveTransmuterBlockEntity#scanIntervalTicks()} tick 一次，两者互不牵连：
-		 * 漏波窗口被关掉，而热源/机器/计数那一整套并没有被一起提速。</p>
+		 * 这个漏波窗口被关掉，而热源/机器/计数那一整套并没有被一起提速。</p>
 		 *
-		 * <p><b>为什么查询框要外扩</b>：判定依据是"波现在在哪、上一 tick 在哪"，一次查询必须把
-		 * "最近一 tick 的位移线段可能碰到场盒"的波都捞进来，所以查询框 = 场盒外扩一个行程余量
+		 * <p><b>为什么查询框要外扩</b>：判定依据是"波最近一段路径"，一次查询必须把"路径可能碰到
+		 * 场盒"的波都捞进来，所以查询框 = 场盒外扩一个行程余量
 		 * （见 {@link #queryBox} → {@link #travelMarginPerScan()}）。该余量按<b>较长的重扫描间隔</b>
-		 * 算，对更短的场节拍是<b>充分安全的超集</b>：多捞进来的波还要过 {@link #crossedField}，
-		 * 判定口径不会被放宽，只是候选多几个。</p>
+		 * 算，对更短的场节拍与更短的折线跨度都是<b>充分安全的超集</b>：多捞进来的波还要过
+		 * {@link AbstractChargerWaveEntity#pathCrosses}，判定口径不会被放宽，只是候选多几个。</p>
 		 *
-		 * <p><b>为什么外扩之后还要线段判定</b>：外扩后的查询框覆盖的是"以场盒为中心、来回各一个
-		 * 行程"的大盒，从旁边飞过（压根没进场）的波同样会被查到。所以对每个候选再做一次"上一 tick
-		 * 位置 → 当前位置"与<b>场盒本体</b>的相交判定（见 {@link #crossedField}）：外扩只放宽
+		 * <p><b>为什么外扩之后还要路径判定</b>：外扩后的查询框覆盖的是"以场盒为中心、来回各一个
+		 * 行程"的大盒，从旁边飞过（压根没进场）的波同样会被查到。所以对每个候选再做一次与
+		 * <b>场盒本体</b>的相交判定（{@link AbstractChargerWaveEntity#pathCrosses}）：外扩只放宽
 		 * "看得到谁"，不放宽"算不算穿过"。</p>
 		 *
-		 * <p><b>剩余窗口（如实说明）</b>：本方案把"正面穿场整段落在观测空档"这一类情形按公式
-		 * 排除掉（{@link #shortestSafeFieldInterval()} 保证 {@code 节拍 − 1} 恒小于整段穿场耗时，
-		 * 且节拍被夹到 ≥1 后极端情况下干脆没有空档），但抽样判定的本质仍留下一类几何巧合：波<b>只擦到
-		 * 场盒的棱/角</b>（从相邻两个面进出、盒内弦长远短于棱长），且它落在盒内的采样点恰好全是
-		 * <b>未被覆盖</b>的那些 tick——此时不会被点燃。节拍 2 tick 下这要求"盒内停留不足 1 tick
-		 * 的行程（≈0.6 格）"，即弹道恰好擦过盒棱附近。要彻底闭合它得给每只波记路径位置或按波自身
-		 * 方向外推（弯折路径会误判），与"不给波加状态、不加每 tick 方块遍历"的要求冲突，故不采用。</p>
+		 * <p><b>判定依据是波自己的路径折线，不再是"上一 tick 那一条线段"</b>：波每 tick 把实际落点
+		 * 压进 {@link WavePath}（跨度 {@link WavePath#MAX_OBSERVATION_GAP_TICKS} tick），本场一次判定
+		 * 就能拿到"自上次观测以来的<b>全部</b>位移 + 当前实时位置"。于是观测间隔不再是正确性前提：
+		 * 早先那版只判"上一 tick 位置 → 当前位置"，两次观测之间的空档里<b>擦过场盒棱/角</b>的波
+		 * （盒内弦长短、停留不足 1 tick）会漏点燃；现在那段位移同样落在折线里。
+		 * 节拍（{@link #fieldIntervalTicks()}）由此退化为纯粹的"多久看一眼"成本参数。</p>
+		 *
+		 * <p><b>瞬移不算穿过</b>：机器把波挪位置时（撞机器后推出方块外 / 遣返 / 结构坐标换算）那一跳
+		 * 由波实体的 {@code setPos} 覆写标成外力搬运，折线在此断开，不会被当成飞行位移。</p>
 		 */
 		@Override
 		public void applyField(Level level, BlockPos pos, int radius) {
@@ -122,7 +127,7 @@ public enum TransmuterMode {
 				queryBox(field)))
 				// 只调用一次"点燃"：是不是普通波由 trySetWaveType 自己判定（一生只能变一次），
 				// 这里不重复判断波型——写两遍就是两处口径，迟早不一致
-				if (crossedField(wave, field))
+				if (wave.pathCrosses(field))
 					wave.trySetWaveType(WaveTypes.ATTACK);
 		}
 	};
@@ -280,8 +285,12 @@ public enum TransmuterMode {
 	 * <p><b>为什么按重扫描间隔（而不是更短的场节拍）算</b>：场现在按 {@link #fieldIntervalTicks()}
 	 * 单独跑，判定其实只需"再多扩一 tick 的位移 + 缓冲"就够；但余量取两者中更大的那个
 	 * （重扫描间隔 → 现表 12 × 8 / 20 + 1 = 5.8 格）只会多捞几个候选，而"算不算穿过"由
-	 * {@link #crossedField} 收口，不会把"路过"判成"穿过"——所以这是<b>充分安全的超集</b>，
-	 * 不必随场节拍来回改。</p>
+	 * {@link AbstractChargerWaveEntity#pathCrosses} 收口，不会把"路过"判成"穿过"——所以这是
+	 * <b>充分安全的超集</b>，不必随场节拍来回改。</p>
+	 *
+	 * <p><b>它也必须覆盖轨迹折线的跨度</b>：判定看的是"最近 {@code MAX_OBSERVATION_GAP_TICKS} tick
+	 * 的位移"，因此"此刻已飞出盒外、但折线仍可能触到盒"的波必须还在候选里——折线跨度 4 tick 的
+	 * 行程（4 × 0.6 = 2.4 格）小于现余量 5.8 格，故同一套余量对折线判定同样成立，无需另加。</p>
 	 */
 	private static double travelMarginPerScan() {
 		return maxWaveSpeed() * StellarWaveTransmuterBlockEntity.scanIntervalTicks() / 20.0d + TRAVEL_SLACK;
@@ -310,6 +319,11 @@ public enum TransmuterMode {
 	 * <p>由此得到的保证：{@code 节拍 − 1} 恒小于整段穿场耗时（若波速极高导致算出的节拍被夹到 1，
 	 * 则两次观测之间干脆没有空档，覆盖是逐 tick 完整的），所以"正面穿场整段落在观测空档"
 	 * 不可能发生。</p>
+	 *
+	 * <p><b>本公式现在的角色（2026-09 起）</b>：正确性已由波形路径折线保证——场一次判定覆盖
+	 * "自上次观测以来的全部位移"（见 {@link #applyField}），所以本值只需要不慢于"波整段穿场的耗时"
+	 * 这一直觉尺度，剩下的只是成本权衡；此外它会被 {@link WavePath#MAX_OBSERVATION_GAP_TICKS} 夹紧，
+	 * 保证观测间隔永远不超过折线跨度。</p>
 	 */
 	private static int shortestSafeFieldInterval() {
 		double shortestChord = 2.0d * MIN_FIELD_RADIUS + 1.0d;
@@ -330,31 +344,6 @@ public enum TransmuterMode {
 		for (int level = WaveLevels.LOW; level <= WaveLevels.MAX_LEVEL; level++)
 			max = Math.max(max, WaveLevels.maxSpeed(level));
 		return max;
-	}
-
-	/**
-	 * 波是否<b>真的穿过</b>了场盒（而不是只从旁边飞过去）。
-	 *
-	 * <p><b>线段取"上一 tick 位置 → 当前位置"</b>：原版 {@code Entity} 的 {@code xo/yo/zo} 就是
-	 * 本 tick 开始前的坐标——{@code ServerLevel#tickNonPassenger} 在 tick 实体之前先调
-	 * {@code setOldPosAndRot()} 写入它，而波自己的 {@code tick()} 又是在 {@code super.tick()} 之后
-	 * 才 {@code setPos} 走出本 tick 的位移，所以这两点之间的线段恰好是"最近一 tick 的位移段"，
-	 * 不必为波增加任何逐 tick 记录（波不持有状态，正是本设计能"只在周期扫描里做事"的关键）。</p>
-	 *
-	 * <p><b>为什么用 {@link AABB#clip(Vec3, Vec3)}</b>：它是原版的线段裁剪工具（返回入面交点，
-	 * 无交点返回 {@code Optional.empty()}），语义正好是"这条线段与盒有没有相交"；而
-	 * {@link AABB#intersects(Vec3, Vec3)} 只是"线段包围盒与场盒的粗略重叠"，斜着擦过场、
-	 * 甚至只在拐角附近路过的波都会被判成穿过——那正是本判定要排除的误判，故不能用。</p>
-	 *
-	 * <p><b>{@code contains} 那一支不可省</b>：{@code clip} 内部的 {@code clipPoint} 只接受
-	 * {@code 0 < t < 1} 的入面交点，起点已经在盒内时返回 {@code empty}（原版
-	 * {@code BlockGetter#clip} 因此另配 isInside 分支）。少了这一支，"上一 tick 就已在场盒内"的波
-	 * 会全部漏点燃——那恰恰是半径小、波速慢时最常见的情形。</p>
-	 */
-	private static boolean crossedField(AbstractChargerWaveEntity wave, AABB field) {
-		Vec3 previous = new Vec3(wave.xo, wave.yo, wave.zo);
-		return field.contains(previous) || field.clip(previous, wave.position())
-			.isPresent();
 	}
 
 	/** 按标识取模式；空值或未知（老存档没有该键）→ {@link #PROCESSING}。 */
