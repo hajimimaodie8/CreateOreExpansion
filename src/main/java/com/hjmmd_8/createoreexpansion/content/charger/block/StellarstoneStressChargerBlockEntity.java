@@ -377,6 +377,12 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 	 *   <li>{@link #getValueSettings}：把内部等级换算成"列"（value − 1）回给面板，光标初始位置才对；</li>
 	 *   <li>{@link #setValueSettings}：把面板选中的列换回等级（+1）再写入，并沿用 Create 的反馈音。</li>
 	 * </ul>
+	 *
+	 * <p><b>滚轮反馈也要希腊字母（2026-09）</b>：滚动时浮在槽位上的那行文本由 Create 的
+	 * {@code ScrollValueRenderer} 经 {@code formatValue()} 取，而 {@code formatValue()} 就是
+	 * {@code formatter.apply(value)}，默认 formatter 为 {@code String.valueOf} → 不设就会显示
+	 * 1~5。构造时用 {@link #withFormatter} 换成 {@link WaveLevels#glyph(int)}，
+	 * 与面板数值、护目镜读数共用<b>同一个出处</b>（波级符号一律只有 {@link WaveLevels} 一处实现）。</p>
 	 */
 	public static class StellarstoneChargerLevelScrollBehaviour extends ScrollValueBehaviour {
 
@@ -385,6 +391,9 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 		public StellarstoneChargerLevelScrollBehaviour(Component label, SmartBlockEntity be, ValueBoxTransform slot) {
 			super(label, be, slot);
 			between(WaveLevels.LOW, WaveLevels.MAX_LEVEL);
+			// 滚动反馈文本（ScrollValueRenderer 经 formatValue() 取）与面板数值同源：一律希腊字母。
+			// 不设这行，Create 默认 formatter 是 String.valueOf → 玩家看到的是 1~5。
+			withFormatter(WaveLevels::glyph);
 		}
 
 		@Override
