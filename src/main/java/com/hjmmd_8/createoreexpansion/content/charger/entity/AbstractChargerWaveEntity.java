@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.entity;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineActions;
@@ -541,6 +542,20 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 1. 范围爆炸：粒子 + 音效 + 区域效果
 		ChargerWaveFx.triggerBoom(level(), this, center, getWaveType().trailStyle(), renderColor,
 			other.renderColor, boomLevel);
+
+		// 轨迹日志（事件流：一次碰撞一行）：用户口径是"任意两列波（不管波级）撞上就必须有影响"，
+		// 这一行把"到底撞没撞上、按哪一级结算"写进日志——出事时能直接分辨"没撞上"与"撞上了没效果"。
+		// 粒子数走 ChargerWaveFx.boomParticleCount（唯一算式），日志里的数与真实发出的数必然一致。
+		WaveDiag.trace(
+			"波波碰撞：{} 级 × {} 级（波型 {} × {}）→ 爆炸等级 {}：半径 {} 格范围伤害 {}、范围内掉落物/置物台按该级加工、粒子 {} 颗、不破坏地形",
+			WaveLevels.glyph(waveLevel), WaveLevels.glyph(other.waveLevel), getWaveType()
+				.id()
+				.getPath(),
+			other.getWaveType()
+				.id()
+				.getPath(),
+			WaveLevels.glyph(boomLevel), boomLevel, (int) WaveLevels.damage(boomLevel),
+			ChargerWaveFx.boomParticleCount(boomLevel));
 
 		// 2. 两波相互湮灭（标记防对方同 tick 重复触发）
 		this.collided = true;

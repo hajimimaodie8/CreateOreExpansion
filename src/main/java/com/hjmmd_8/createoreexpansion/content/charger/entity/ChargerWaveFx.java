@@ -438,6 +438,17 @@ public final class ChargerWaveFx {
 	}
 
 	/**
+	 * 爆炸主粒子数（<b>唯一算式</b>：{@link #triggerBoom} 与轨迹日志共用，避免"日志里报的数"与
+	 * "真实发出的数"两处各写一遍而分叉）。
+	 *
+	 * @param boomLevel 爆炸等级（1~5）
+	 * @return 主粒子数量（现表 55 / 80 / 105 / 130 / 155）
+	 */
+	public static int boomParticleCount(int boomLevel) {
+		return 30 + boomLevel * 25;
+	}
+
+	/**
 	 * 触发一次范围能量爆炸（风格化）：玩法与上面的无风格重载完全一致，
 	 * 仅把两次粒子发送（主色 + 可选第二色）与点缀粒子按风格着色/补粒子。
 	 *
@@ -457,7 +468,7 @@ public final class ChargerWaveFx {
 		if (level instanceof ServerLevel server) {
 			StyleProfile profile = profile(style);
 			// 密集球面扩散粒子（等级越高越密）
-			int count = 30 + boomLevel * 25; // 55 / 80 / 105 / 130 / 155 个（1~5 级）
+			int count = boomParticleCount(boomLevel); // 55 / 80 / 105 / 130 / 155 个（1~5 级）
 			server.sendParticles(particleFor(profile, color, 0.7f), center.x, center.y, center.z, count,
 				1.2, 1.2, 1.2, 0.15);
 			if (color2 != null) {

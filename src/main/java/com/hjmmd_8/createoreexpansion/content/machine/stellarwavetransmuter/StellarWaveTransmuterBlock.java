@@ -45,10 +45,16 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  *   <li>轴口面（FACING 反面）= {@code stellarstone_gearbox}，机座边框 = {@code stellarstone_casing}。</li>
  * </ul>
  *
- * <p><b>开口规则（用户定义）</b>：只有<b>世界水平 4 侧</b>可开，且 4 面互不干扰。波的水平入口面
- * 关闭 → 按撞关闭机壳（撞墙消散）；入口开而<b>对面出口关</b> → 原路遣返（等级不变、不转换）；
- * 入口开且对面出口开 → 生成变体波从对侧穿出。判定见
+ * <p><b>开口规则（用户定义）</b>：只有本机<b>自己的 4 个侧面</b>可开（灯盘面与轴口面没有波口），
+ * 且 4 面互不干扰。波的水平入口面关闭 → 按撞关闭机壳（撞墙消散）；入口开而<b>对面出口关</b> →
+ * 原路遣返（等级不变、不转换）；入口开且对面出口开 → 生成变体波从对侧穿出。判定见
  * {@code StellarWaveTransmuterPass#tryConvert}。</p>
+ *
+ * <p><b>2026-09-14 修正（"4 个口开着却点不掉"）</b>：这条规则原先写成"只有<b>世界水平</b> 4 侧可开"
+ * ——本机是六向放置的，躺倒放置时它自己的 4 个侧面里有 2 个朝上/朝下，于是那 2 个口默认开着
+ * （模型显示开、灯也亮）却怎么点都切不动。现在口径落在机器自己的侧面上（见
+ * {@link #isOpenable(BlockState, Direction)}），与差波器一致；正立/倒置放置时新旧口径结果完全相同，
+ * 波判定侧的结果也不变（波只会水平入射）。</p>
  *
  * <p><b>交互分工（用户定义，两件互不重叠的事）</b>：</p>
  * <ul>
@@ -169,27 +175,53 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 		return EnergyWaveDisperserBlock.worldDirOf(facing, modelSide);
 	}
 
-	/** 该世界方向是否属于"可开的水平侧面"（UP/DOWN 恒不可开）。 */
-	public static boolean isOpenable(Direction worldSide) {
-		return worldSide != null && worldSide.getAxis()
-			.isHorizontal();
+	/**
+	 * 该<b>世界方向</b>是否属于"可开的波口"——即它能否对应到本机模型上的一个<b>侧面</b>。
+	 *
+	 * <p><b>口径必须落在机器自己的 4 个侧面上，不能写"世界水平"</b>（2026-09-14 修正）：本机六向
+	 * 放置，<b>4 个侧面朝哪四个世界方向随 FACING 一起转</b>。旧实现只认"世界水平方向"，于是躺倒放置
+	 * （FACING 水平）的机器上，它自己那 4 个侧面里有 <b>2 个朝上/朝下</b>——这 2 个口按旧口径
+	 * "不可开"：blockstate 默认值仍是开（模型显示开、灯亮），<b>空手怎么点都切不动</b>
+	 * （玩家实测："4 个开口默认是开的、4 个灯也都亮的、用手点是关不掉的"），而且灯盘面 4 分区里有
+	 * 2 个分区也落在这些"不可开"的方向上 → 点了没反应。现在改为"能在模型上找到侧面就可开"，
+	 * 与差波器 {@link EnergyWaveDisperserBlock}（本机复用它那张世界方向↔模型侧面的表）的口径完全一致。</p>
+	 *
+	 * <p><b>对正立/倒置机器零变化</b>：FACING = UP/DOWN 时，模型 4 侧面正对世界 4 个水平方向，
+	 * 而灯盘面（UP/DOWN）在模型上根本没有侧面对应 → 新旧口径结果逐项相同。</p>
+	 *
+	 * <p><b>对波判定同样零变化</b>：波只会水平飞行（竖直分量判定见
+	 * {@code StellarWaveTransmuterPass#tryConvert}），故 {@code isOpen} 的调用方传进来的永远是水平
+	 * 世界方向；对这些方向新口径与旧口径给出同一答案（唯一差别是"躺倒机器的灯盘面/轴口面"那两种
+	 * 方向——旧口径先按"水平"放行、再在 {@code propertyForWorld} 里返回 null 而判为关闭，
+	 * 新口径直接判为关闭，结论一致）。</p>
+	 *
+	 * @param state     本方块状态（取 FACING 判断模型朝向）
+	 * @param worldSide 被点/被波照射的世界方向
+	 */
+	public static boolean isOpenable(BlockState state, Direction worldSide) {
+		return state != null && state.getBlock() instanceof StellarWaveTransmuterBlock
+			&& modelFaceOf(state.getValue(FACING), worldSide) != null;
 	}
 
 	/**
 	 * 查询某<b>世界方向</b>的波口是否开启（供波判定/灯指示用）。
-	 * <p>UP/DOWN（灯盘面/轴口面）恒返回 false——本机只有 4 个水平侧面可开。</p>
+	 * <p>灯盘面（FACING 面）与轴口面（FACING 反面）恒返回 false——那两面在模型上没有波口；
+	 * 其余 4 个方向按 FACING 换算到模型侧面后取属性值（口径见
+	 * {@link #isOpenable(BlockState, Direction)}）。</p>
 	 */
 	public static boolean isOpen(BlockState state, Direction worldSide) {
-		if (!(state.getBlock() instanceof StellarWaveTransmuterBlock) || !isOpenable(worldSide))
-			return false;
-		Direction modelSide = modelFaceOf(state.getValue(FACING), worldSide);
-		BooleanProperty property = modelSide == null ? null : propertyFor(modelSide);
+		BooleanProperty property = propertyForWorld(state, worldSide);
 		return property != null && state.getValue(property);
 	}
 
-	/** 世界方向 → 开口属性（非水平侧面返回 null）。 */
+	/**
+	 * 世界方向 → 开口属性（<b>唯一换算处</b>：世界方向 → 模型侧面 → 属性；不可开的方向返回 null）。
+	 *
+	 * <p>返回 null 只有两种情形：给定的世界方向是<b>灯盘面</b>或<b>轴口面</b>（模型上没有侧面对应），
+	 * 或者传入的不是本方块。调用方据此判定"这次点击/这道波与该面无关"。</p>
+	 */
 	public static BooleanProperty propertyForWorld(BlockState state, Direction worldSide) {
-		if (!isOpenable(worldSide))
+		if (state == null || !(state.getBlock() instanceof StellarWaveTransmuterBlock))
 			return null;
 		Direction modelSide = modelFaceOf(state.getValue(FACING), worldSide);
 		return modelSide == null ? null : propertyFor(modelSide);
@@ -264,11 +296,12 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 		Direction facing = state.getValue(FACING);
 		// 世界方向 → 模型侧面：水平侧面 = 点哪面切哪面；灯盘面（FACING 面）= 按点击位置分区取一侧
 		Direction worldDir = clickedFace == facing ? worldDirForLampClick(state, pos, clickLocation) : clickedFace;
-		if (!isOpenable(worldDir))
-			return InteractionResult.SUCCESS; // 映射落到 UP/DOWN：该点击不切换任何面
+		// 灯盘面/轴口面（含灯盘面分区落到这两面时）在模型上没有波口 → 本次点击不切换任何面。
+		// 判定与属性换算只有 propertyForWorld 一处（可开的方向集合随 FACING 一起转，
+		// 见 isOpenable 的说明：躺倒放置时朝上/朝下的那 2 个侧面同样是可开的）。
 		BooleanProperty property = propertyForWorld(state, worldDir);
 		if (property == null)
-			return InteractionResult.SUCCESS; // 灯盘/轴口这类非侧面的世界方向：不可开
+			return InteractionResult.SUCCESS;
 
 		if (!level.isClientSide) {
 			level.setBlock(pos, state.setValue(property, !state.getValue(property)), Block.UPDATE_CLIENTS);
