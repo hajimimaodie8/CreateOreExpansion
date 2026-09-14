@@ -293,16 +293,16 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		int radius = resolveRadius();
 		List<BlockPos> machines = collectMachines(radius);
 		List<ResourceLocation> ids = new ArrayList<>(machines.size());
-		for (BlockPos m : machines)
-			ids.add(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(m)
-				.getBlock()));
-		scannedIds = ids;
 		// 解析每台机器当前状态应执行的配方类型（注册中心的静态档案 + 状态选择器，
 		// 如 Vintage 真空室 mode 加压/抽真空）；未注册的启发式动能机 = 空表（执行走全库）
 		java.util.List<com.simibubi.create.foundation.recipe.IRecipeTypeInfo> types = new ArrayList<>();
+		// 2026-09-14（性能）：id 与"当前状态类型"原本分两趟遍历 machines，每趟都为同一格做一次
+		// `level.getBlockState(m).getBlock()`；合并成一趟后语义完全不变（id 对机器一律登记，
+		// 只有"取不到方块实体"才跳过类型解析），半径 3 时每轮少 343 次方块状态读取。
 		for (BlockPos m : machines) {
 			ResourceLocation blockId = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(m)
 				.getBlock());
+			ids.add(blockId);
 			net.minecraft.world.level.block.entity.BlockEntity be = level.getBlockEntity(m);
 			if (be == null)
 				continue;
@@ -311,6 +311,7 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 				if (!types.contains(t))
 					types.add(t);
 		}
+		scannedIds = ids;
 		scannedRecipeTypes = types;
 		// 加热读数（烈焰燃烧室）：热源不是动能机器，故在机器表之外<b>单独扫描</b>。
 		// 达"普通加热"档（KINDLED 及以上，含将熄 FADING）时把 create:mixing 一并计入携带类型——
