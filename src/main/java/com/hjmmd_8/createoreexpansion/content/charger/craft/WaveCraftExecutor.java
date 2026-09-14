@@ -168,8 +168,17 @@ public final class WaveCraftExecutor {
 		while (host.chainLeft() > 0) {
 			// 找槽顺带取回候选表：执行方直接复用，避免对同一槽再全库评估一遍（性能，见 SlotPlan）
 			SlotPlan plan = findCraftableSlot(handler, pos, containerFluid);
-			if (plan.slot() < 0)
+			if (plan.slot() < 0) {
+				// 没有配方候选：再试一次"把载荷流体灌进容器里的可装流体物品"（2026-09-14 新增）。
+				// 这一步是**货载动作**（波自己带的水倒进空桶），不是机器加工，所以不需要携带任何配方类型，
+				// 与"余料流体注进附近储罐"同一类行为；Create 真机的喷口给桶注液同理——它也不是配方，
+				// 而是 GenericItemFilling 对物品自身流体能力的特判（见 WaveItemFluidFilling 的说明）。
+				if (WaveItemFluidFilling.fillOne(host, handler, pos)) {
+					any = true;
+					continue; // 灌了一个，继续看容器里还有没有能装的物品 / 载荷里还有没有流体
+				}
 				break;
+			}
 			Candidate done = craftFromSlot(handler, plan.slot(), pos, batchLock, containerFluid, plan.candidates());
 			if (done == null)
 				break; // 该槽无可执行（如环境不满足/无产物/并发变化）：不再原地空转，结束本批处理

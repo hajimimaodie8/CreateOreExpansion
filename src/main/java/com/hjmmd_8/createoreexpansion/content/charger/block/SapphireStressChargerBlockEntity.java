@@ -54,7 +54,11 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 	 */
 	private int storeLayers;
 
-	/** 攒层时的转速等级（释放该层时使用同一等级；取最近一次充能时的档位）。 */
+	/**
+	 * "最后一次有效档位"（0/越界 = 无记录）：<b>只在停转时</b>作为释放档位的回落值
+	 * （口径只有一处，见 {@link AbstractCreateChargerBlockEntity#resolveReleaseLevel}）。
+	 * 有应力时释放一律取当前转速档，故它不参与"跟着转速变档"的路径。
+	 */
 	private int storedLevel = WaveLevels.GAMMA;
 
 	/** 上一 tick 红石信号（上升沿检测：false→true 触发一次释放）。 */
@@ -156,6 +160,10 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 	 * 充能完成钩子（间隔期满）：
 	 * 普通模式 → 父类逐发发射；储存模式 → <b>层数 +1</b>（每充一次即一层），
 	 * 满 10 层后不再充能（多余充能丢弃，等玩家右键释放腾出空间）。
+	 *
+	 * <p>攒层时顺手把当前档位记为"最后一次有效档位"：它<b>只影响停转后的释放</b>
+	 * （有应力时释放一律取当前档位，见
+	 * {@link AbstractCreateChargerBlockEntity#resolveReleaseLevel}）。</p>
 	 */
 	@Override
 	protected void onChargeComplete() {
@@ -179,7 +187,10 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 		if (level != null && !level.isClientSide) {
 			if (storeLayers > 0) {
 				storeLayers--;
-				int level = Mth.clamp(storedLevel, 1, 5);
+				// 档位跟随当前转速（口径见 AbstractCreateChargerBlockEntity#resolveReleaseLevel）：
+				// 调好档位后立刻释放用的就是新档位；停转时回落到最后一次有效档位，囤的层数照样放得出来
+				int level = resolveReleaseLevel(storedLevel);
+				storedLevel = level;
 				if (storeLayers <= 0)
 					storedLevel = WaveLevels.GAMMA;
 				// 释放弹出动画（服务端仅作同步源，逐 tick 归零防鬼畜）

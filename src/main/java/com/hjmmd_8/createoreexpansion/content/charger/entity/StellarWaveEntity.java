@@ -21,6 +21,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadRelease;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.BorrowedChargingSource;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
@@ -173,29 +174,25 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	/** 载荷是否已释放（防 remove 重复释放）。 */
 	private boolean payloadReleased;
 
-	/** 远程加工诊断日志开关（默认关闭，不刷屏）：排查"命中物品为何不加工 / 走了哪条配方"时置 true。 */
-	private static final boolean CRAFT_DEBUG = false;
-
-	/** 诊断日志（仅在 {@link #CRAFT_DEBUG} 打开时输出；关时零开销）。 */
+	/**
+	 * 逐条淘汰诊断日志（本类唯一入口，实现见 {@link WaveDiag#debug}）：默认关闭，
+	 * 量级与配方库规模成正比，排查"命中物品为何不加工 / 走了哪条配方"时才打开。
+	 */
 	private static void craftDebug(String msg, Object... args) {
-		if (CRAFT_DEBUG)
-			com.hjmmd_8.createoreexpansion.CreateOreExpansion.LOGGER.info("[变体波加工] " + msg, args);
+		WaveDiag.debug(msg, args);
 	}
 
 	/**
-	 * <b>低量级加工轨迹</b>（默认开启）：每次实际加工最多输出一行，量级与"发生了多少次加工"成正比，
-	 * 与配方库规模无关（区别于 {@link #CRAFT_DEBUG} 的逐条淘汰日志）。
+	 * 低量级加工轨迹（本类唯一入口，实现见 {@link WaveDiag#trace}）：默认开启，
+	 * 每次实际加工最多输出一行，量级与"发生了多少次加工"成正比，与配方库规模无关。
 	 *
 	 * <p>用途：定位"明明放了料却没变成预期产物"——日志会明确写出
 	 * 「命中哪种输入 → 有几条候选 → 最终选了哪条配方 → 产出什么」，
 	 * 于是"是没匹配上、还是匹配上了却选了别的配方"一眼可辨。
-	 * 排查完毕后把本常量改回 {@code false} 即可。</p>
+	 * 开关与日志前缀现在只有 {@link WaveDiag} 一处（穿波转换、场点燃等跨类事件也写同一本账）。</p>
 	 */
-	private static final boolean CRAFT_TRACE = true;
-
 	private static void craftTrace(String msg, Object... args) {
-		if (CRAFT_TRACE)
-			com.hjmmd_8.createoreexpansion.CreateOreExpansion.LOGGER.info("[变体波轨迹] " + msg, args);
+		WaveDiag.trace(msg, args);
 	}
 
 	// ================= 借用充能（全能波的外部条件放行） =================

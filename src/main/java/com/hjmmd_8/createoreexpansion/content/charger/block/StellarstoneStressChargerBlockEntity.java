@@ -44,7 +44,9 @@ import net.minecraft.world.phys.Vec3;
  *       {@link StellarstoneChargerModeSlot}（模式，普通 ⇄ 储存，沿用 {@link SapphireChargerMode}）
  *       与 {@link StellarstoneChargerLevelSlot}（手动发射波级 1~5 整数滚动，对外只显示 α/β/γ/ε/ω），
  *       分别贴在不同侧面（详见各槽 {@code isSideActive} 注释）；</li>
- *   <li><b>储存模式释放层</b>：每层均按手动等级发射（攒层时记录当时的手动等级）。</li>
+ *   <li><b>储存模式释放层</b>：每层按<b>等级槽的当前值</b>发射（拨完等级槽立刻释放就是新等级；
+ *       停转时才回落到最后一次有效等级，见
+ *       {@link AbstractCreateChargerBlockEntity#resolveReleaseLevel}）。</li>
  * </ul>
  */
 public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerBlockEntity {
@@ -60,9 +62,6 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 
 	/** 储存模式已充能层数（0 ~ {@link #getStoreMaxLayers()}，上限由配置给出，默认 20），每充一次 +1。 */
 	private int storeLayers;
-
-	/** 攒层时的发射等级（释放该层时使用；取最近一次充能时的手动等级）。 */
-	private int storedLevel = WaveLevels.GAMMA;
 
 	/** 上一 tick 红石信号（上升沿检测：false→true 触发一次释放）。 */
 	private boolean prevRedstone;
@@ -160,14 +159,17 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 
 	/**
 	 * 充能完成钩子（间隔期满）：
-	 * 普通模式 → 父类逐发发射（按手动等级）；储存模式 → 层数 +1，并记录当时的手动等级。
+	 * 普通模式 → 父类逐发发射（按手动等级）；储存模式 → 层数 +1。
+	 *
+	 * <p>本机不需要"记住最后一次等级"这类回落值：等级是<b>持久的手动设置</b>
+	 * （等级槽 {@link StellarstoneChargerLevelScrollBehaviour}），任何时刻都读得到，
+	 * 释放档位直接取它即可（见 {@link AbstractCreateChargerBlockEntity#resolveReleaseLevel}）。</p>
 	 */
 	@Override
 	protected void onChargeComplete() {
 		if (storingMode) {
 			if (storeLayers < getStoreMaxLayers()) {
 				storeLayers++;
-				storedLevel = getManualLevel();
 				sendData();
 			}
 			// 已满：丢弃本次充能（无动作，快门保持静止）
@@ -177,15 +179,17 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 	}
 
 	/**
-	 * 释放一层（点击/红石触发）：层数 -1，打出<b>一个</b>该层等级（手动等级）的能量波。
+	 * 释放一层（点击/红石触发）：层数 -1，打出<b>一个</b>按当前手动等级的能量波。
+	 *
+	 * <p>档位取<b>等级槽当前值</b>（停转也一样：等级是手动设置，不依赖应力），
+	 * 故"拨完等级槽立刻释放"用的一定是新等级（口径见
+	 * {@link AbstractCreateChargerBlockEntity#resolveReleaseLevel}）。</p>
 	 */
 	public void releaseOneLayer() {
 		if (level != null && !level.isClientSide) {
 			if (storeLayers > 0) {
 				storeLayers--;
-				int level = Mth.clamp(storedLevel, 1, 5);
-				if (storeLayers <= 0)
-					storedLevel = WaveLevels.GAMMA;
+				int level = resolveReleaseLevel(getManualLevel());
 				releaseTicks = RELEASE_TICKS;
 				sendData();
 				launchWave(level);
@@ -288,7 +292,8 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 		super.write(compound, registries, clientPacket);
 		compound.putBoolean("StoringMode", storingMode);
 		compound.putInt("StoreLayers", storeLayers);
-		compound.putInt("StoredLevel", storedLevel);
+		// 老档里的 "StoredLevel" 键（本机曾用它记"攒层时的等级"）自此不再读写：等级改为
+		// 释放时取等级槽当前值，该键已无含义；留着旧键不影响读档（多余数据被忽略）。
 	}
 
 	@Override
@@ -297,7 +302,6 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 		storingMode = compound.getBoolean("StoringMode");
 		// 上限按配置取（默认 20）：改大上限后旧档层数照读，改小则钳到新上限
 		storeLayers = Mth.clamp(compound.getInt("StoreLayers"), 0, getStoreMaxLayers());
-		storedLevel = Mth.clamp(compound.getInt("StoredLevel"), 1, 5);
 		// 模式槽值与 storingMode 对齐（读档后 behaviour 的 NBT 已由 super 读取；
 		// 以 StoringMode 为准回填，保证新档/旧档/客户端三方一致）
 		if (modeSelection != null) {

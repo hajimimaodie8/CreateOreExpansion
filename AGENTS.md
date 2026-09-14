@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」，只放跨会话必须知道的事实与挂起事项；长文档都在 `markdown_output/`。
-> 最后更新：2026-09-14（能量波系统收尾 + 工程坑补记）。
+> 最后更新：2026-09-14（能量波系统收尾 + 工程坑补记 + 注液/储存档位/波型日志三修）。
 
 ## 工程速览
 
@@ -48,6 +48,11 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 **5）静态关卡覆盖不到什么**
 `compileJava` / `runData` / javadoc **都不构造实体、不跑 tick**。改动涉及实体生命周期或玩家交互时，这三关全绿也不代表不崩——必须明确告知用户"这一步只能进游戏实测"。
+
+**6）三条"别再查一遍"的既有结论（2026-09-14 实测/反编译取证，长文见 `markdown_output/`）**
+- **"给桶注液"不是配方**：Create 的 19 条内置 `create:filling` 配方里**没有一条以空桶为原料**；真机的流体喷口走 `GenericItemFilling` 特判（借物品自身的 `Capabilities.FluidHandler.ITEM`）。所以"波拿不到注液配方"不是类型门/流体门槛的缺陷，而是**口径缺失**——已补货载旁路 `content/charger/craft/WaveItemFluidFilling`（用量与成品一律委托 Create，只认载荷流体，不耗链数）。详见 `变器配方判定与执行逻辑.md` §0.2。
+- **储存模式释放档位**：口径只有一处 `AbstractCreateChargerBlockEntity#resolveReleaseLevel(int)`——有应力取**当前档位**（与普通模式一致），停转才回落"最后一次有效档位"（否则停转后囤的层数一发都放不出）。蓝宝石用 `storedLevel` 做回落值；星辉石等级是持久手动设置，直接用 `getManualLevel()`。
+- **波系统日志唯一出口**：`content/charger/wave/WaveDiag`（`[变体波轨迹]` = 事件流，默认开；`[变体波加工]` = 逐条淘汰，默认关）。实体侧 `craftTrace` / `craftDebug` 只是它的委托包装——**新代码要写波相关日志一律走 WaveDiag**，别再自建前缀。
 
 ## ⏸ 挂起事项（重要，动手前必读）
 

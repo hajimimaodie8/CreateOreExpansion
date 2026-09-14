@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.WavePath;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
@@ -126,8 +127,12 @@ public enum TransmuterMode {
 				queryBox(field)))
 				// 只调用一次"点燃"：是不是普通波由 trySetWaveType 自己判定（一生只能变一次），
 				// 这里不重复判断波型——写两遍就是两处口径，迟早不一致
-				if (wave.pathCrosses(field))
-					wave.trySetWaveType(WaveTypes.ATTACK);
+				if (wave.pathCrosses(field) && wave.trySetWaveType(WaveTypes.ATTACK))
+					// 轨迹日志（事件流：被点燃的波各一行）：与穿波转换那条对称，用来判定
+					// "这发波走的是攻击场还是被加工波变态转换了"（trySetWaveType 返回 true 才写，
+					// 旁观飞过的波不会刷日志）
+					WaveDiag.trace("攻击场点燃（攻击波变态）：变器 [{}] 场内 {} 级波 → 攻击波", pos,
+						WaveLevels.glyph(wave.getWaveLevel()));
 		}
 	};
 

@@ -4,10 +4,12 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlock;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.payload.TransmuterPayloadCollector;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -130,6 +132,16 @@ public final class StellarWaveTransmuterPass {
 
 		level.addFreshEntity(variant);
 		wave.discard();
+		// 轨迹日志（事件流：一发波穿一次变器一行）：玩家调整变器波型后"第一发还是老样子"这类
+		// 反馈，靠这一行就能判定"这发波到底有没有被转换、带上的是哪一份扫描快照"——此前这条路径
+		// 完全静默，只能靠猜。
+		WaveDiag.trace("穿波转换（加工波变态）：变器 [{}] 把 {} 级波转为全能波（属性 {} 个 / 配方类型 {} 个 / 载荷 {} 件）",
+			pos, WaveLevels.glyph(wave.getWaveLevel()), variant.getAttributes()
+				.size(),
+			variant.getActiveRecipeTypes()
+				.size(),
+			payload.items()
+				.size());
 		return Result.CONVERTED;
 	}
 

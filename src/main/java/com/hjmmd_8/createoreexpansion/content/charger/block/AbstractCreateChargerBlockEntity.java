@@ -333,6 +333,33 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 	}
 
 	/**
+	 * 储存模式<b>释放档位的唯一解析处</b>：<b>以"当前档位"为准</b>，只有在没有应力
+	 * （{@code MODE = 0}，本机停转）时才回落到 {@code rememberedLevel}（最后一次有效档位）。
+	 *
+	 * <p><b>为什么必须跟随当前档位</b>：普通模式的发射走 {@link #launchWave()}，它每发都读当前
+	 * {@code MODE}；储存模式却曾经在"充能完成"时才抄一份档位，于是<b>同一台机器的两种模式对
+	 * "波级从哪来"给了两个答案</b>——玩家把档位（蓝宝石=转速档、星辉石=手动等级槽）调好之后立刻
+	 * 释放，打出来的还是调之前那一发，等下一次充能攒满才"跟上"（用户 2026-09-14 实测反馈：
+	 * "第一次发射还是原来的波形，第二次才是改进后的"）。层数只是个计数，任何一层都没有"自己的等级"
+	 * 可查（护目镜只显示 {@code 充能层数：x/y}），所以"每层记住充能当时的等级"在界面上既不可见、
+	 * 也无法预期，跟随当前档位才与普通模式一致。</p>
+	 *
+	 * <p><b>为什么还要保留"最后一次有效档位"</b>：储存模式的用途是"先攒着、以后随时放"，
+	 * 而档位是由<b>应力</b>推出来的（{@code MODE = 0} 表示未接入应力/停转）。若释放时死抠当前档位，
+	 * 停转（含大退重开后没接轴）的机器就一发都放不出来——囤的层数全成摆设。故停转时回落到
+	 * 记下来的最后一次有效档位；两者都无效（新机器、坏数据）才用 {@link WaveLevels#GAMMA} 兜底。</p>
+	 *
+	 * @param rememberedLevel 调用方保存的"最后一次有效档位"（可能为 0 / 越界 = 无记录）
+	 * @return 本次释放应当使用的波等级（恒为 {@link WaveLevels#LOW}~{@link WaveLevels#MAX_LEVEL}）
+	 */
+	protected int resolveReleaseLevel(int rememberedLevel) {
+		int current = getBlockState().getValue(AbstractCreateChargerBlock.MODE);
+		if (WaveLevels.isValid(current))
+			return current; // 有应力：以当前档位为准（与普通模式的发射口径一致）
+		return WaveLevels.isValid(rememberedLevel) ? rememberedLevel : WaveLevels.GAMMA;
+	}
+
+	/**
 	 * 当前充能档位（1=α/2=β/3=γ/4=ε/5=ω）对应的指示灯 / 护目镜颜色（ARGB）。
 	 *
 	 * <p>默认即 {@link #indicatorColorForMode(int)}：标准 5 档表 + 未接入灰。翡翠充能器只到 γ 档，

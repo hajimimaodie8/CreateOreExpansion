@@ -65,6 +65,38 @@ public final class WaveCraftConsumption {
 	}
 
 	/**
+	 * 载荷流体的<b>只读视图</b>（副本；量/种类判断用，不暴露可变的内部对象）。
+	 *
+	 * <p>载荷流体的写入口只有本类（{@link #consumeForCraft} 与 {@link #drainPayloadFluid}），
+	 * 其它"载荷动作"（如 {@link WaveItemFluidFilling} 把载荷流体灌进空桶）要读要扣都找本类，
+	 * 避免多处直接改实体字段导致口径分叉。</p>
+	 */
+	public FluidStack payloadFluid() {
+		FluidStack live = host.livePayloadFluid();
+		return live == null || live.isEmpty() ? FluidStack.EMPTY : live.copy();
+	}
+
+	/**
+	 * 扣减载荷流体（"把波自己带的流体倒掉"用；不足则清空并在返回值里如实报告，不抛异常）。
+	 *
+	 * @param amount 期望扣减量（mB，≤0 视为不扣）
+	 * @return 实际扣减量（mB）
+	 */
+	public int drainPayloadFluid(int amount) {
+		if (amount <= 0)
+			return 0;
+		FluidStack live = host.livePayloadFluid();
+		if (live == null || live.isEmpty())
+			return 0;
+		int drained = Math.min(amount, live.getAmount());
+		if (drained >= live.getAmount())
+			host.setPayloadFluid(FluidStack.EMPTY);
+		else
+			live.shrink(drained);
+		return drained;
+	}
+
+	/**
 	 * 消耗一次加工的资源（辅料/流体/电量），掉落物路径与方块槽路径共用。
 	 *
 	 * @param handler        命中容器物品能力（扣减 CONTAINER 来源辅料用；掉落物路径传 null）
