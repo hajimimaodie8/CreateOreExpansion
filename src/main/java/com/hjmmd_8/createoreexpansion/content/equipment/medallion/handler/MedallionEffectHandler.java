@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.AllFluids;
 import com.hjmmd_8.createoreexpansion.common.AllItems;
 import com.hjmmd_8.createoreexpansion.common.AllModEffects;
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
+import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
@@ -58,16 +59,23 @@ public final class MedallionEffectHandler {
         }
     }
 
-    /** 注册名含 stellarstone 的物品（星辉石全系列：佩/工具/材料等） */
+    /**
+     * 是否星辉石系列物品（佩/工具/材料/方块物品…）。
+     *
+     * <p><b>系列归属判定统一收口到 {@link SeriesTraits}</b>（2026-09-15）：以系列物品标签为准
+     * （注册链上的 {@code .addStellarstoneTraits()} 会把条目写进标签），注册名含 {@code stellarstone}
+     * 作为兜底；不再在本类里各写一份字符串匹配。本方法保留旧名，避免改动全部调用点。</p>
+     */
     public static boolean isStellarstoneItem(ItemStack stack) {
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return key != null && key.getPath().contains("stellarstone");
+        return SeriesTraits.isStellarstone(stack);
     }
 
-    /** 注册名含 thunderite 的物品（雷鸣合金全系列：佩/工具/材料等） */
+    /**
+     * 是否雷鸣合金系列物品（佩/工具/材料/方块物品…）。判定口径见
+     * {@link #isStellarstoneItem(ItemStack)}（标签优先 + 命名兜底）。
+     */
     public static boolean isThunderiteItem(ItemStack stack) {
-        ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        return key != null && key.getPath().contains("thunderite");
+        return SeriesTraits.isThunderite(stack);
     }
 
     /**

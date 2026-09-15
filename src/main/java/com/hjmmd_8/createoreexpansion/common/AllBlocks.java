@@ -277,6 +277,8 @@ public final class AllBlocks {
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE)
 			.requiresCorrectToolForDrops())
 		.transform(TagGen.pickaxeOnly())
+		// 星辉石系列特性：登记进系列方块标签（方块物品据此获得系列特性，见 SeriesTraits）
+		.transform(SeriesTraits.addStellarstoneTraits())
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
@@ -306,6 +308,8 @@ public final class AllBlocks {
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE)
 			.requiresCorrectToolForDrops())
 		.transform(TagGen.pickaxeOnly())
+		// 雷鸣合金系列特性：登记进系列方块标签（方块物品据此获得系列特性，见 SeriesTraits）
+		.transform(SeriesTraits.addThunderiteTraits())
 		.tag(BlockTags.NEEDS_IRON_TOOL)
 		.tag(Tags.Blocks.STORAGE_BLOCKS)
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
@@ -1154,6 +1158,16 @@ public final class AllBlocks {
 		.block("sapphire_casing", CasingBlock::new)
 			.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE))
 			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.SAPPHIRE_CASING))
+			.register();
+
+	public static final BlockEntry<CasingBlock> STELLARSTONE_CASING = CreateOreExpansion.REGISTRATE
+		.block("stellarstone_casing", CasingBlock::new)
+			.properties(p -> p.mapColor(MapColor.TERRACOTTA_PINK))
+			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.STELLARSTONE_CASING))
+			// 星辉石系列特性（掉落物不落虚空 / 岩浆与嬗化液中不销毁并发光…）：登记进系列方块标签。
+			// 本方块的物品由上面 casing 变换器注册，拿不到 ItemBuilder 去挂物品标签，故走方块标签这一支
+			// （运行时判定三支都认：物品标签 ∪ 方块标签 ∪ 注册名约定，见 SeriesTraits#isStellarstone）。
+			.transform(SeriesTraits.addStellarstoneTraits())
 			.register();
 
 	// ========== 可生长水晶（翡翠/黄玉/蓝宝石/星辉石）——继承原版紫水晶机制，AE2 催生器可加速 ==========

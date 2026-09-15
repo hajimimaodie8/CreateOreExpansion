@@ -122,6 +122,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(AllBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
         add(AllBlocks.JADE_CASING.get(), "Jade Casing");
         add(AllBlocks.SAPPHIRE_CASING.get(), "Sapphire Casing");
+        add(AllBlocks.STELLARSTONE_CASING.get(), "Stellarstone Casing");
         // Stellarstone growable crystal
         add(AllBlocks.STELLARSTONE_BUDDING_BLOCK.get(), "Stellarstone Crystal Budding Block");
         add(AllBlocks.STELLARSTONE_SMALL_BUD.get(), "Small Stellarstone Crystal Bud");

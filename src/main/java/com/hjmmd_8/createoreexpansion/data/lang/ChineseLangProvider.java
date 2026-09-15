@@ -56,6 +56,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add(AllItems.TOPAZ_SHOVEL.get(), "黄玉铲");
         add(AllItems.TOPAZ_HOE.get(), "黄玉锄");
         add(AllBlocks.SAPPHIRE_CASING.get(), "蓝宝石机壳");
+        add(AllBlocks.STELLARSTONE_CASING.get(), "星辉石机壳");
         add(AllItems.SAPPHIRE_INGOT.get(), "蓝宝石锭");
         add(AllItems.RAW_SAPPHIRE.get(), "粗蓝宝石");
         add(AllItems.SAPPHIRE_NUGGET.get(), "蓝宝石粒");

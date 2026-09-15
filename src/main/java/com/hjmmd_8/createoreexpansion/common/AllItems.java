@@ -1,6 +1,9 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+// 系列特性登记：物品注册链上写 .tag(AllModItemTags.STELLARSTONE_ITEMS) / .tag(AllModItemTags.THUNDERITE_ITEMS)
+// （Java 没有扩展方法，链上只能写成 .tag(...)；函数版见 SeriesTraits#addStellarstoneTraits(ItemBuilder)。
+//  判定口径 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定，全部收口在 SeriesTraits#isStellarstone/isThunderite）
 import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
@@ -662,6 +665,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_INGOT = CreateOreExpansion.REGISTRATE
             .item("stellarstone_ingot", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
@@ -672,6 +676,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> RAW_STELLARSTONE = CreateOreExpansion.REGISTRATE
             .item("raw_stellarstone", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(Tags.Items.RAW_MATERIALS)
             .tag(AllGemTags.STELLARSTONE.rawOres)
@@ -681,6 +686,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_NUGGET = CreateOreExpansion.REGISTRATE
             .item("stellarstone_nugget", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(Tags.Items.NUGGETS)
             .tag(AllGemTags.STELLARSTONE.nuggets)
@@ -690,6 +696,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> CRUSHED_STELLARSTONE_ORE = CreateOreExpansion.REGISTRATE
             .item("crushed_stellarstone_ore", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(CRUSHED_RAW_MATERIALS.tag)
             .tag(AllGemTags.STELLARSTONE.crushedRawOres)
@@ -699,6 +706,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_SMALL_SHARD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_small_shard", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
@@ -706,6 +714,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_BIG_SHARD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_big_shard", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
@@ -713,6 +722,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_SHEET = CreateOreExpansion.REGISTRATE
             .item("stellarstone_sheet", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.STELLARSTONE.sheets)
             .model((ctx, provider) ->
@@ -721,6 +731,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_ROD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_rod", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.STELLARSTONE.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
@@ -731,6 +742,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> STELLARSTONE_WIRE = CreateOreExpansion.REGISTRATE
             .item("stellarstone_wire", Item::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.STELLARSTONE.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
@@ -741,6 +753,7 @@ public final class AllItems {
 
     public static final ItemEntry<SwordItem> STELLARSTONE_SWORD = CreateOreExpansion.REGISTRATE
             .item("stellarstone_sword", p -> new SwordItem(AllTiers.STELLARSTONE, p))
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
                     .rarity(Rarity.UNCOMMON)
                     .attributes(
@@ -764,6 +777,7 @@ public final class AllItems {
 
     public static final ItemEntry<PickaxeItem> STELLARSTONE_PICKAXE = CreateOreExpansion.REGISTRATE
             .item("stellarstone_pickaxe", p -> new PickaxeItem(AllTiers.STELLARSTONE, p))
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
                     .rarity(Rarity.UNCOMMON)
                     .attributes(
@@ -785,6 +799,7 @@ public final class AllItems {
 
     public static final ItemEntry<ShovelItem> STELLARSTONE_SHOVEL= CreateOreExpansion.REGISTRATE
             .item("stellarstone_shovel", p -> new ShovelItem(AllTiers.STELLARSTONE, p))
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
                     .rarity(Rarity.UNCOMMON)
                     .attributes(
@@ -807,6 +822,7 @@ public final class AllItems {
 
     public static final ItemEntry<AxeItem> STELLARSTONE_AXE = CreateOreExpansion.REGISTRATE
             .item("stellarstone_axe", p -> new AxeItem(AllTiers.STELLARSTONE, p))
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
                     .rarity(Rarity.UNCOMMON)
                     .attributes(
@@ -829,6 +845,7 @@ public final class AllItems {
 
     public static final ItemEntry<HoeItem> STELLARSTONE_HOE = CreateOreExpansion.REGISTRATE
             .item("stellarstone_hoe", p -> new HoeItem(AllTiers.STELLARSTONE, p))
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
                     .rarity(Rarity.UNCOMMON)
                     .attributes(
@@ -850,6 +867,7 @@ public final class AllItems {
 
     public static final ItemEntry<StellarstoneStressMedallionItem> STELLARSTONE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
             .item("stellarstone_stress_medallion", StellarstoneStressMedallionItem::new)
+            .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 10000)
                     .component(AllDataComponents.MAX_ENERGY, 10000)
@@ -903,6 +921,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> THUNDERITE_INGOT = CreateOreExpansion.REGISTRATE
             .item("thunderite_ingot", Item::new)
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
@@ -913,6 +932,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> THUNDERITE_SCRAP = CreateOreExpansion.REGISTRATE
             .item("thunderite_scrap", Item::new)
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
@@ -920,6 +940,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> THUNDERITE_SHEET = CreateOreExpansion.REGISTRATE
             .item("thunderite_sheet", Item::new)
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.THUNDERITE.sheets)
             .model((ctx, provider) ->
@@ -928,6 +949,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> THUNDERITE_ROD = CreateOreExpansion.REGISTRATE
             .item("thunderite_rod", Item::new)
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.THUNDERITE.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
@@ -938,6 +960,7 @@ public final class AllItems {
 
     public static final ItemEntry<Item> THUNDERITE_WIRE = CreateOreExpansion.REGISTRATE
             .item("thunderite_wire", Item::new)
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.THUNDERITE.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
@@ -948,6 +971,7 @@ public final class AllItems {
 
     public static final ItemEntry<SwordItem> THUNDERITE_SWORD = CreateOreExpansion.REGISTRATE
             .item("thunderite_sword", p -> new SwordItem(AllTiers.THUNDERITE, p))
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
             .properties(p -> p
@@ -972,6 +996,7 @@ public final class AllItems {
 
     public static final ItemEntry<PickaxeItem> THUNDERITE_PICKAXE = CreateOreExpansion.REGISTRATE
             .item("thunderite_pickaxe", p -> new PickaxeItem(AllTiers.THUNDERITE, p))
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
             .properties(p -> p
@@ -994,6 +1019,7 @@ public final class AllItems {
 
     public static final ItemEntry<ShovelItem> THUNDERITE_SHOVEL = CreateOreExpansion.REGISTRATE
             .item("thunderite_shovel", p -> new ShovelItem(AllTiers.THUNDERITE, p))
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
             .properties(p -> p
@@ -1017,6 +1043,7 @@ public final class AllItems {
 
     public static final ItemEntry<AxeItem> THUNDERITE_AXE = CreateOreExpansion.REGISTRATE
             .item("thunderite_axe", p -> new AxeItem(AllTiers.THUNDERITE, p))
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
             .properties(p -> p
@@ -1040,6 +1067,7 @@ public final class AllItems {
 
     public static final ItemEntry<HoeItem> THUNDERITE_HOE = CreateOreExpansion.REGISTRATE
             .item("thunderite_hoe", p -> new HoeItem(AllTiers.THUNDERITE, p))
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
             .properties(p -> p
@@ -1062,6 +1090,7 @@ public final class AllItems {
 
     public static final ItemEntry<ThunderiteStressMedallionItem> THUNDERITE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
             .item("thunderite_stress_medallion", ThunderiteStressMedallionItem::new)
+            .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 10000)
                     .component(AllDataComponents.MAX_ENERGY, 10000)

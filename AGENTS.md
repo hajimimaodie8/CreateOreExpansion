@@ -49,6 +49,14 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 **5）静态关卡覆盖不到什么**
 `compileJava` / `runData` / javadoc **都不构造实体、不跑 tick**。改动涉及实体生命周期或玩家交互时，这三关全绿也不代表不崩——必须明确告知用户"这一步只能进游戏实测"。
 
+**5.5）数据包标签目录是<b>单数</b>：`tags/item/`、`tags/block/`，写错就静默失效**
+写成 `tags/items/`（复数）= 一个"名叫 items 的注册表标签目录"，游戏不认识，**整个文件被忽略且不报错**。
+实例：`transmutation_protected.json` 曾在 `tags/items/` 里 → `stack.is(TRANSMUTATION_PROTECTED)` 恒为假
+（龙蛋/下界之星/信标其实从没被保护）。2026-09-15 已挪回单数目录。
+自检：`runData` 只校验 `src/generated/**`，手写数据文件放错目录**没有任何关卡会报**——只能目视核对路径。
+另：手写数据文件与 datagen 产出**同名就会让 `processResources` 报 duplicate 而构建失败**
+（本仓造过一次：手写的系列标签 vs 新加的 `.tag(...)` 注册）——两者只能留一个。
+
 **6）三条"别再查一遍"的既有结论（2026-09-14 实测/反编译取证，长文见 `markdown_output/`）**
 - **"给桶注液"不是配方**：Create 的 19 条内置 `create:filling` 配方里**没有一条以空桶为原料**；真机的流体喷口走 `GenericItemFilling` 特判（借物品自身的 `Capabilities.FluidHandler.ITEM`）。所以"波拿不到注液配方"不是类型门/流体门槛的缺陷，而是**口径缺失**——已补货载旁路 `content/charger/craft/WaveItemFluidFilling`（用量与成品一律委托 Create，只认载荷流体，不耗链数）。详见 `变器配方判定与执行逻辑.md` §0.2。
 - **储存模式释放档位**：口径只有一处 `AbstractCreateChargerBlockEntity#resolveReleaseLevel(int)`——有应力取**当前档位**（与普通模式一致），停转才回落"最后一次有效档位"（否则停转后囤的层数一发都放不出）。蓝宝石用 `storedLevel` 做回落值；星辉石等级是持久手动设置，直接用 `getManualLevel()`。
@@ -56,8 +64,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **变器"哪些面算波口"是机器本地概念**：`StellarWaveTransmuterBlock#isOpenable(BlockState, Direction)` 按"该世界方向能否映射到本机模型的一个侧面"判定（口径唯一处 `propertyForWorld`）。**别再写成"世界水平方向"**——本机六向放置，躺倒时自己的 4 个侧面里有 2 个朝上下，旧写法会让那 2 个口"显示开着却点不掉"。
 - **波波碰撞与波级/波型无关**（用户明确、长期口径）：任意两波相交即 `triggerBoom(爆炸等级 = min)` + 相互湮灭，范围伤害/范围充能加工、不破坏地形；几何上不可能"高速对穿而不触发"（相对步长 ≤1.2 格/tick < 判定窗口 2×0.6）。改碰撞效果前先看 `handleWaveCollision`，那里的日志会打印等级对与实际粒子数。
 - **变器波口指示灯几何**（用户 2026-09-14 定稿，改动在 16 个 `stellarstone_wave_transmuter_<i>.json` 里逐变体编码）：灯片 **2×2 px**，**开口时离方块边缘 1 px、关闭时 2 px**（沿顶面往机器内侧挪，非高度方向）；尺寸/y/UV/贴图选择都不随状态变。变体 index 的状态位是 `NORTH=8 / SOUTH=4 / WEST=2 / EAST=1`（`AllBlocks` datagen）。差波器家族走另一条路——独立 overlay 模型、只在开口时绘制、恒 1 px 内缩。
-- **波情"五要素"的唯一取值点**（用户 2026-09-14 定稿）：波速 → 波级 → 波载荷 → 波型 → **剩余寿命**。
-  显示只有**两处**——Jade 波实体提示（`compat/jade/WaveJadePlugin`，要素块之后才是可加工清单/电荷）与
+- **波情"五要素"的唯一取值点**（用户 2026-09-14 定稿）：波速 → 波级 → 波载荷 → 波型 → **剩余寿命**。  显示只有**两处**——Jade 波实体提示（`compat/jade/WaveJadePlugin`，要素块之后才是可加工清单/电荷）与
   波情查询仪的动作栏读数（`content/wave/gauge/WaveReadout#line()` 的词条 `wave_gauge.readout`）。
   寿命口径 = `AbstractChargerWaveEntity#getRemainingLifetime()`（200 tick 上限 − 已存活）÷ 20，
   **两处共用这一处取值**；它是时间寿命，飞满 64 格的距离上限不折算进来。
