@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
+import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.util.RandomSource;
@@ -122,6 +123,13 @@ public class TransmutationDisorderEffect extends MobEffect {
 		if (isContainerLike(stack))
 			return false;
 		if (stack.is(AllModItemTags.TRANSMUTATION_PROTECTED))
+			return false;
+		// 星辉石 / 雷鸣合金两个系列（含方块物品：机壳、矿物块…）同样免疫嬗乱销毁（用户 2026-09-15 定稿：
+		// "需要加进去"）。这里用系列判定而不是往 TRANSMUTATION_PROTECTED 标签里塞条目，原因是
+		// **方块物品进不了物品标签**——机壳的物品由 Create 的 casing 变换器注册，注册链上拿不到
+		// ItemBuilder 去挂 .tag(...)，而 datagen 标签又不接受手工条目（手写文件会与 datagen 撞名而构建失败）。
+		// 上面那条标签判定仍然保留：整合包要额外保护别的物品，照旧往那个标签里加即可。
+		if (SeriesTraits.isStellarstone(stack) || SeriesTraits.isThunderite(stack))
 			return false;
 		return !isSpecialItem(stack);
 	}
