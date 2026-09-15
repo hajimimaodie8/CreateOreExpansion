@@ -16,9 +16,31 @@ import java.util.function.Supplier;
 // Enum 类 —— 枚举类，用于创建创造物品栏
 public enum AllCreativeModeTabs {
     // 具体枚举项
+    //
+    // 标签页顺序（用 withTabsBefore 链起来，must be 无环）：
+    //   base_tab（矿物拓展）→ energy_wave_study（能量波阵学）→ Create 的调色板
+    // 也就是"本体的矿物线在前，能量波阵学（CEWS）作为独立板块紧跟其后"。
     @SuppressWarnings("Convert2MethodRef")
     BASE_TAB("base_tab", "itemGroup.createoreexpansion",
-            com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(), () -> AllItems.JADE_INGOT.asStack());
+            tabKey(EnergyWaveStudyTab.TAB_ID), () -> AllItems.JADE_INGOT.asStack()),
+
+    /**
+     * <b>机械动力：能量波阵学</b>（Create: Energy Wave Studies，简称 <b>CEWS</b>）。
+     *
+     * <p>能量波系统的全部机器 + 波情查询仪归到这里，作为一个独立板块（用户 2026-09-14 要求）。
+     * 后续要把它整包拆成一个独立的内置 jar（新模块 CEWS），届时"哪些内容属于这个模块"就以
+     * {@link EnergyWaveStudyTab#CONTENTS} 那一份清单为准——所以清单只有一处，标签页内容与
+     * 未来的拆包依据共用它。</p>
+     */
+    ENERGY_WAVE_STUDY(EnergyWaveStudyTab.TAB_ID,
+            com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(),
+            () -> AllBlocks.STELLAR_WAVE_TRANSMUTER.asStack());
+
+    /** 由 id 构造标签页的 {@link ResourceKey}：<b>不依赖 holder</b>（枚举构造期 holder 还没有）。 */
+    private static ResourceKey<CreativeModeTab> tabKey(String id) {
+        return ResourceKey.create(Registries.CREATIVE_MODE_TAB,
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, id));
+    }
 
     // 演出注册器
     private static final DeferredRegister<CreativeModeTab> TABS

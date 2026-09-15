@@ -54,6 +54,9 @@ public class CreateOreExpansion {
         REGISTRATE.registerEventListeners(modEventBus);
 
         AllCreativeModeTabs.register(modEventBus);
+        // CEWS（能量波阵学）标签页的内容构建：清单见 EnergyWaveStudyTab.CONTENTS
+        // （往新页放 + 从基础页剔除都在那一处，注册代码一行不动）
+        modEventBus.addListener(EnergyWaveStudyTab::onBuildContents);
 
         AllDataComponents.register(modEventBus);
         AllEntityTypes.register(modEventBus);

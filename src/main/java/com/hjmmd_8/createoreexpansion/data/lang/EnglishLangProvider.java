@@ -21,6 +21,9 @@ public class EnglishLangProvider extends LanguageProvider {
     protected void addTranslations() {
         // ========== 创造标签页 ==========
         add("itemGroup.createoreexpansion", "Create: Ore Expansion");
+        // CEWS tab: "学" as a discipline is plural "Studies" in English (Media Studies / Wave Studies);
+        // singular "Study" reads like "a research report". Acronym CEWS is unchanged either way.
+        add("itemGroup.createoreexpansion.energy_wave_study", "Create: Energy Wave Studies");
         add("createoreexpansion.mod_name", "Create: Ore Expansion");
 
         // ========== 物品/方块 ==========

@@ -21,6 +21,8 @@ public class ChineseLangProvider extends LanguageProvider {
     protected void addTranslations() {
         // ========== 创造标签页 ==========
         add("itemGroup.createoreexpansion", "机械动力：矿物拓展");
+        // CEWS（能量波阵学）独立标签页：能量波系统的机器 + 波情查询仪（清单见 common/EnergyWaveStudyTab）
+        add("itemGroup.createoreexpansion.energy_wave_study", "机械动力：能量波阵学");
         add("createoreexpansion.mod_name", "机械动力：矿物拓展");
 
         // ========== 物品/方块 ==========

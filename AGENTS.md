@@ -79,6 +79,24 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 ## ⏸ 挂起事项（重要，动手前必读）
 
+**CEWS 模块（能量波阵学，进行中）**：能量波系统要从矿物拓展里独立成一个板块
+**CEWS = Create: Energy Wave Studies（机械动力：能量波阵学）**，最终形态是**独立的内置 jar**（JarJar 嵌套模块）。
+
+- **阶段 0 已完成**：创造标签页 `createoreexpansion:energy_wave_study`（顺序 **矿物拓展 → 能量波阵学 → Create 调色板**）；
+  **"什么属于 CEWS"的唯一清单** = `common/EnergyWaveStudyTab#CONTENTS`（16 项）；内容同步走
+  `BuildCreativeModeTabContentsEvent`（往新页放 + 从基础页剔除，注册代码未动）——**加/减机器只改这份清单**。
+- **阶段 1/2 未做**（用户明确"工程量大，现在先只做标签页"）：包级隔离 → 独立 Gradle 子模块 + `jarJar`。
+  全部耦合点（12 条）、模块边界判定、4 个待定项、风险清单与验收标准见
+  `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`——**动手前先读那份**。
+- **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可以是 `cews`），
+  否则所有方块/物品/配方/标签 id 全变、老存档报废；配置键、语言键、数据包路径同理不许改。
+- **英文名建议用复数**：`Create: Energy Wave Studies`（学科名英文习惯用 Studies；缩写 CEWS 不变）。
+  id 一律用 `energy_wave_study`，与英文名解耦。
+
+**第二个模块：矿物拓展（长期计划，仅登记，不要动手）**：将来把现有本体（矿物/宝石/水晶芽/工具/技能/
+嬗变液/雷鸣合金）也收成独立模块（暂称 COE）。**CEWS 单向依赖 COE**（材料），反向禁止。
+**不能与技能换核并行**（两者都要动注册与 `foundation/item/skill`）。
+
 **技能内核移植**：用户的朋友 Leaf 已把本模组「工具技能系统」的核心抽成独立实现（仓库 <https://github.com/lizhanyu-leaf/Skiller>，本地副本 `E:\mc\mcmod\_ref\Skiller`）。用户决定：
 
 - **在 Leaf 宣布 core 重构完毕（或有其他情况）之前，不要改动本工程任何代码**，尤其不要动 `foundation/item/skill/` 与技能相关内容。
