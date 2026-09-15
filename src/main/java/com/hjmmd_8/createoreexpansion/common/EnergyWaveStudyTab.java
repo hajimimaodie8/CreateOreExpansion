@@ -26,9 +26,10 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
  * <b>一处清单</b>同时完成"塞进新页 + 从旧页剔除"，注册代码一行不动，
  * 也不会漏项（漏了就是清单里没写，扫一眼清单即可核对）。</p>
  *
- * <p><b>清单口径</b>：只收"能量波系统的机器与查询仪"——即属于 CEWS 的方块与物品。
- * <b>不含</b>矿物/宝石/水晶芽/工具/技能类物品（那些属于矿物拓展模块）；
- * 也<b>不含</b>能量机构（{@code energy_mechanism}）这类合成件——它是材料不是机器，
+ * <p><b>清单口径</b>（用户 2026-09-14 裁定后）：收"能量波系统的机器 + 这一线的机壳 + 波情查询仪"。
+ * <b>不含</b>矿物/宝石/水晶芽/工具/技能类物品（属矿物拓展模块）；
+ * <b>不含</b>强化避雷针（用户明确：它属于矿物拓展——雷击加工本身也加工矿物类配方）；
+ * <b>不含</b>能量机构（{@code energy_mechanism}）这类合成件——它是材料不是机器，
  * 若后续拆包时判定该随模块走，把它加进 {@link #CONTENTS} 即可（一处一行）。</p>
  */
 public final class EnergyWaveStudyTab {
@@ -39,10 +40,19 @@ public final class EnergyWaveStudyTab {
 	private EnergyWaveStudyTab() {}
 
 	/**
-	 * <b>CEWS 板块的完整物品清单</b>（唯一处）：能量波系统的机器 + 波情查询仪。
+	 * <b>CEWS 板块的完整物品清单</b>（唯一处）：能量波系统的机器 + 机壳 + 波情查询仪。
 	 *
 	 * <p>顺序即标签页内的展示顺序：充能器（三种）→ 能量场控制器 → 波变器 → 调级器（三种）→
-	 * 波速调节器（三种）→ 差波器（四种面数）→ 强化避雷针 → 波情查询仪。</p>
+	 * 波速调节器（三种）→ 差波器（三种面数）→ 机壳（现有两种）→ 波情查询仪。</p>
+	 *
+	 * <p><b>两条用户裁定（2026-09-14）</b>：① <b>强化避雷针留在矿物拓展</b>——雷击加工本身
+	 * 也加工矿物类配方，波只是"引雷手段"之一；② <b>机壳随本模块</b>（用户要求）。</p>
+	 *
+	 * <p><b>关于"三种机壳"</b>：注册表里只有 <b>两种</b>机壳方块——
+	 * {@code jade_casing}、{@code sapphire_casing}（都是 {@code CasingBlock}）；
+	 * <b>星辉石机壳没有方块</b>，{@code stellarstone_casing} 只是机器用的材质贴图
+	 * （见 {@code textures/block/stellarstone_casing.png}）。故这里只能收两种；
+	 * 若确实要一个"星辉石机壳方块"，那是新内容（要注册方块 + 模型 + 战利品表 + 语言），需用户拍板。</p>
 	 */
 	public static final List<Supplier<ItemStack>> CONTENTS = List.of(
 		// —— 应力充能器：三条矿物线各一台（翡翠 1~3 级 / 蓝宝石 1~5 级 / 星辉石 1~5 级手动档）——
@@ -65,8 +75,9 @@ public final class EnergyWaveStudyTab {
 		AllBlocks.ENERGY_WAVE_DISPERSER::asStack,
 		AllBlocks.SIX_FACE_DISPERSER::asStack,
 		AllBlocks.OCTA_ENERGY_WAVE_DIFFERENCER::asStack,
-		// —— 强化避雷针：蓄满后给穿波机会"引雷"，波打中哪里就在哪里落雷 ——
-		AllBlocks.REINFORCED_LIGHTNING_ROD::asStack,
+		// —— 机壳：本模块机器的外壳建材（也是 Create 机壳标签成员，可用来包轴/齿轮）——
+		AllBlocks.JADE_CASING::asStack,
+		AllBlocks.SAPPHIRE_CASING::asStack,
 		// —— 波情查询仪：右键报最近一只波的五要素（波速/波级/波载荷/波型/剩余寿命）——
 		AllItems.WAVE_QUERY_GAUGE::asStack);
 

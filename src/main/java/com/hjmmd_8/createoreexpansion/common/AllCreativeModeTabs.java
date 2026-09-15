@@ -27,14 +27,17 @@ public enum AllCreativeModeTabs {
     /**
      * <b>机械动力：能量波阵学</b>（Create: Energy Wave Studies，简称 <b>CEWS</b>）。
      *
-     * <p>能量波系统的全部机器 + 波情查询仪归到这里，作为一个独立板块（用户 2026-09-14 要求）。
-     * 后续要把它整包拆成一个独立的内置 jar（新模块 CEWS），届时"哪些内容属于这个模块"就以
+     * <p>能量波系统的机器 + 三种机壳（现有两种）+ 波情查询仪归到这里，作为一个独立板块
+     * （用户 2026-09-14 要求）。图标用<b>翡翠应力充能器</b>——它是整条能量波线的起点（波由充能器发出），
+     * 比"波变器"更能代表这一板块（用户指定）。</p>
+     *
+     * <p>后续要把它整包拆成一个独立的内置 jar（新模块 CEWS），届时"哪些内容属于这个模块"就以
      * {@link EnergyWaveStudyTab#CONTENTS} 那一份清单为准——所以清单只有一处，标签页内容与
      * 未来的拆包依据共用它。</p>
      */
     ENERGY_WAVE_STUDY(EnergyWaveStudyTab.TAB_ID,
             com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(),
-            () -> AllBlocks.STELLAR_WAVE_TRANSMUTER.asStack());
+            () -> AllBlocks.JADE_STRESS_CHARGER.asStack());
 
     /** 由 id 构造标签页的 {@link ResourceKey}：<b>不依赖 holder</b>（枚举构造期 holder 还没有）。 */
     private static ResourceKey<CreativeModeTab> tabKey(String id) {

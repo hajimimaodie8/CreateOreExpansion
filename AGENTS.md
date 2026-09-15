@@ -83,10 +83,10 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 **CEWS = Create: Energy Wave Studies（机械动力：能量波阵学）**，最终形态是**独立的内置 jar**（JarJar 嵌套模块）。
 
 - **阶段 0 已完成**：创造标签页 `createoreexpansion:energy_wave_study`（顺序 **矿物拓展 → 能量波阵学 → Create 调色板**）；
-  **"什么属于 CEWS"的唯一清单** = `common/EnergyWaveStudyTab#CONTENTS`（16 项）；内容同步走
+  **"什么属于 CEWS"的唯一清单** = `common/EnergyWaveStudyTab#CONTENTS`（17 项：机器 + 机壳×2 + 查询仪；**强化避雷针按用户裁定留在矿物页**；图标 = 翡翠应力充能器）；内容同步走
   `BuildCreativeModeTabContentsEvent`（往新页放 + 从基础页剔除，注册代码未动）——**加/减机器只改这份清单**。
 - **阶段 1/2 未做**（用户明确"工程量大，现在先只做标签页"）：包级隔离 → 独立 Gradle 子模块 + `jarJar`。
-  全部耦合点（12 条）、模块边界判定、4 个待定项、风险清单与验收标准见
+  全部耦合点（12 条）、模块边界判定、3 个待定项、风险清单与验收标准见
   `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`——**动手前先读那份**。
 - **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可以是 `cews`），
   否则所有方块/物品/配方/标签 id 全变、老存档报废；配置键、语言键、数据包路径同理不许改。
