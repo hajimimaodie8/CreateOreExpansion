@@ -6,7 +6,10 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationCont
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.HoeItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.PlunderItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.SkinItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.FellingItemSkill;
@@ -75,7 +78,9 @@ public final class SkillerIntegration {
                     ExcavationContextFactory.ID, ExcavationContextFactory::new);
             event.register(SkillerRegistries.CONTEXT_FACTORY,
                     HitContextFactory.ID, HitContextFactory::new);
-            // TODO(W4)：注册 USE（右键）/ BOW（弓箭两段式）两套上下文工厂
+            event.register(SkillerRegistries.CONTEXT_FACTORY,
+                    UseItemContextFactory.ID, UseItemContextFactory::new);
+            // TODO(W4)：注册 BOW（弓箭两段式）上下文工厂
             logRegistry("skill_context_factory", SkillerBuiltInRegistries.CONTEXT_FACTORIES.keySet().size());
             return;
         }
@@ -102,6 +107,7 @@ public final class SkillerIntegration {
             registerExcavationSkills(event);
             registerFellingSkill(event);
             registerHitSkills(event);
+            registerUseSkills(event);
             logRegistry("skill", SkillerBuiltInRegistries.SKILLS.keySet().size());
             return;
         }
@@ -124,6 +130,18 @@ public final class SkillerIntegration {
     /** 技能条目 id：{@code createoreexpansion:<path>}（必须与旧 {@code AllSkills} 一字不差）。 */
     private static ResourceLocation skillId(String path) {
         return ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, path);
+    }
+
+    /**
+     * 注册使用系（右键）技能：{@code hoe}（锄头四优先级）。
+     *
+     * <p>触发点是 {@code content/skill/handler/UseItemHandler}（已经接过新内核）。
+     * 弓类两个技能属于"松手射出 → 箭命中"的两段式，不走右键瞬间，另行处理。</p>
+     */
+    private static void registerUseSkills(RegisterEvent event) {
+        event.register(SkillerRegistries.SKILL, skillId("hoe"),
+                () -> new ItemSkillRegistration<UseItemSkillContext>(
+                        CoeSkillTypes.USE, UseItemContextFactory.KEY, new HoeItemSkill()));
     }
 
     /**
