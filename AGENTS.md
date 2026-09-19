@@ -121,9 +121,14 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 5. **增量并行迁移**：技能注册进 `SkillerBuiltInRegistries.SKILLS` 就是新内核接管；没注册的由旧框架照旧处理（`CoeSkillProvider` 会跳过未注册的 id）→ 不会双重生效。
 6. **不要 Skiller 的「按 R 启用技能」总开关**（保持本模组随时可用的既有玩法）：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手物品调 `ClientSkillCache.refresh(player)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`，**不读** `ServerSkillCache`/`SkillReleaser`。
 7. **键位已定**：用本模组既有的 Shift/R/G —— 内核加了 `ClientSkillCache.setKeySource(...)` 注入点（消费方决定键位），`CoeSkillClient` 注入自己的键位并 `setToggleKeysEnabled(false)` 关掉内核的开关键闸（默认 R 会撞槽位 2）。
-8. **迁移进度（2026-09-19）**：已迁移 4/9 —— `shatter`/`channel`/`grade`（共用 `AreaAoeItemSkill` + `CoeAreaAoeStrategy`）、`fell`（`FellingItemSkill` + `CoeFellingStrategy`）。其余 5 个仍由旧框架处理。runData 自检日志 `[Skiller] registry event: skill -> entries=N` 是验证点。
-9. **扣能时机口径（易写歪，务必照做）**：旧实现是「策略算出**非空**集合之后才扣能」，而新内核顺序是 `consumeResource`（全部累加）→ `canConsume` → 落账 → 才 `release`。因此每个技能的 `consumeResource` 都必须先过 `CoeSkillSupport.willDoWork(...)`（有方块/实体版与通用版），否则"砍一块孤零零的原木""挖到空气"这类空结果场景会白掉一份能量。
-10. **冷却类技能要两处同判**：`consumeResource` 与 `release` 都判冷却（冷却中 `consumeResource` 直接不累加、`release` 直接返回），只有真正执行过才 `ToolSkillCooldown.start*`。只在 `release` 判 = 冷却期间每次触发都白扣能量。
+8. **迁移进度（2026-09-19 晚）**：**9/9 全部迁移完成** —— `shatter`/`channel`/`grade`（`AreaAoeItemSkill` + `CoeAreaAoeStrategy`）、`fell`（`FellingItemSkill` + `CoeFellingStrategy`）、`skin`/`plunder`（`SkinItemSkill`/`PlunderItemSkill`）、`hoe`（`HoeItemSkill` + `UseItemSkillContext`）、`bow_curse`/`bow_disarm`（`BowShootItemSkill` + `BowShootSkillContext`）。runData 自检：`[Skiller] registry event: skill -> entries=9`、`skill_context_factory -> entries=4`、`skill_resource -> entries=2`。
+   **旧东西一个没删**：`foundation/item/skill/**`、`content/skill/**`、`AllSkills`、`client/tool/**` 都还在——① 它们是回退路径；② **客户端预览仍由旧渲染器提供**（旧类还在，所以预览没退化）；③ 弓的「箭命中」第二段仍走旧的 `JadeTopazBowEventHandler` + 旧 `applyTo`（标记里写的 id 没变，旧注册表条目还在）。
+   **剩余收尾（W5/W6）**：把 `client/tool/**` 的渲染器适配成 Skiller 的 `StrategyRenderer` 并注册进 `StrategyRenderers`（**顺带必须修上游一个 bug**：`StrategyRenderers.schedule()` 判的是 `instance.skill()`（注册条目）而不是技能本体 `instance.skill().getSkill()` → 策略渲染**永远不会被调度**）；然后才能删旧框架、跑一次专用服务端启动验证。
+9. **上游基点（2026-09-19 22:39 直接向服务器核对）**：`https://github.com/lizhanyu-leaf/Skiller.git` 只有 `master` 一条分支，HEAD = `abe5688`（全仓仅 2 个提交：`4cb1d4f` → `abe5688`）。我方补丁分支 `coe-embed` 就基于它，**从未 push**。上游若之后有新提交，要按第 2 条列的 12 个文件重放补丁。
+10. **扣能时机口径（易写歪，务必照做）**：旧实现是「策略算出**非空**集合之后才扣能」，而新内核顺序是 `consumeResource`（全部累加）→ `canConsume` → 落账 → 才 `release`。因此每个技能的 `consumeResource` 都必须先过 `CoeSkillSupport.willDoWork(...)`（有方块/实体版与通用版），否则"砍一块孤零零的原木""挖到空气"这类空结果场景会白掉一份能量。
+11. **冷却类技能要两处同判**：`consumeResource` 与 `release` 都判冷却（冷却中 `consumeResource` 直接不累加、`release` 直接返回），只有真正执行过才 `ToolSkillCooldown.start*`。只在 `release` 判 = 冷却期间每次触发都白扣能量。
+12. **需要"同一次释放内传递结果"时用上下文 scratch**：新内核会给每个技能实例各建一个上下文对象（`SkillBundle.releaseSkills` 里 `contexts.put(instance, factory.create(env, instance))`），所以 `HitSkillContext`/`UseItemSkillContext` 上的 `putScratch/getScratch` 天然是"本次释放"作用域。`skin`（随机判定只滚一次）与 `hoe`（优先级只解析一次）都靠它。
+13. **改 Java 文件一律只用 write/edit 工具**：本轮我用 PowerShell `Get-Content | -replace | Set-Content` 改 `SkillerIntegration.java` 的 import，PS 5.1 按 ANSI 重写导致整个文件语法崩掉（48 个编译错误），只能 `git checkout --` 恢复重做。
 
 ## 🧠 记忆写入规则（用户明确要求，务必遵守）
 
