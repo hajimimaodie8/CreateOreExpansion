@@ -6,6 +6,9 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * 受击类技能上下文（新内核版）——持有触发这次技能的那次伤害事件。
  *
@@ -22,8 +25,29 @@ public class HitSkillContext implements SkillContext {
 
     private final LivingIncomingDamageEvent event;
 
+    /**
+     * 本次释放的临时数据：{@code consumeResource} 里算好的结果（例如随机判定出来的掉落数量）
+     * 供随后的 {@code release} 复用，避免"随机数滚两次"导致扣能与效果不一致。
+     *
+     * <p>放这里安全：新内核的 {@code SkillBundle.releaseSkills} 会为<b>每个技能实例各建一个</b>
+     * 上下文对象（同一次释放内一一对应），所以它天然是"本次释放"的作用域。</p>
+     */
+    private final Map<String, Object> scratch = new HashMap<>();
+
     public HitSkillContext(LivingIncomingDamageEvent event) {
         this.event = event;
+    }
+
+    /** 写入本次释放的临时数据。 */
+    public void putScratch(String key, Object value) {
+        scratch.put(key, value);
+    }
+
+    /** 读取本次释放的临时数据；没有或类型不符时返回 null。 */
+    @Nullable
+    public <T> T getScratch(String key, Class<T> type) {
+        Object value = scratch.get(key);
+        return type.isInstance(value) ? type.cast(value) : null;
     }
 
     /** 原始伤害事件（技能实现可能需要读写它）。 */

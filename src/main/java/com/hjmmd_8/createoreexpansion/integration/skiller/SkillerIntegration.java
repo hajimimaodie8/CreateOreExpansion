@@ -4,7 +4,10 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.SkinItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.FellingItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeFellingStrategy;
@@ -69,7 +72,9 @@ public final class SkillerIntegration {
         if (SkillerRegistries.CONTEXT_FACTORY.equals(registryKey)) {
             event.register(SkillerRegistries.CONTEXT_FACTORY,
                     ExcavationContextFactory.ID, ExcavationContextFactory::new);
-            // TODO(W4)：注册 HIT（受击）/ USE（右键）/ BOW（弓箭两段式）三套上下文工厂
+            event.register(SkillerRegistries.CONTEXT_FACTORY,
+                    HitContextFactory.ID, HitContextFactory::new);
+            // TODO(W4)：注册 USE（右键）/ BOW（弓箭两段式）两套上下文工厂
             logRegistry("skill_context_factory", SkillerBuiltInRegistries.CONTEXT_FACTORIES.keySet().size());
             return;
         }
@@ -95,8 +100,24 @@ public final class SkillerIntegration {
         if (SkillerRegistries.SKILL.equals(registryKey)) {
             registerExcavationSkills(event);
             registerFellingSkill(event);
+            registerHitSkills(event);
             logRegistry("skill", SkillerBuiltInRegistries.SKILLS.keySet().size());
             return;
+        }
+    }
+
+    /**
+     * 注册受击系技能：{@code skin}（剥取）。
+     *
+     * <p>{@code plunder}（夺取）随后补上（同一批）。触发点是
+     * {@code content/skill/handler/HurtLivingEntityHandler}（已经接过新内核）。</p>
+     */
+    private static void registerHitSkills(RegisterEvent event) {
+        for (String path : new String[]{"skin"}) {
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, path);
+            event.register(SkillerRegistries.SKILL, id,
+                    () -> new ItemSkillRegistration<HitSkillContext>(
+                            CoeSkillTypes.HIT, HitContextFactory.KEY, new SkinItemSkill()));
         }
     }
 

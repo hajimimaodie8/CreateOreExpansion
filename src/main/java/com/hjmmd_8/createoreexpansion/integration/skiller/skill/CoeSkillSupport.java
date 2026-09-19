@@ -1,8 +1,10 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.common.AllSkills;
+import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.leaf.skiller.foundation.Consumable;
@@ -115,6 +117,24 @@ public final class CoeSkillSupport {
     @Nullable
     public static ResourceLocation skillIdOf(ISkillInstance<?> instance) {
         return instance == null || instance.skill() == null ? null : instance.skill().getId();
+    }
+
+    /**
+     * 本次释放的冷却时长（tick）：技能自己有冷却就用它，否则回落物品上的通用冷却
+     * （旧 {@code HurtLivingEntityHandler#triggerSlot} 的口径）。
+     */
+    public static int cooldownTicks(ItemStack stack, int cooldownSeconds) {
+        return cooldownSeconds > 0 ? cooldownSeconds * 20 : SkillCooldowns.getTicks(stack);
+    }
+
+    /**
+     * 是否正在冷却中（创造模式恒 false，与旧实现一致）。
+     *
+     * <p>注意旧实现的**判定**与**时长**是分开的：判定恒为 {@code ToolSkillCooldown.isReady}，
+     * 只有"进入冷却时写多少 tick"才分自冷却/通用冷却两种来源，所以这里也只判 isReady。</p>
+     */
+    public static boolean onCooldown(@Nullable Player player, ItemStack stack) {
+        return player != null && !player.isCreative() && !ToolSkillCooldown.isReady(player, stack);
     }
 
     /**
