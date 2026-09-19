@@ -46,8 +46,21 @@ public abstract class AutoSkillConfig implements SkillConfig {
 
     @Override
     public void load(DataSkill data) {
-        if (data.nbt == null || !data.nbt.contains("Config")) return;
-        CompoundTag tag = data.nbt.getCompound("Config");
+        loadFromNbt(data == null ? null : data.nbt);
+    }
+
+    /**
+     * 从「技能实例的整棵 NBT」里读配置（读其中的 {@code Config} 子标签）。
+     *
+     * <p>这是给新内核（Skiller）用的入口：那边只有 {@code ISkillInstance#data()} 返回的
+     * {@link CompoundTag}，没有旧的 {@link DataSkill} 包装。与
+     * {@link #load(DataSkill)} 是同一套字段映射，行为完全一致。</p>
+     *
+     * @param nbt 技能实例的 NBT（可空；没有 {@code Config} 子标签时什么都不改）
+     */
+    public void loadFromNbt(CompoundTag nbt) {
+        if (nbt == null || !nbt.contains("Config")) return;
+        CompoundTag tag = nbt.getCompound("Config");
         mappings().forEach(m -> m.load(tag));
     }
 

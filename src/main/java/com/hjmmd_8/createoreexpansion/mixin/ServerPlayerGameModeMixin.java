@@ -8,6 +8,9 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.content.skill.context.DestroyBlockContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
+import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationContextFactory;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -70,6 +73,19 @@ public class ServerPlayerGameModeMixin {
         if (AllKeys.SKILL_RELEASE_3.isPressed()) {
             released |= holder.releaseSkillAt(skillStack, SkillType.EXCAVATION_SKILL, 2, context);
         }
+
+        // 新内核（Skiller）路径：已经迁移过去的技能由它执行。
+        // 两条路径不会重复：迁移闸门（SkillMigrationGate）让旧路径跳过已注册进新内核的技能。
+        // 按键槽位由内核按服务端权威按键状态自己挑（这里不再逐个 if）。
+        // 挖掘注入点没有对应的 NeoForge 事件 → 用 noEvent + extraData 传现场信息
+        // （绝不能调 env.getEvent()：无事件时它会抛 NPE）。
+        com.leaf.skiller.foundation.skill.config.SkillContextEnvironment env =
+                com.leaf.skiller.foundation.skill.config.SkillContextEnvironment
+                        .noEvent(this.player, this.level)
+                        .extraData(ExcavationContextFactory.KEY_POS, blockPos)
+                        .extraData(ExcavationContextFactory.KEY_TOOL, stack)
+                        .extraData(ExcavationContextFactory.KEY_ENTITY, this.player);
+        CoeSkillRelease.release(this.player, CoeSkillTypes.EXCAVATION, env);
 
         // 剩余能量显示统一由 ToolEnergy.tryConsume（消耗时）处理：工具行 + 绑定凝能佩行
     }

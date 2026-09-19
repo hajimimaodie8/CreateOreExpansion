@@ -3,11 +3,16 @@ package com.hjmmd_8.createoreexpansion.integration.skiller;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
 import com.leaf.skiller.api.registry.SkillerBuiltInRegistries;
 import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.provider.SkillProviders;
+import com.leaf.skiller.foundation.skill.ItemSkillRegistration;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
@@ -75,12 +80,37 @@ public final class SkillerIntegration {
             return;
         }
 
+        // ── 技能策略：把"选哪些方块/实体"的计算注册成可被技能引用的策略对象 ──────────
+        if (SkillerRegistries.STRATEGY.equals(registryKey)) {
+            event.register(SkillerRegistries.STRATEGY,
+                    CoeAreaAoeStrategy.ID, CoeAreaAoeStrategy::new);
+            return;
+        }
+
         // ── 技能条目：迁移一个注册一个（id 一律 createoreexpansion:xxx，翻译键零改动）──
         if (SkillerRegistries.SKILL.equals(registryKey)) {
-            // TODO(W4)：shatter / channel / grade / fell / skin / plunder / hoe / bow_curse / bow_disarm
-            // 每个都用 new ItemSkillRegistration<>(CoeSkillTypes.X, <该技能上下文工厂的 KEY>, <技能实现>)
+            registerExcavationSkills(event);
             logRegistry("skill", SkillerBuiltInRegistries.SKILLS.keySet().size());
             return;
+        }
+    }
+
+    /**
+     * 注册「范围挖掘」一族：{@code shatter}（开岩）/ {@code channel}（引渠）/ {@code grade}（平场）。
+     *
+     * <p>三者共用 {@link AreaAoeItemSkill} 与 {@link CoeAreaAoeStrategy}，差异全在各自的等级配置
+     * （{@code SkillAoeConfigs}）。上下文工厂统一用 {@link ExcavationContextFactory#KEY}。</p>
+     *
+     * <p><b>id 必须与旧 {@code common/AllSkills.java} 里注册的一字不差</b>：翻译键
+     * （{@code skill.createoreexpansion.<path>}）与物品上的技能组成由它决定，写错就变成
+     * "技能既不旧也不新"（旧框架按迁移闸门跳过、新内核又查不到）。</p>
+     */
+    private static void registerExcavationSkills(RegisterEvent event) {
+        for (String path : new String[]{"shatter", "channel", "grade"}) {
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, path);
+            event.register(SkillerRegistries.SKILL, id,
+                    () -> new ItemSkillRegistration<ExcavationSkillContext>(
+                            CoeSkillTypes.EXCAVATION, ExcavationContextFactory.KEY, new AreaAoeItemSkill()));
         }
     }
 
