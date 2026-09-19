@@ -4,12 +4,18 @@ import com.hjmmd_8.createoreexpansion.common.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.leaf.skiller.foundation.Consumable;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
+import com.leaf.skiller.foundation.strategy.SkillStrategy;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 新内核（Skiller）技能实现的共用支撑：等级、配置、能量消耗三条口径都收在这里，
@@ -108,5 +114,30 @@ public final class CoeSkillSupport {
     @Nullable
     public static ResourceLocation skillIdOf(ISkillInstance<?> instance) {
         return instance == null || instance.skill() == null ? null : instance.skill().getId();
+    }
+
+    /**
+     * <b>这次释放真的会有产出吗</b>：策略允许收集、且收集结果非空。
+     *
+     * <p>存在的理由：旧框架的扣能时机是「策略算出非空集合之后」（见旧
+     * {@code AoeExcavationSkill#causeAoe} —— {@code toDestroy.isEmpty()} 就直接 return，
+     * 根本不会走到 {@code ToolEnergy.tryConsume}）。而新内核是<b>先</b>
+     * {@code consumeResource} <b>再</b> {@code release}，若在 {@code consumeResource} 里
+     * 无条件扣能，"砍一块孤零零的原木（连锁结果为空）"这类场景就会白掉一份能量。</p>
+     *
+     * <p>代价是策略会算两遍（这里一遍、{@code release} 里一遍）。相对"最多破坏上百个方块 +
+     * 掉落物"的开销，一遍有界搜索可以忽略；换来的是与旧实现逐字一致的扣能时机。</p>
+     *
+     * @return true = 这次释放会产生实际效果（该扣能）
+     */
+    public static boolean willDoWork(ExcavationSkillContext context,
+                                     ISkillInstance<ExcavationSkillContext> instance,
+                                     @Nullable SkillStrategy<BlockPos, ExcavationSkillContext> strategy) {
+        if (strategy == null || context == null || !strategy.canCollect(context, instance)) {
+            return false;
+        }
+        Set<BlockPos> scratch = new HashSet<>();
+        strategy.collect(scratch, context, instance);
+        return !scratch.isEmpty();
     }
 }

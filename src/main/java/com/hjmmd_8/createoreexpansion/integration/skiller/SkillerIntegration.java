@@ -5,7 +5,9 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.FellingItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
+import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeFellingStrategy;
 import com.leaf.skiller.api.registry.SkillerBuiltInRegistries;
 import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.provider.SkillProviders;
@@ -84,12 +86,15 @@ public final class SkillerIntegration {
         if (SkillerRegistries.STRATEGY.equals(registryKey)) {
             event.register(SkillerRegistries.STRATEGY,
                     CoeAreaAoeStrategy.ID, CoeAreaAoeStrategy::new);
+            event.register(SkillerRegistries.STRATEGY,
+                    CoeFellingStrategy.ID, CoeFellingStrategy::new);
             return;
         }
 
         // ── 技能条目：迁移一个注册一个（id 一律 createoreexpansion:xxx，翻译键零改动）──
         if (SkillerRegistries.SKILL.equals(registryKey)) {
             registerExcavationSkills(event);
+            registerFellingSkill(event);
             logRegistry("skill", SkillerBuiltInRegistries.SKILLS.keySet().size());
             return;
         }
@@ -112,6 +117,24 @@ public final class SkillerIntegration {
                     () -> new ItemSkillRegistration<ExcavationSkillContext>(
                             CoeSkillTypes.EXCAVATION, ExcavationContextFactory.KEY, new AreaAoeItemSkill()));
         }
+    }
+
+    /**
+     * 注册砍伐 {@code fell}（斧头连锁砍树）。
+     *
+     * <p>它同样属于 {@code EXCAVATION} 族（旧 {@code FellingSkill#getType} 返回
+     * {@code SkillType.EXCAVATION_SKILL}），因此**不需要**新增任何 mixin 触发点：
+     * 挖掘触发处已有的那一次 {@code CoeSkillRelease.release(player, CoeSkillTypes.EXCAVATION, env)}
+     * 会把它一起带上。</p>
+     *
+     * <p><b>id 必须是 {@code createoreexpansion:fell}</b>——与旧 {@code AllSkills.FELL} 一字不差：
+     * 翻译键（{@code skill.createoreexpansion.fell}）与物品上的技能绑定都靠它。</p>
+     */
+    private static void registerFellingSkill(RegisterEvent event) {
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "fell");
+        event.register(SkillerRegistries.SKILL, id,
+                () -> new ItemSkillRegistration<ExcavationSkillContext>(
+                        CoeSkillTypes.EXCAVATION, ExcavationContextFactory.KEY, new FellingItemSkill()));
     }
 
     /** 注册自检日志：确认 Skiller 的自定义注册表真的收到了 RegisterEvent，以及当前条目数。 */

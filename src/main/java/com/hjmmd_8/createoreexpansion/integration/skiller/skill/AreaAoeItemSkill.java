@@ -85,6 +85,11 @@ public class AreaAoeItemSkill implements StrategySkill<BlockPos, ExcavationSkill
     @Override
     public void consumeResource(ExcavationSkillContext context, Consumable consumable,
                                 ISkillInstance<ExcavationSkillContext> instance) {
+        // 与旧实现同口径：只有"策略确实会挖到方块"时才扣能（旧 causeAoe 是先判 toDestroy 非空、
+        // 再 ToolEnergy.tryConsume）。新内核是先扣能后 release，缺了这道判定会白扣。
+        if (!CoeSkillSupport.willDoWork(context, instance, strategy())) {
+            return;
+        }
         AreaAoeConfig config = CoeAreaAoeStrategy.configOf(context, instance);
         if (config == null) {
             return;
