@@ -77,6 +77,8 @@ public class CreateOreExpansion {
         // 统一交互规则第 4 条：Ctrl + 扳手右键 = 旋转本模组机器（客户端拦截 → 服务端校验并旋转）
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.machine.MachineRotatePayload::registerPayloads);
         modEventBus.addListener(CreateOreExpansion::onRegister);
+        // 技能内核（Skiller）接线：注册上下文工厂 / 技能资源 / 技能条目，并接上迁移闸门
+        com.hjmmd_8.createoreexpansion.integration.skiller.SkillerIntegration.register(modEventBus);
 
         // Jade 可选集成：仅当 Jade 已安装时才反射加载插件类（未安装时绝不触碰 Jade 类，
         // 避免"标注 optional 仍硬编码调用导致崩溃"——见 compat.jade.WaveJadePlugin 注释）

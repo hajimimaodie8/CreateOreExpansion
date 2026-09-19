@@ -112,6 +112,91 @@ public final class ToolEnergy {
 	}
 
 	/**
+	 * <b>当前可用能量总量</b> = 主手工具自身的 FE + 玩家身上绑定凝能佩内的 FE（无佩时即工具自身）。
+	 *
+	 * <p><b>仅供界面/信息显示</b>（新内核 {@code SkillResource#getAmount}）：它<b>不</b>参与任何
+	 * 判定——判定口径见 {@link #canAfford(Player, ItemStack, int)}（沿用旧的工具级门槛）。</p>
+	 *
+	 * @param player 玩家（可为 null，为 null 时只算工具自身）
+	 * @param stack  主手工具
+	 * @return 可用总量（各段负值按 0 计）
+	 */
+	public static int getAvailable(Player player, ItemStack stack) {
+		ItemStack medallion = IMedallion.findBoundMedallion(player, stack);
+		return storedEnergy(stack) + storedEnergy(medallion);
+	}
+
+	/**
+	 * <b>可用能量是否够一次消耗</b>——与技能类型无关的统一判定。
+	 *
+	 * <p><b>门槛口径刻意与旧 {@code tryConsume} 逐字一致（不许"顺手优化"）：</b></p>
+	 * <ul>
+	 *     <li>充能模式（绑定凝能佩且佩处于充能）→ <b>恒 true</b>：佩会在本次扣费后立刻把工具补满，
+	 *         因此不设工具自身能量门槛；</li>
+	 *     <li>其余情况 → <b>只看工具自身 FE</b>（{@link #canAfford(ItemStack, int)}）。
+	 *         注意：<b>不是</b>"工具 + 佩"求和——旧实现就是工具级门槛，改成求和会让
+	 *         "工具没能量但佩里有"这一窄场景从"拒绝"变成"由佩代付"，属于玩家可感知的
+	 *         玩法改动，未经用户拍板不得扩大。</li>
+	 * </ul>
+	 * <p>（{@link #getAvailable(Player, ItemStack)} 报的是"工具 + 佩"的总量，那是给界面看的
+	 * 信息量，<b>不</b>参与判定。）</p>
+	 *
+	 * @param player 释放技能的玩家（可为 null）
+	 * @param stack  主手工具
+	 * @param amount 本次消耗（&lt;= 0 视为无需能量，恒可支付）
+	 * @return 是否够支付
+	 */
+	public static boolean canAfford(Player player, ItemStack stack, int amount) {
+		if (amount <= 0) return true;
+		return isChargeMode(IMedallion.findBoundMedallion(player, stack)) || canAfford(stack, amount);
+	}
+
+	/**
+	 * <b>扣除能量</b>（工具 + 凝能佩兜底），成功返回 true。
+	 *
+	 * <p>与技能类型无关的统一扣减入口：有绑定凝能佩时由佩对象自己处理供应/充能两种模式
+	 * （{@link IMedallion#consumeToolEnergy} + 充能模式的 {@link IMedallion#chargeBoundTools}），
+	 * 否则直接扣工具自身 FE。<b>创造模式照旧扣能</b>（与旧 {@link #tryConsume} 一致，
+	 * 创造豁免由技能释放链路自己决定，本方法不做判断）。</p>
+	 *
+	 * <p>门槛沿用 {@link #canAfford(Player, ItemStack, int)}（= 旧 {@code tryConsume} 的预检查），
+	 * 不足时返回 false 且不产生任何扣减。</p>
+	 *
+	 * @param player 释放技能的玩家（可为 null）
+	 * @param stack  主手工具
+	 * @param amount 本次消耗（&lt;= 0 视为无需能量，直接成功）
+	 * @return 是否成功扣除（能量不足返回 false，且不产生任何扣减）
+	 */
+	public static boolean consume(Player player, ItemStack stack, int amount) {
+		if (amount <= 0) return true;
+		if (!canAfford(player, stack, amount)) {
+			return false;
+		}
+		ItemStack medallion = IMedallion.findBoundMedallion(player, stack);
+		if (!medallion.isEmpty() && medallion.getItem() instanceof IMedallion medallionImpl) {
+			medallionImpl.consumeToolEnergy(medallion, stack, amount);
+			// 充能模式：扣费后检查所有绑定工具（仅背包内），没满的补满
+			medallionImpl.chargeBoundTools(player, medallion);
+		} else {
+			setEnergy(stack, getEnergy(stack) - amount);
+		}
+		return true;
+	}
+
+	/** 物品自身 FE（无充能条按 0 计，负值截断为 0）。 */
+	private static int storedEnergy(ItemStack stack) {
+		if (stack == null || stack.isEmpty() || !hasEnergy(stack)) return 0;
+		return Math.max(0, getEnergy(stack));
+	}
+
+	/** 该凝能佩是否处于充能模式（空佩恒 false）。 */
+	private static boolean isChargeMode(ItemStack medallion) {
+		return medallion != null && !medallion.isEmpty()
+			&& medallion.getItem() instanceof IMedallion im
+			&& im.isChargeMode(medallion);
+	}
+
+	/**
 	 * 技能释放前统一检查并消耗能量。
 	 *
 	 * 由各技能在“真正生效前”调用一次（例如破坏方块前、收割前），
@@ -119,6 +204,10 @@ public final class ToolEnergy {
 	 *
 	 * 注意：无论创造模式与否都会消耗能量（与旧行为一致），
 	 * 消耗后立即标记物品栏变更，确保客户端能量条同步刷新。
+	 *
+	 * 实现上已把「凝能佩兜底」的判定与扣减抽到
+	 * {@link #canAfford(Player, ItemStack, int)} / {@link #consume(Player, ItemStack, int)}，
+	 * 本方法只负责编排：预检查 → 扣能 → 提示。
 	 *
 	 * @param player 释放技能的玩家（可为 null）
 	 * @param stack  手持的工具
@@ -130,29 +219,18 @@ public final class ToolEnergy {
 		if (cost == 0) {
 			return true;
 		}
-		// 充能模式下由凝能佩兜底：跳过工具自身能量预检（释放后佩会立刻把工具补满）
-		ItemStack medallion = IMedallion.findBoundMedallion(player, stack);
-		boolean chargeMode = !medallion.isEmpty()
-			&& medallion.getItem() instanceof IMedallion im && im.isChargeMode(medallion);
-		if (!chargeMode && !canAfford(stack, cost)) {
+		// 预检查失败、或扣减失败（能量不足）都按旧行为提示并放弃本次释放
+		if (!canAfford(player, stack, cost) || !consume(player, stack, cost)) {
 			if (player != null) {
 				sendLowEnergy(player, stack);
 			}
 			return false;
 		}
-		// 已绑定凝能佩：优先消耗佩内储存的应力能量（供应/充能模式由佩对象自身处理）
-		if (!medallion.isEmpty() && medallion.getItem() instanceof IMedallion medallionImpl) {
-			medallionImpl.consumeToolEnergy(medallion, stack, cost);
-			// 充能模式：释放后检查所有绑定工具（仅背包内），没满的补满
-			medallionImpl.chargeBoundTools(player, medallion);
-		} else {
-			setEnergy(stack, getEnergy(stack) - cost);
-		}
 		if (player != null) {
 			// 强制物品栏同步，确保客户端立即看到能量变化
 			player.getInventory().setChanged();
 			// 同步显示剩余能量：绑定的凝能佩行在上、工具行在下（护目镜判定）
-			sendRemainingEnergyWithMedallion(player, stack, medallion);
+			sendRemainingEnergyWithMedallion(player, stack, IMedallion.findBoundMedallion(player, stack));
 		}
 		return true;
 	}
