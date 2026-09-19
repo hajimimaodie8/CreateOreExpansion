@@ -10,7 +10,11 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.content.skill.context.LivingHurtContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
+import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
+import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -32,13 +36,22 @@ public class HurtLivingEntityHandler {
 		if (releasing)
 			return;
 
-		boolean key1 = AllKeys.SKILL_RELEASE.isPressed();
-		boolean key2 = AllKeys.SKILL_RELEASE_2.isPressed();
-		boolean key3 = AllKeys.SKILL_RELEASE_3.isPressed();
-		if (!key1 && !key2 && !key3) return;
-
 		releasing = true;
 		try {
+			// 新内核（Skiller）路径：已经迁移过去的受击技能由它执行。
+			// 放在旧路径的按键判定之前 —— 旧 AllKeys 是纯客户端对象，专用服务器上恒为"未按下"，
+			// 若放在后面会被那句 early-return 挡掉；新路径读的是服务端权威按键状态。
+			// 两条路径不会重复：迁移闸门让旧路径跳过已注册进新内核的技能。
+			if (player instanceof ServerPlayer serverPlayer) {
+				CoeSkillRelease.release(serverPlayer, CoeSkillTypes.HIT,
+						SkillContextEnvironment.withEvent(serverPlayer, serverPlayer.level(), event));
+			}
+
+			boolean key1 = AllKeys.SKILL_RELEASE.isPressed();
+			boolean key2 = AllKeys.SKILL_RELEASE_2.isPressed();
+			boolean key3 = AllKeys.SKILL_RELEASE_3.isPressed();
+			if (!key1 && !key2 && !key3) return;
+
 			ItemStack sword = player.getMainHandItem();
 			SkillItemStack skillStack = SkillItemStack.of(sword);
 			if (!skillStack.hasSkill(SkillType.HIT_SKILL))
