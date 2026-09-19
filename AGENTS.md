@@ -109,16 +109,18 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 嬗变液/雷鸣合金）也收成独立模块（暂称 COE）。**CEWS 单向依赖 COE**（材料），反向禁止。
 **不能与技能换核并行**（两者都要动注册与 `foundation/item/skill`）。
 
-**技能内核移植**：用户的朋友 Leaf 已把本模组「工具技能系统」的核心抽成独立实现（仓库 <https://github.com/lizhanyu-leaf/Skiller>，本地副本 `E:\mc\mcmod\_ref\Skiller`）。用户决定：
+**技能内核移植（2026-09-19 已开工，进行中）**：用 Leaf 的独立内核 **Skiller**（<https://github.com/lizhanyu-leaf/Skiller>，本地副本 `E:\mc\mcmod\_ref\Skiller`，MIT）替换本模组自研的技能框架。
+**执行方案与全部决策见 `markdown_output/技能内核换核执行方案.md`**（旧分析文档 `技能内核对比与迁移分析.md` 只作参考）；现状地图见 `build/patch/coe_skill_map.md`，Skiller API 契约见 `build/patch/skiller_api_foundation.md`（两者都在被 git 忽略的 `build/` 下，重生成即可）。
 
-- **在 Leaf 宣布 core 重构完毕（或有其他情况）之前，不要改动本工程任何代码**，尤其不要动 `foundation/item/skill/` 与技能相关内容。
-- 届时的迁移顺序与全部前置条件见 `markdown_output/技能内核对比与迁移分析.md`（§4 抽象映射表、§6 十二条实证缺口、§7 迁移风险、§8 分阶段路线、§8.5 给 Leaf 的清单）。
+已定事实（别再重新论证）：
 
-动手前必须确认的前提（否则会白做）：
-
-1. Leaf 侧的三处硬阻塞已修：`SkillData` 序列化往返（`toString` 丢 `factoryId` / `fromString` 读从未写入的 `"Factory"` 键）、`releaseSkills` 无调用点、`StrategyRenderers.register` 无调用点。
-2. 注册技能时**条目 id 必须保持 `createoreexpansion:xxx`**（Skiller 的注册表键是 `skiller:skill`，但条目 id 的命名空间由注册方决定）。翻译键方案两仓同构（`skill.{namespace}.{path}`），守住 id 命名空间则现有中英 13 条 lang 键一条都不用改。
-3. 旧存档兼容策略需先拍板：新版反序列化强制要求 NBT 内有 `Factory` 键，老格式字符串会被静默丢弃（返回 null → `SkillBundle.getSkills` 过滤掉，不报错）。
+1. **引入方式 = JarJar 嵌套**：jar 在 `libs-maven/com/leaf/skiller/1.0.0/`（本地 maven 布局、**随仓库提交**），`build.gradle` 里 `jarJar(implementation("com.leaf:skiller:1.0.0"))` + 仓库 `maven { url = uri("libs-maven") }`。dev 运行时它作为独立 mod（mod id `skiller`）加载，mixin 生效（已用 `runData` 验证）。
+2. **上游 HEAD `abe5688` 的硬阻塞一条都没修**（`SkillData` 往返丢 `factoryId`、`factoryId` 恒 null、两个 `releaseSkills` 重载读错表必 CCE、`AllKeys` 缺 `Dist.CLIENT` 专用服务器崩、`StrategyRenderers` 无注册且 `schedule` 对 null 无防护、`ServerSkillCache` 空组件裸抛 NPE、jar 缺 `Automatic-Module-Name`）。**我方在 `_ref/Skiller` 的分支 `coe-embed` 上全修好了**（补丁 `build/patch/skiller-coe-embed.patch`，**未 push**）→ 内置的是「我方 fork 版」，升级 Skiller 要重放补丁。
+3. **id 与翻译键零改动**：技能条目 id 一律 `createoreexpansion:xxx`，三个 `SkillType` 沿用 `excavation_skill`/`hit_skill`/`use_skill` → 12 条中英 lang 键一条不改。
+4. **老存档天然兼容**：旧数据组件 `createoreexpansion:skills` 与 NBT 格式（`Level`/`Config`/`OutlineColor`）**原样保留**，换的只是「谁解释这些数据」→ 不需要 DataFixer，也不会静默丢技能。
+5. **增量并行迁移**：技能注册进 `SkillerBuiltInRegistries.SKILLS` 就是新内核接管；没注册的由旧框架照旧处理（`CoeSkillProvider` 会跳过未注册的 id）→ 不会双重生效。
+6. **不要 Skiller 的「按 R 启用技能」总开关**（保持本模组随时可用的既有玩法）：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手物品调 `ClientSkillCache.refresh(player)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`，**不读** `ServerSkillCache`/`SkillReleaser`。
+7. **键位待拍板**：Skiller 的 `AllKeys` 默认槽位键 Ctrl/Shift/Alt、开关键 R/Y，与本仓「Shift/R/G」和 Create 的 Ctrl 冲突。
 
 ## 🧠 记忆写入规则（用户明确要求，务必遵守）
 
@@ -144,7 +146,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 ## 已知环境限制
 
 - **Hindsight 记忆已可用**（2026-09-10 起配置）：`C:\Users\Lenovo\.hindsight\coding-agent.json`，`serverMode: cloud`，本仓库 bank 为 `coding-agent::createoreexpansion`。**但已按用户要求关闭全部自动导入**，写入规则见下面「记忆写入规则」一节。
-- 本机无法访问 `maven.neoforged.net`（连接被重置），因此**无法在本地编译 Skiller 参考工程**（它需要 `neoform-runtime:2.0.24`，本机 Gradle 缓存只有 2.0.18）。本工程的依赖均已缓存，可正常构建。
+- **`maven.neoforged.net` 现在可达**（2026-09-19 实测 HTTP 200；早先的「连接被重置」是暂时的）。因此 **Skiller 参考工程已能在本机构建**：`cd E:\mc\mcmod\_ref\Skiller && .\gradlew.bat jar`（第一次会下载 neoform-runtime 2.0.24 等，需几分钟）。首次构建偶发 `Connection reset`，重跑一次即可。内置用的 jar 由这条命令产出。
 
 ## 本工程的技能系统（现状速记）
 

@@ -27,6 +27,10 @@ sourceSets.main.resources {
 }
 
 repositories {
+    // 内置内核 Skiller 的本地 maven 仓库（libs-maven/，随仓库提交）。
+    // 用 maven 布局而不是 files(...) 的原因：JarJar 需要 group/artifact/version 元数据，
+    // file 依赖会让 metadata.json 里的版本退化成文件哈希。
+    maven { url = uri("libs-maven") }
     maven { url = "https://maven.createmod.net" } // Create, Ponder, Flywheel
     maven { url = "https://maven.ithundxr.dev/snapshots" } // Registrate
     maven {
@@ -135,6 +139,15 @@ configurations {
 }
 
 dependencies {
+    // ── Skiller 技能内核（内置 / JarJar 嵌套）────────────────────────────────────────────
+    // 本模组的「工具技能系统」自 2026-09 起改用 Leaf 的 Skiller 内核（MIT）。
+    // jarJar(...) 会把 skiller-1.0.0.jar 原样嵌进本模组的 META-INF/jarjar/，
+    // 玩家只装本模组一个 jar，NeoForge 会把嵌套 jar 当独立 mod（mod id: skiller）加载。
+    // 编译期同时可见（jarJar 继承 implementation），所以 content 层可以直接 import com.leaf.skiller.*。
+    // jar 放在 libs-maven/（本地 maven 布局，随仓库提交），不依赖网络。
+    jarJar(implementation("com.leaf:skiller:1.0.0"))
+    // 开发环境（runClient/runData）需要 Skiller 作为一个真实 mod 在场：
+    // MDG 会把 jarJar 依赖一并放进运行时 classpath，无需额外声明。
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")

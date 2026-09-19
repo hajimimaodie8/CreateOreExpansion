@@ -47,6 +47,10 @@ run/
 /net/
 # 本地依赖目录：从 bundled jar 提取的航空学编译期 jar 等（不提交，重新提取即可）
 /libs/
+# 例外：Skiller 内核 jar 是**必需**编译依赖（JarJar 嵌套件，MIT）。但注意——
+# 真正被 build.gradle 引用的是 libs-maven/com/leaf/skiller/1.0.0/skiller-1.0.0.jar
+# （本地 maven 布局，不受 /libs/ 规则影响，会随仓库提交）；libs/ 下那份只是临时副本。
+!/libs/skiller-*.jar
 verify_combo.py
 verify_combo2.py
 package-lock.json

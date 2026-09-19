@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Skiller —— 本模组内置的技能内核（JarJar 嵌套件）。
+  上游仓库：https://github.com/lizhanyu-leaf/Skiller （作者 Leaf，MIT 许可）
+  这里放的是本地 maven 布局的副本，让 Gradle 能把它当普通模块依赖解析
+  （file 依赖没有 group/artifact/version，被 JarJar 内置时元数据会退化成文件哈希）。
+  升级步骤见 AGENTS.md「技能内核移植」一节。
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.leaf</groupId>
+    <artifactId>skiller</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Skiller</name>
+    <description>Skill core for Minecraft NeoForge mods (built-in dependency of createoreexpansion)</description>
+    <url>https://github.com/lizhanyu-leaf/Skiller</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>lizhanyu-leaf</id>
+            <name>Leaf</name>
+        </developer>
+    </developers>
+</project>
