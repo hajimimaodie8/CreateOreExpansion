@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 import com.hjmmd_8.createoreexpansion.client.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.client.tool.OutlineRenderer;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
+import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.leaf.skiller.foundation.renderer.StrategyRenderer;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
@@ -59,6 +60,13 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     public Optional<BlockOutlineRenderContext> getContext(Minecraft mc, ClientLevel level, Player player,
                                                           ISkillInstance<BlockOutlineRenderContext> instance) {
         if (level == null || player == null || instance == null) {
+            return Optional.empty();
+        }
+        // 不按技能键就不显示预览（旧 SkillsStrategyRenderer 的门）。
+        // 新内核的 schedule() 是"把身上所有策略技能都排上"，没有这道门，缺了它预览会常亮。
+        if (!AllKeys.SKILL_RELEASE.isPressed()
+                && !AllKeys.SKILL_RELEASE_2.isPressed()
+                && !AllKeys.SKILL_RELEASE_3.isPressed()) {
             return Optional.empty();
         }
         // 准星拾取：旧调度器就是从玩家的 BlockHitResult 拿中心方块的

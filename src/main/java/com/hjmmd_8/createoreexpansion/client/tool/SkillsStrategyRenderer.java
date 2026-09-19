@@ -81,6 +81,12 @@ public class SkillsStrategyRenderer {
 
         for (DataSkill data : skills) {
             if (!(data.skill instanceof AbstractStrategySkill<?, ?> strategySkill)) continue;
+            // 已迁移到新内核（Skiller）的技能：预览由新渲染器负责（CoeBlockOutlineRenderer），
+            // 这里必须跳过，否则同一次预览会被新旧两条路径各画一遍（双层再翻倍，亮度翻倍）。
+            // 与释放侧共用同一个迁移闸门，口径只有一处。
+            if (com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate.isMigrated(data.skill)) {
+                continue;
+            }
 
             // 多技能按槽位渲染：只显示当前按下的技能键对应槽位的技能框。
             // 槽位索引 = 同类型技能中的位置（与释放端 getDataSkills(type).index 一致）
