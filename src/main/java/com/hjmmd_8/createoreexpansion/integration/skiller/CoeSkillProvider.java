@@ -64,6 +64,20 @@ public class CoeSkillProvider implements SkillProvider {
     /** 旧类型 → 新类型的映射（保持一一对应；新增类型时这里要同步） */
     private static final Map<SkillType, com.leaf.skiller.foundation.skill.SkillType> TYPE_MAPPING = buildTypeMapping();
 
+    /**
+     * 单条目转换结果缓存：键是旧组件的<b>同一个实例</b>。
+     *
+     * <p>为什么需要：{@link #componentOf} 在"每次造成伤害/每次破坏方块"都会被调一次
+     * （见 {@code CoeSkillRelease}），而转换过程要建实例对象。物品不变时
+     * {@code ItemStack#get(组件)} 返回的就是同一个对象，所以按住同一样东西连续战斗/挖掘
+     * 时这一层缓存把开销压到一次引用比较。</p>
+     *
+     * <p>只用单条目（不是 Map）：玩家手上真正会变的只有主手这一件，多条目缓存只会留下
+     * 一堆再也不会命中的条目。</p>
+     */
+    private static SkillsComponent cachedLegacy;
+    private static SkillComponent cachedResult = SkillComponent.EMPTY;
+
     private static Map<SkillType, com.leaf.skiller.foundation.skill.SkillType> buildTypeMapping() {
         Map<SkillType, com.leaf.skiller.foundation.skill.SkillType> map = new LinkedHashMap<>();
         map.put(SkillType.EXCAVATION_SKILL, CoeSkillTypes.EXCAVATION);
@@ -94,9 +108,22 @@ public class CoeSkillProvider implements SkillProvider {
         }
         SkillsComponent legacy = SkillItemStack.of(player.getMainHandItem()).getSkillsHolder();
         if (legacy == null) {
+            cachedLegacy = null;
+            cachedResult = SkillComponent.EMPTY;
             return SkillComponent.EMPTY;
         }
+        // 同一件物品（同一个组件实例）→ 直接复用上次的转换结果
+        if (legacy == cachedLegacy) {
+            return cachedResult;
+        }
+        SkillComponent converted = convert(legacy);
+        cachedLegacy = legacy;
+        cachedResult = converted;
+        return converted;
+    }
 
+    /** 真正的转换：旧组件 → 新组件（结果会被 {@link #componentOf} 缓存）。 */
+    private static SkillComponent convert(SkillsComponent legacy) {
         // 槽位 → 该槽位下所有类型的实例（三个类型共用同一条按键）
         Map<Integer, List<ISkillInstance<?>>> bySlot = new LinkedHashMap<>();
         for (Map.Entry<SkillType, com.leaf.skiller.foundation.skill.SkillType> entry : TYPE_MAPPING.entrySet()) {
