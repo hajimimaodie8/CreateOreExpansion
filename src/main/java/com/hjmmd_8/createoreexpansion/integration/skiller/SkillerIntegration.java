@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkil
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.PlunderItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.SkinItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.FellingItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
@@ -107,18 +108,22 @@ public final class SkillerIntegration {
     }
 
     /**
-     * 注册受击系技能：{@code skin}（剥取）。
+     * 注册受击系技能：{@code skin}（剥取）与 {@code plunder}（夺取）。
      *
-     * <p>{@code plunder}（夺取）随后补上（同一批）。触发点是
-     * {@code content/skill/handler/HurtLivingEntityHandler}（已经接过新内核）。</p>
+     * <p>触发点是 {@code content/skill/handler/HurtLivingEntityHandler}（已经接过新内核）。</p>
      */
     private static void registerHitSkills(RegisterEvent event) {
-        for (String path : new String[]{"skin"}) {
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, path);
-            event.register(SkillerRegistries.SKILL, id,
-                    () -> new ItemSkillRegistration<HitSkillContext>(
-                            CoeSkillTypes.HIT, HitContextFactory.KEY, new SkinItemSkill()));
-        }
+        event.register(SkillerRegistries.SKILL, skillId("skin"),
+                () -> new ItemSkillRegistration<HitSkillContext>(
+                        CoeSkillTypes.HIT, HitContextFactory.KEY, new SkinItemSkill()));
+        event.register(SkillerRegistries.SKILL, skillId("plunder"),
+                () -> new ItemSkillRegistration<HitSkillContext>(
+                        CoeSkillTypes.HIT, HitContextFactory.KEY, new PlunderItemSkill()));
+    }
+
+    /** 技能条目 id：{@code createoreexpansion:<path>}（必须与旧 {@code AllSkills} 一字不差）。 */
+    private static ResourceLocation skillId(String path) {
+        return ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, path);
     }
 
     /**
