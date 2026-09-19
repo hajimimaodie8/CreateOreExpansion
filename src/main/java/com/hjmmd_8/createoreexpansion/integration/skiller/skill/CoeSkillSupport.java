@@ -6,6 +6,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.leaf.skiller.foundation.Consumable;
+import com.leaf.skiller.foundation.context.SkillContext;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.strategy.SkillStrategy;
 import net.minecraft.core.BlockPos;
@@ -133,10 +134,22 @@ public final class CoeSkillSupport {
     public static boolean willDoWork(ExcavationSkillContext context,
                                      ISkillInstance<ExcavationSkillContext> instance,
                                      @Nullable SkillStrategy<BlockPos, ExcavationSkillContext> strategy) {
+        return willDoWork(context, instance, strategy, new HashSet<>());
+    }
+
+    /**
+     * 通用版 {@link #willDoWork(ExcavationSkillContext, ISkillInstance, SkillStrategy)}：
+     * 收集元素类型与上下文类型都由调用方决定（受击系技能收集的是实体，不是方块）。
+     *
+     * @param scratch 调用方提供的临时集合（内容会被清空/填充，容量无所谓）
+     */
+    public static <T, C extends SkillContext> boolean willDoWork(C context, ISkillInstance<C> instance,
+                                                                 @Nullable SkillStrategy<T, C> strategy,
+                                                                 Set<T> scratch) {
         if (strategy == null || context == null || !strategy.canCollect(context, instance)) {
             return false;
         }
-        Set<BlockPos> scratch = new HashSet<>();
+        scratch.clear();
         strategy.collect(scratch, context, instance);
         return !scratch.isEmpty();
     }
