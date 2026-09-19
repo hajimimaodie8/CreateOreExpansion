@@ -71,6 +71,10 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
   查询仪是**动态**的（扫描动画 32 tick 内 `inventoryTick` 每 tick 刷新，见 §28.3），
   Jade 每帧重建。要加/改要素就改这两处 `...show/hide`，别再新开第三条显示路径。
 - **系列特性登记口径**（用户 2026-09-15 定稿）：common/SeriesTraits 是唯一入口——方块 .transform(SeriesTraits.addStellarstoneTraits()/addThunderiteTraits())、物品链上 .tag(AllModItemTags.STELLARSTONE_ITEMS/THUNDERITE_ITEMS)（Java 没有扩展方法，物品侧写不出 .addXxx()）；判定 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定（限定本模组命名空间）。**四个系列标签由 datagen 生成，手写文件禁止同名**（同名会让 processResources 报 duplicate 直接失败）。两个系列（含方块物品）免疫嬗乱销毁，该判定在 TransmutationDisorderEffect#canTransmutationDestroy 里调 SeriesTraits——方块物品进不了物品标签，故不能用标签覆盖。
+- **机器交互四条统一规则**（用户 2026-09-15 定稿）：① 空手右键某个面 = 开/关该面开口；② 空手右键指示灯 = 只切那盏灯对应的开口；③ 扳手右键 = 有特殊模式的机器只切模式、没模式的机器照旧切开口；④ 旋转必须 **Ctrl + 扳手右键**。
+  实现三件套：契约 `content/machine/CewsMachine`（`hasModeSwitch()`；`onWrenched` 默认"吞掉但不旋转"，防 Create 默认旋转在没按 Ctrl 时生效；`rotateAsCreate()` 直接复用 `IWrenchable` 默认旋转、不复制逻辑；`onEmptyHandPortToggle`）、载荷 `MachineRotatePayload`（服务端校验：本模组机器 + 无模式 + 手持扳手 + 距离）、客户端 `client/MachineRotateClient`（Ctrl 判定后取消本地交互并发包）。
+  **为什么 Ctrl 必须在客户端判定**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
+  副作用修复：`StellarWaveTransmuterBlock` 以前**没实现 `IWrenchable`**（`onWrenched` 没有 `@Override`）→ Create 的扳手从来没分发到它，变器切模式其实一直不生效；现已随契约修好。
 
 ## 🎨 美术资源的红线（用户 2026-09-14 明确要求，必须遵守）
 

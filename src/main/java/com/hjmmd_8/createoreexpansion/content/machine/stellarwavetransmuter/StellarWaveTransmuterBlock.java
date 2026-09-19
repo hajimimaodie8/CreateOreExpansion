@@ -73,7 +73,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * 加工属性后从对侧穿出，命中物品即远程执行链式加工。</p>
  */
 public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
-	implements IBE<StellarWaveTransmuterBlockEntity> {
+	implements IBE<StellarWaveTransmuterBlockEntity>, com.hjmmd_8.createoreexpansion.content.machine.CewsMachine {
 
 	/** 六向朝向（同 BlockStateProperties.FACING，与 Create DirectionalKineticBlock.FACING 同一实例） */
 	public static final DirectionProperty FACING = BlockStateProperties.FACING;
@@ -338,4 +338,13 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	public float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
 		return 1.0F;
 	}
+	/**
+	 * 本机有特殊切换模式 ⇒ 扳手只做这一件事（切模式），不参与 Ctrl+扳手旋转。
+	 * 见 {@link com.hjmmd_8.createoreexpansion.content.machine.CewsMachine} 的统一交互规则 ③。
+	 */
+	@Override
+	public boolean hasModeSwitch() {
+		return true;
+	}
+
 }

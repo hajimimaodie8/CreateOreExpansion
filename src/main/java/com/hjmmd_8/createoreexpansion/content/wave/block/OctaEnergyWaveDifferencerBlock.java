@@ -11,6 +11,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -45,7 +46,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * <p><b>扳手交互</b>：侧面点击按 6px 中心 / 两侧 5px 细分选择正交面或相邻斜面；
  * 顶/底面点击按 45° 8 扇区（第 1 扇 -22.5°~22.5° 指向北，顺时针递增）选择方向开关。</p>
  */
-public class OctaEnergyWaveDifferencerBlock extends Block implements IWrenchable, IBE<OctaEnergyWaveDifferencerBlockEntity> {
+public class OctaEnergyWaveDifferencerBlock extends Block implements com.hjmmd_8.createoreexpansion.content.machine.CewsMachine, IBE<OctaEnergyWaveDifferencerBlockEntity> {
 
 	@Override
 	public Class<OctaEnergyWaveDifferencerBlockEntity> getBlockEntityClass() {
@@ -312,4 +313,19 @@ public class OctaEnergyWaveDifferencerBlock extends Block implements IWrenchable
 			return new Vec3(l.y, l.z, l.x);
 		return new Vec3(l.x, l.z, -l.y);
 	}
+	/**
+	 * <b>空手右键 = 切开口</b>（统一交互规则 ①②，见 {@link com.hjmmd_8.createoreexpansion.content.machine.CewsMachine}）。
+	 *
+	 * <p>手里拿着东西时放行（否则会挡住放方块）；<b>开口判定复用 {@link #onWrenched}</b>——
+	 * 一台机器只有一套"点哪个面切哪个口"的判定，空手与扳手两条入口共用，口径不可能分叉。</p>
+	 */
+	@Override
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player,
+		net.minecraft.world.phys.BlockHitResult hitResult) {
+		if (!player.getMainHandItem()
+			.isEmpty())
+			return InteractionResult.PASS;
+		return onWrenched(state, new UseOnContext(player, net.minecraft.world.InteractionHand.MAIN_HAND, hitResult));
+	}
+
 }

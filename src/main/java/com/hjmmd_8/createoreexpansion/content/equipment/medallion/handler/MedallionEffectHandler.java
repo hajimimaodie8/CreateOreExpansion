@@ -127,12 +127,20 @@ public final class MedallionEffectHandler {
         }
     }
 
-    /** 雷鸣：雷电吸收——雷鸣物品实体被雷击不销毁并补满能量；玩家佩戴/手持雷鸣佩/工具同样豁免并补满 */
+    /**
+     * 雷鸣：雷电吸收——雷鸣<b>物品实体</b>被雷击不销毁，且"<b>能充能的</b>那种"顺手补满能量；
+     * 玩家佩戴雷鸣佩、或手持雷鸣系列<b>带充能条的</b>武器工具时同样豁免并补满。
+     *
+     * <p><b>"能充能"与"属于雷鸣系列"是两件事</b>（用户 2026-09-15 明确要求区分）：系列标签里既有
+     * 带充能条的工具/武器/佩，也有<b>没有充能条的材料与方块</b>（锭/碎块/板/杆/线/雷鸣块）。
+     * 所以充能分支一律先过 {@link ToolEnergy#canCharge(ItemStack)}：材料被雷击照样豁免销毁（系列特性），
+     * 但<b>不会、也不可能被写入能量</b>（{@code setEnergy} 对没有充能条的物品直接返回）。</p>
+     */
     @SubscribeEvent
     public static void onStruckByLightning(EntityStruckByLightningEvent event) {
         if (event.getEntity() instanceof ItemEntity item && isThunderiteItem(item.getItem())) {
             ItemStack stack = item.getItem();
-            if (ToolEnergy.hasEnergy(stack)) {
+            if (ToolEnergy.canCharge(stack)) {
                 ToolEnergy.setEnergy(stack, ToolEnergy.getMaxEnergy(stack));
             }
             event.setCanceled(true);
@@ -149,7 +157,7 @@ public final class MedallionEffectHandler {
         }
         for (InteractionHand hand : InteractionHand.values()) {
             ItemStack stack = player.getItemInHand(hand);
-            if (stack.is(AllModItemTags.THUNDERITE_ITEMS) && ToolEnergy.hasEnergy(stack)) {
+            if (stack.is(AllModItemTags.THUNDERITE_ITEMS) && ToolEnergy.canCharge(stack)) {
                 ToolEnergy.setEnergy(stack, ToolEnergy.getMaxEnergy(stack));
                 absorbed = true;
             }

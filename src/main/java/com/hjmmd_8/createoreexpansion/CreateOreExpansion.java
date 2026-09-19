@@ -74,6 +74,8 @@ public class CreateOreExpansion {
         MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload::registerPayloads);
+        // 统一交互规则第 4 条：Ctrl + 扳手右键 = 旋转本模组机器（客户端拦截 → 服务端校验并旋转）
+        modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.machine.MachineRotatePayload::registerPayloads);
         modEventBus.addListener(CreateOreExpansion::onRegister);
 
         // Jade 可选集成：仅当 Jade 已安装时才反射加载插件类（未安装时绝不触碰 Jade 类，

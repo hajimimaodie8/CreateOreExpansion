@@ -39,7 +39,7 @@ import net.neoforged.neoforge.items.ItemHandlerHelper;
  * 水平旋转轴沿 FACING 轴，传动轴从 FACING 前方（齿轮箱纹理背板侧）接入；
  * 盖板在 FACING 对面一侧，开盖时朝那一侧翻起（那一格被方块阻挡则提示无法开盖）。</p>
  */
-public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IBE<PowerAngleGrinderBlockEntity>, IWrenchable {
+public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IBE<PowerAngleGrinderBlockEntity>, com.hjmmd_8.createoreexpansion.content.machine.CewsMachine {
 
 	/** 开盖状态：false=关盖，true=开盖（对应开盖模型 power_angle_grinder_rotated） */
 	public static final BooleanProperty OPEN = BooleanProperty.create("open");
@@ -240,4 +240,13 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 	public float getShadeBrightness(BlockState state, BlockGetter level, BlockPos pos) {
 		return 1.0F;
 	}
+	/**
+	 * 本机有特殊切换模式 ⇒ 扳手只做这一件事（切模式），不参与 Ctrl+扳手旋转。
+	 * 见 {@link com.hjmmd_8.createoreexpansion.content.machine.CewsMachine} 的统一交互规则 ③。
+	 */
+	@Override
+	public boolean hasModeSwitch() {
+		return true;
+	}
+
 }

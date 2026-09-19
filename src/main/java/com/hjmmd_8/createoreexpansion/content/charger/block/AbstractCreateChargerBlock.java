@@ -27,7 +27,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * getLightBlock 自动为 0，与 Create 机器光照行为完全一致。
  * 另：{@link #getShape} 返回非全方块形状，避免 AO 遮蔽判定把本机器当遮蔽物导致面发黑。</p>
  */
-public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock {
+public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock
+	implements com.hjmmd_8.createoreexpansion.content.machine.CewsMachine {
 
 	/**
 	 * 模式/蓄力阶段：0=未接入应力（展示），1/2/3=蓄力阶段（α/β/γ），
