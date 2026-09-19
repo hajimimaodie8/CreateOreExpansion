@@ -53,6 +53,20 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     /** 与释放路径同一个拾取距离（{@code AoeExcavationSkill.PICK_DISTANCE}） */
     private static final double PICK_DISTANCE = 20.0D;
 
+    /** 临时诊断节流（同一原因每 2 秒最多一条日志）；定位完预览问题后可整体删除 */
+    private static final long TRACE_INTERVAL_MS = 2000L;
+    private static final java.util.Map<String, Long> TRACE_LAST = new java.util.HashMap<>();
+
+    private static void trace(String reason) {
+        long now = System.currentTimeMillis();
+        Long last = TRACE_LAST.get(reason);
+        if (last != null && now - last < TRACE_INTERVAL_MS) {
+            return;
+        }
+        TRACE_LAST.put(reason, now);
+        com.hjmmd_8.createoreexpansion.CreateOreExpansion.LOGGER.info("[SkillerRender] {}", reason);
+    }
+
     /** 穿透层的 alpha 系数（旧 {@code BlockToolOutlineRenderer} 的第二层） */
     private static final float TRANSPARENT_ALPHA_FACTOR = 0.3F;
 
@@ -60,6 +74,7 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     public Optional<BlockOutlineRenderContext> getContext(Minecraft mc, ClientLevel level, Player player,
                                                           ISkillInstance<BlockOutlineRenderContext> instance) {
         if (level == null || player == null || instance == null) {
+            trace("getContext: level/player/instance 为空");
             return Optional.empty();
         }
         // 不按技能键就不显示预览（旧 SkillsStrategyRenderer 的门）。
@@ -67,11 +82,13 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         if (!AllKeys.SKILL_RELEASE.isPressed()
                 && !AllKeys.SKILL_RELEASE_2.isPressed()
                 && !AllKeys.SKILL_RELEASE_3.isPressed()) {
+            trace("getContext: 技能键都没按（预期行为，不显示预览）");
             return Optional.empty();
         }
         // 准星拾取：旧调度器就是从玩家的 BlockHitResult 拿中心方块的
         HitResult hit = player.pick(PICK_DISTANCE, 0.0F, false);
         if (!(hit instanceof BlockHitResult blockHit)) {
+            trace("getContext: 准星没落在方块上");
             return Optional.empty();
         }
         BlockPos center = blockHit.getBlockPos();
@@ -79,21 +96,25 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
                 level, center, player.getMainHandItem(), player);
 
         if (!(instance.skill().getSkill() instanceof StrategySkill<?, ?> strategySkill)) {
+            trace("getContext: 技能本体不是 StrategySkill");
             return Optional.empty();
         }
         SkillStrategy<?, ?> raw = strategySkill.strategy();
         if (raw == null) {
+            trace("getContext: 技能的策略为空（STRATEGIES 里查不到 " + strategySkill.getStrategy() + "）");
             return Optional.empty();
         }
         @SuppressWarnings("unchecked")
         SkillStrategy<BlockPos, ExcavationSkillContext> strategy =
                 (SkillStrategy<BlockPos, ExcavationSkillContext>) raw;
         if (!strategy.canCollect(probe, castInstance(instance))) {
+            trace("getContext: canCollect=false（目标方块不匹配该等级配置的可挖标签，或配置取不到）");
             return Optional.empty();
         }
         Set<BlockPos> positions = new HashSet<>();
         strategy.collect(positions, probe, castInstance(instance));
         if (positions.isEmpty()) {
+            trace("getContext: 策略收集结果为空");
             return Optional.empty();
         }
         // 旧实现把中心方块也加进去（strategy.calculate 的结果之外再 add(center)）
@@ -103,6 +124,8 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         float red = color != null && color.contains("r") ? color.getFloat("r") : 1.0F;
         float green = color != null && color.contains("g") ? color.getFloat("g") : 1.0F;
         float blue = color != null && color.contains("b") ? color.getFloat("b") : 1.0F;
+        trace("getContext: 产出预览，方块数=" + positions.size()
+                + "，颜色=(" + red + "," + green + "," + blue + ")");
         return Optional.of(new BlockOutlineRenderContext(
                 player, positions, red, green, blue, SkillRendererConfig.ALPHA));
     }
@@ -112,8 +135,10 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
                        Minecraft mc, PoseStack poseStack, Camera camera, MultiBufferSource buffer) {
         ClientLevel level = mc.level;
         if (level == null || context == null || context.positions().isEmpty()) {
+            trace("render: level/context 为空或方块集合为空");
             return;
         }
+        trace("render: 画线，方块数=" + context.positions().size());
         Set<BlockPos> positions = context.positions();
         float r = context.red();
         float g = context.green();
@@ -128,6 +153,14 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
         OutlineRenderer.renderOutline(level, positions, poseStack, transparent, r, g, b,
                 a * TRANSPARENT_ALPHA_FACTOR);
+
+        // **必须自己冲刷**：新接口给的是原版 MultiBufferSource，没有人替我们 endBatch；
+        // 旧实现收的是 Create 的 SuperRenderTypeBuffer 并显式 buffer.draw(type)，
+        // 所以以前能显示、现在算完却什么都看不到。按 RenderType 立即结算这两批。
+        if (buffer instanceof MultiBufferSource.BufferSource bufferSource) {
+            bufferSource.endBatch(RenderType.LINES);
+            bufferSource.endBatch(AllRenderTypes.LINES_TRANSPARENT);
+        }
     }
 
     @Override

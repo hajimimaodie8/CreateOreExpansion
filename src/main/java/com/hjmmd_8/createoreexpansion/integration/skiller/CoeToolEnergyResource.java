@@ -1,12 +1,14 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.SkillResource;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * 工具能量资源（新内核版）——把模组既有的「主手工具 FE + 凝能佩兜底」接成 Skiller 的 {@link SkillResource}。
@@ -64,11 +66,19 @@ public class CoeToolEnergyResource implements SkillResource {
         if (player == null || amount <= 0) {
             return;
         }
-        if (!ToolEnergy.consume(player, player.getMainHandItem(), amount)) {
+        ItemStack stack = player.getMainHandItem();
+        if (!ToolEnergy.consume(player, stack, amount)) {
             // 理论上不该发生（canConsume 已通过）：留一条日志，避免"扣费静默失败"难以定位
             CreateOreExpansion.LOGGER.warn("[Skiller] 工具能量扣减失败：player={}, amount={}（主手={}）",
-                    player.getName().getString(), amount, player.getMainHandItem().getHoverName().getString());
+                    player.getName().getString(), amount, stack.getHoverName().getString());
+            return;
         }
+        // 下面两步是旧 ToolEnergy.tryConsume 扣完后一定会做的，属于"玩家能看见的反馈"，
+        // 漏掉它们的症状就是：能量条不刷新、护目镜的"剩余能量"读数整片消失。
+        // 1) 强制物品栏同步，客户端立刻看到能量变化
+        player.getInventory().setChanged();
+        // 2) 剩余能量读数（护目镜限定；有凝能佩时佩行在上、工具行在下）
+        ToolEnergy.sendRemainingEnergyWithMedallion(player, stack, IMedallion.findBoundMedallion(player, stack));
     }
 
 }

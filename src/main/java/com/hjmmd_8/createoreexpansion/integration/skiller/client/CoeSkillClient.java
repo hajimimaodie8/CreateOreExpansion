@@ -97,5 +97,6 @@ public final class CoeSkillClient {
         ClientSkillCache.setToggleKeysEnabled(false);
         // 策略渲染器注册：必须早于 ClientSkillCache.enable(...)（enable 内部会 schedule()）
         StrategyRenderers.register(CoeAreaAoeStrategy.RENDERER_ID, new CoeBlockOutlineRenderer());
+        CreateOreExpansion.LOGGER.info("[SkillerRender] 已注册挖掘预览渲染器 id={}", CoeAreaAoeStrategy.RENDERER_ID);
     }
 }
