@@ -121,6 +121,8 @@ public class SkillsComponent implements OwnedBySkills {
         // 1. 过滤出满足释放条件的技能
         List<DataSkill> toRelease = new ArrayList<>(skills.size());
         for (DataSkill data : skills) {
+            // 已迁移到新内核（Skiller）的技能由新路径释放，旧框架必须跳过，否则双重生效
+            if (SkillMigrationGate.isMigrated(data.skill)) continue;
             if (data.skill.canRelease(context, data)) {
                 toRelease.add(data);
             }
@@ -168,6 +170,8 @@ public class SkillsComponent implements OwnedBySkills {
         if (skills == null || skills.isEmpty() || slot < 0 || slot >= skills.size()) return false;
 
         DataSkill data = skills.get(slot);
+        // 已迁移到新内核（Skiller）的技能由新路径释放，旧框架必须跳过，否则双重生效
+        if (SkillMigrationGate.isMigrated(data.skill)) return false;
         if (!data.skill.canRelease(context, data)) return false;
 
         ItemStack stack = skillStack.itemStack();
