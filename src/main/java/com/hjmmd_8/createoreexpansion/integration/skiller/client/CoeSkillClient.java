@@ -2,14 +2,17 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.leaf.skiller.client.ClientSkillCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+
+import java.util.Objects;
 
 /**
  * 客户端接线：把本模组的三个技能键位交给 Skiller，并保持"随时可用"的既有玩法。
@@ -42,8 +45,8 @@ public final class CoeSkillClient {
             AllKeys.SKILL_RELEASE_3
     };
 
-    /** 上一次看到的主手物品（用于判断"换工具"） */
-    private static ItemStack lastMainHand = ItemStack.EMPTY;
+    /** 上一次看到的技能组件（技能表/槽位的唯一来源；只比较它，不比较整个物品堆） */
+    private static SkillsComponent lastSkills;
 
     /** 键位注入只需要做一次 */
     private static boolean keySourceInjected;
@@ -58,21 +61,24 @@ public final class CoeSkillClient {
         Player player = minecraft.player;
         if (player == null || minecraft.level == null) {
             // 离开世界：清掉记录，下次进世界重新注入/刷新
-            lastMainHand = ItemStack.EMPTY;
+            lastSkills = null;
             return;
         }
 
         injectKeySourceOnce();
 
+        // 只比较「技能组件」而不是整个物品堆：能量消耗会改物品堆的其它组件，
+        // 若按物品堆比较，每次用技能都会触发一次重算（没必要且有分配开销）。
+        SkillsComponent current = SkillItemStack.of(player.getMainHandItem()).getSkillsHolder();
+
         if (!ClientSkillCache.isEnable()) {
             ClientSkillCache.enable(minecraft, player);
-            lastMainHand = player.getMainHandItem().copy();
+            lastSkills = current;
             return;
         }
 
-        ItemStack mainHand = player.getMainHandItem();
-        if (!ItemStack.matches(lastMainHand, mainHand)) {
-            lastMainHand = mainHand.copy();
+        if (!Objects.equals(lastSkills, current)) {
+            lastSkills = current;
             ClientSkillCache.refresh(player);
         }
     }
