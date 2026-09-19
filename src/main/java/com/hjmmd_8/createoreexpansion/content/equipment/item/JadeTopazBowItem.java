@@ -2,6 +2,11 @@ package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
+import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
+import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFactory;
+import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
+import net.minecraft.server.level.ServerPlayer;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
@@ -149,6 +154,16 @@ public class JadeTopazBowItem extends BowItem {
 		SkillItemStack skillStack = SkillItemStack.of(bow);
 		SkillsComponent holder = skillStack.getSkillsHolder();
 		if (holder == null) return;
+
+		// 新内核（Skiller）路径：已经迁移过去的弓技能由它执行（耗能/冷却/写标记都在技能里）。
+		// 放在旧路径之前 —— 旧 AllKeys 是纯客户端对象、专用服务器上恒为"未按下"；
+		// 两条路径不会重复：迁移闸门让旧路径跳过已注册进新内核的技能。
+		// 弓射击没有对应的 NeoForge 事件 → 用 noEvent + extraData 传弓（绝不能调 getEvent()）。
+		if (player instanceof ServerPlayer serverPlayer) {
+			CoeSkillRelease.release(serverPlayer, CoeSkillTypes.USE,
+					SkillContextEnvironment.noEvent(serverPlayer, serverPlayer.level())
+							.extraData(BowContextFactory.KEY_BOW, bow));
+		}
 
 		List<DataSkill> useSkills = holder.getDataSkills(SkillType.USE_SKILL);
 		if (slot >= useSkills.size()) return;

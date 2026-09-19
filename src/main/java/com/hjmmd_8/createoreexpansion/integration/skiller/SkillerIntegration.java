@@ -2,6 +2,8 @@ package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowShootSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitContextFactory;
@@ -9,6 +11,7 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContex
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BowShootItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.HoeItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.PlunderItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.SkinItemSkill;
@@ -80,7 +83,8 @@ public final class SkillerIntegration {
                     HitContextFactory.ID, HitContextFactory::new);
             event.register(SkillerRegistries.CONTEXT_FACTORY,
                     UseItemContextFactory.ID, UseItemContextFactory::new);
-            // TODO(W4)：注册 BOW（弓箭两段式）上下文工厂
+            event.register(SkillerRegistries.CONTEXT_FACTORY,
+                    BowContextFactory.ID, BowContextFactory::new);
             logRegistry("skill_context_factory", SkillerBuiltInRegistries.CONTEXT_FACTORIES.keySet().size());
             return;
         }
@@ -142,6 +146,13 @@ public final class SkillerIntegration {
         event.register(SkillerRegistries.SKILL, skillId("hoe"),
                 () -> new ItemSkillRegistration<UseItemSkillContext>(
                         CoeSkillTypes.USE, UseItemContextFactory.KEY, new HoeItemSkill()));
+        // 弓的两个技能：只迁"松手射击"这一段（耗能/冷却/写标记），"箭命中"那段仍在旧 handler 上
+        event.register(SkillerRegistries.SKILL, skillId("bow_curse"),
+                () -> new ItemSkillRegistration<BowShootSkillContext>(
+                        CoeSkillTypes.USE, BowContextFactory.KEY, BowShootItemSkill.CURSE));
+        event.register(SkillerRegistries.SKILL, skillId("bow_disarm"),
+                () -> new ItemSkillRegistration<BowShootSkillContext>(
+                        CoeSkillTypes.USE, BowContextFactory.KEY, BowShootItemSkill.DISARM));
     }
 
     /**
