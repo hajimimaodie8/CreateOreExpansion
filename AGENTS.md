@@ -120,7 +120,10 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 4. **老存档天然兼容**：旧数据组件 `createoreexpansion:skills` 与 NBT 格式（`Level`/`Config`/`OutlineColor`）**原样保留**，换的只是「谁解释这些数据」→ 不需要 DataFixer，也不会静默丢技能。
 5. **增量并行迁移**：技能注册进 `SkillerBuiltInRegistries.SKILLS` 就是新内核接管；没注册的由旧框架照旧处理（`CoeSkillProvider` 会跳过未注册的 id）→ 不会双重生效。
 6. **不要 Skiller 的「按 R 启用技能」总开关**（保持本模组随时可用的既有玩法）：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手物品调 `ClientSkillCache.refresh(player)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`，**不读** `ServerSkillCache`/`SkillReleaser`。
-7. **键位待拍板**：Skiller 的 `AllKeys` 默认槽位键 Ctrl/Shift/Alt、开关键 R/Y，与本仓「Shift/R/G」和 Create 的 Ctrl 冲突。
+7. **键位已定**：用本模组既有的 Shift/R/G —— 内核加了 `ClientSkillCache.setKeySource(...)` 注入点（消费方决定键位），`CoeSkillClient` 注入自己的键位并 `setToggleKeysEnabled(false)` 关掉内核的开关键闸（默认 R 会撞槽位 2）。
+8. **迁移进度（2026-09-19）**：已迁移 4/9 —— `shatter`/`channel`/`grade`（共用 `AreaAoeItemSkill` + `CoeAreaAoeStrategy`）、`fell`（`FellingItemSkill` + `CoeFellingStrategy`）。其余 5 个仍由旧框架处理。runData 自检日志 `[Skiller] registry event: skill -> entries=N` 是验证点。
+9. **扣能时机口径（易写歪，务必照做）**：旧实现是「策略算出**非空**集合之后才扣能」，而新内核顺序是 `consumeResource`（全部累加）→ `canConsume` → 落账 → 才 `release`。因此每个技能的 `consumeResource` 都必须先过 `CoeSkillSupport.willDoWork(...)`（有方块/实体版与通用版），否则"砍一块孤零零的原木""挖到空气"这类空结果场景会白掉一份能量。
+10. **冷却类技能要两处同判**：`consumeResource` 与 `release` 都判冷却（冷却中 `consumeResource` 直接不累加、`release` 直接返回），只有真正执行过才 `ToolSkillCooldown.start*`。只在 `release` 判 = 冷却期间每次触发都白扣能量。
 
 ## 🧠 记忆写入规则（用户明确要求，务必遵守）
 
