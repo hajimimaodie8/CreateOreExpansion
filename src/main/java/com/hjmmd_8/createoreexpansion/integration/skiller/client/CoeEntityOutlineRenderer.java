@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
+import com.hjmmd_8.createoreexpansion.client.tool.renderer.EntityOutlineRenderer;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.mixin.renderers.EntityRendererAccessor;
 import com.hjmmd_8.createoreexpansion.mixin.renderers.LivingEntityRendererAccessor;
@@ -93,6 +94,15 @@ public class CoeEntityOutlineRenderer implements StrategyRenderer<EntityOutlineR
             return;
         }
         Player player = context.getPlayer();
+
+        // **关键：把目标喂给发光钩子**。旧实现的"边缘发光"其实是两段配合：
+        //   ① 这里把实体塞进 EntityOutlineRenderer.glowingEntities；
+        //   ② mixin/renderers/MinecraftMixin 在 Minecraft#shouldEntityAppearGlowing 里读这个列表
+        //      （读过即移除），让实体走原版发光渲染（用我们设的 outline 颜色）。
+        // 我移植时只搬了"把模型画进 outline 缓冲"这一段，钩子没人喂 → 发光消失，
+        // 只剩整模型染成描边色的手动渲染 → 出来的效果就是"整只生物都变色了"。
+        EntityOutlineRenderer.glowingEntities.clear();
+        EntityOutlineRenderer.glowingEntities.add(livingEntity);
 
         // 相机位移（旧调度器统一做的这一步）
         Vec3 camPos = camera.getPosition();
