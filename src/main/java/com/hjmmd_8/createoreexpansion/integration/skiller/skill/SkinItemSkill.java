@@ -3,12 +3,15 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeEntityStrategy;
 import com.leaf.skiller.foundation.Consumable;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
-import com.leaf.skiller.foundation.skill.ItemSkill;
+import com.leaf.skiller.foundation.skill.StrategySkill;
+import com.leaf.skiller.foundation.strategy.SkillStrategy;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -46,15 +49,21 @@ import java.util.Objects;
  * </table>
  *
  * <p>旧 {@code SkinSkill} 挂的 {@code EntityStrategy} 只用于客户端实体描边预览
- * （它的 {@code calculate} 恒返回空集合），因此新实现不实现 {@code StrategySkill}：
- * 迁移期预览仍由旧渲染器提供（旧技能条目还在 {@code AllSkills} 里），W5 再统一补策略与渲染器。</p>
+ * （它的 {@code calculate} 恒返回空集合）。新实现同样实现 {@code StrategySkill} 并注册
+ * {@link CoeEntityStrategy}：**没有策略对象的话，内核的渲染调度认不出这个技能，
+ * 对着生物按住技能键不会有任何预选框**（这正是曾经漏掉的一环）。</p>
  *
  * @since 1.0.0
  */
-public class SkinItemSkill implements ItemSkill<HitSkillContext> {
+public class SkinItemSkill implements StrategySkill<Entity, HitSkillContext> {
 
     /** 本次释放 roll 出来的掉落数量（由 consumeResource 写入、release 读取） */
     private static final String SCRATCH_DROP_COUNT = "coe:skin_drop_count";
+
+    @Override
+    public ResourceKey<SkillStrategy<?, ?>> getStrategy() {
+        return CoeEntityStrategy.KEY;
+    }
 
     @Override
     public void release(HitSkillContext context, ISkillInstance<HitSkillContext> instance) {

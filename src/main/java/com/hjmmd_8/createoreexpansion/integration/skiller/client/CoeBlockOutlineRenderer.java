@@ -21,6 +21,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 import java.util.HashSet;
@@ -145,6 +146,14 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         float b = context.blue();
         float a = context.alpha();
 
+        // **必须做相机位移**：这一步原先在旧调度器 SkillsStrategyRenderer 里
+        // （pushPose → translate(-camPos.x, -camPos.y, -camPos.z) → 画 → popPose）。
+        // 移植时漏掉它的症状就是把世界坐标当成相机相对坐标画 → 框被画到"大约两倍距离"
+        // 的地方：又远又小、几乎看不见。
+        Vec3 camPos = camera.getPosition();
+        poseStack.pushPose();
+        poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
+
         // 第一层：不透明层（受深度测试影响）
         VertexConsumer solid = buffer.getBuffer(RenderType.LINES);
         OutlineRenderer.renderOutline(level, positions, poseStack, solid, r, g, b, a);
@@ -153,6 +162,8 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
         OutlineRenderer.renderOutline(level, positions, poseStack, transparent, r, g, b,
                 a * TRANSPARENT_ALPHA_FACTOR);
+
+        poseStack.popPose();
 
         // **必须自己冲刷**：新接口给的是原版 MultiBufferSource，没有人替我们 endBatch；
         // 旧实现收的是 Create 的 SuperRenderTypeBuffer 并显式 buffer.draw(type)，

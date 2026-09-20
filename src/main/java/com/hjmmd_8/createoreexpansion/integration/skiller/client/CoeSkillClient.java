@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
+import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeEntityStrategy;
 import com.leaf.skiller.client.ClientSkillCache;
 import com.leaf.skiller.client.renderer.StrategyRenderers;
 import net.minecraft.client.Minecraft;
@@ -76,12 +77,37 @@ public final class CoeSkillClient {
         if (!ClientSkillCache.isEnable()) {
             ClientSkillCache.enable(minecraft, player);
             lastSkills = current;
+            logCache("enable");
             return;
         }
 
         if (!Objects.equals(lastSkills, current)) {
             lastSkills = current;
             ClientSkillCache.refresh(player);
+            logCache("refresh(换工具)");
+        }
+    }
+
+    /**
+     * 临时诊断（定位完"预览不显示"后连同 CoeBlockOutlineRenderer 里的 trace 一起删）：
+     * 打印客户端技能缓存的实际内容 —— 它是 strategy 渲染调度的唯一来源。
+     * 若这里"实例数=0"，说明客户端根本没拿到技能，渲染器永远排不上。
+     */
+    private static void logCache(String reason) {
+        try {
+            var skills = ClientSkillCache.skills;
+            if (skills == null) {
+                CreateOreExpansion.LOGGER.info("[SkillerRender] 客户端技能缓存（{}）：null", reason);
+                return;
+            }
+            var all = skills.getAllData();
+            long strategyCount = all.stream()
+                    .filter(i -> i.skill() != null && i.skill().getSkill() instanceof com.leaf.skiller.foundation.skill.StrategySkill)
+                    .count();
+            CreateOreExpansion.LOGGER.info("[SkillerRender] 客户端技能缓存（{}）：槽位={}, 实例数={}, 其中策略技能={}",
+                    reason, skills.bindings().keySet(), all.size(), strategyCount);
+        } catch (Throwable t) {
+            CreateOreExpansion.LOGGER.warn("[SkillerRender] 客户端技能缓存诊断本身出错", t);
         }
     }
 
@@ -97,6 +123,9 @@ public final class CoeSkillClient {
         ClientSkillCache.setToggleKeysEnabled(false);
         // 策略渲染器注册：必须早于 ClientSkillCache.enable(...)（enable 内部会 schedule()）
         StrategyRenderers.register(CoeAreaAoeStrategy.RENDERER_ID, new CoeBlockOutlineRenderer());
-        CreateOreExpansion.LOGGER.info("[SkillerRender] 已注册挖掘预览渲染器 id={}", CoeAreaAoeStrategy.RENDERER_ID);
+        // 生物描边（skin / plunder）：id 与 CoeEntityStrategy.getRendererId() 对齐
+        StrategyRenderers.register(CoeEntityStrategy.RENDERER_ID, new CoeEntityOutlineRenderer());
+        CreateOreExpansion.LOGGER.info("[SkillerRender] 已注册预览渲染器：方块={}，生物={}",
+                CoeAreaAoeStrategy.RENDERER_ID, CoeEntityStrategy.RENDERER_ID);
     }
 }

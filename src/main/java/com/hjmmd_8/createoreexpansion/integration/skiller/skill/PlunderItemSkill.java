@@ -4,11 +4,15 @@ import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCoo
 import com.hjmmd_8.createoreexpansion.content.skill.LootDisposition;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeEntityStrategy;
 import com.leaf.skiller.foundation.Consumable;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
-import com.leaf.skiller.foundation.skill.ItemSkill;
+import com.leaf.skiller.foundation.skill.StrategySkill;
+import com.leaf.skiller.foundation.strategy.SkillStrategy;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -41,11 +45,17 @@ import net.minecraft.world.level.Level;
  *
  * @since 1.0.0
  */
-public class PlunderItemSkill implements ItemSkill<HitSkillContext> {
+public class PlunderItemSkill implements StrategySkill<Entity, HitSkillContext> {
 
     private static final EquipmentSlot[] ARMOR_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
     };
+
+    /** 实体策略只服务客户端描边预览；没有它，内核的渲染调度认不出本技能（不会有预选框）。 */
+    @Override
+    public ResourceKey<SkillStrategy<?, ?>> getStrategy() {
+        return CoeEntityStrategy.KEY;
+    }
 
     @Override
     public void release(HitSkillContext context, ISkillInstance<HitSkillContext> instance) {

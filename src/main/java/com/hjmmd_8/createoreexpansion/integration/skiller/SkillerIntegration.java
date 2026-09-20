@@ -17,6 +17,7 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.skill.PlunderItemSkill
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.SkinItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.FellingItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
+import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeEntityStrategy;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeFellingStrategy;
 import com.leaf.skiller.api.registry.SkillerBuiltInRegistries;
 import com.leaf.skiller.api.registry.SkillerRegistries;
@@ -103,6 +104,9 @@ public final class SkillerIntegration {
                     CoeAreaAoeStrategy.ID, CoeAreaAoeStrategy::new);
             event.register(SkillerRegistries.STRATEGY,
                     CoeFellingStrategy.ID, CoeFellingStrategy::new);
+            // 实体策略：只服务客户端描边预览（skin / plunder 靠它换来"对着生物有预选框"）
+            event.register(SkillerRegistries.STRATEGY,
+                    CoeEntityStrategy.ID, CoeEntityStrategy::new);
             return;
         }
 
