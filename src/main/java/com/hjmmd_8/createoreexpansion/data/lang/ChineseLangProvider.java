@@ -186,6 +186,14 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.skill_release", "技能释放1（第一技能）");
         add("createoreexpansion.keyinfo.skill_release_2", "技能释放 2（第二技能）");
         add("createoreexpansion.keyinfo.skill_release_3", "技能释放 3（第三技能）");
+        add("createoreexpansion.keyinfo.skill_settings", "技能设置");
+
+        // ========== 技能设置界面 ==========
+        add("createoreexpansion.skill_settings.title", "技能设置");
+        add("createoreexpansion.skill_settings.hint", "该项由服务端保存到存档，对所有玩家生效。");
+        add("createoreexpansion.skill_settings.consume_creative.on", "创造模式释放技能消耗能量：开");
+        add("createoreexpansion.skill_settings.consume_creative.off", "创造模式释放技能消耗能量：关");
+        add("createoreexpansion.skill_settings.done", "完成");
 
         // ========== 工具/技能 tooltip ==========
         add("item.createoreexpansion.tool.skill_tips", "按住 [%s] 可查看技能概要");

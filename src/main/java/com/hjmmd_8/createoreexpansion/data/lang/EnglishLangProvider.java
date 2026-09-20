@@ -264,6 +264,14 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.skill_release", "Release skill");
         add("createoreexpansion.keyinfo.skill_release_2", "Release skill 2 (2nd skill)");
         add("createoreexpansion.keyinfo.skill_release_3", "Release skill 3 (3rd skill)");
+        add("createoreexpansion.keyinfo.skill_settings", "Skill Settings");
+
+        // ========== Skill settings screen ==========
+        add("createoreexpansion.skill_settings.title", "Skill Settings");
+        add("createoreexpansion.skill_settings.hint", "Stored server-side in the world save; applies to all players.");
+        add("createoreexpansion.skill_settings.consume_creative.on", "Consume energy in creative: ON");
+        add("createoreexpansion.skill_settings.consume_creative.off", "Consume energy in creative: OFF");
+        add("createoreexpansion.skill_settings.done", "Done");
 
         // ========== 工具/技能 tooltip ==========
         add("item.createoreexpansion.tool.skill_tips", "Hold [%s] for Skills Summary");

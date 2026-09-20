@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.client.SkillSettingsScreen;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
@@ -8,6 +9,7 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStr
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeEntityStrategy;
 import com.leaf.skiller.client.ClientSkillCache;
 import com.leaf.skiller.client.renderer.StrategyRenderers;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.api.distmarker.Dist;
@@ -61,6 +63,7 @@ public final class CoeSkillClient {
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
+        handleSettingsKey(minecraft);
         Player player = minecraft.player;
         if (player == null || minecraft.level == null) {
             // 离开世界：清掉记录，下次进世界重新注入/刷新
@@ -85,6 +88,33 @@ public final class CoeSkillClient {
             lastSkills = current;
             ClientSkillCache.refresh(player);
             logCache("refresh(换工具)");
+        }
+    }
+
+    /**
+     * 「技能设置」键（默认 J）：按下开 {@link SkillSettingsScreen}。
+     *
+     * <p>两个必须的写法：</p>
+     * <ul>
+     *     <li>{@code while (consumeClick())} 而不是 {@code isDown()}——后者是"按住"
+     *         状态，会在界面关掉之后继续生效、把界面又弹回来。</li>
+     *     <li><b>只在没有任何界面打开时开</b>（{@code screen == null}）：否则会和背包、
+     *         Create 的界面打架（在那些界面里按 J 不该弹这个）。点击计数在界面打开期间
+     *         本来就不会累积，这里的判断是双保险。</li>
+     * </ul>
+     *
+     * <p>键位对象只在客户端由 {@code RegisterKeyMappingsEvent} 赋值，因此照 {@link AllKeys}
+     * 的既有约定做 null 保护（服务端/未注册时视为没按）。</p>
+     */
+    private static void handleSettingsKey(Minecraft minecraft) {
+        KeyMapping key = AllKeys.SKILL_SETTINGS.getKeybind();
+        if (key == null) {
+            return;
+        }
+        while (key.consumeClick()) {
+            if (minecraft.player != null && minecraft.screen == null) {
+                minecraft.setScreen(new SkillSettingsScreen());
+            }
         }
     }
 

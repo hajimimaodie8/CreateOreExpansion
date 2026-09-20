@@ -23,6 +23,9 @@ public enum AllKeys implements Translatable {
     SKILL_RELEASE_2("skill_release_2", GLFW.GLFW_KEY_R, "Skill Release 2"),
     /** 第三技能释放键（键三释放第 3 个技能），默认 G，玩家可自定义 */
     SKILL_RELEASE_3("skill_release_3", GLFW.GLFW_KEY_G, "Skill Release 3"),
+    /** 技能设置：打开本模组的小设置界面（"创造模式释放技能是否消耗能量"开关），默认 J
+     *  ——J 与最常用的 WASD/E/R/G/C/空格/Shift/Ctrl 都不冲突，也在 Create 自己的键位之外 */
+    SKILL_SETTINGS("skill_settings", GLFW.GLFW_KEY_J, "Skill Settings"),
     ;
 
     public static final Translatable MOD_NAME_TRANSLATABLE = () -> "createoreexpansion.mod_name";
