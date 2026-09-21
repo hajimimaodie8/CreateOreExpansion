@@ -54,6 +54,12 @@ public final class SableSubLevelBridge implements SubLevelBridge {
 		return SablePose.toWorld(hit, localPos);
 	}
 
+	/** 渲染用（客户端按 partialTick 插值）：预览框与结构本体必须用同一条位姿。 */
+	@Override
+	public Vec3 toWorld(Hit hit, Vec3 localPos, float partialTick) {
+		return SablePose.toWorld(hit, localPos, partialTick);
+	}
+
 	@Override
 	public Vec3 toLocal(Hit hit, Vec3 worldPos) {
 		return SablePose.toLocal(hit, worldPos);

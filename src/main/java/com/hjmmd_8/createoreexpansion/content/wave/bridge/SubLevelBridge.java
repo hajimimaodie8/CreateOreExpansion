@@ -54,6 +54,23 @@ public interface SubLevelBridge {
 	/** 本地坐标 → 世界坐标（位置变换）。 */
 	Vec3 toWorld(Hit hit, Vec3 localPos);
 
+	/**
+	 * 本地坐标 → 世界坐标（<b>渲染用</b>，含亚刻插值）。
+	 *
+	 * <p>结构在移动时，客户端每 tick 只更新一次"逻辑位姿"（{@link #toWorld} 用的就是它），
+	 * 而结构本体是按<b>渲染位姿</b>（在上一 tick 与当前 tick 之间插值）画出来的。
+	 * 预览框若用逻辑位姿，会稳定地领先/落后结构最多一个 tick 的位移——结构越快越明显。
+	 * 所以画框要跟结构本体用同一条位姿。</p>
+	 *
+	 * <p>默认实现忽略插值、退化为 {@link #toWorld(Hit, Vec3)}：服务端、无客户端插值实现、
+	 * 以及任何只实现本接口子集的场景，行为与不调用本方法完全一致。</p>
+	 *
+	 * @param partialTick 当前帧的部分刻（{@code DeltaTracker#getGameTimeDeltaPartialTick(true)}）
+	 */
+	default Vec3 toWorld(Hit hit, Vec3 localPos, float partialTick) {
+		return toWorld(hit, localPos);
+	}
+
 	/** 世界坐标 → 本地坐标（位置逆变换）。 */
 	Vec3 toLocal(Hit hit, Vec3 worldPos);
 

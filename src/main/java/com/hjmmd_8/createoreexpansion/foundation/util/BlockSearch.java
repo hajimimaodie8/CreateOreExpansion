@@ -11,6 +11,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
@@ -37,6 +38,22 @@ public final class BlockSearch {
      */
     public static Set<BlockPos> collect(Level level, BlockPos start, int maxBlocks, int searchRange,
                                         Predicate<BlockState> predicate) {
+        return collect(start, maxBlocks, searchRange, predicate, level::getBlockState);
+    }
+
+    /**
+     * 与 {@link #collect(Level, BlockPos, int, int, Predicate)} 同算法，但方块状态由调用方提供。
+     *
+     * <p>用于<b>物理结构（sub-level）</b>场景：结构上的方块在结构本地子世界里，
+     * 主世界 {@code Level} 在那些坐标上读不到（会得到空气），必须由上层用
+     * {@code ExcavationSkillContext#blockState(...)}（经 Sable 桥接）来读。
+     * 旧签名保留不动，旧调用方行为零变化。</p>
+     *
+     * @param stateAt 坐标 → 方块状态（结构场景传 {@code context::blockState}）
+     */
+    public static Set<BlockPos> collect(BlockPos start, int maxBlocks, int searchRange,
+                                        Predicate<BlockState> predicate,
+                                        Function<BlockPos, BlockState> stateAt) {
         Set<BlockPos> result = new HashSet<>();
         Queue<BlockPos> queue = new LinkedList<>();
         queue.add(start);
@@ -46,7 +63,7 @@ public final class BlockSearch {
             BlockPos current = queue.poll();
             for (BlockPos neighbor : neighbors(current)) {
                 if (result.contains(neighbor) || !withinRange(neighbor, start, searchRange)) continue;
-                if (predicate.test(level.getBlockState(neighbor))) {
+                if (predicate.test(stateAt.apply(neighbor))) {
                     result.add(neighbor);
                     queue.add(neighbor);
                 }

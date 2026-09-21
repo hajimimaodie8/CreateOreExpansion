@@ -69,7 +69,7 @@ public class CoeAreaAoeStrategy implements SkillStrategy<BlockPos, ExcavationSki
         if (config == null || context.level() == null || config.mineableTag == null) {
             return false;
         }
-        BlockState state = context.level().getBlockState(context.pos());
+        BlockState state = context.blockState(context.pos());
         return state.is(config.mineableTag);
     }
 

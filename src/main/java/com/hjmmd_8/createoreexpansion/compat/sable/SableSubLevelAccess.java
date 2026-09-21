@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge.Hit;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
+import dev.ryanhcode.sable.sublevel.SubLevel;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
@@ -19,12 +20,19 @@ import java.util.List;
 /**
  * sub-level 容器访问 —— 遍历、命中检测、BE 匹配与本地方块读取。
  *
- * <p><b>命中检测</b>（query）：把波中心换算到结构本地坐标后反查波盒覆盖的方块是否非空气——
+ * <p><b>命中检测</b>（query）：把波中心/准星命中点换算到结构本地坐标后反查覆盖的方块是否非空气——
  * 不依赖 {@code boundingBox()}（结构旋转/移动时滞后），也不依赖 {@code plot.contains}
- * 以外的范围 API。命中 = 波盒确实压着结构方块，与主世界判定的几何语义一致。</p>
+ * 以外的范围 API。命中 = 采样点确实压着结构方块，与主世界判定的几何语义一致。</p>
+ *
+ * <p><b>双端</b>：服务端走服务端容器（波飞行判定），客户端走客户端容器
+ * （方块挖掘预览的准星命中判定）——两端都经 {@code SubLevelContainer.getContainer(Level)}
+ * 取容器（服务端/客户端容器都是它的子类），遍历的成员统一按基类 {@link SubLevel} 处理；
+ * <b>故意不 import 任何 {@code net.minecraft.client.*}</b>：本类是 common 源码，
+ * 专用服务器上不允许出现客户端类引用（未装/未就绪时容器为 null，返回空表）。</p>
  *
  * <p><b>BE 匹配</b>（ofBlockEntity）：BE 位置落在该 sub-level 的 plot 水平范围内即匹配——
- * 不能用 {@code beLevel == sub.getLevel()}（sub.getLevel() 就是主世界，误匹配所有主世界 BE）。</p>
+ * 不能用 {@code beLevel == sub.getLevel()}（sub.getLevel() 就是主世界，误匹配所有主世界 BE）。
+ * 该用途只发生在服务端，仍只遍历服务端容器。</p>
  */
 final class SableSubLevelAccess {
 
@@ -40,20 +48,33 @@ final class SableSubLevelAccess {
 	}
 
 	/**
-	 * 世界坐标命中检测：波中心落在某结构（sub-level）的实体方块上。
+	 * 任意端（服务端/客户端）的全部 sub-level；容器取不到时返回空表。
 	 *
-	 * @param worldLevel 主世界（波所在）
-	 * @param worldPos   波中心（世界坐标）
+	 * <p>成员按共同基类 {@link SubLevel} 返回：位姿换算、plot 读写都只用到基类 API，
+	 * 因此客户端预览能与服务端波判定共用下面同一段命中逻辑。</p>
+	 */
+	static List<? extends SubLevel> subLevelsOf(Level level) {
+		if (level == null)
+			return List.of();
+		SubLevelContainer container = SubLevelContainer.getContainer(level);
+		return container == null ? List.of() : container.getAllSubLevels();
+	}
+
+	/**
+	 * 世界坐标命中检测：采样点落在某结构（sub-level）的实体方块上。
+	 *
+	 * @param worldLevel 主世界（波所在）或客户端世界（预览准星所在）
+	 * @param worldPos   采样点（世界坐标）
 	 * @return 命中的 sub-level；未命中返回 null
 	 */
 	static Hit query(Level worldLevel, Vec3 worldPos) {
-		if (!(worldLevel instanceof ServerLevel serverLevel))
+		if (worldLevel == null || worldPos == null)
 			return null;
-		List<ServerSubLevel> subs = allSubLevels(serverLevel);
-		for (ServerSubLevel sub : subs) {
-			if (sub.isRemoved())
+		List<? extends SubLevel> subs = subLevelsOf(worldLevel);
+		for (SubLevel sub : subs) {
+			if (sub.isRemoved() || sub.getPlot() == null)
 				continue;
-			// 波中心换算到结构本地坐标（绝对 plot 坐标），反查波盒（半宽 0.1，波 sized 0.2）覆盖的方块
+			// 采样点换算到结构本地坐标（绝对 plot 坐标），反查其覆盖的方块
 			Vec3 local = sub.logicalPose()
 				.transformPositionInverse(worldPos);
 			double h = 0.1;

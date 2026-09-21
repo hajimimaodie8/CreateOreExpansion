@@ -4,6 +4,8 @@ import com.hjmmd_8.createoreexpansion.client.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.client.tool.OutlineRenderer;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.leaf.skiller.foundation.renderer.StrategyRenderer;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
@@ -23,6 +25,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import org.joml.Matrix4f;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -46,6 +49,19 @@ import java.util.Set;
  *       所以颜色在 {@link #getContext} 里读 {@code OutlineColor} 子标签，默认白色 +
  *       {@link SkillRendererConfig#ALPHA}（与旧 {@code defaultConfig} 兜底一致）。</li>
  * </ul>
+ *
+ * <h2>物理结构（Sable / 航空学 sub-level）</h2>
+ * <p>结构上的方块被搬到了虚拟子世界（plot，pose 本地系），主世界那些坐标上什么都没有。
+ * 因此准星命中结构时整条链路都换到<b>结构局部空间</b>：</p>
+ * <ol>
+ *   <li>{@link #getContext}：命中点经桥接 {@code query} → 局部中心（{@code toLocal}）→
+ *       策略在局部空间算集合（方块状态经 {@code context.blockState(...)} 读结构子世界）；</li>
+ *   <li>{@link #render}：{@code localToWorld} 拼出"列 = 三个基向量、平移 = 局部原点世界位置"
+ *       的仿射矩阵，在<b>相机位移之后</b> {@code mulPose}，然后仍按局部坐标照旧画两层
+ *       （合并必须发生在局部空间：先转世界坐标再合并，旋转后的 AABB 不再轴对齐、框会碎）。</li>
+ * </ol>
+ * <p>未装 Sable（{@link SableBridges#get()} 为 null）时：不查询、不加矩阵、不走局部渲染分支，
+ * 与改动前逐字一致。</p>
  *
  * @since 1.0.0
  */
@@ -92,9 +108,21 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
             trace("getContext: 准星没落在方块上");
             return Optional.empty();
         }
-        BlockPos center = blockHit.getBlockPos();
+        BlockPos center;
+        // 物理结构（Sable / 航空学 sub-level）：准星命中结构方块时，中心与整个"挖哪些"
+        // 的计算都改到**结构局部空间**（结构方块被搬到了虚拟子世界，主世界那些坐标上什么都没有）。
+        // 未装 Sable（桥接为 null）或没命中结构 → structureHit 恒为 null，走原来的世界坐标路径。
+        SubLevelBridge bridge = SableBridges.get();
+        SubLevelBridge.Hit structureHit = bridge == null ? null : bridge.query(level, blockHit.getLocation());
+        if (structureHit != null) {
+            center = resolveLocalCenter(bridge, structureHit,
+                    bridge.toLocal(structureHit, blockHit.getLocation()));
+            trace("getContext: 命中物理结构，中心(局部)=" + center);
+        } else {
+            center = blockHit.getBlockPos();
+        }
         ExcavationSkillContext probe = new ExcavationSkillContext(
-                level, center, player.getMainHandItem(), player);
+                level, center, player.getMainHandItem(), player, structureHit);
 
         if (!(instance.skill().getSkill() instanceof StrategySkill<?, ?> strategySkill)) {
             trace("getContext: 技能本体不是 StrategySkill");
@@ -128,7 +156,35 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         trace("getContext: 产出预览，方块数=" + positions.size()
                 + "，颜色=(" + red + "," + green + "," + blue + ")");
         return Optional.of(new BlockOutlineRenderContext(
-                player, positions, red, green, blue, SkillRendererConfig.ALPHA));
+                player, positions, red, green, blue, SkillRendererConfig.ALPHA, structureHit));
+    }
+
+    /**
+     * 把「世界命中点换算出的局部坐标」落成一个<b>实心</b>的结构本地 BlockPos。
+     *
+     * <p>为什么不能直接 {@code BlockPos.containing(local)}：准星命中点在方块<b>面</b>上
+     * （世界坐标里正好落在整数边界），结构又可能带任意旋转，直接取整会取到空气邻居
+     * → 策略的"中心方块可挖"判定失败、预览整个消失。所以在命中点周围 3×3×3 里
+     * 找最近的非空气方块，一个都没有才退回取整结果。</p>
+     */
+    private static BlockPos resolveLocalCenter(SubLevelBridge bridge, SubLevelBridge.Hit hit, Vec3 localPoint) {
+        BlockPos guess = BlockPos.containing(localPoint);
+        if (!bridge.getBlockState(hit, guess).isAir()) {
+            return guess;
+        }
+        BlockPos best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (BlockPos candidate : BlockPos.betweenClosed(guess.offset(-1, -1, -1), guess.offset(1, 1, 1))) {
+            if (bridge.getBlockState(hit, candidate).isAir()) {
+                continue;
+            }
+            double dist = Vec3.atCenterOf(candidate).distanceToSqr(localPoint);
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = candidate.immutable();
+            }
+        }
+        return best != null ? best : guess;
     }
 
     @Override
@@ -146,6 +202,9 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         float b = context.blue();
         float a = context.alpha();
 
+        SubLevelBridge bridge = SableBridges.get();
+        SubLevelBridge.Hit structureHit = bridge == null ? null : context.subLevelHit();
+
         // **必须做相机位移**：这一步原先在旧调度器 SkillsStrategyRenderer 里
         // （pushPose → translate(-camPos.x, -camPos.y, -camPos.z) → 画 → popPose）。
         // 移植时漏掉它的症状就是把世界坐标当成相机相对坐标画 → 框被画到"大约两倍距离"
@@ -154,20 +213,69 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         poseStack.pushPose();
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
 
-        // 第一层：不透明层（受深度测试影响）
-        VertexConsumer solid = buffer.getBuffer(RenderType.LINES);
-        OutlineRenderer.renderOutline(level, positions, poseStack, solid, r, g, b, a);
+        if (structureHit != null) {
+            // 结构场景：positions 是**结构局部坐标**，先乘上"局部 → 世界"的位姿矩阵再画。
+            // 位姿用结构本体的**渲染位姿**（含 partialTick 插值），结构与框才会严格对齐、
+            // 并且结构移动时框跟着一起动，不会领先/落后一个 tick。
+            poseStack.mulPose(localToWorld(bridge, structureHit, mc));
 
-        // 第二层：半透明穿透层（渲染类型自带无深度写入/测试）
-        VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
-        OutlineRenderer.renderOutline(level, positions, poseStack, transparent, r, g, b,
-                a * TRANSPARENT_ALPHA_FACTOR);
+            // 合并/去内部边必须在**局部空间**做完（先转世界坐标再合并，旋转后的 AABB 不再轴对齐、
+            // 框会碎），所以这里仍按局部坐标交给 OutlineRenderer。
+            // 能直接复用它的原因：结构局部系就是 Sable 的 plot 坐标系，而
+            // EmbeddedPlotLevelAccessor#getBlockState(p) 的实现就是 level.getBlockState(p + plot 中心)——
+            // 即局部坐标本来就落在同一个 Level 里，它的"空气过滤"读到的正是结构方块，依旧成立。
+            draw(level, positions, poseStack, buffer, r, g, b, a);
+
+            poseStack.popPose();
+            flush(buffer);
+            return;
+        }
+
+        draw(level, positions, poseStack, buffer, r, g, b, a);
 
         poseStack.popPose();
 
-        // **必须自己冲刷**：新接口给的是原版 MultiBufferSource，没有人替我们 endBatch；
-        // 旧实现收的是 Create 的 SuperRenderTypeBuffer 并显式 buffer.draw(type)，
-        // 所以以前能显示、现在算完却什么都看不到。按 RenderType 立即结算这两批。
+        flush(buffer);
+    }
+
+    /** 照旧画两层：不透明层（受深度测试影响）+ 半透明穿透层（渲染类型自带无深度写入/测试）。 */
+    private static void draw(ClientLevel level, Set<BlockPos> positions, PoseStack poseStack,
+                             MultiBufferSource buffer, float r, float g, float b, float a) {
+        VertexConsumer solid = buffer.getBuffer(RenderType.LINES);
+        OutlineRenderer.renderOutline(level, positions, poseStack, solid, r, g, b, a);
+
+        VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
+        OutlineRenderer.renderOutline(level, positions, poseStack, transparent, r, g, b,
+                a * TRANSPARENT_ALPHA_FACTOR);
+    }
+
+    /**
+     * 结构"局部 → 世界"的仿射矩阵（列 = 三个基向量，平移 = 局部原点的世界位置）。
+     *
+     * <p>位姿是仿射的：{@code W(p) = M·p + t}，因此只需问桥接三个问题——
+     * 局部原点、局部 (1,0,0)/(0,1,0)/(0,0,1) 的世界位置，基向量由它们与原点之差得到
+     * （等价于 {@code toWorldDir}，但保证基向量与平移出自<b>同一条位姿</b>）。</p>
+     */
+    private static Matrix4f localToWorld(SubLevelBridge bridge, SubLevelBridge.Hit hit, Minecraft mc) {
+        float partialTick = mc.getTimer().getGameTimeDeltaPartialTick(true);
+        Vec3 origin = bridge.toWorld(hit, Vec3.ZERO, partialTick);
+        Vec3 ex = bridge.toWorld(hit, new Vec3(1.0D, 0.0D, 0.0D), partialTick).subtract(origin);
+        Vec3 ey = bridge.toWorld(hit, new Vec3(0.0D, 1.0D, 0.0D), partialTick).subtract(origin);
+        Vec3 ez = bridge.toWorld(hit, new Vec3(0.0D, 0.0D, 1.0D), partialTick).subtract(origin);
+        // JOML 构造器是行主序（m00, m01, ... ），这里按"列 = 基向量"填写
+        return new Matrix4f(
+                (float) ex.x, (float) ey.x, (float) ez.x, (float) origin.x,
+                (float) ex.y, (float) ey.y, (float) ez.y, (float) origin.y,
+                (float) ex.z, (float) ey.z, (float) ez.z, (float) origin.z,
+                0.0F, 0.0F, 0.0F, 1.0F);
+    }
+
+    /**
+     * **必须自己冲刷**：新接口给的是原版 MultiBufferSource，没有人替我们 endBatch；
+     * 旧实现收的是 Create 的 SuperRenderTypeBuffer 并显式 buffer.draw(type)，
+     * 所以以前能显示、现在算完却什么都看不到。按 RenderType 立即结算这两批。
+     */
+    private static void flush(MultiBufferSource buffer) {
         if (buffer instanceof MultiBufferSource.BufferSource bufferSource) {
             bufferSource.endBatch(RenderType.LINES);
             bufferSource.endBatch(AllRenderTypes.LINES_TRANSPARENT);

@@ -53,9 +53,11 @@ public class CoeFellingStrategy implements SkillStrategy<BlockPos, ExcavationSki
         if (config == null || level == null || center == null) {
             return;
         }
-        // 与旧 FellingStrategy#calculateTreeBlocks 一致：BFS 结果里去掉起点自身
-        Set<BlockPos> found = BlockSearch.collect(level, center, config.maxBlocks, config.searchRange,
-                config.predicate);
+        // 与旧 FellingStrategy#calculateTreeBlocks 一致：BFS 结果里去掉起点自身。
+        // 方块状态一律经 context.blockState(...) 取——结构场景由它路由到结构本地子世界，
+        // 主世界场景它就是 level.getBlockState(...)，与旧签名旧行为完全一致。
+        Set<BlockPos> found = BlockSearch.collect(center, config.maxBlocks, config.searchRange,
+                config.predicate, context::blockState);
         found.remove(center);
         set.addAll(found);
     }
@@ -69,7 +71,7 @@ public class CoeFellingStrategy implements SkillStrategy<BlockPos, ExcavationSki
         if (configOf(context, instance) == null || context.level() == null || context.pos() == null) {
             return false;
         }
-        return FellingConfig.BlockPredicate.IS_LOG.test(context.level().getBlockState(context.pos()));
+        return FellingConfig.BlockPredicate.IS_LOG.test(context.blockState(context.pos()));
     }
 
     @Override
