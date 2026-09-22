@@ -265,6 +265,11 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 */
 	public TransmuterMode cycleMode() {
 		mode = mode.next();
+		if (level != null && !level.isClientSide)
+			// 进入新模式的一次性动作（规格 1：攻击波变态强制 4 个波口全开）。
+			// 由模式自报（TransmuterMode#onEnter）——本类刻意不写 if (mode == ATTACK)，
+			// 与 fieldIntervalTicks()/locksWavePorts() 同一约定：模式行为收在模式常量体里。
+			mode.onEnter(level, worldPosition);
 		notifyUpdate();
 		return mode;
 	}

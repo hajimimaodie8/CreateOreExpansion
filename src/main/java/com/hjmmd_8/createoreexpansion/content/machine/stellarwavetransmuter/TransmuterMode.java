@@ -31,13 +31,17 @@ import net.minecraft.world.phys.AABB;
  *       <b>面开关也不拦波</b>（波照常飞过去）；同时变器自身成为<b>攻击场</b>：读取半径内
  *       <b>确实穿过场</b>的普通波被点燃成攻击波（{@link WaveTypes#ATTACK}；查询框按"两次扫描
  *       之间波最多能走的距离"外扩，穿过与否另按线段判定，见 {@link #applyField}）。
- *       攻击波是纯攻击、不参与加工（加工路径已由波基类按波型闸门挡住，本模式不提供任何加工逻辑）。</li>
+ *       攻击波是纯攻击、不参与加工（加工路径已由波基类按波型闸门挡住，本模式不提供任何加工逻辑）。
+ *       <b>进入本模式时 4 个波口被无条件强制全开、之后就锁死不可切换</b>（见 {@link #onEnter} /
+ *       {@link #locksWavePorts()}）。</li>
  * </ul>
  *
  * <p><b>与波口开关的区别</b>：模式 = "变器怎么处理波"，存在方块实体里，扳手右键切换
  * （NBT + 同步包，见 {@link StellarWaveTransmuterBlockEntity#cycleMode()}）；
  * 波口开关 = "哪一面让波进出"，存在 blockstate 里，空手右键切换
- * （见 {@link StellarWaveTransmuterBlock}）。两者互不干涉。</p>
+ * （见 {@link StellarWaveTransmuterBlock}）。两者互不干涉，<b>唯一交叉点</b>是"进入攻击波变态时
+ * 强制把四口全开"（{@link #onEnter}）；从攻击态切回其它模式<b>不恢复旧值</b>，四口就保持全开，
+ * 玩家可以再手动开关。</p>
  *
  * <p><b>中立性</b>：只用原版 / Create 基础类型，不 import 任何可选联动模组。</p>
  */
@@ -143,6 +147,21 @@ public enum TransmuterMode {
 		public boolean locksWavePorts() {
 			return true;
 		}
+
+		/**
+		 * <b>进入攻击波变态时：4 个波口无条件强制开放</b>（用户 2026-09 规格 1）。
+		 *
+		 * <p>"无论四个面原本是什么状态，都强制切换为开放"——所以这里不是"恢复上一次的值"，
+		 * 而是把四个口<b>写死为全开</b>（实现见
+		 * {@link StellarWaveTransmuterBlock#forceAllPortsOpen}，四口批量置位只有那一处）。</p>
+		 *
+		 * <p>它和 {@link #locksWavePorts()} 是同一件事的两半：<b>进来时强制全开</b>、
+		 * <b>在里面时锁死不给改</b>。两者都由本常量体自报，调用方一行判断都没有。</p>
+		 */
+		@Override
+		public void onEnter(Level level, BlockPos pos) {
+			StellarWaveTransmuterBlock.forceAllPortsOpen(level, pos);
+		}
 	};
 
 	/** 稳定的模式标识：NBT 落盘与翻译键后缀共用，等价于存档格式的一部分（改它要同时处理老存档）。 */
@@ -240,6 +259,23 @@ public enum TransmuterMode {
 	 */
 	public boolean locksWavePorts() {
 		return false;
+	}
+
+	/**
+	 * <b>进入本模式时的一次性动作</b>（默认什么都不做）。
+	 *
+	 * <p>由<b>模式常量体自报</b>，调用方只有一处——{@code StellarWaveTransmuterBlockEntity#cycleMode()}
+	 * 切完模式后调一次，<b>不写 {@code if (mode == ATTACK)}</b>（与
+	 * {@link #fieldIntervalTicks()} / {@link #locksWavePorts()} 同一约定）；以后再加"进入时要布置
+	 * 点什么"的模式，只需在该常量体里覆写本方法，切模式代码一行都不用改。</p>
+	 *
+	 * <p><b>只在服务端调用</b>（模式本身是方块实体状态、只在服务端切换），实现方可以按服务端权威
+	 * 直接改世界（例如攻击波变态强制四口全开，见 {@link #locksWavePorts()} 的常量体）。</p>
+	 *
+	 * @param level 世界（服务端）
+	 * @param pos   本机方块位置
+	 */
+	public void onEnter(Level level, BlockPos pos) {
 	}
 
 	// ================= 攻击场的几何（各项口径只有一处实现，改动只发生在这里） =================

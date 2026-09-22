@@ -68,6 +68,12 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  *       （见 {@link TransmuterMode}）。扳手<b>不再旋转朝向</b>（放置时自动对轴）。</li>
  * </ul>
  *
+ * <p><b>2026-09 三条规格（用户定稿）</b>：① <b>进入攻击波变态时无条件把 4 个口强制打开</b>
+ * （进入模式的动作为模式自报，见 {@link TransmuterMode#onEnter} → {@link #forceAllPortsOpen}）；
+ * ② 攻击态下空手右键<b>不改口、也不出开关音效</b>（{@link #toggleWavePort} 的锁口分支在音效之前
+ * 返回）；③ <b>放置时四口默认全关</b>（{@link #getStateForPlacement}）——但 blockstate 默认值
+ * 仍保持全开，因为它是老存档缺 {@code open_*} 键时的回退值（理由见构造器注释）。</p>
+ *
  * <p><b>工作原理简述</b>：接入应力后按扫描半径快照周边加工机器（见
  * {@link StellarWaveTransmuterBlockEntity}）；经过的能量波被附加扫描到的全部
  * 加工属性后从对侧穿出，命中物品即远程执行链式加工。</p>
@@ -92,8 +98,11 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 
 	public StellarWaveTransmuterBlock(Properties properties) {
 		super(properties);
-		// 默认四面全开：与旧版（尚无开口概念时，水平四面恒可穿）行为保持一致，
-		// 避免升级后老存档里的波立刻撞墙、也避免新放置机器"看起来能用但波不穿"。
+		// 方块状态的"默认值"保持四面全开——**不要**因为"放置默认全关"（规格 3）就一起改成全关：
+		// 这个默认值同时是"存档 / 结构 NBT 里缺 open_* 键时的回退值"（原版 NbtUtils.readBlockState
+		// 从 block.defaultBlockState() 起算、再逐个覆盖 NBT 里确实存在的属性），改它会让早于这四个
+		// 属性存在的老存档机器在升级后静默变成四口全关。用户只要求"放置时全关"，所以放置路径由
+		// getStateForPlacement 单独覆盖（唯一改动点），本默认值原样不动。
 		// 注意：差波器/六面差波器的默认是"全关"，本机刻意不同（理由见上）。
 		registerDefaultState(defaultBlockState()
 			.setValue(FACING, Direction.UP)
@@ -120,10 +129,13 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 		// 自动对轴（同充能器/场控）：getPreferredFacing 返回相邻传动轴所在侧；本机轴口在
 		// FACING 反面，故 FACING 取 preferred 的反方向，让轴口自动扣住相邻传动轴。
 		Direction preferred = getPreferredFacing(context);
-		if ((context.getPlayer() != null && context.getPlayer()
-			.isShiftKeyDown()) || preferred == null)
-			return super.getStateForPlacement(context);
-		return defaultBlockState().setValue(FACING, preferred.getOpposite());
+		BlockState placed = (context.getPlayer() != null && context.getPlayer()
+			.isShiftKeyDown()) || preferred == null
+				? super.getStateForPlacement(context)
+				: defaultBlockState().setValue(FACING, preferred.getOpposite());
+		// 规格 3（放置默认）：先由上面的分支（含 super 分支）拿到 FACING，再把四个波口一律置为关闭。
+		// 只动这条放置路径；registerDefaultState 保持全开（理由见构造器注释）。
+		return withAllPorts(placed, false);
 	}
 
 	@Override
@@ -227,6 +239,45 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 		return modelSide == null ? null : propertyFor(modelSide);
 	}
 
+	// ========== 四口批量置位（放置默认 / 进入攻击波变态，两条规格共用一处实现） ==========
+
+	/**
+	 * <b>把 4 个波口一律置为 {@code open}</b>（本类唯一一处"批量改开口"的实现；只动开口属性，
+	 * FACING 与其它属性原样保留）。
+	 *
+	 * <p>两个调用点、两种语义：</p>
+	 * <ul>
+	 *   <li>放置默认（规格 3）：{@code getStateForPlacement} 传 {@code false} = 新放下的机器四口全关；</li>
+	 *   <li>进入攻击波变态（规格 1）：{@link TransmuterMode#onEnter} 借 {@link #forceAllPortsOpen}
+	 *       传 {@code true} = 无论原来什么状态都强制全开。</li>
+	 * </ul>
+	 */
+	public static BlockState withAllPorts(BlockState state, boolean open) {
+		return state.setValue(NORTH, open)
+			.setValue(EAST, open)
+			.setValue(SOUTH, open)
+			.setValue(WEST, open);
+	}
+
+	/**
+	 * <b>把该位置的变器 4 个波口强制全部打开</b>（规格 1：进入攻击波变态时无条件开放）。
+	 *
+	 * <p>一次性 {@code setBlockState}：只改 blockstate（开口），<b>不动</b>方块实体里的模式——模式由
+	 * 调用方（{@code StellarWaveTransmuterBlockEntity#cycleMode()}）自己写并 {@code notifyUpdate()}。
+	 * 状态本来就全开时不下发（避免无谓的方块更新与网络包）。</p>
+	 *
+	 * <p>调用方刻意不判断"是不是攻击模式"：本方法由 {@link TransmuterMode#onEnter} 按模式自报调用，
+	 * 与 {@link TransmuterMode#locksWavePorts()} 同属"模式常量体自己声明的一条行为"。</p>
+	 */
+	public static void forceAllPortsOpen(Level level, BlockPos pos) {
+		BlockState state = level.getBlockState(pos);
+		if (!(state.getBlock() instanceof StellarWaveTransmuterBlock))
+			return;
+		BlockState opened = withAllPorts(state, true);
+		if (!opened.equals(state))
+			level.setBlock(pos, opened, Block.UPDATE_CLIENTS);
+	}
+
 	// ========== 交互分工：空手 = 波口开关，扳手 = 处理模式 ==========
 
 	/**
@@ -290,12 +341,16 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	 * @param clickedFace   玩家点中的方块面（世界方向）
 	 * @param clickLocation 玩家点中的精确位置（灯盘面分区用；其它面不读）
 	 * @return 恒 SUCCESS（客户端不预测；状态改动只在服务端执行，由同步包更新）；
-	 *         <b>攻击波变态下恒定不改任何状态</b>（模式锁口，见 {@code TransmuterMode#locksWavePorts()}）
+	 *         <b>攻击波变态下恒定不改任何状态、且一声不响</b>（模式锁口，见
+	 *         {@code TransmuterMode#locksWavePorts()}：判定在音效/改状态之前直接返回）
 	 */
 	private InteractionResult toggleWavePort(BlockState state, Level level, BlockPos pos, Direction clickedFace,
 		Vec3 clickLocation) {
 		// 模式锁口（用户 2026-09 规格）：攻击波变态下 4 个波口恒开，空手右键不得把它关上。
 		// 判定由模式自报（TransmuterMode#locksWavePorts），此处刻意不写"是不是攻击模式"。
+		// 规格 2：这条 return 必须保持在**音效之前**——开关音效只在本方法末尾的
+		// `if (!level.isClientSide)` 块里播（与 setBlock 同一处），锁定时整段不执行，
+		// 两端都不出声、也不产生任何其它副作用（无 setBlock / 无粒子 / 无动画）。
 		if (TransmuterMode.at(level, pos)
 			.locksWavePorts())
 			return InteractionResult.SUCCESS;
