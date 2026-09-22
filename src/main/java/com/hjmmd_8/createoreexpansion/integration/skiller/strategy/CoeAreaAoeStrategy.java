@@ -2,6 +2,8 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.CoeSkillSupport;
@@ -17,6 +19,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
@@ -29,6 +32,11 @@ import java.util.Set;
  * {@code width × height × depth} 的方块集合。差别只在数据来源——配置从技能实例
  * 按<b>有效等级</b>取（等价旧 {@code applySkillBoost} 的效果），不再是旧
  * {@code DataSkill}。</p>
+ *
+ * <h2>物理结构（Sable / 航空学 sub-level）</h2>
+ * <p>命中结构上的方块时，朝向来源（视线、所击方块面）先换到<b>结构局部坐标系</b>
+ * 再解析（见 {@link #resolveDirection}），集合因此是"结构本地系里的矩形"；
+ * 渲染端乘结构位姿矩阵，矩形便随结构一起倾斜。主世界路径不受影响。</p>
  *
  * @since 1.0.0
  */
@@ -59,8 +67,38 @@ public class CoeAreaAoeStrategy implements SkillStrategy<BlockPos, ExcavationSki
         if (hit == null) {
             return;
         }
-        DualDirection dualDirection = DualDirection.from(player, hit, config.directionSource);
+        DualDirection dualDirection = resolveDirection(context, player, hit, config);
         set.addAll(dualDirection.collect(context.pos(), config.width, config.height, config.depth));
+    }
+
+    /**
+     * 解析"平面朝向"。两条路径：
+     *
+     * <ul>
+     *   <li><b>主世界</b>（未装 Sable / 本次没命中物理结构，即 {@code !context.onSubLevel()}）：
+     *       照旧 {@link DualDirection#from(Player, BlockHitResult, DualDirection.From)}
+     *       ——用世界空间的偏航角 / 所击方块面，行为与引入结构场景之前逐字一致。</li>
+     *   <li><b>物理结构</b>（Sable / 航空学 sub-level）：把两个朝向来源都经桥接
+     *       {@code toLocalDir} 换算到<b>结构局部坐标系</b>再解析，于是
+     *       {@link DualDirection#collect} 得到的是"结构本地系里的矩形"。渲染端
+     *       （{@code CoeBlockOutlineRenderer}）本来就对这个集合
+     *       {@code mulPose} 结构位姿矩阵，所以形状自然随结构倾斜：结构水平 → 平面水平，
+     *       结构倾斜 → 平面跟着倾斜。</li>
+     * </ul>
+     */
+    private static DualDirection resolveDirection(ExcavationSkillContext context, Player player,
+                                                  BlockHitResult hit, AreaAoeConfig config) {
+        SubLevelBridge bridge = SableBridges.get();
+        SubLevelBridge.Hit structureHit = context.subLevelHit();
+        // 与 ExcavationSkillContext#onSubLevel() 同一判据；不满足即主世界路径（一字未改）
+        if (bridge == null || structureHit == null) {
+            return DualDirection.from(player, hit, config.directionSource);
+        }
+        // 世界 → 结构局部（与预览渲染同一条位姿：桥接的 toLocalDir）
+        Vec3 localLook = bridge.toLocalDir(structureHit, player.getLookAngle());
+        Vec3 localFace = bridge.toLocalDir(structureHit,
+                Vec3.atLowerCornerOf(hit.getDirection().getNormal()));
+        return DualDirection.fromLocal(config.directionSource, localFace, localLook);
     }
 
     @Override
