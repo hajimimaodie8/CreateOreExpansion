@@ -289,10 +289,16 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	 *
 	 * @param clickedFace   玩家点中的方块面（世界方向）
 	 * @param clickLocation 玩家点中的精确位置（灯盘面分区用；其它面不读）
-	 * @return 恒 SUCCESS（客户端不预测；状态改动只在服务端执行，由同步包更新）
+	 * @return 恒 SUCCESS（客户端不预测；状态改动只在服务端执行，由同步包更新）；
+	 *         <b>攻击波变态下恒定不改任何状态</b>（模式锁口，见 {@code TransmuterMode#locksWavePorts()}）
 	 */
 	private InteractionResult toggleWavePort(BlockState state, Level level, BlockPos pos, Direction clickedFace,
 		Vec3 clickLocation) {
+		// 模式锁口（用户 2026-09 规格）：攻击波变态下 4 个波口恒开，空手右键不得把它关上。
+		// 判定由模式自报（TransmuterMode#locksWavePorts），此处刻意不写"是不是攻击模式"。
+		if (TransmuterMode.at(level, pos)
+			.locksWavePorts())
+			return InteractionResult.SUCCESS;
 		Direction facing = state.getValue(FACING);
 		// 世界方向 → 模型侧面：水平侧面 = 点哪面切哪面；灯盘面（FACING 面）= 按点击位置分区取一侧
 		Direction worldDir = clickedFace == facing ? worldDirForLampClick(state, pos, clickLocation) : clickedFace;

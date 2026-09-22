@@ -134,6 +134,15 @@ public enum TransmuterMode {
 					WaveDiag.trace("攻击场点燃（攻击波变态）：变器 [{}] 场内 {} 级波 → 攻击波", pos,
 						WaveLevels.glyph(wave.getWaveLevel()));
 		}
+
+		/**
+		 * <b>本模式下波口锁死</b>（用户 2026-09 规格）：攻击波变态的 4 个波口恒开，
+		 * 空手右键不得关闭/切换任何一面（见 {@link #locksWavePorts()}）。
+		 */
+		@Override
+		public boolean locksWavePorts() {
+			return true;
+		}
 	};
 
 	/** 稳定的模式标识：NBT 落盘与翻译键后缀共用，等价于存档格式的一部分（改它要同时处理老存档）。 */
@@ -213,6 +222,24 @@ public enum TransmuterMode {
 	 */
 	public int fieldIntervalTicks() {
 		return 0;
+	}
+
+	/**
+	 * <b>本模式下波口开关是否被"模式锁死"</b>（默认 {@code false} = 4 个面可自由开关）。
+	 *
+	 * <p>攻击波变态覆写为 {@code true}：该模式下 4 个波口<b>恒开且不可切换</b>——空手右键
+	 * （{@code StellarWaveTransmuterBlock} 的波口开关 {@code toggleWavePort}）据此提前返回，
+	 * 一个面都改不动。这是用户 2026-09 定下的规格："攻击波模式默认 4 个面都是开口，
+	 * 空手右键不能把它关上"。</p>
+	 *
+	 * <p>与 {@link #fieldIntervalTicks()} 同理：这是"本模式的一条属性"，由模式常量体自报，
+	 * 调用方<b>不判断"是不是攻击模式"</b>（别写 {@code if (mode == ATTACK)}）；
+	 * 以后再加"锁口"的模式只需覆写本方法，交互代码一行都不用改。</p>
+	 *
+	 * @return true = 本模式下波口开关被模式接管，空手右键不得改变开口状态
+	 */
+	public boolean locksWavePorts() {
+		return false;
 	}
 
 	// ================= 攻击场的几何（各项口径只有一处实现，改动只发生在这里） =================

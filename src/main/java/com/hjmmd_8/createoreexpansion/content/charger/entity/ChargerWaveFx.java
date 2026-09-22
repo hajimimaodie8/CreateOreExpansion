@@ -84,6 +84,23 @@ public final class ChargerWaveFx {
 	/** 炽橙色：伤害风格的亮端。 */
 	private static final Vec3 HEAT_ORANGE = new Vec3(1.0, 0.55, 0.10);
 
+	/**
+	 * <b>伤害风格（攻击波）叠加的粒子类型</b>——集中一处定义，改一行即可整体换风格。
+	 *
+	 * <ul>
+	 *   <li>现取 {@link ParticleTypes#FLAME}（火焰）：攻击波本体与拖尾已是红橙调，尾焰与之同色相，
+	 *       读作"打击／灼烧"；</li>
+	 *   <li>若日后想换成冰霜，只需把下面这一行改成 {@code ParticleTypes.SNOWFLAKE}
+	 *       （冷调，与红橙主色反差最强）；</li>
+	 * </ul>
+	 *
+	 * <p><b>2026-09 用户规格变更</b>：这个位置原先挂的是 {@code ParticleTypes.DAMAGE_INDICATOR}
+	 * （原版 {@code damage} 贴图，形状就是一个<b>暗红色心形</b>）——用户实测反馈"攻击波尾部粒子是
+	 * 红心，不对"，要求改成火焰/冰霜，故换成火焰。随此变更，本类原先"伤害风格刻意不用火焰
+	 * （怕被误解成点燃机器）"的口径作废。</p>
+	 */
+	private static final ParticleOptions DAMAGE_ACCENT_PARTICLE = ParticleTypes.FLAME;
+
 	/** 命中绽放的主粒子基数（改造前即为 30，保持不变）。 */
 	private static final int BURST_COUNT = 30;
 	/**
@@ -146,8 +163,9 @@ public final class ChargerWaveFx {
 	 *       少量 {@code SMOKE} 表达"机器运转的粉尘排气"。<b>刻意不用火焰/岩浆类</b>，
 	 *       避免被误解成"点燃机器"。</li>
 	 *   <li><b>DAMAGE</b>（伤害感，用于攻击波）：颜色向深红/橙收敛（见 {@link #heatTint}）；
-	 *       点缀 {@code CRIT} 表达"暴击星芒"，{@code DAMAGE_INDICATOR} 表达"挨了一下"的伤害反馈。
-	 *       <b>同样不用火焰</b>，与"点燃/着火"玩法语义彻底隔开。</li>
+	 *       点缀 {@code CRIT} 表达"暴击星芒"，尾焰粒子取 {@link #DAMAGE_ACCENT_PARTICLE}
+	 *       （现为 {@code FLAME} 火焰）表达"挨了一击／被灼烧"。<b>2026-09 用户规格变更</b>：
+	 *       尾焰原为形如暗红心形的 {@code DAMAGE_INDICATOR}，用户实测要求改成火焰/冰霜，现为火焰。</li>
 	 * </ul>
 	 */
 	private static Map<WaveTrailStyle, StyleProfile> buildProfiles() {
@@ -164,8 +182,9 @@ public final class ChargerWaveFx {
 			new StyleProfile(ChargerWaveFx::heatTint, List.of(
 				// 暴击星芒：快而散，数量占主粒子的 1/4 —— 打击瞬间的"脆"反馈
 				new Accent(ParticleTypes.CRIT, 0.25, 1.1, 1.5),
-				// 伤害指示：慢而聚，数量占 1/8 —— 像弹出的伤害数字碎屑
-				new Accent(ParticleTypes.DAMAGE_INDICATOR, 0.125, 1.0, 0.8))));
+				// 尾焰：慢而聚，数量占 1/8 —— 原为"DAMAGE_INDICATOR（暗红心形）"，
+				// 用户 2026-09 实测要求改成火焰，类型集中在 DAMAGE_ACCENT_PARTICLE 一处
+				new Accent(DAMAGE_ACCENT_PARTICLE, 0.125, 1.0, 0.8))));
 		return Collections.unmodifiableMap(profiles);
 	}
 
@@ -350,7 +369,7 @@ public final class ChargerWaveFx {
 	 * 服务端命中绽放（风格化）：主粒子颜色按风格变换，并按风格追加点缀粒子。
 	 *
 	 * <p>风格差异体现在"这次命中代表什么"：机械风格炸开的是电火花与排气烟（读作"机器被加工"），
-	 * 伤害风格炸开的是暴击星芒与伤害指示（读作"挨了一击"）。音效保持原有的紫水晶共鸣，不改玩法。</p>
+	 * 伤害风格炸开的是暴击星芒与尾焰（读作"挨了一击"）。音效保持原有的紫水晶共鸣，不改玩法。</p>
 	 *
 	 * @param level     波所在世界（服务端；非服务端静默返回）
 	 * @param pos       绽放中心（世界坐标）
