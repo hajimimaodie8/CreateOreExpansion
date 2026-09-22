@@ -100,16 +100,73 @@ public class CreateOreExpansion {
         // 让能量波与物理结构上的机器（充能器/波闸/差波器）通过位姿矩阵勾连（世界↔本地坐标）。
         // 未装 Sable 时绝不触碰 Sable 类（compat.sable.SableSubLevelBridge 直接引用 Sable 类型）。
         // 桥接注册与物理属性验证均在 SableSubLevelBridge 静态块内完成（Class.forName 触发）。
-        if (net.neoforged.fml.ModList.get().isLoaded("sable")) {
+        //
+        // 判据（2026-09-20 修正）：原先只看 modId "sable"，但实测 jar 里
+        //   libs/sable-companion-common-1.21.1-1.6.0.jar 的 modId 是 "sablecompanion"，
+        //   而 libs/aeronautics-neoforge-1.21.1-1.3.0.jar 才声明依赖 modId "sable"；
+        //   我们真正使用的类是 dev.ryanhcode.sable.companion.math.Pose3dc（来自前者）。
+        // 用户实例里主 sable 未加载（或被 bundled 进嵌套 jar）→ 旧判据为假 → 整条物理结构链路惰性。
+        // 新判据：① 先看类在不在（首选，直接对应我们依赖的东西）；② 再退化为任一 modId 命中。
+        String sableByClass = detectSableByClass();
+        String sableByModId = (sableByClass != null) ? null : detectSableByModId();
+        String sableCriterion = (sableByClass != null) ? sableByClass : sableByModId;
+        if (sableCriterion != null) {
             try {
                 Class.forName("com.hjmmd_8.createoreexpansion.compat.sable.SableSubLevelBridge");
-                LOGGER.info("[Sable] 能量波↔物理结构坐标桥接已加载");
+                LOGGER.info("[Sable] 物理结构桥接已加载（判据：{}）", sableCriterion);
             } catch (Throwable t) {
-                LOGGER.warn("[Sable] 能量波物理结构桥接加载失败（不影响游戏运行）", t);
+                LOGGER.warn("[Sable] 物理结构桥接加载失败（判据：{} 已命中，不影响游戏运行）", sableCriterion, t);
             }
+        } else {
+            LOGGER.warn("[Sable] 物理结构桥接未加载：类 dev.ryanhcode.sable.companion.math.Pose3dc 不在场，"
+                + "且 modId sable / sablecompanion / aeronautics 均未加载（哪条判据都没命中）");
         }
 
         modContainer.registerConfig(ModConfig.Type.COMMON, AllConfig.SPEC);
+    }
+
+    /**
+     * 判据①：我们真正依赖的 Sable 类在不在（运行期反射探测，编译期无需该类在场）。
+     *
+     * <p>用 {@code Class.forName(name, false, loader)} <b>不初始化</b>目标类，避免副作用；
+     * 依次尝试上下文 / 本模组 / Minecraft（即游戏层，聚合了所有 mod jar）的类加载器，
+     * 任一能加载到即视为"物理结构库在场"。</p>
+     *
+     * @return 命中时的判据文案（写进日志），未命中返回 {@code null}
+     */
+    private static String detectSableByClass() {
+        // 与 compat.sable.SablePose 的 import 一致：dev.ryanhcode.sable.companion.math.Pose3dc
+        final String probe = "dev.ryanhcode.sable.companion.math.Pose3dc";
+        ClassLoader[] candidates = new ClassLoader[] {
+            Thread.currentThread().getContextClassLoader(),
+            CreateOreExpansion.class.getClassLoader(),
+            net.minecraft.world.level.Level.class.getClassLoader(),
+            ClassLoader.getSystemClassLoader(),
+        };
+        for (ClassLoader loader : candidates) {
+            if (loader == null) {
+                continue;
+            }
+            try {
+                Class.forName(probe, false, loader);
+                return "类 " + probe + " 在场";
+            } catch (Throwable ignored) {
+                // 换下一个类加载器继续探测
+            }
+        }
+        return null;
+    }
+
+    /** 判据②（兜底）：Sable 主 jar / companion / 航空学 任一 modId 已加载。未命中返回 {@code null}。 */
+    private static String detectSableByModId() {
+        net.neoforged.fml.ModList modList = net.neoforged.fml.ModList.get();
+        String[] modIds = { "sable", "sablecompanion", "aeronautics" };
+        for (String modId : modIds) {
+            if (modList.isLoaded(modId)) {
+                return "modId " + modId + " 已加载";
+            }
+        }
+        return null;
     }
 
     public static void onRegister(RegisterEvent event) {
