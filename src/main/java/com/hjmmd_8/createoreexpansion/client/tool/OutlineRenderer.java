@@ -16,17 +16,49 @@ import java.util.*;
  * 高级轮廓渲染器
  *
  * <p>合并相邻方块为 AABB，用 VoxelShape OR 合并后 optimize 自动去除内部边。</p>
+ *
+ * <p>两个入口：旧签名（顶点即原坐标）与带 {@code lookupOffset} 的重载（顶点整体减偏移）。
+ * 后者是给物理结构（局部坐标在 {@code 2.048e7} 量级）用的抗浮点抵消手段，见该重载的说明。
+ * 两者共用同一套合并/取状态逻辑，旧签名的行为一字未改。</p>
  */
 public class OutlineRenderer {
 
     /**
-     * 渲染优化的外轮廓
+     * 渲染优化的外轮廓（旧签名：顶点平移量为 0）。
+     *
+     * <p>行为与引入 {@link #renderOutline(Level, Set, PoseStack, VertexConsumer, float, float, float, float, BlockPos)}
+     * 之前<b>逐字一致</b>——它只是一行委托（{@code lookupOffset = BlockPos.ZERO}），
+     * 所有既有调用方（主世界预览）不需要任何改动。</p>
      */
     public static void renderOutline(Level level, Set<BlockPos> positions, PoseStack poseStack,
                                      VertexConsumer consumer, float r, float g, float b, float a) {
+        renderOutline(level, positions, poseStack, consumer, r, g, b, a, BlockPos.ZERO);
+    }
+
+    /**
+     * 渲染优化的外轮廓，并把<b>写进顶点缓冲的顶点</b>整体平移 {@code -lookupOffset}。
+     *
+     * <p><b>为什么需要它（物理结构 / 浮点精度）</b>：结构局部（plot）坐标在 {@code 2.048e7} 量级，
+     * 而 float 只有 24 bit 尾数——该量级的整数 ulp 已经是 2，顶点一旦以局部大数写进顶点缓冲，
+     * 再乘"局部 → 世界"位姿矩阵就会出现<b>灾难性抵消</b>（框被画到别处 / 退化成不可见）。
+     * 调用方把顶点整体减掉一个近处原点（{@code lookupOffset}）后，顶点只剩几十格量级，
+     * 精度立刻恢复；只要同时把位姿矩阵的平移列补成"该原点的世界坐标"，几何位置就分毫不动。</p>
+     *
+     * <p><b>两个坐标的分工（关键）</b>：{@code positions} 里的坐标仍是<b>原始坐标</b>——
+     * 合并相邻方块（按 {@code BlockPos} 邻接）与读方块状态（{@code level.getBlockState(pos)}）
+     * 都必须用原坐标，否则会读到空白/错格；<b>只有最终写进顶点缓冲的 AABB 减
+     * {@code lookupOffset}</b>。所以偏移发生在"合并、取状态"之后（见
+     * {@link #mergeBlocks(Set, Level, BlockPos)} 的最后一步），而不是在入场处整体平移集合。</p>
+     *
+     * @param lookupOffset 顶点整体平移量（顶点坐标 = 原坐标 − {@code lookupOffset}）；
+     *                     传 {@link BlockPos#ZERO} 即完全等价于旧签名
+     */
+    public static void renderOutline(Level level, Set<BlockPos> positions, PoseStack poseStack,
+                                     VertexConsumer consumer, float r, float g, float b, float a,
+                                     BlockPos lookupOffset) {
         if (positions.isEmpty()) return;
 
-        List<AABB> boxes = mergeBlocks(positions, level);
+        List<AABB> boxes = mergeBlocks(positions, level, lookupOffset);
         if (boxes.isEmpty()) return;
 
         VoxelShape combined = combineToShape(boxes);
@@ -40,7 +72,14 @@ public class OutlineRenderer {
 
     // ========== 方块合并 ==========
 
-    private static List<AABB> mergeBlocks(Set<BlockPos> positions, Level level) {
+    /**
+     * 合并相邻方块为若干 AABB。
+     *
+     * <p><b>合并与"空气过滤"都发生在原始坐标系</b>（{@code level.getBlockState(pos)} 必须吃原坐标，
+     * 否则结构场景会读到空白格而把所有方块过滤掉）；只有产出的 AABB 在最后一步整体
+     * 平移 {@code -lookupOffset}——这样"画在哪"变了、"合并成几块"没变。</p>
+     */
+    private static List<AABB> mergeBlocks(Set<BlockPos> positions, Level level, BlockPos lookupOffset) {
         Set<BlockPos> remaining = new HashSet<>();
         for (BlockPos pos : positions) {
             if (!level.getBlockState(pos).isAir()) {
@@ -58,7 +97,9 @@ public class OutlineRenderer {
             List<BlockPos> volume = expandPlane(plane, remaining, Direction.Axis.Y);
 
             volume.forEach(remaining::remove);
-            boxes.add(createAABB(volume));
+            // 偏移只加在这里：顶点坐标 = 原坐标 − lookupOffset（BlockPos.ZERO 时值完全不变，
+            // AABB.move(0,0,0) 返回等值框，故旧调用方行为逐字一致）
+            boxes.add(createAABB(volume).move(-lookupOffset.getX(), -lookupOffset.getY(), -lookupOffset.getZ()));
         }
         return boxes;
     }
