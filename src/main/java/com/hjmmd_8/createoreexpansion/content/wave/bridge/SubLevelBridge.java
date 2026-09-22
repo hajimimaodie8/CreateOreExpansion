@@ -145,18 +145,4 @@ public interface SubLevelBridge {
 	default java.util.List<Object> subLevels(net.minecraft.server.level.ServerLevel worldLevel) {
 		return java.util.List.of();
 	}
-
-	/**
-	 * 临时诊断（TODO 定位后整体删除）：局部点与各 sub-level 的 plot 范围/中心的关系。
-	 *
-	 * <p>供客户端预览把"判据差在哪"直接打给用户看：客户端能枚举到几个结构、
-	 * 最近那个结构的 plot 绝对范围与中心、点是否落在其中、点与矩形相距多少。
-	 * 未装 Sable 时默认返回空串（调用方拼进聊天栏读数即可）。</p>
-	 *
-	 * @param level    客户端/服务端的 Level
-	 * @param localPos 待判定的坐标（通常是 {@code player.pick} 的命中点）
-	 */
-	default String describeLocalProbe(Level level, Vec3 localPos) {
-		return "";
-	}
 }

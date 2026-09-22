@@ -107,9 +107,4 @@ public final class SableSubLevelBridge implements SubLevelBridge {
 			.map(s -> (Object) s)
 			.collect(java.util.stream.Collectors.toList());
 	}
-
-	@Override
-	public String describeLocalProbe(Level level, Vec3 localPos) {
-		return SableSubLevelAccess.describeLocalProbe(level, localPos);
-	}
 }
