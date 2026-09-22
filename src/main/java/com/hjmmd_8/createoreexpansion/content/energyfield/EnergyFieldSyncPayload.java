@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.AABB;
@@ -77,9 +78,18 @@ public record EnergyFieldSyncPayload(ResourceLocation dimension, List<FieldData>
 		EnergyFieldClientState.receive(dimension, rebuilt);
 	}
 
-	/** 客户端收包：把整维度快照（可能为空=清场）交给镜像。 */
-	@OnlyIn(Dist.CLIENT)
+	/**
+	 * 收包 handler：把整维度快照（可能为空=清场）交给镜像。
+	 *
+	 * <p><b>本方法不能标 {@code @OnlyIn(Dist.CLIENT)}</b>：{@link #registerPayloads} 走 common 事件总线，
+	 * 专用服务端也会执行 {@code registrar.playToClient(..., EnergyFieldSyncPayload::handle)}，链接时就要
+	 * 解析本方法；一旦被 RuntimeDistCleaner 剥掉即抛 NoSuchMethodError（2026-09-22 服务端启动崩溃）。
+	 * 客户端专属的 {@link #applyToClient()} 仍保留 {@code @OnlyIn(Dist.CLIENT)}，由下面的方向守卫保证
+	 * 服务端永不执行到它（handler 实际只在客户端被调用）。</p>
+	 */
 	public static void handle(EnergyFieldSyncPayload payload, net.neoforged.neoforge.network.handling.IPayloadContext context) {
+		if (context.flow() != PacketFlow.CLIENTBOUND)
+			return; // 只处理发往客户端的包：服务端永远走不到 applyToClient（真·CLIENT 专有）
 		context.enqueueWork(payload::applyToClient);
 	}
 
