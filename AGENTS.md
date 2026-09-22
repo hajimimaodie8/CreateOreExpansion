@@ -131,6 +131,14 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 11. **冷却类技能要两处同判**：`consumeResource` 与 `release` 都判冷却（冷却中 `consumeResource` 直接不累加、`release` 直接返回），只有真正执行过才 `ToolSkillCooldown.start*`。只在 `release` 判 = 冷却期间每次触发都白扣能量。
 12. **需要"同一次释放内传递结果"时用上下文 scratch**：新内核会给每个技能实例各建一个上下文对象（`SkillBundle.releaseSkills` 里 `contexts.put(instance, factory.create(env, instance))`），所以 `HitSkillContext`/`UseItemSkillContext` 上的 `putScratch/getScratch` 天然是"本次释放"作用域。`skin`（随机判定只滚一次）与 `hoe`（优先级只解析一次）都靠它。
 13. **改 Java 文件一律只用 write/edit 工具**：本轮我用 PowerShell `Get-Content | -replace | Set-Content` 改 `SkillerIntegration.java` 的 import，PS 5.1 按 ANSI 重写导致整个文件语法崩掉（48 个编译错误），只能 `git checkout --` 恢复重做。
+14. **物理结构（Aeronautics/Sable sub-level）上的技能预览**（2026-09-22 打通，坑很密）：
+    - **判据必须看「类在不在」，不能看 modId**：我们真正依赖的 `dev.ryanhcode.sable.companion.math.Pose3dc` 属于 modId=**`sablecompanion`** 的 jar，而 `aeronautics` jar 只是声明依赖 `sable`。原来写 `ModList.isLoaded("sable")` → 实机为假 → **整套结构兼容代码从未激活**，前面改的内部逻辑等于全白做。现在主判据 `Class.forName(Pose3dc, false, loader)`（依次试上下文/本模组/`Level.class`/系统四种类加载器——生产环境本模组加载器未必看得见别人），兜底才是三个 modId，并把命中的判据打进日志。
+    - **`player.pick` 在结构上返回的是结构局部(plot)坐标，不是世界坐标**：Sable 覆写了 `BlockGetter#clip`（射线逆变换进 plot 空间求交、从不投影回世界），站在结构上的玩家自身也在局部系。把局部点当世界点用 → 框被画到十几万格外 → 现象是"结构上完全没有框"。渲染前必须 `mulPose(结构位姿矩阵)`，且**在局部空间**做 AABB 合并/去内部边（先转世界再合并，旋转后不再轴对齐、框会碎）。
+    - **位姿矩阵**：`t = toWorld(hit, Vec3.ZERO, partialTick)`，三个基向量 = `toWorld(hit, e_i, partialTick) − t`（列向量），平移 = t；用带 `partialTick` 的重载（按 `lastPose→logicalPose` 插值），否则结构高速旋转时框会落后。
+    - **相机位移不能忘**：旧调度器 `SkillsStrategyRenderer` 统一做过 `pushPose → translate(-camPos) → 画 → popPose`；迁到新内核时漏掉它 → 框"又远又小"。
+    - **AOE 矩形朝向要本地化**：结构场景把玩家视线与所击方块面先用 `bridge.toLocalDir` 转进局部系再交给 `DualDirection`（新增 `fromLocal`，旧签名一字未改），矩形才会随结构倾斜；玩家自身已在局部系时**不要**再转一次（会反向旋转两遍）。
+    - **已知未做项**：服务端释放路径的 `ExcavationSkillContext` 仍由 4 参构造器建立（`subLevelHit` 恒 null）→ **结构上真正挖哪些方块仍按世界坐标算**，预览与实效在结构上不一致。
+15. **调试"看不到效果"的问题，先确证路径有没有被激活**：这轮我在结构兼容代码从未激活的前提下，连改相机位移、发光钩子、矩形朝向、局部坐标识别四轮而毫无效果。正确顺序是：**先让现场数据可见 → 确认入口成立 → 再改内部逻辑**。用户在生产整合包里测试时日志路径与 dev 的 `run/logs` 不同，**优先用动作栏显示诊断**（`displayClientMessage(..., true)` + 节流），成本最低。
 
 ## 🧠 记忆写入规则（用户明确要求，务必遵守）
 
