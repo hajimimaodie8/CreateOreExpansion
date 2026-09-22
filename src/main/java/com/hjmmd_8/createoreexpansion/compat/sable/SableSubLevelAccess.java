@@ -6,10 +6,13 @@ import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
+import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -20,19 +23,37 @@ import java.util.List;
 /**
  * sub-level 容器访问 —— 遍历、命中检测、BE 匹配与本地方块读取。
  *
- * <p><b>命中检测</b>（query）：把波中心/准星命中点换算到结构本地坐标后反查覆盖的方块是否非空气——
- * 不依赖 {@code boundingBox()}（结构旋转/移动时滞后），也不依赖 {@code plot.contains}
- * 以外的范围 API。命中 = 采样点确实压着结构方块，与主世界判定的几何语义一致。</p>
+ * <h2>坐标系（反编译取证，2026-09-22）</h2>
+ * <p>plot（嵌入子世界）的方块坐标 = <b>真实绝对坐标</b>：plot 网格的
+ * {@code plotPos} 是绝对 plot 索引（{@code SubLevelContainer.DEFAULT_ORIGIN = 10000}），
+ * 一个 plot 占 {@code 2^logPlotSize} 个区块（默认 {@code DEFAULT_LOG_PLOT_SIZE = 7} → 128 区块 = 2048 方块），
+ * 所以 plot 空间实测在 {@code x ≈ 2.048e7} 量级，与主角世界坐标（几千格）完全分离。</p>
+ * <ul>
+ *   <li>{@code LevelPlot#getChunkMin()} = {@code plotPos << logSize}，
+ *       {@code getChunkMax()} = {@code ((plotPos+1) << logSize) - 1}；</li>
+ *   <li>{@code LevelPlot#contains(double x, double z)} 比的正是
+ *       {@code plotPos << (logSize+4)} 起的 <b>绝对水平范围</b>（不含 Y）；</li>
+ *   <li>{@code EmbeddedPlotLevelAccessor#getBlockState(p)} = {@code level.getBlockState(p + getCenterBlock())}
+ *       —— 即 {@link SablePose#accessorPos} 的「绝对坐标 - plot 中心」是对的。</li>
+ * </ul>
  *
- * <p><b>双端</b>：服务端走服务端容器（波飞行判定），客户端走客户端容器
- * （方块挖掘预览的准星命中判定）——两端都经 {@code SubLevelContainer.getContainer(Level)}
- * 取容器（服务端/客户端容器都是它的子类），遍历的成员统一按基类 {@link SubLevel} 处理；
- * <b>故意不 import 任何 {@code net.minecraft.client.*}</b>：本类是 common 源码，
- * 专用服务器上不允许出现客户端类引用（未装/未就绪时容器为 null，返回空表）。</p>
+ * <h2>归属判据（本轮重写）</h2>
+ * <p><b>权威口径</b>：Sable 自己的 {@code mixin.clip_overwrite.BlockGetterMixin#clip} 在挑
+ * "命中属于哪个 sub-level"时用的就是
+ * {@code Sable.HELPER.getContaining(level, localPoint) == sub}；而
+ * {@code ActiveSableCompanion#getContaining(Level, x, z)} 的字节码只有两步：
+ * {@code container.getPlot(Mth.floor(x) >> 4, Mth.floor(z) >> 4).getSubLevel()}。
+ * 所以这里也用 {@link SubLevelContainer#getPlot(int, int)}（按区块查 plot 网格），
+ * 并保留「逐结构 plot 范围 ∪ {@code LevelPlot#contains}」作为兜底。</p>
  *
- * <p><b>BE 匹配</b>（ofBlockEntity）：BE 位置落在该 sub-level 的 plot 水平范围内即匹配——
- * 不能用 {@code beLevel == sub.getLevel()}（sub.getLevel() 就是主世界，误匹配所有主世界 BE）。
- * 该用途只发生在服务端，仍只遍历服务端容器。</p>
+ * <p><b>实测教训（2026-09-22 21:38 的真实日志）</b>：{@code locateSubLevel} 本来就是对的，
+ * 真正卡住的是 {@code queryLocalBlock} 的「该处方块非空气」那一步——
+ * 拾取点的 Y 正好是方块顶面（{@code loc.y = 128.00}，实心石头在 y=127），
+ * {@code BlockPos.containing} 取到的是面外侧的空气块 → 判定失败。
+ * 现在改为在 3×3×3 邻域里找非空气方块（与渲染器 {@code resolveLocalCenter} 同一口径）。</p>
+ *
+ * <p><b>加载约束</b>：本类是 common 源码，<b>故意不 import 任何 {@code net.minecraft.client.*}</b>，
+ * 专用服务器上一样要能加载；容器取不到时一律返回空表/null。</p>
  */
 final class SableSubLevelAccess {
 
@@ -63,23 +84,31 @@ final class SableSubLevelAccess {
 	/**
 	 * 世界坐标命中检测：采样点落在某结构（sub-level）的实体方块上。
 	 *
+	 * <p><b>空间自适应</b>：{@code BlockGetterMixin#clip} 可能把命中留在 plot 空间
+	 * （子世界分支胜出时<b>不投影回世界</b>），所以先用局部判据试一次；
+	 * 局部判据不成立时才按世界坐标做位姿逆变换采样。世界坐标（几千格）不会落进
+	 * plot 的绝对范围（2.048e7 量级），故主世界语义零变化。</p>
+	 *
 	 * @param worldLevel 主世界（波所在）或客户端世界（预览准星所在）
-	 * @param worldPos   采样点（世界坐标）
+	 * @param worldPos   采样点（世界坐标，或已经是 plot 局部坐标）
 	 * @return 命中的 sub-level；未命中返回 null
 	 */
 	static Hit query(Level worldLevel, Vec3 worldPos) {
 		if (worldLevel == null || worldPos == null)
 			return null;
+		Hit local = queryLocalBlock(worldLevel, worldPos);
+		if (local != null)
+			return local;
 		List<? extends SubLevel> subs = subLevelsOf(worldLevel);
 		for (SubLevel sub : subs) {
 			if (sub.isRemoved() || sub.getPlot() == null)
 				continue;
 			// 采样点换算到结构本地坐标（绝对 plot 坐标），反查其覆盖的方块
-			Vec3 local = sub.logicalPose()
+			Vec3 local2 = sub.logicalPose()
 				.transformPositionInverse(worldPos);
 			double h = 0.1;
-			BlockPos min = BlockPos.containing(local.x - h, local.y - h, local.z - h);
-			BlockPos max = BlockPos.containing(local.x + h, local.y + h, local.z + h);
+			BlockPos min = BlockPos.containing(local2.x - h, local2.y - h, local2.z - h);
+			BlockPos max = BlockPos.containing(local2.x + h, local2.y + h, local2.z + h);
 			boolean anySolid = false;
 			for (BlockPos p : BlockPos.betweenClosed(min, max)) {
 				BlockState st = sub.getPlot()
@@ -97,11 +126,17 @@ final class SableSubLevelAccess {
 	}
 
 	/**
-	 * 结构<b>局部（plot）空间</b>的坐标查询：坐标是否落在某结构的本地系水平范围内。
+	 * 结构<b>局部（plot）空间</b>的坐标归属查询：坐标是否落在某结构的 plot 范围内。
 	 *
-	 * <p>用途：识别 Sable 的 {@code level.clip} 返回的命中（其位置是局部坐标）与
-	 * "自身已在结构本地系里的实体"（站在结构上的玩家）。世界坐标（几千格以内）
-	 * 不会落进 plot 的大数范围，故主世界调用恒为 null。</p>
+	 * <p><b>主判据 = Sable 自己的口径</b>：{@code SubLevelContainer#getPlot(chunkX, chunkZ)}
+	 * （等价于 {@code ActiveSableCompanion#getContaining(Level, x, z)}，即
+	 * {@code BlockGetterMixin#clip} 内部用来判断"这个本地点属于哪个结构"的那一句）。
+	 * 它按区块索引 plot 网格，比 {@code LevelPlot#contains} 的浮点范围比较更贴近 Sable 的实际行为。</p>
+	 *
+	 * <p>兜底：逐个 sub-level 用 {@code LevelPlot#contains} <b>或</b>其区块范围判一次
+	 * （任一成立即算命中）——主判据拿不到容器时仍然可用。</p>
+	 *
+	 * <p>世界坐标（几千格以内）不会落进 plot 的大数范围，故主世界调用恒为 null。</p>
 	 *
 	 * @param level    客户端/服务端的 Level（都实现了 SubLevelContainerHolder）
 	 * @param localPos 待判定坐标（结构局部/plot 空间）
@@ -110,28 +145,55 @@ final class SableSubLevelAccess {
 	static Hit locateSubLevel(Level level, Vec3 localPos) {
 		if (level == null || localPos == null)
 			return null;
+		SubLevelContainer container = SubLevelContainer.getContainer(level);
+		if (container != null) {
+			LevelPlot plot = container.getPlot(Mth.floor(localPos.x) >> 4, Mth.floor(localPos.z) >> 4);
+			SubLevel sub = plot == null ? null : plot.getSubLevel();
+			if (sub != null && !sub.isRemoved())
+				return new Hit(sub);
+		}
 		for (SubLevel sub : subLevelsOf(level)) {
 			if (sub.isRemoved() || sub.getPlot() == null)
 				continue;
-			// LevelPlot#contains 比对的是 plot 的绝对水平范围（block 坐标），不是世界包围盒
-			if (sub.getPlot()
-				.contains(localPos))
+			LevelPlot plot = sub.getPlot();
+			if (plot.contains(localPos) || inPlotChunks(plot, localPos))
 				return new Hit(sub);
 		}
 		return null;
 	}
 
 	/**
-	 * 结构<b>局部（plot）空间</b>的方块命中查询：该局部坐标处压着非空气方块。
+	 * 结构<b>局部（plot）空间</b>的方块命中查询：该局部坐标附近确实压着非空气方块。
 	 *
 	 * <p>与 {@link #query} 的区别只在坐标系：本方法把入参当作已经在 plot 空间
 	 * （{@code player.pick} 命中结构时的形态），因此<b>不做</b>位姿逆变换。</p>
+	 *
+	 * <p><b>邻域扫描是必须的</b>：命中点落在方块<b>面</b>上（{@code BlockHitResult#getLocation()}
+	 * 的某个分量正好是整数边界），{@code BlockPos.containing} 会取到面外侧的空气邻块。
+	 * 实测：{@code loc=20481030.28/128.00/20485128.14}、实心石头在 {@code y=127}，
+	 * 取整得到 {@code y=128} 的空气块 → 只判一格会把有效命中丢掉。</p>
 	 */
 	static Hit queryLocalBlock(Level level, Vec3 localPos) {
 		Hit hit = locateSubLevel(level, localPos);
 		if (hit == null)
 			return null;
-		return getBlockState(hit, BlockPos.containing(localPos)).isAir() ? null : hit;
+		BlockPos guess = BlockPos.containing(localPos);
+		if (!getBlockState(hit, guess).isAir())
+			return hit;
+		for (BlockPos p : BlockPos.betweenClosed(guess.offset(-1, -1, -1), guess.offset(1, 1, 1))) {
+			if (!getBlockState(hit, p).isAir())
+				return hit;
+		}
+		return null;
+	}
+
+	/** 某坐标的区块是否落在该 plot 的区块范围内（与 {@code LevelPlot#contains} 同源的区块口径）。 */
+	private static boolean inPlotChunks(LevelPlot plot, Vec3 p) {
+		ChunkPos min = plot.getChunkMin();
+		ChunkPos max = plot.getChunkMax();
+		int cx = Mth.floor(p.x) >> 4;
+		int cz = Mth.floor(p.z) >> 4;
+		return cx >= min.x && cx <= max.x && cz >= min.z && cz <= max.z;
 	}
 
 	/**
@@ -174,5 +236,80 @@ final class SableSubLevelAccess {
 			.getPlot()
 			.getEmbeddedLevelAccessor()
 			.getBlockEntity(SablePose.accessorPos(hit, localPos));
+	}
+
+	// ======================= 临时诊断（TODO 定位后整体删除） =======================
+
+	/**
+	 * 临时诊断（TODO 定位后整体删除）：把「客户端能枚举到的结构数 + 与判定点最近的那个结构的
+	 * plot 范围/中心/包含关系」压成一行，供聊天栏一行自证判据差在哪。
+	 *
+	 * <p>四个自证数字：{@code 客户端结构}（客户端容器里到底看得到几个结构）、
+	 * {@code 距plot}（点到该 plot 绝对水平矩形的距离，0 = 点就在 plot 里）、
+	 * {@code contains}/{@code 归属}（两条判据各自的结论）。</p>
+	 */
+	static String describeLocalProbe(Level level, Vec3 p) {
+		if (level == null || p == null)
+			return "";
+		List<? extends SubLevel> subs = subLevelsOf(level);
+		StringBuilder sb = new StringBuilder("客户端结构=").append(subs.size());
+		LevelPlot nearest = null;
+		double nearestDist = Double.MAX_VALUE;
+		for (SubLevel sub : subs) {
+			if (sub.getPlot() == null)
+				continue;
+			double d = plotRectDistance(sub.getPlot(), p);
+			if (d < nearestDist) {
+				nearestDist = d;
+				nearest = sub.getPlot();
+			}
+		}
+		if (nearest == null)
+			return sb.toString();
+		ChunkPos min = nearest.getChunkMin();
+		ChunkPos max = nearest.getChunkMax();
+		BlockPos center = nearest.getCenterBlock();
+		return sb.append(" 最近plot=")
+			.append(nearest.plotPos.x)
+			.append(',')
+			.append(nearest.plotPos.z)
+			.append(" 区块x[")
+			.append(min.x)
+			.append("..")
+			.append(max.x)
+			.append("] z[")
+			.append(min.z)
+			.append("..")
+			.append(max.z)
+			.append("] 方块x[")
+			.append(min.getMinBlockX())
+			.append("..")
+			.append(max.getMaxBlockX())
+			.append("] z[")
+			.append(min.getMinBlockZ())
+			.append("..")
+			.append(max.getMaxBlockZ())
+			.append("] 中心=")
+			.append(center.getX())
+			.append(',')
+			.append(center.getY())
+			.append(',')
+			.append(center.getZ())
+			.append(" 距plot=")
+			.append(Math.round(nearestDist))
+			.append(" contains=")
+			.append(nearest.contains(p) ? "是" : "否")
+			.append(" 归属=")
+			.append(locateSubLevel(level, p) != null ? "是" : "否")
+			.toString();
+	}
+
+	/** 点到 plot 绝对水平矩形（XZ）的距离；点在矩形内返回 0。 */
+	private static double plotRectDistance(LevelPlot plot, Vec3 p) {
+		ChunkPos min = plot.getChunkMin();
+		ChunkPos max = plot.getChunkMax();
+		double dx = Math.max(0.0D, Math.max(min.getMinBlockX() - p.x, p.x - (max.getMaxBlockX() + 1)));
+		double dz = Math.max(0.0D, Math.max(min.getMinBlockZ() - p.z, p.z - (max.getMaxBlockZ() + 1)));
+		return Math.sqrt(dx * dx + dz * dz);
 	}
 }

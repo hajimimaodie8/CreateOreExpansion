@@ -167,6 +167,10 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         bar.playerInSub = playerSub != null;
         bar.playerQueryHit = playerQuery != null;
         bar.subLevelCount = diagSubLevelCount(level);
+        // TODO 定位后整体删除：把"客户端认不认得出这个点属于哪个结构"自证出来——
+        //  客户端容器里有几个结构、最近结构的 plot 绝对范围/中心、点与它的距离、
+        //  contains 与归属两条判据各自的结论。这一串是下次一行定性的关键。
+        bar.plotProbe = bridge == null ? "" : bridge.describeLocalProbe(level, pickPoint);
         // "拾取方块在主世界是空气" = 结构方块被搬走了、原地只剩空气（站在结构上/看结构方块的最强信号）
         // TODO 定位后整体删除：下面 query-null 那条日志会把主世界读到的方块原样打出来——
         //  若那里显示"空气"而准星明明对着结构上的方块，就直接证明 pick 给的是局部（plot）坐标。
@@ -475,6 +479,8 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     // （走兜底成功时状态换成"结构兜底+…"，一眼可辨是哪条路认出来的）。
     // 走到"对着方块"之后，行尾一律附上判定所需的数字，共 8 个字段：
     //   pick / 玩家 / 距 / 玩家在结构 / 玩家q / 结构数 / qLocal / qWorld
+    // 之后跟一段"结构探针"（describeLocalProbe）：客户端结构数 + 最近结构的 plot 绝对范围/
+    //   中心 + 点距该矩形 + contains/归属结论——用来一行定性"判据差在哪"。
     // **桥接为 null（未装 Sable 或没装上）时整份读数只有"无桥接"这一句**，绝不会再出现
     // "未识别结构"（那会误导）——为 null 时也不调用任何桥接方法。
     // 输出方式：displayClientMessage(..., false) → **聊天栏**（可慢慢读、可直接复制），不再是动作栏。
@@ -547,6 +553,12 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
 
         /** 该维度能枚举到的 sub-level 数（拿不到写 {@code -}）。 */
         String subLevelCount = "-";
+
+        /**
+         * TODO 定位后整体删除：{@code describeLocalProbe(level, pickPoint)} 的读数——
+         * 客户端结构数 + 最近结构的 plot 绝对范围/中心 + 点距该矩形 + contains/归属结论。
+         */
+        String plotProbe = "";
 
         /** {@code queryLocalBlock(level, pickPoint) != null}（原路 1）。 */
         boolean qLocal;
@@ -628,7 +640,8 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
                     + " 玩家q=" + (playerQueryHit ? "是" : "否")
                     + " 结构数=" + subLevelCount
                     + " qLocal=" + (qLocal ? "是" : "否")
-                    + " qWorld=" + (qWorld ? "是" : qWorldSkipped ? "未试" : "否");
+                    + " qWorld=" + (qWorld ? "是" : qWorldSkipped ? "未试" : "否")
+                    + " | " + plotProbe;
         }
     }
     // ===================== 临时诊断结束（TODO 定位后删） =====================

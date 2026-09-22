@@ -67,8 +67,12 @@ public interface SubLevelBridge {
 	 * 全程没有把结果投影回世界。站在结构上的玩家自身位置、视线方向同样在局部空间。
 	 * 因此调用方拿到"可能是局部系"的坐标时，先用本方法判定它属于哪个结构。</p>
 	 *
-	 * <p>判定只看 plot 的水平范围（与 {@code LevelPlot#contains} 同口径），
-	 * <b>不</b>要求该处有方块；世界坐标（几千格以内）不会落在任何 plot 范围内，
+	 * <p>判定口径与 Sable 自己一致：{@code SubLevelContainer#getPlot(chunkX, chunkZ)}
+	 * （= {@code ActiveSableCompanion#getContaining(Level, x, z)}，即
+	 * {@code mixin.clip_overwrite.BlockGetterMixin#clip} 内部用来判断
+	 * "这个本地点属于哪个结构"的那一句），兜底再逐个比对 plot 的绝对水平范围
+	 * （{@code LevelPlot#contains}）。<b>不</b>要求该处有方块；
+	 * 世界坐标（几千格以内）不会落在任何 plot 范围内（plot 空间在 2.048e7 量级），
 	 * 所以主世界逻辑不受影响。</p>
 	 *
 	 * @param level    该坐标所在的 Level（客户端即 ClientLevel）
@@ -84,6 +88,9 @@ public interface SubLevelBridge {
 	 *
 	 * <p>用于识别"准星拾取结果已经是结构局部坐标"（Sable 的 clip 命中结构时就是这个形态），
 	 * 从而把拾取点换算回世界坐标、复用统一的世界路径。</p>
+	 *
+	 * <p><b>邻域容差是必须的</b>：拾取点落在方块面上（某个分量正好是整数边界），
+	 * 取整会得到面外侧的空气块，只判一格会把有效命中丢掉——实现须在 3×3×3 邻域里找非空气方块。</p>
 	 *
 	 * @param level    该坐标所在的 Level（客户端即 ClientLevel）
 	 * @param localPos 待判定坐标（结构局部/plot 空间）
@@ -137,5 +144,19 @@ public interface SubLevelBridge {
 	 */
 	default java.util.List<Object> subLevels(net.minecraft.server.level.ServerLevel worldLevel) {
 		return java.util.List.of();
+	}
+
+	/**
+	 * 临时诊断（TODO 定位后整体删除）：局部点与各 sub-level 的 plot 范围/中心的关系。
+	 *
+	 * <p>供客户端预览把"判据差在哪"直接打给用户看：客户端能枚举到几个结构、
+	 * 最近那个结构的 plot 绝对范围与中心、点是否落在其中、点与矩形相距多少。
+	 * 未装 Sable 时默认返回空串（调用方拼进聊天栏读数即可）。</p>
+	 *
+	 * @param level    客户端/服务端的 Level
+	 * @param localPos 待判定的坐标（通常是 {@code player.pick} 的命中点）
+	 */
+	default String describeLocalProbe(Level level, Vec3 localPos) {
+		return "";
 	}
 }
