@@ -34,8 +34,14 @@ public interface SubLevelBridge {
 	boolean isActive();
 
 	/**
-	 * 世界坐标查询：某世界位置是否落在某个 sub-level 的世界空间包围盒内。
-	 * 用于波飞行时检测"是否撞上了物理结构"。
+	 * 世界坐标查询：某世界位置是否被某个 sub-level 的实体方块占据。
+	 *
+	 * <p>实现口径是"位姿逆变换到结构本地系后采样该处方块是否非空气"（不是包围盒判定），
+	 * 因此命中点在方块面上也能命中——采样窗口覆盖面上的整数边界。</p>
+	 *
+	 * <p><b>入参必须是世界坐标</b>（结构本体会被位姿变换到世界空间）。若手上拿到的是
+	 * {@code player.pick(...)} 的结构命中结果，它可能已经是<b>局部坐标</b>——
+	 * 先过 {@link #locateSubLevel}/{@link #queryLocalBlock} 判别，别直接喂进来。</p>
 	 *
 	 * @param worldLevel 主世界（波所在）
 	 * @param worldPos   波中心（世界坐标）
@@ -50,6 +56,42 @@ public interface SubLevelBridge {
 	 * @return 所属 sub-level；BE 不在任何结构上返回 null
 	 */
 	Hit ofBlockEntity(BlockEntity be);
+
+	/**
+	 * <b>结构局部（plot）空间</b>的坐标查询：该坐标是否落在某个 sub-level 的本地系内。
+	 *
+	 * <p><b>为什么需要它</b>：Sable 的 {@code level.clip(...)}（即 {@code player.pick(...)} 的底层）
+	 * 一旦命中物理结构，返回的 {@link net.minecraft.world.phys.BlockHitResult} 里的
+	 * 位置/方块坐标是<b>结构局部坐标</b>（plot 空间的大数坐标），不是世界坐标——
+	 * 它内部是把射线逆变换到 plot 空间后调 {@code originalClip} 得出命中的，
+	 * 全程没有把结果投影回世界。站在结构上的玩家自身位置、视线方向同样在局部空间。
+	 * 因此调用方拿到"可能是局部系"的坐标时，先用本方法判定它属于哪个结构。</p>
+	 *
+	 * <p>判定只看 plot 的水平范围（与 {@code LevelPlot#contains} 同口径），
+	 * <b>不</b>要求该处有方块；世界坐标（几千格以内）不会落在任何 plot 范围内，
+	 * 所以主世界逻辑不受影响。</p>
+	 *
+	 * @param level    该坐标所在的 Level（客户端即 ClientLevel）
+	 * @param localPos 待判定坐标（结构局部/plot 空间）
+	 * @return 坐落在的结构；不在任何结构本地系内返回 null
+	 */
+	default Hit locateSubLevel(Level level, Vec3 localPos) {
+		return null;
+	}
+
+	/**
+	 * <b>结构局部（plot）空间</b>的方块命中查询：该局部坐标处确实压着结构方块。
+	 *
+	 * <p>用于识别"准星拾取结果已经是结构局部坐标"（Sable 的 clip 命中结构时就是这个形态），
+	 * 从而把拾取点换算回世界坐标、复用统一的世界路径。</p>
+	 *
+	 * @param level    该坐标所在的 Level（客户端即 ClientLevel）
+	 * @param localPos 待判定坐标（结构局部/plot 空间）
+	 * @return 命中且该处非空气时返回所属结构；否则 null
+	 */
+	default Hit queryLocalBlock(Level level, Vec3 localPos) {
+		return null;
+	}
 
 	/** 本地坐标 → 世界坐标（位置变换）。 */
 	Vec3 toWorld(Hit hit, Vec3 localPos);

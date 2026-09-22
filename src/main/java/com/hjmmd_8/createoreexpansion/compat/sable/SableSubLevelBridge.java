@@ -50,6 +50,16 @@ public final class SableSubLevelBridge implements SubLevelBridge {
 	}
 
 	@Override
+	public Hit locateSubLevel(Level level, Vec3 localPos) {
+		return SableSubLevelAccess.locateSubLevel(level, localPos);
+	}
+
+	@Override
+	public Hit queryLocalBlock(Level level, Vec3 localPos) {
+		return SableSubLevelAccess.queryLocalBlock(level, localPos);
+	}
+
+	@Override
 	public Vec3 toWorld(Hit hit, Vec3 localPos) {
 		return SablePose.toWorld(hit, localPos);
 	}

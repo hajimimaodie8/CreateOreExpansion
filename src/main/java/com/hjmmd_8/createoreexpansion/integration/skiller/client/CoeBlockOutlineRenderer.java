@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
+import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.client.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.client.tool.OutlineRenderer;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
@@ -13,6 +14,7 @@ import com.leaf.skiller.foundation.skill.StrategySkill;
 import com.leaf.skiller.foundation.strategy.SkillStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.Util;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -27,7 +29,9 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -60,6 +64,13 @@ import java.util.Set;
  *       的仿射矩阵，在<b>相机位移之后</b> {@code mulPose}，然后仍按局部坐标照旧画两层
  *       （合并必须发生在局部空间：先转世界坐标再合并，旋转后的 AABB 不再轴对齐、框会碎）。</li>
  * </ol>
+ * <p><b>坐标系陷阱（必读）</b>：{@code player.pick(...)} 的底层是 Sable 覆写过的
+ * {@code BlockGetter#clip}，它命中结构时返回的 {@link BlockHitResult} 里
+ * <b>位置与方块坐标已经是结构局部（plot）坐标</b>（射线被逆变换进 plot 空间后才求交，
+ * 结果没有投影回世界）；站在结构上的玩家，其自身位置/视线/所击面同样在局部空间。
+ * 所以这里先用 {@code queryLocalBlock} 判别拾取点是否已在结构本地系，是则直接当局部坐标用；
+ * 否则（玩家在世界系、看着结构）才走世界坐标的 {@code query}/{@code toLocal}。
+ * 早先只走后者，局部点会被再逆变换一次 → 采样到空气 → 结构命中丢失 → 预览整个不显示。</p>
  * <p>未装 Sable（{@link SableBridges#get()} 为 null）时：不查询、不加矩阵、不走局部渲染分支，
  * 与改动前逐字一致。</p>
  *
@@ -84,43 +95,77 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         if (!AllKeys.SKILL_RELEASE.isPressed()
                 && !AllKeys.SKILL_RELEASE_2.isPressed()
                 && !AllKeys.SKILL_RELEASE_3.isPressed()) {
+            diag("gate", "技能键未按下（含 Shift/R/G 三个键位） → 预览不显示", GATE_LOG_MS);
             return Optional.empty();
         }
         // 准星拾取：旧调度器就是从玩家的 BlockHitResult 拿中心方块的
         HitResult hit = player.pick(PICK_DISTANCE, 0.0F, false);
         if (!(hit instanceof BlockHitResult blockHit)) {
+            diag("pick-type", "pick 不是方块命中：type=" + hit.getType());
             return Optional.empty();
         }
-        BlockPos center;
-        // 物理结构（Sable / 航空学 sub-level）：准星命中结构方块时，中心与整个"挖哪些"
-        // 的计算都改到**结构局部空间**（结构方块被搬到了虚拟子世界，主世界那些坐标上什么都没有）。
-        // 未装 Sable（桥接为 null）或没命中结构 → structureHit 恒为 null，走原来的世界坐标路径。
         SubLevelBridge bridge = SableBridges.get();
-        SubLevelBridge.Hit structureHit = bridge == null ? null : bridge.query(level, blockHit.getLocation());
-        if (structureHit != null) {
-            center = resolveLocalCenter(bridge, structureHit,
-                    bridge.toLocal(structureHit, blockHit.getLocation()));
+        Vec3 pickPoint = blockHit.getLocation();
+        // ⚠ 坐标系：Sable 的 level.clip（player.pick 的底层）命中物理结构时，返回的
+        // BlockHitResult 的位置/方块坐标是**结构局部（plot）坐标**，不是世界坐标——
+        // 它内部把射线逆变换到 plot 空间后对结构方块求出命中，全程没有把结果投影回世界。
+        // 站在结构上的玩家自身位置/视线同样在局部空间（Sable 的 entities_stick_sublevels）。
+        // 所以先判一次"这个拾取点是不是已经在结构本地系里"，是的话直接当局部坐标用，
+        // 不再走世界坐标的 query/toLocal（那会把局部点再逆变换一次 → 采样到空气 → 结构命中丢失）。
+        SubLevelBridge.Hit localPick = bridge == null ? null : bridge.queryLocalBlock(level, pickPoint);
+        SubLevelBridge.Hit playerSub = bridge == null ? null : bridge.locateSubLevel(level, player.position());
+        diag("pick", "type=" + hit.getType() + " loc=" + diagVec(pickPoint) + " blockPos=" + blockHit.getBlockPos()
+                + " bridge=" + (bridge != null) + " playerInSubLevel=" + (playerSub != null)
+                + " pickInSubLevelBlock=" + (localPick != null));
+        SubLevelBridge.Hit structureHit;
+        Vec3 localPoint;
+        if (localPick != null) {
+            structureHit = localPick;
+            localPoint = pickPoint;
+            diag("local-pick", "拾取结果已在结构局部系 → center(局部)=" + BlockPos.containing(localPoint));
         } else {
-            center = blockHit.getBlockPos();
+            structureHit = bridge == null ? null : bridge.query(level, pickPoint);
+            localPoint = structureHit == null ? null : bridge.toLocal(structureHit, pickPoint);
+            if (structureHit != null) {
+                diag("world-hit", "query(世界坐标) 命中结构；toLocal=" + diagVec(localPoint));
+            } else {
+                boolean air = level.getBlockState(blockHit.getBlockPos()).isAir();
+                diag("query-null", "bridge=" + (bridge != null) + " query(世界坐标)=null；主世界该处是空气=" + air
+                        + " blockPos=" + blockHit.getBlockPos()
+                        + (air ? " ← 方块很可能在结构上、但没被认出来（或结构不存在）" : ""));
+            }
+        }
+        BlockPos center = structureHit != null
+                ? resolveLocalCenter(bridge, structureHit, localPoint)
+                : blockHit.getBlockPos();
+        if (structureHit != null) {
+            diag("center", "center=" + center + " 该处方块=" + bridge.getBlockState(structureHit, center));
         }
         ExcavationSkillContext probe = new ExcavationSkillContext(
                 level, center, player.getMainHandItem(), player, structureHit);
 
         if (!(instance.skill().getSkill() instanceof StrategySkill<?, ?> strategySkill)) {
+            diag("no-strategy", "技能不是 StrategySkill → 无法取策略：" + instance.skill().getSkill());
             return Optional.empty();
         }
         SkillStrategy<?, ?> raw = strategySkill.strategy();
         if (raw == null) {
+            diag("no-strategy", "策略为 null：" + strategySkill);
             return Optional.empty();
         }
         @SuppressWarnings("unchecked")
         SkillStrategy<BlockPos, ExcavationSkillContext> strategy =
                 (SkillStrategy<BlockPos, ExcavationSkillContext>) raw;
-        if (!strategy.canCollect(probe, castInstance(instance))) {
+        boolean canCollect = strategy.canCollect(probe, castInstance(instance));
+        diag("can-collect", "canCollect=" + canCollect + " center=" + center
+                + " centerState=" + probe.blockState(center) + " structureHit=" + (structureHit != null));
+        if (!canCollect) {
             return Optional.empty();
         }
         Set<BlockPos> positions = new HashSet<>();
         strategy.collect(positions, probe, castInstance(instance));
+        diag("collect", "collect 出 " + positions.size() + " 个方块（不含 center）"
+                + (positions.isEmpty() ? " → 空集合，预览不显示" : ""));
         if (positions.isEmpty()) {
             return Optional.empty();
         }
@@ -267,4 +312,38 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
             ISkillInstance<BlockOutlineRenderContext> instance) {
         return (ISkillInstance<ExcavationSkillContext>) (ISkillInstance<?>) instance;
     }
+
+    // ======================= 临时诊断（TODO 定位后删） =======================
+    // 目的：定位"倾斜物理结构上拿镐按住技能键没有预览框"。整段可直接删，
+    // 删除时同步清掉 getContext 里所有 diag(...) 调用与 Util/HashMap/Map 三个 import。
+
+    /** 同原因最短输出间隔：2 秒最多一条（不逐帧刷屏）。 */
+    private static final long DIAG_INTERVAL_MS = 2000L;
+
+    /** 键位门那条特别吵（拿镐站着不动也会每 2 秒来一条），单独放宽到 20 秒。 */
+    private static final long GATE_LOG_MS = 20000L;
+
+    /** 原因 → 上次输出时刻（只在渲染线程访问，故用普通 HashMap）。 */
+    private static final Map<String, Long> DIAG_LAST = new HashMap<>();
+
+    /** 临时诊断：统一前缀 {@code [SkillerRender]}，同原因限流输出。 */
+    private static void diag(String reason, String message) {
+        diag(reason, message, DIAG_INTERVAL_MS);
+    }
+
+    private static void diag(String reason, String message, long intervalMs) {
+        long now = Util.getMillis();
+        Long last = DIAG_LAST.get(reason);
+        if (last != null && now - last < intervalMs) {
+            return;
+        }
+        DIAG_LAST.put(reason, now);
+        CreateOreExpansion.LOGGER.info("[SkillerRender] {} | {}", reason, message);
+    }
+
+    /** 坐标格式化（局部坐标是大数，取两位小数足够判读）。 */
+    private static String diagVec(Vec3 v) {
+        return String.format("%.2f/%.2f/%.2f", v.x, v.y, v.z);
+    }
+    // ===================== 临时诊断结束（TODO 定位后删） =====================
 }

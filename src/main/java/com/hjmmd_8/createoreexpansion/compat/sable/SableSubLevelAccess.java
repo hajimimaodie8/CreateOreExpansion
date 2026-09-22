@@ -97,6 +97,44 @@ final class SableSubLevelAccess {
 	}
 
 	/**
+	 * 结构<b>局部（plot）空间</b>的坐标查询：坐标是否落在某结构的本地系水平范围内。
+	 *
+	 * <p>用途：识别 Sable 的 {@code level.clip} 返回的命中（其位置是局部坐标）与
+	 * "自身已在结构本地系里的实体"（站在结构上的玩家）。世界坐标（几千格以内）
+	 * 不会落进 plot 的大数范围，故主世界调用恒为 null。</p>
+	 *
+	 * @param level    客户端/服务端的 Level（都实现了 SubLevelContainerHolder）
+	 * @param localPos 待判定坐标（结构局部/plot 空间）
+	 * @return 坐落在的结构；不在任何结构本地系内返回 null
+	 */
+	static Hit locateSubLevel(Level level, Vec3 localPos) {
+		if (level == null || localPos == null)
+			return null;
+		for (SubLevel sub : subLevelsOf(level)) {
+			if (sub.isRemoved() || sub.getPlot() == null)
+				continue;
+			// LevelPlot#contains 比对的是 plot 的绝对水平范围（block 坐标），不是世界包围盒
+			if (sub.getPlot()
+				.contains(localPos))
+				return new Hit(sub);
+		}
+		return null;
+	}
+
+	/**
+	 * 结构<b>局部（plot）空间</b>的方块命中查询：该局部坐标处压着非空气方块。
+	 *
+	 * <p>与 {@link #query} 的区别只在坐标系：本方法把入参当作已经在 plot 空间
+	 * （{@code player.pick} 命中结构时的形态），因此<b>不做</b>位姿逆变换。</p>
+	 */
+	static Hit queryLocalBlock(Level level, Vec3 localPos) {
+		Hit hit = locateSubLevel(level, localPos);
+		if (hit == null)
+			return null;
+		return getBlockState(hit, BlockPos.containing(localPos)).isAir() ? null : hit;
+	}
+
+	/**
 	 * BE 匹配：方块实体是否位于某 sub-level 上（充能器发射时判断出生坐标系）。
 	 *
 	 * @param be 方块实体（充能器/波闸等）

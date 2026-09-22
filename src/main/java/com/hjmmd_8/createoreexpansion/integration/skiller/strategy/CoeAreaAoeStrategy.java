@@ -84,6 +84,10 @@ public class CoeAreaAoeStrategy implements SkillStrategy<BlockPos, ExcavationSki
      *       （{@code CoeBlockOutlineRenderer}）本来就对这个集合
      *       {@code mulPose} 结构位姿矩阵，所以形状自然随结构倾斜：结构水平 → 平面水平，
      *       结构倾斜 → 平面跟着倾斜。</li>
+     *   <li><b>玩家自身已在结构本地系</b>（站在结构上，Sable 的 entities_stick_sublevels
+     *       让玩家位置/视线/所击面都留在局部空间）：两个来源本来就是局部向量，
+     *       <b>不能</b>再 {@code toLocalDir}（那等于把结构旋转反向施加第二遍 → 平面朝向错掉），
+     *       直接交给 {@link DualDirection#fromLocal}。</li>
      * </ul>
      */
     private static DualDirection resolveDirection(ExcavationSkillContext context, Player player,
@@ -94,10 +98,17 @@ public class CoeAreaAoeStrategy implements SkillStrategy<BlockPos, ExcavationSki
         if (bridge == null || structureHit == null) {
             return DualDirection.from(player, hit, config.directionSource);
         }
+        Vec3 worldFace = Vec3.atLowerCornerOf(hit.getDirection().getNormal());
+        // 站在结构上的玩家**自身**就在结构本地系里（Sable 的 entities_stick_sublevels 会
+        // 把玩家位置/视线/所击面都保持在结构局部空间），此时两个朝向来源本来就是局部向量，
+        // 再换算一次等于把结构的旋转反向施加第二遍 → 平面朝向错掉。
+        // 判据用"玩家位置是否落在结构本地系"，与拾取点是否局部无关（站在旁边看结构时玩家仍是世界系）。
+        if (bridge.locateSubLevel(context.level(), player.position()) != null) {
+            return DualDirection.fromLocal(config.directionSource, worldFace, player.getLookAngle());
+        }
         // 世界 → 结构局部（与预览渲染同一条位姿：桥接的 toLocalDir）
         Vec3 localLook = bridge.toLocalDir(structureHit, player.getLookAngle());
-        Vec3 localFace = bridge.toLocalDir(structureHit,
-                Vec3.atLowerCornerOf(hit.getDirection().getNormal()));
+        Vec3 localFace = bridge.toLocalDir(structureHit, worldFace);
         return DualDirection.fromLocal(config.directionSource, localFace, localLook);
     }
 
