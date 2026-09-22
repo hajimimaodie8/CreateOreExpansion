@@ -114,7 +114,9 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
                 && !AllKeys.SKILL_RELEASE_2.isPressed()
                 && !AllKeys.SKILL_RELEASE_3.isPressed()) {
             bar.gate = false;
-            // TODO 定位后整体删除：松开键时只判"玩家在不在结构上"（不发射线），补一条收尾行后停止刷新
+            // TODO 定位后整体删除：松开键时只判"玩家在不在结构上"（不发射线），补一条收尾行后停止刷新。
+            //  诊断行由 getContext 的 finally 统一显示 —— 也就是在这次提前 return **之前**就会打出来，
+            //  所以用户能看到"键门=否"（本轮放宽门槛的目的）。
             bar.sampleRelease(level, player);
             diag("gate", "技能键未按下（含 Shift/R/G 三个键位） → 预览不显示", GATE_LOG_MS);
             return Optional.empty();
@@ -130,7 +132,6 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         bar.pickType = "BLOCK";
         SubLevelBridge bridge = SableBridges.get();
         bar.bridgePresent = bridge != null;
-        bar.sampled = true;
         Vec3 pickPoint = blockHit.getLocation();
         bar.loc = diagPos(pickPoint);
         // ⚠ 坐标系：Sable 的 level.clip（player.pick 的底层）命中物理结构时，返回的
@@ -144,7 +145,10 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         bar.playerInSubLevel = playerSub != null;
         bar.pickInSubLevel = localPick != null;
         // "拾取方块在主世界是空气" = 结构方块被搬走了、原地只剩空气（站在结构上/看结构方块的最强信号）
-        bar.worldBlockAir = level.getBlockState(blockHit.getBlockPos()).isAir();
+        // TODO 定位后整体删除：把拾取点坐标丢给主世界 level 读到的方块原样打出来——
+        //  若这里显示"空气"而准星明明对着结构上的方块，就直接证明 pick 给的是局部（plot）坐标。
+        BlockState worldState = level.getBlockState(blockHit.getBlockPos());
+        bar.worldBlock = worldState.isAir() ? "空气" : blockId(worldState);
         diag("pick", "type=" + hit.getType() + " loc=" + diagVec(pickPoint) + " blockPos=" + blockHit.getBlockPos()
                 + " bridge=" + (bridge != null) + " playerInSubLevel=" + (playerSub != null)
                 + " pickInSubLevelBlock=" + (localPick != null));
@@ -368,6 +372,19 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     /** 原因 → 上次输出时刻（只在渲染线程访问，故用普通 HashMap）。 */
     private static final Map<String, Long> DIAG_LAST = new HashMap<>();
 
+    /**
+     * Sable 的 modId。刻意与桥接注册处**同一写法**（不自己猜 id、不新造常量）：
+     * {@code CreateOreExpansion.java:103 → if (net.neoforged.fml.ModList.get().isLoaded("sable"))}；
+     * {@code content/wave/bridge/SubLevelBridge.java:24} 的 {@code ModList.isLoaded("sable")} 亦同。
+     */
+    private static final String SABLE_MOD_ID = "sable";
+
+    /** Sable 是否已安装（决定"桥接=无"到底是"没装"还是"该装没装上"）。 */
+    private static boolean sableLoaded() {
+        net.neoforged.fml.ModList modList = net.neoforged.fml.ModList.get();
+        return modList != null && modList.isLoaded(SABLE_MOD_ID);
+    }
+
     /** 临时诊断：统一前缀 {@code [SkillerRender]}，同原因限流输出。 */
     private static void diag(String reason, String message) {
         diag(reason, message, DIAG_INTERVAL_MS);
@@ -391,8 +408,12 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     // --------------------- 动作栏读数（给用户看的，TODO 定位后整体删除） ---------------------
     // 目的：用户在自己的整合包里测试、不方便翻日志。所以把现场关键值拼成一行中文直接打在
     // **动作栏**（displayClientMessage(..., true)，不刷聊天框），用户抬头念给我们即可。
+    // **显示门槛（2026-09-20 放宽）**：只要手持带技能的工具、getContext 被调用就显示——
+    // 不再要求 bridge 非 null、不再要求"疑似在结构上"（suspicious()），否则用户可能一行都看不到、
+    // 无法区分"没认出结构"与"桥接根本没加载"。节流照旧（同值 1s / 变化立即 / 250ms 反闪烁）。
     // 删除时同步清掉：getContext/collectContext 里的 ActionBarDiag、bar.* 赋值、
-    // diagPos(BlockPos)/blockId 两个小工具，以及 Component/BuiltInRegistries/BlockState 三个 import。
+    // diagPos(BlockPos)/blockId 两个小工具、SABLE_MOD_ID/sableLoaded，
+    // 以及 Component/BuiltInRegistries/BlockState 三个 import。
 
     /** 同一状态最短重复间隔：1 秒最多一条（值变化时立即刷新，不受此限）。 */
     private static final long ACTION_BAR_INTERVAL_MS = 1000L;
@@ -422,11 +443,8 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         /** 技能键门（Shift/R/G 任一按下） */
         boolean gate;
 
-        /** 桥接是否存在；未装 Sable 恒为 false → {@link #show()} 直接不显示 */
+        /** 桥接是否存在（{@code SableBridges.get() != null}）。本轮只<b>记录</b>，不再是显示门槛。 */
         boolean bridgePresent;
-
-        /** 至少采到过一次样本（未装 Sable 时为 false） */
-        boolean sampled;
 
         /** BLOCK / MISS / ENTITY */
         String pickType = "-";
@@ -440,8 +458,8 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         /** 拾取点是否已压在结构方块上 */
         boolean pickInSubLevel;
 
-        /** 拾取方块在主世界是否为空气（结构方块被搬走的信号） */
-        boolean worldBlockAir;
+        /** 拾取点坐标在主世界读到的方块：注册名 或 "空气" */
+        String worldBlock = "-";
 
         /** 世界坐标 query 结果：命中 / null */
         String query = "-";
@@ -464,28 +482,14 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         /** 松开技能键时调用：只判"玩家在不在结构上"（不发射线，未按键的帧零额外开销）。 */
         void sampleRelease(ClientLevel level, Player player) {
             SubLevelBridge bridge = SableBridges.get();
-            if (bridge == null) {
-                return;   // 未装 Sable：连字段都不填，show() 直接不显示
-            }
-            this.bridgePresent = true;
-            this.sampled = true;
-            this.playerInSubLevel = bridge.locateSubLevel(level, player.position()) != null;
-        }
-
-        /** 疑似"玩家在物理结构上 / 在看结构方块"——只有这种情况才显示，普通地面不打扰。 */
-        private boolean suspicious() {
-            return playerInSubLevel || pickInSubLevel || worldBlockAir || "命中".equals(query);
+            // 本轮起：没有桥接也照样把字段填好 —— 诊断行必须能显示"键门=否 桥接=无"。
+            this.bridgePresent = bridge != null;
+            this.playerInSubLevel = bridge != null && bridge.locateSubLevel(level, player.position()) != null;
         }
 
         void show() {
-            // 未装 Sable（或没采到样本）：不显示、零打扰 —— 与"bridge==null 行为逐字不变"同一道门
-            if (!sampled || !bridgePresent) {
-                return;
-            }
-            // 普通地面 / 普通方块：不显示
-            if (!suspicious()) {
-                return;
-            }
+            // 本轮唯一改动的门槛：只要动作栏诊断开启就显示 —— 不再要求 sampled / bridgePresent /
+            // suspicious()。否则未装 Sable（或没认出结构）时用户一行都看不到，无法判断根因。
             String line = line();
             long now = System.currentTimeMillis();
             if (!gate) {
@@ -509,12 +513,14 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         }
 
         private String line() {
-            return "[挖掘预览诊断] 键门=" + (gate ? "是" : "否")
+            return "[挖掘预览诊断] 桥接=" + (bridgePresent ? "有" : "无")
+                    + " sable已装=" + (sableLoaded() ? "是" : "否")
+                    + " 键门=" + (gate ? "是" : "否")
+                    + " 主世界该处=" + worldBlock
                     + " pick=" + pickType
                     + " loc=" + loc
                     + " 玩家在结构=" + (playerInSubLevel ? "是" : "否")
                     + " 拾取在结构块=" + (pickInSubLevel ? "是" : "否")
-                    + " bridge=" + (bridgePresent ? "有" : "无")
                     + " query=" + query
                     + " 局部中心=" + localCenter
                     + " 中心方块=" + centerBlock
