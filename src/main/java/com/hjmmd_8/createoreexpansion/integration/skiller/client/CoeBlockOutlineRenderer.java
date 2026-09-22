@@ -21,11 +21,9 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -95,7 +93,7 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         }
         // TODO 定位后整体删除：动作栏诊断收集器。
         //  显示统一放在 finally 里，是为了让**中途提前 return Optional.empty()**（例如 canCollect=false）
-        //  时用户照样能看到断点那一行——本轮唯一的目的就是让用户不用翻日志也能把现场值念出来。
+        //  时用户照样能看到"卡在哪一步"那一句——目的就是让用户不用翻日志、一句话念回来即可。
         ActionBarDiag bar = new ActionBarDiag();
         try {
             return collectContext(mc, level, player, instance, bar);
@@ -114,26 +112,25 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
                 && !AllKeys.SKILL_RELEASE_2.isPressed()
                 && !AllKeys.SKILL_RELEASE_3.isPressed()) {
             bar.gate = false;
-            // TODO 定位后整体删除：松开键时只判"玩家在不在结构上"（不发射线），补一条收尾行后停止刷新。
-            //  诊断行由 getContext 的 finally 统一显示 —— 也就是在这次提前 return **之前**就会打出来，
-            //  所以用户能看到"键门=否"（本轮放宽门槛的目的）。
-            bar.sampleRelease(level, player);
+            // TODO 定位后整体删除：松开键时补一条收尾读数（由 getContext 的 finally 统一显示，
+            //  即这次提前 return **之前**就打出来），随后动作栏约 3 秒自然淡出。
+            //  这一支**不碰桥接**（未按键的帧零开销），显示优先级也把"没按键"排在"无桥接"前面。
             diag("gate", "技能键未按下（含 Shift/R/G 三个键位） → 预览不显示", GATE_LOG_MS);
             return Optional.empty();
         }
         bar.gate = true;
+        // 桥接取在**拾取之前**：SableBridges.get() 只是读一个静态字段（不触发任何 Sable 类加载），
+        // 提前取才能让"无桥接"按优先级排在"没对着方块"之前，并在为 null 时整份读数只说那一句。
+        SubLevelBridge bridge = SableBridges.get();
+        bar.bridgePresent = bridge != null;
         // 准星拾取：旧调度器就是从玩家的 BlockHitResult 拿中心方块的
         HitResult hit = player.pick(PICK_DISTANCE, 0.0F, false);
         if (!(hit instanceof BlockHitResult blockHit)) {
-            bar.pickType = hit.getType().name();
             diag("pick-type", "pick 不是方块命中：type=" + hit.getType());
             return Optional.empty();
         }
-        bar.pickType = "BLOCK";
-        SubLevelBridge bridge = SableBridges.get();
-        bar.bridgePresent = bridge != null;
+        bar.pickIsBlock = true;
         Vec3 pickPoint = blockHit.getLocation();
-        bar.loc = diagPos(pickPoint);
         // ⚠ 坐标系：Sable 的 level.clip（player.pick 的底层）命中物理结构时，返回的
         // BlockHitResult 的位置/方块坐标是**结构局部（plot）坐标**，不是世界坐标——
         // 它内部把射线逆变换到 plot 空间后对结构方块求出命中，全程没有把结果投影回世界。
@@ -142,13 +139,9 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         // 不再走世界坐标的 query/toLocal（那会把局部点再逆变换一次 → 采样到空气 → 结构命中丢失）。
         SubLevelBridge.Hit localPick = bridge == null ? null : bridge.queryLocalBlock(level, pickPoint);
         SubLevelBridge.Hit playerSub = bridge == null ? null : bridge.locateSubLevel(level, player.position());
-        bar.playerInSubLevel = playerSub != null;
-        bar.pickInSubLevel = localPick != null;
         // "拾取方块在主世界是空气" = 结构方块被搬走了、原地只剩空气（站在结构上/看结构方块的最强信号）
-        // TODO 定位后整体删除：把拾取点坐标丢给主世界 level 读到的方块原样打出来——
-        //  若这里显示"空气"而准星明明对着结构上的方块，就直接证明 pick 给的是局部（plot）坐标。
-        BlockState worldState = level.getBlockState(blockHit.getBlockPos());
-        bar.worldBlock = worldState.isAir() ? "空气" : blockId(worldState);
+        // TODO 定位后整体删除：下面 query-null 那条日志会把主世界读到的方块原样打出来——
+        //  若那里显示"空气"而准星明明对着结构上的方块，就直接证明 pick 给的是局部（plot）坐标。
         diag("pick", "type=" + hit.getType() + " loc=" + diagVec(pickPoint) + " blockPos=" + blockHit.getBlockPos()
                 + " bridge=" + (bridge != null) + " playerInSubLevel=" + (playerSub != null)
                 + " pickInSubLevelBlock=" + (localPick != null));
@@ -161,7 +154,6 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         } else {
             structureHit = bridge == null ? null : bridge.query(level, pickPoint);
             localPoint = structureHit == null ? null : bridge.toLocal(structureHit, pickPoint);
-            bar.query = structureHit != null ? "命中" : "null";
             if (structureHit != null) {
                 diag("world-hit", "query(世界坐标) 命中结构；toLocal=" + diagVec(localPoint));
             } else {
@@ -174,10 +166,7 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         BlockPos center = structureHit != null
                 ? resolveLocalCenter(bridge, structureHit, localPoint)
                 : blockHit.getBlockPos();
-        bar.localCenter = diagPos(center);
-        bar.centerBlock = structureHit != null
-                ? blockId(bridge.getBlockState(structureHit, center))
-                : blockId(level.getBlockState(center));
+        bar.structureFound = structureHit != null;
         if (structureHit != null) {
             diag("center", "center=" + center + " 该处方块=" + bridge.getBlockState(structureHit, center));
         }
@@ -185,14 +174,11 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
                 level, center, player.getMainHandItem(), player, structureHit);
 
         if (!(instance.skill().getSkill() instanceof StrategySkill<?, ?> strategySkill)) {
-            bar.strategy = "null";
             diag("no-strategy", "技能不是 StrategySkill → 无法取策略：" + instance.skill().getSkill());
             return Optional.empty();
         }
-        bar.strategy = "OK";
         SkillStrategy<?, ?> raw = strategySkill.strategy();
         if (raw == null) {
-            bar.strategy = "null";
             diag("no-strategy", "策略为 null：" + strategySkill);
             return Optional.empty();
         }
@@ -200,7 +186,7 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         SkillStrategy<BlockPos, ExcavationSkillContext> strategy =
                 (SkillStrategy<BlockPos, ExcavationSkillContext>) raw;
         boolean canCollect = strategy.canCollect(probe, castInstance(instance));
-        bar.canCollect = canCollect ? "是" : "否";
+        bar.canCollect = canCollect;
         diag("can-collect", "canCollect=" + canCollect + " center=" + center
                 + " centerState=" + probe.blockState(center) + " structureHit=" + (structureHit != null));
         if (!canCollect) {
@@ -208,7 +194,7 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         }
         Set<BlockPos> positions = new HashSet<>();
         strategy.collect(positions, probe, castInstance(instance));
-        bar.collected = String.valueOf(positions.size());
+        bar.collected = positions.size();
         diag("collect", "collect 出 " + positions.size() + " 个方块（不含 center）"
                 + (positions.isEmpty() ? " → 空集合，预览不显示" : ""));
         if (positions.isEmpty()) {
@@ -361,7 +347,7 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     // ======================= 临时诊断（TODO 定位后删） =======================
     // 目的：定位"倾斜物理结构上拿镐按住技能键没有预览框"。整段可直接删，
     // 删除时同步清掉 collectContext 里所有 diag(...) 调用与 Util/HashMap/Map 三个 import；
-    // 并删掉下面「动作栏读数」小节（含 getContext 的 finally、bar.* 赋值三个 import）。
+    // 并删掉下面「动作栏读数」小节（含 getContext 的 finally、bar.* 赋值与 Component 一个 import）。
 
     /** 同原因最短输出间隔：2 秒最多一条（不逐帧刷屏）。 */
     private static final long DIAG_INTERVAL_MS = 2000L;
@@ -371,19 +357,6 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
 
     /** 原因 → 上次输出时刻（只在渲染线程访问，故用普通 HashMap）。 */
     private static final Map<String, Long> DIAG_LAST = new HashMap<>();
-
-    /**
-     * Sable 的 modId。刻意与桥接注册处**同一写法**（不自己猜 id、不新造常量）：
-     * {@code CreateOreExpansion.java:103 → if (net.neoforged.fml.ModList.get().isLoaded("sable"))}；
-     * {@code content/wave/bridge/SubLevelBridge.java:24} 的 {@code ModList.isLoaded("sable")} 亦同。
-     */
-    private static final String SABLE_MOD_ID = "sable";
-
-    /** Sable 是否已安装（决定"桥接=无"到底是"没装"还是"该装没装上"）。 */
-    private static boolean sableLoaded() {
-        net.neoforged.fml.ModList modList = net.neoforged.fml.ModList.get();
-        return modList != null && modList.isLoaded(SABLE_MOD_ID);
-    }
 
     /** 临时诊断：统一前缀 {@code [SkillerRender]}，同原因限流输出。 */
     private static void diag(String reason, String message) {
@@ -406,99 +379,72 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     }
 
     // --------------------- 动作栏读数（给用户看的，TODO 定位后整体删除） ---------------------
-    // 目的：用户在自己的整合包里测试、不方便翻日志。所以把现场关键值拼成一行中文直接打在
-    // **动作栏**（displayClientMessage(..., true)，不刷聊天框），用户抬头念给我们即可。
-    // **显示门槛（2026-09-20 放宽）**：只要手持带技能的工具、getContext 被调用就显示——
-    // 不再要求 bridge 非 null、不再要求"疑似在结构上"（suspicious()），否则用户可能一行都看不到、
-    // 无法区分"没认出结构"与"桥接根本没加载"。节流照旧（同值 1s / 变化立即 / 250ms 反闪烁）。
-    // 删除时同步清掉：getContext/collectContext 里的 ActionBarDiag、bar.* 赋值、
-    // diagPos(BlockPos)/blockId 两个小工具、SABLE_MOD_ID/sableLoaded，
-    // 以及 Component/BuiltInRegistries/BlockState 三个 import。
+    // 只显示**一句**"卡在哪一步"的极短提示（前缀 [预览]，均 ≤20 字符），按阶段优先级取
+    // 第一个不成立的阶段：没按键 → 无桥接 → 没对着方块 → 未识别结构 → 结构/不可收集
+    // → 结构/集合0 → 结构+N格。
+    // **桥接为 null（未装 Sable 或没装上）时整份读数只有"无桥接"这一句**，绝不会再出现
+    // "未识别结构"（那会误导）——这是本轮最关键的一条。为 null 时也不调用任何桥接方法。
+    // 显示方式/频率照旧：displayClientMessage(..., true) 打动作栏；按住期间同一句 1 秒最多一条、
+    // 句变则立即刷新、250ms 反闪烁；松开只补一条收尾句，动作栏读数约 3 秒后自然淡出。
+    // 删除时同步清掉：getContext/collectContext 里的 ActionBarDiag 与 bar.* 赋值、
+    // 本小节全部内容，以及 Component 一个 import。
 
-    /** 同一状态最短重复间隔：1 秒最多一条（值变化时立即刷新，不受此限）。 */
+    /** 同一状态最短重复间隔：1 秒最多一条（句变时立即刷新，不受此限）。 */
     private static final long ACTION_BAR_INTERVAL_MS = 1000L;
 
     /**
      * 反闪烁下限：同一帧里"多个挖掘技能实例"会各调一次 getContext（内核按实例调度），
-     * 若不加下限，两行读数会逐帧互相盖掉、用户根本没法念。250ms 内只让最先出现的那个说话。
+     * 若不加下限，两句读数会逐帧互相盖掉、用户根本没法念。250ms 内只让最先出现的那个说话。
      */
     private static final long ACTION_BAR_MIN_GAP_MS = 250L;
 
-    /** 上一次显示的读数行（只在渲染线程访问）。 */
+    /** 上一次显示的读数句（只在渲染线程访问）。 */
     private static String DIAG_LAST_LINE = "";
 
-    /** 上一次显示的读数行时刻（{@link System#currentTimeMillis()}）。 */
+    /** 上一次显示的读数句时刻（{@link System#currentTimeMillis()}）。 */
     private static long DIAG_LAST_LINE_MS;
 
-    /** 上一次显示的是不是"松开技能键"的收尾行 —— 是的话就不再重复（松开后自动停）。 */
+    /** 上一次显示的是不是"松开技能键"的收尾句 —— 是的话就不再重复（松开后约 3 秒自然淡出）。 */
     private static boolean DIAG_LAST_WAS_RELEASE;
 
     /**
-     * 一次 getContext 采到的现场值。所有 return 路径都填它，由
+     * 一次 getContext 采到的**阶段状态**（不再拼现场字段）。所有 return 路径都填它，由
      * {@link CoeBlockOutlineRenderer#getContext} 的 finally 统一交给 {@link #show()} 显示，
-     * 因此"提前 return（canCollect=false / 空集合 / 没策略）"也不会漏掉断点。
+     * 因此"提前 return（没对着方块 / 未识别结构 / canCollect=false / 空集合 / 没策略）"
+     * 也不会漏掉断点。
      */
     private static final class ActionBarDiag {
 
-        /** 技能键门（Shift/R/G 任一按下） */
+        /** 阶段 1：技能键门（Shift/R/G 任一按下）。 */
         boolean gate;
 
-        /** 桥接是否存在（{@code SableBridges.get() != null}）。本轮只<b>记录</b>，不再是显示门槛。 */
+        /** 阶段 2：桥接是否存在（{@code SableBridges.get() != null}；为 null 时只显示"无桥接"）。 */
         boolean bridgePresent;
 
-        /** BLOCK / MISS / ENTITY */
-        String pickType = "-";
+        /** 阶段 3：准星拾取是不是方块命中。 */
+        boolean pickIsBlock;
 
-        /** 拾取点（取整） */
-        String loc = "-";
+        /** 阶段 4：是否识别出结构（queryLocalBlock 命中 或 世界坐标 query 命中）。 */
+        boolean structureFound;
 
-        /** 玩家自身位置是否被判定在结构本地系 */
-        boolean playerInSubLevel;
+        /** 阶段 5：策略 canCollect。 */
+        boolean canCollect;
 
-        /** 拾取点是否已压在结构方块上 */
-        boolean pickInSubLevel;
+        /** 阶段 6：策略 collect 出的方块数（不含 center）；-1 = 还没走到这一步。 */
+        int collected = -1;
 
-        /** 拾取点坐标在主世界读到的方块：注册名 或 "空气" */
-        String worldBlock = "-";
-
-        /** 世界坐标 query 结果：命中 / null */
-        String query = "-";
-
-        /** 局部中心（取整） */
-        String localCenter = "-";
-
-        /** 中心方块注册名 */
-        String centerBlock = "-";
-
-        /** 策略 canCollect */
-        String canCollect = "-";
-
-        /** 策略 collect 出的方块数（不含 center） */
-        String collected = "-";
-
-        /** 技能/策略是否取到：OK / null */
-        String strategy = "-";
-
-        /** 松开技能键时调用：只判"玩家在不在结构上"（不发射线，未按键的帧零额外开销）。 */
-        void sampleRelease(ClientLevel level, Player player) {
-            SubLevelBridge bridge = SableBridges.get();
-            // 本轮起：没有桥接也照样把字段填好 —— 诊断行必须能显示"键门=否 桥接=无"。
-            this.bridgePresent = bridge != null;
-            this.playerInSubLevel = bridge != null && bridge.locateSubLevel(level, player.position()) != null;
-        }
-
+        /** 显示：整份读数**只有一句**，按 {@link #line()} 的优先级取第一个不成立的阶段。 */
         void show() {
-            // 本轮唯一改动的门槛：只要动作栏诊断开启就显示 —— 不再要求 sampled / bridgePresent /
-            // suspicious()。否则未装 Sable（或没认出结构）时用户一行都看不到，无法判断根因。
             String line = line();
             long now = System.currentTimeMillis();
             if (!gate) {
-                // 松开技能键：只在"按住 → 松开"这一次变化时补发一条收尾行，之后不再刷新
+                // 松开技能键：只在"按住 → 松开"这一次变化时补发一条收尾句，之后不再刷新，
+                // 动作栏读数约 3 秒后自然淡出。
                 if (DIAG_LAST_WAS_RELEASE) {
                     return;
                 }
             } else if (line.equals(DIAG_LAST_LINE) && now - DIAG_LAST_LINE_MS < ACTION_BAR_INTERVAL_MS) {
-                return;   // 同一状态：每秒最多一条
+                return;   // 同一句：每秒最多一条
             } else if (now - DIAG_LAST_LINE_MS < ACTION_BAR_MIN_GAP_MS) {
                 return;   // 反闪烁：同一帧的其它技能实例让位
             }
@@ -512,37 +458,32 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
             }
         }
 
+        /**
+         * 阶段优先级（与需求表逐行对应，只返回第一个不成立的阶段）。
+         *
+         * <p>桥接为 null 时**必然**停在第二句上，后面的结构判定一个字都不会出现。</p>
+         */
         private String line() {
-            return "[挖掘预览诊断] 桥接=" + (bridgePresent ? "有" : "无")
-                    + " sable已装=" + (sableLoaded() ? "是" : "否")
-                    + " 键门=" + (gate ? "是" : "否")
-                    + " 主世界该处=" + worldBlock
-                    + " pick=" + pickType
-                    + " loc=" + loc
-                    + " 玩家在结构=" + (playerInSubLevel ? "是" : "否")
-                    + " 拾取在结构块=" + (pickInSubLevel ? "是" : "否")
-                    + " query=" + query
-                    + " 局部中心=" + localCenter
-                    + " 中心方块=" + centerBlock
-                    + " 可收集=" + canCollect
-                    + " 集合=" + collected
-                    + " 策略=" + strategy
-                    + " (松开技能键即停止)";
+            if (!gate) {
+                return "[预览] 没按键";
+            }
+            if (!bridgePresent) {
+                return "[预览] 无桥接";
+            }
+            if (!pickIsBlock) {
+                return "[预览] 没对着方块";
+            }
+            if (!structureFound) {
+                return "[预览] 未识别结构";
+            }
+            if (!canCollect) {
+                return "[预览] 结构/不可收集";
+            }
+            if (collected <= 0) {
+                return "[预览] 结构/集合0";
+            }
+            return "[预览] 结构+" + collected + "格";
         }
-    }
-
-    /** 坐标 → "x,y,z"（局部坐标是大数，取整足够判读）。 */
-    private static String diagPos(Vec3 v) {
-        return Math.round(v.x) + "," + Math.round(v.y) + "," + Math.round(v.z);
-    }
-
-    private static String diagPos(BlockPos pos) {
-        return pos.getX() + "," + pos.getY() + "," + pos.getZ();
-    }
-
-    /** 方块状态 → 注册名（用户念得出来的 id）。 */
-    private static String blockId(BlockState state) {
-        return BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
     }
     // ===================== 临时诊断结束（TODO 定位后删） =====================
 }
