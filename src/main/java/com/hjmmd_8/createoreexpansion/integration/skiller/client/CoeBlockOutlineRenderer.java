@@ -23,6 +23,8 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -72,8 +74,14 @@ import java.util.Set;
  * 所以这里先用 {@code queryLocalBlock} 判别拾取点是否已在结构本地系，是则直接当局部坐标用；
  * 否则（玩家在世界系、看着结构）才走世界坐标的 {@code query}/{@code toLocal}。
  * 早先只走后者，局部点会被再逆变换一次 → 采样到空气 → 结构命中丢失 → 预览整个不显示。</p>
+ * <p><b>兜底识别（不依赖 plot 语义）</b>：上面两条路都没认出结构时，若拾取点与玩家的距离
+ * <b>超过正常拾取距离</b>（{@link #FAR_PICK_DISTANCE}；正常配 {@code player.pick(20)}，恒 ≤20），
+ * 那唯一可观测的事实就是"两者不在同一坐标系"——此时直接在<b>玩家所在的结构</b>
+ * （先 {@link SubLevelBridge#locateSubLevel}，再 {@link SubLevelBridge#query(Level, Vec3)} 玩家位置）上，
+ * 把拾取点<b>原样</b>当结构局部坐标用。查不到结构句柄就拿不到位姿矩阵，
+ * 此时宁可这一帧不画，也不能把框画到十几万格之外（那等于没画，还误导）。</p>
  * <p>未装 Sable（{@link SableBridges#get()} 为 null）时：不查询、不加矩阵、不走局部渲染分支，
- * 与改动前逐字一致。</p>
+ * 与改动前逐字一致（兜底同样不触发：没有桥接就没有位姿）。</p>
  *
  * @since 1.0.0
  */
@@ -81,6 +89,16 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
 
     /** 与释放路径同一个拾取距离（{@code AoeExcavationSkill.PICK_DISTANCE}） */
     private static final double PICK_DISTANCE = 20.0D;
+
+    /**
+     * "拾取点与玩家不在同一坐标系"的距离阈值（兜底识别的唯一判据）。
+     *
+     * <p>正常游玩的一次拾取必然落在 {@link #PICK_DISTANCE}（20）以内，所以 64 这个值不可能
+     * 被正常拾取触及；一旦超过，说明 Sable 的 {@code clip} 把命中结果留在了结构局部（plot）
+     * 大数坐标系里，而玩家自身还在另一个系里。这条判据只依赖"距离异常"这一个可观测事实，
+     * <b>不依赖</b> {@code plot.contains} 的坐标语义，因此能绕开至今没搞对的语义问题。</p>
+     */
+    private static final double FAR_PICK_DISTANCE = 64.0D;
 
     /** 穿透层的 alpha 系数（旧 {@code BlockToolOutlineRenderer} 的第二层） */
     private static final float TRANSPARENT_ALPHA_FACTOR = 0.3F;
@@ -91,10 +109,10 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         if (level == null || player == null || instance == null) {
             return Optional.empty();
         }
-        // TODO 定位后整体删除：动作栏诊断收集器。
+        // TODO 定位后整体删除：聊天栏诊断收集器。
         //  显示统一放在 finally 里，是为了让**中途提前 return Optional.empty()**（例如 canCollect=false）
-        //  时用户照样能看到"卡在哪一步"那一句——目的就是让用户不用翻日志、一句话念回来即可。
-        ActionBarDiag bar = new ActionBarDiag();
+        //  时用户照样能看到"卡在哪一步"那一句——目的就是让用户不用翻日志、一句话复制回来即可。
+        ChatDiag bar = new ChatDiag();
         try {
             return collectContext(mc, level, player, instance, bar);
         } finally {
@@ -105,15 +123,15 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     /** {@link #getContext} 的实际计算体（逻辑与重构前逐字一致，只是多了一个诊断出口）。 */
     private Optional<BlockOutlineRenderContext> collectContext(Minecraft mc, ClientLevel level, Player player,
                                                               ISkillInstance<BlockOutlineRenderContext> instance,
-                                                              ActionBarDiag bar) {
+                                                              ChatDiag bar) {
         // 不按技能键就不显示预览（旧 SkillsStrategyRenderer 的门）。
         // 新内核的 schedule() 是"把身上所有策略技能都排上"，没有这道门，缺了它预览会常亮。
         if (!AllKeys.SKILL_RELEASE.isPressed()
                 && !AllKeys.SKILL_RELEASE_2.isPressed()
                 && !AllKeys.SKILL_RELEASE_3.isPressed()) {
             bar.gate = false;
-            // TODO 定位后整体删除：松开键时补一条收尾读数（由 getContext 的 finally 统一显示，
-            //  即这次提前 return **之前**就打出来），随后动作栏约 3 秒自然淡出。
+            // TODO 定位后整体删除：松开键时补一条收尾读数（由 getContext 的 finally 统一输出，
+            //  即这次提前 return **之前**就打出来）——聊天栏不淡出，会一直留着可复制。
             //  这一支**不碰桥接**（未按键的帧零开销），显示优先级也把"没按键"排在"无桥接"前面。
             diag("gate", "技能键未按下（含 Shift/R/G 三个键位） → 预览不显示", GATE_LOG_MS);
             return Optional.empty();
@@ -130,7 +148,11 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
             return Optional.empty();
         }
         bar.pickIsBlock = true;
+        bar.pickType = String.valueOf(hit.getType());
         Vec3 pickPoint = blockHit.getLocation();
+        bar.pickPoint = pickPoint;
+        bar.playerPos = player.position();
+        bar.pickDistance = pickPoint.distanceTo(player.position());
         // ⚠ 坐标系：Sable 的 level.clip（player.pick 的底层）命中物理结构时，返回的
         // BlockHitResult 的位置/方块坐标是**结构局部（plot）坐标**，不是世界坐标——
         // 它内部把射线逆变换到 plot 空间后对结构方块求出命中，全程没有把结果投影回世界。
@@ -139,6 +161,12 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         // 不再走世界坐标的 query/toLocal（那会把局部点再逆变换一次 → 采样到空气 → 结构命中丢失）。
         SubLevelBridge.Hit localPick = bridge == null ? null : bridge.queryLocalBlock(level, pickPoint);
         SubLevelBridge.Hit playerSub = bridge == null ? null : bridge.locateSubLevel(level, player.position());
+        // 兜底第二步要用的"玩家坐标 query"：这里一次算好，诊断与兜底共用（不重复调用桥接）。
+        SubLevelBridge.Hit playerQuery = bridge == null ? null : bridge.query(level, player.position());
+        bar.qLocal = localPick != null;
+        bar.playerInSub = playerSub != null;
+        bar.playerQueryHit = playerQuery != null;
+        bar.subLevelCount = diagSubLevelCount(level);
         // "拾取方块在主世界是空气" = 结构方块被搬走了、原地只剩空气（站在结构上/看结构方块的最强信号）
         // TODO 定位后整体删除：下面 query-null 那条日志会把主世界读到的方块原样打出来——
         //  若那里显示"空气"而准星明明对着结构上的方块，就直接证明 pick 给的是局部（plot）坐标。
@@ -150,9 +178,11 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         if (localPick != null) {
             structureHit = localPick;
             localPoint = pickPoint;
+            bar.qWorldSkipped = true;   // 原路 1 已命中 → 原路 2 没试过（读数里标"未试"，不写成"否"误导人）
             diag("local-pick", "拾取结果已在结构局部系 → center(局部)=" + BlockPos.containing(localPoint));
         } else {
             structureHit = bridge == null ? null : bridge.query(level, pickPoint);
+            bar.qWorld = structureHit != null;
             localPoint = structureHit == null ? null : bridge.toLocal(structureHit, pickPoint);
             if (structureHit != null) {
                 diag("world-hit", "query(世界坐标) 命中结构；toLocal=" + diagVec(localPoint));
@@ -161,6 +191,30 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
                 diag("query-null", "bridge=" + (bridge != null) + " query(世界坐标)=null；主世界该处是空气=" + air
                         + " blockPos=" + blockHit.getBlockPos()
                         + (air ? " ← 方块很可能在结构上、但没被认出来（或结构不存在）" : ""));
+                // ===================== 兜底识别（本轮新增） =====================
+                // 两条路都没认出结构，但拾取点离玩家**远超正常拾取距离** → 两者不在同一坐标系，
+                // 拾取点已在某个结构本地系里。这条判据不依赖 plot.contains 的坐标语义。
+                if (bridge != null && bar.pickDistance > FAR_PICK_DISTANCE) {
+                    bar.usedFallback = true;
+                    // 取"玩家所在的结构"：先 locateSubLevel(局部语义)，再 query(世界语义)。
+                    SubLevelBridge.Hit owner = playerSub != null ? playerSub : playerQuery;
+                    if (owner != null) {
+                        structureHit = owner;
+                        // 拾取点直接用，**不再 toLocal**（它本来就是局部坐标；再逆变换一次就废了）
+                        localPoint = pickPoint;
+                        diag("fallback-hit", "距离异常(" + Math.round(bar.pickDistance) + ">" + (long) FAR_PICK_DISTANCE
+                                + ") → 兜底命中玩家所在结构(" + (playerSub != null ? "locateSubLevel" : "query(player)")
+                                + ")；localPoint=拾取点=" + diagVec(localPoint)
+                                + " center(局部)=" + BlockPos.containing(localPoint));
+                    } else {
+                        bar.fallbackMissed = true;
+                        // 拿不到结构句柄 = 拿不到位姿矩阵 → 这一帧不画（绝不用世界坐标把框画到十几万格外）
+                        diag("fallback-miss", "距离异常(" + Math.round(bar.pickDistance)
+                                + ") 但 locateSubLevel(player)/query(player) 都拿不到结构 → 放弃本次预览"
+                                + " subLevels=" + bar.subLevelCount);
+                        return Optional.empty();
+                    }
+                }
             }
         }
         BlockPos center = structureHit != null
@@ -346,8 +400,9 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
 
     // ======================= 临时诊断（TODO 定位后删） =======================
     // 目的：定位"倾斜物理结构上拿镐按住技能键没有预览框"。整段可直接删，
-    // 删除时同步清掉 collectContext 里所有 diag(...) 调用与 Util/HashMap/Map 三个 import；
-    // 并删掉下面「动作栏读数」小节（含 getContext 的 finally、bar.* 赋值与 Component 一个 import）。
+    // 删除时同步清掉 collectContext 里所有 diag(...) / bar.* 调用与 Util/HashMap/Map 三个 import；
+    // 并删掉下面「聊天栏读数」小节（含 getContext 的 finally、bar.* 赋值，
+    // 以及 Component / MinecraftServer / ServerLevel 三个 import 与 diagSubLevelCount）。
 
     /** 同原因最短输出间隔：2 秒最多一条（不逐帧刷屏）。 */
     private static final long DIAG_INTERVAL_MS = 2000L;
@@ -378,42 +433,73 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         return String.format("%.2f/%.2f/%.2f", v.x, v.y, v.z);
     }
 
-    // --------------------- 动作栏读数（给用户看的，TODO 定位后整体删除） ---------------------
-    // 只显示**一句**"卡在哪一步"的极短提示（前缀 [预览]，均 ≤20 字符），按阶段优先级取
-    // 第一个不成立的阶段：没按键 → 无桥接 → 没对着方块 → 未识别结构 → 结构/不可收集
-    // → 结构/集合0 → 结构+N格。
-    // **桥接为 null（未装 Sable 或没装上）时整份读数只有"无桥接"这一句**，绝不会再出现
-    // "未识别结构"（那会误导）——这是本轮最关键的一条。为 null 时也不调用任何桥接方法。
-    // 显示方式/频率照旧：displayClientMessage(..., true) 打动作栏；按住期间同一句 1 秒最多一条、
-    // 句变则立即刷新、250ms 反闪烁；松开只补一条收尾句，动作栏读数约 3 秒后自然淡出。
-    // 删除时同步清掉：getContext/collectContext 里的 ActionBarDiag 与 bar.* 赋值、
-    // 本小节全部内容，以及 Component 一个 import。
-
-    /** 同一状态最短重复间隔：1 秒最多一条（句变时立即刷新，不受此限）。 */
-    private static final long ACTION_BAR_INTERVAL_MS = 1000L;
+    /** 坐标取整格式化（聊天栏读数用；局部坐标是大数，取整后一眼能看出量级）。 */
+    private static String diagPos(Vec3 v) {
+        if (v == null) {
+            return "?";
+        }
+        return ((long) Math.floor(v.x)) + "," + ((long) Math.floor(v.y)) + "," + ((long) Math.floor(v.z));
+    }
 
     /**
-     * 反闪烁下限：同一帧里"多个挖掘技能实例"会各调一次 getContext（内核按实例调度），
-     * 若不加下限，两句读数会逐帧互相盖掉、用户根本没法念。250ms 内只让最先出现的那个说话。
+     * 该维度能枚举到的 sub-level 数量（聊天栏读数用；拿不到就写 {@code -}）。
+     *
+     * <p>接口层的 {@link SubLevelBridge#subLevels(net.minecraft.server.level.ServerLevel)} 只接受
+     * {@code ServerLevel}，而我们在客户端渲染线程上——单机时经整合服务器取该维度的
+     * {@code ServerLevel}，专用服务器上客户端拿不到（返回 {@code -}）。</p>
+     *
+     * <p><b>为什么这个数很重要</b>：若它是 3 而 {@code 玩家在结构/qLocal/qWorld} 全是"否"，
+     * 就说明服务端明明有结构、客户端却一条都看不见（客户端容器取不到）——那问题就不在
+     * 坐标语义上，而在"客户端能力"/桥接的取容器方式上。</p>
      */
-    private static final long ACTION_BAR_MIN_GAP_MS = 250L;
+    private static String diagSubLevelCount(ClientLevel level) {
+        try {
+            SubLevelBridge bridge = SableBridges.get();
+            MinecraftServer server = Minecraft.getInstance().getSingleplayerServer();
+            if (bridge == null || server == null || level == null) {
+                return "-";
+            }
+            ServerLevel serverLevel = server.getLevel(level.dimension());
+            if (serverLevel == null) {
+                return "-";
+            }
+            return String.valueOf(bridge.subLevels(serverLevel).size());
+        } catch (Throwable t) {
+            return "-";
+        }
+    }
 
-    /** 上一次显示的读数句（只在渲染线程访问）。 */
-    private static String DIAG_LAST_LINE = "";
+    // --------------------- 聊天栏读数（给用户看的，TODO 定位后整体删除） ---------------------
+    // 只输出**一行**（前缀 [预览]，中文短标签），按阶段优先级取第一个不成立的阶段：
+    // 没按键 → 无桥接 → 没对着方块 → 未识别结构 → 结构/不可收集 → 结构/集合0 → 结构+N格
+    // （走兜底成功时状态换成"结构兜底+…"，一眼可辨是哪条路认出来的）。
+    // 走到"对着方块"之后，行尾一律附上判定所需的数字，共 8 个字段：
+    //   pick / 玩家 / 距 / 玩家在结构 / 玩家q / 结构数 / qLocal / qWorld
+    // **桥接为 null（未装 Sable 或没装上）时整份读数只有"无桥接"这一句**，绝不会再出现
+    // "未识别结构"（那会误导）——为 null 时也不调用任何桥接方法。
+    // 输出方式：displayClientMessage(..., false) → **聊天栏**（可慢慢读、可直接复制），不再是动作栏。
+    // 频率：**只在文本变化时输出一次**（静态字段记住上一串），同一串绝不重复刷屏；
+    // 另加 500ms 下限，防止"多个挖掘技能实例轮流说话"时逐帧互相刷——被下限压掉的那一串
+    // **不写入 CHAT_LAST_LINE**，所以稍后它还会补上（是延后，不是丢弃）。
+    // 删除时同步清掉：getContext/collectContext 里的 ChatDiag 与 bar.* 赋值、本小节全部内容，
+    // 以及 Component / MinecraftServer / ServerLevel 三个 import 与 diagSubLevelCount。
 
-    /** 上一次显示的读数句时刻（{@link System#currentTimeMillis()}）。 */
-    private static long DIAG_LAST_LINE_MS;
+    /** 聊天栏两次输出之间的最短间隔（防多实例轮流说话；不写 CHAT_LAST_LINE，故只是延后）。 */
+    private static final long CHAT_MIN_GAP_MS = 500L;
 
-    /** 上一次显示的是不是"松开技能键"的收尾句 —— 是的话就不再重复（松开后约 3 秒自然淡出）。 */
-    private static boolean DIAG_LAST_WAS_RELEASE;
+    /** 上一次输出的整行（只在渲染线程访问）。 */
+    private static String CHAT_LAST_LINE = "";
+
+    /** 上一次输出的时刻（{@link System#currentTimeMillis()}）。 */
+    private static long CHAT_LAST_LINE_MS;
 
     /**
-     * 一次 getContext 采到的**阶段状态**（不再拼现场字段）。所有 return 路径都填它，由
-     * {@link CoeBlockOutlineRenderer#getContext} 的 finally 统一交给 {@link #show()} 显示，
+     * 一次 getContext 采到的**阶段状态 + 现场数字**。所有 return 路径都填它，由
+     * {@link CoeBlockOutlineRenderer#getContext} 的 finally 统一交给 {@link #show()} 输出，
      * 因此"提前 return（没对着方块 / 未识别结构 / canCollect=false / 空集合 / 没策略）"
      * 也不会漏掉断点。
      */
-    private static final class ActionBarDiag {
+    private static final class ChatDiag {
 
         /** 阶段 1：技能键门（Shift/R/G 任一按下）。 */
         boolean gate;
@@ -424,8 +510,17 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         /** 阶段 3：准星拾取是不是方块命中。 */
         boolean pickIsBlock;
 
-        /** 阶段 4：是否识别出结构（queryLocalBlock 命中 或 世界坐标 query 命中）。 */
+        /** 阶段 3：拾取结果类型（非方块命中时显示，例如 MISS）。 */
+        String pickType = "MISS";
+
+        /** 阶段 4：是否识别出结构（两条原路任一命中，或距离异常兜底命中）。 */
         boolean structureFound;
+
+        /** 阶段 4：是否走了"距离异常"兜底分支（含兜底也没拿到结构句柄的那种）。 */
+        boolean usedFallback;
+
+        /** 阶段 4：兜底触发但 locateSubLevel(player)/query(player) 都拿不到结构 → 本帧不画。 */
+        boolean fallbackMissed;
 
         /** 阶段 5：策略 canCollect。 */
         boolean canCollect;
@@ -433,33 +528,64 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         /** 阶段 6：策略 collect 出的方块数（不含 center）；-1 = 还没走到这一步。 */
         int collected = -1;
 
-        /** 显示：整份读数**只有一句**，按 {@link #line()} 的优先级取第一个不成立的阶段。 */
+        // ---------- 行尾数字（只有走到"对着方块"之后才有效） ----------
+
+        /** 准星拾取点（{@code hit.getLocation()}，坐标系待定——这正是要看的东西）。 */
+        Vec3 pickPoint;
+
+        /** 玩家位置（{@code player.position()}）。 */
+        Vec3 playerPos;
+
+        /** 拾取点与玩家的距离；> {@link #FAR_PICK_DISTANCE} 即"两者不在同一坐标系"。 */
+        double pickDistance = -1.0D;
+
+        /** {@code locateSubLevel(level, player.position()) != null}。 */
+        boolean playerInSub;
+
+        /** {@code query(level, player.position()) != null}（兜底第二步）。 */
+        boolean playerQueryHit;
+
+        /** 该维度能枚举到的 sub-level 数（拿不到写 {@code -}）。 */
+        String subLevelCount = "-";
+
+        /** {@code queryLocalBlock(level, pickPoint) != null}（原路 1）。 */
+        boolean qLocal;
+
+        /** {@code query(level, pickPoint) != null}（原路 2）。 */
+        boolean qWorld;
+
+        /** 原路 1 已命中 → 原路 2 根本没试过（读数里写"未试"，不谎报"否"）。 */
+        boolean qWorldSkipped;
+
+        /**
+         * 输出：整份读数**只有一行**，按 {@link #line()} 的优先级取第一个不成立的阶段。
+         *
+         * <p>同一串文本绝不重复输出（这是本轮的硬要求：动作栏读不完，聊天栏也不能被刷屏）；
+         * 另外 500ms 内只让最先出现的那个技能实例说话——被压掉的那一串不写
+         * {@link #CHAT_LAST_LINE}，所以稍后还会补上。</p>
+         */
         void show() {
             String line = line();
-            long now = System.currentTimeMillis();
-            if (!gate) {
-                // 松开技能键：只在"按住 → 松开"这一次变化时补发一条收尾句，之后不再刷新，
-                // 动作栏读数约 3 秒后自然淡出。
-                if (DIAG_LAST_WAS_RELEASE) {
-                    return;
-                }
-            } else if (line.equals(DIAG_LAST_LINE) && now - DIAG_LAST_LINE_MS < ACTION_BAR_INTERVAL_MS) {
-                return;   // 同一句：每秒最多一条
-            } else if (now - DIAG_LAST_LINE_MS < ACTION_BAR_MIN_GAP_MS) {
-                return;   // 反闪烁：同一帧的其它技能实例让位
+            if (line.equals(CHAT_LAST_LINE)) {
+                return;   // 同一串：绝不重复（用户要的是"状态变化时输出一次"）
             }
-            DIAG_LAST_LINE = line;
-            DIAG_LAST_LINE_MS = now;
-            DIAG_LAST_WAS_RELEASE = !gate;
+            long now = System.currentTimeMillis();
+            if (now - CHAT_LAST_LINE_MS < CHAT_MIN_GAP_MS) {
+                return;   // 多实例轮流说话：让位（不更新 CHAT_LAST_LINE，稍后补上）
+            }
+            CHAT_LAST_LINE = line;
+            CHAT_LAST_LINE_MS = now;
             Player player = Minecraft.getInstance().player;
             if (player != null) {
-                // true = 动作栏（第三人称上方的短暂提示），不刷聊天框
-                player.displayClientMessage(Component.literal(line), true);
+                // false = **聊天栏**（可慢慢读、可复制）；true 才是动作栏
+                player.displayClientMessage(Component.literal(line), false);
             }
+            // 同步留一份进日志：用户复制聊天栏那一行的同时，父会话也能在 latest.log 里核对
+            CreateOreExpansion.LOGGER.info("[SkillerRender] chat-line | {}", line);
         }
 
         /**
-         * 阶段优先级（与需求表逐行对应，只返回第一个不成立的阶段）。
+         * 阶段优先级（只返回第一个不成立的阶段）；走到"对着方块"之后附上 8 个现场数字。
          *
          * <p>桥接为 null 时**必然**停在第二句上，后面的结构判定一个字都不会出现。</p>
          */
@@ -471,18 +597,38 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
                 return "[预览] 无桥接";
             }
             if (!pickIsBlock) {
-                return "[预览] 没对着方块";
+                return "[预览] 没对着方块 type=" + pickType;
             }
+            return "[预览] " + status() + detail();
+        }
+
+        /** 阶段 4 之后的短状态标签（兜底命中会显式标出"结构兜底"，与两条原路区分开）。 */
+        private String status() {
             if (!structureFound) {
-                return "[预览] 未识别结构";
+                return "未识别结构";
+            }
+            if (usedFallback) {
+                if (!canCollect) {
+                    return "结构兜底/不可收集";
+                }
+                return collected <= 0 ? "结构兜底/集合0" : "结构兜底+" + collected + "格";
             }
             if (!canCollect) {
-                return "[预览] 结构/不可收集";
+                return "结构/不可收集";
             }
-            if (collected <= 0) {
-                return "[预览] 结构/集合0";
-            }
-            return "[预览] 结构+" + collected + "格";
+            return collected <= 0 ? "结构/集合0" : "结构+" + collected + "格";
+        }
+
+        /** 行尾的 8 个现场数字（中文短标签，便于用户原样复制回来）。 */
+        private String detail() {
+            return " pick=" + diagPos(pickPoint)
+                    + " 玩家=" + diagPos(playerPos)
+                    + " 距=" + Math.round(pickDistance)
+                    + " 玩家在结构=" + (playerInSub ? "是" : "否")
+                    + " 玩家q=" + (playerQueryHit ? "是" : "否")
+                    + " 结构数=" + subLevelCount
+                    + " qLocal=" + (qLocal ? "是" : "否")
+                    + " qWorld=" + (qWorld ? "是" : qWorldSkipped ? "未试" : "否");
         }
     }
     // ===================== 临时诊断结束（TODO 定位后删） =====================
