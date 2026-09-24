@@ -32,7 +32,10 @@ import net.minecraft.world.phys.Vec3;
  *       （{@link StellarWaveEntity}，携带扫描属性快照/机器状态配方类型/辅料载荷/避雷针释放机会，
  *       等级不变）并沿原方向从对侧推出，原波 discard；</li>
  *   <li><b>入口开、对面出口关闭</b> → {@link Result#BOUNCED}：<b>原路返回</b>（movement 反向、
- *       位置推出方块外），<b>不生成变体波、不改变等级、不消散</b>。</li>
+ *       位置推出方块外），<b>不生成变体波、不改变等级、不消散</b>；</li>
+ *   <li><b>本机未接入应力</b>（{@link StellarWaveTransmuterBlockEntity#isWavePowered()} 为假）
+ *       → {@link Result#PASSED}：<b>不做任何波形 / 属性改变</b>，两口皆开时波原样飞过
+ *       （用户 2026-09 规格）。闸门刻意排在两个波口判定之后——"让不让波过"与"要不要赋属性"是两件事。</li>
  * </ul>
  *
  * <p>避雷针释放机会在穿波瞬间<b>真正抽取</b>：把"已蓄满待释放"的避雷针储层清零
@@ -53,6 +56,11 @@ public final class StellarWaveTransmuterPass {
 		CONVERTED,
 		/** 入口开但对面出口关：已原路遣返（movement 反向 + 推出方块外）——调用方结束本 tick，波继续飞。 */
 		BOUNCED,
+		/**
+		 * <b>本机未接入应力</b>：按规格不做任何波形 / 属性改变（不转换、不附扫描快照与载荷、
+		 * 不改波型 / 等级 / 速度 / 位置），波原样继续飞——调用方按"变器对波透明"处理。
+		 */
+		PASSED,
 		/** 未开口 / 不可穿的机壳面（轴口面·灯盘面·竖直撞击）：调用方按撞墙处理（burst + discard）。 */
 		HIT_WALL;
 	}
@@ -70,7 +78,7 @@ public final class StellarWaveTransmuterPass {
 	 * @param wave 命中的能量波（服务端实例）
 	 * @param pos  变器方块位置
 	 * @return 三态结果（{@link Result}）：调用方按 CONVERTED/BOUNCED → return、
-	 *         HIT_WALL → 按撞墙处理
+	 *         HIT_WALL → 按撞墙处理、PASSED（未接入应力）→ 按透明处理（波原样继续飞）
 	 */
 	public static Result tryConvert(AbstractChargerWaveEntity wave, BlockPos pos) {
 		if (wave == null || wave.level().isClientSide)
@@ -101,6 +109,13 @@ public final class StellarWaveTransmuterPass {
 				.add(wave.getMovement().scale(1.0d)));
 			return Result.BOUNCED;
 		}
+
+		// ===== 应力闸门（用户规格：未接入应力 → 变器对波不做任何属性改变）=====
+		// 位置刻意留在两个波口判定<b>之后</b>：波口开/关（入口撞墙、对面遣返）是"机壳让不让波过"的
+		// 既有行为，与"要不要给波赋属性"是两件事（规格明确要求两者别混在一起）。所以闸门只掐掉
+		// 下面这一段<b>转换</b>：两口皆开时波原样飞过去——不加属性、不换波型、不携带载荷、不位移。
+		if (!be.isWavePowered())
+			return Result.PASSED;
 
 		// 变体波：等级/方向不变，携带扫描属性快照与载荷（辅料物品/流体/电量）；
 		// 链式上限 = 波等级；出生在对侧外推半格多，确保离开机器盒

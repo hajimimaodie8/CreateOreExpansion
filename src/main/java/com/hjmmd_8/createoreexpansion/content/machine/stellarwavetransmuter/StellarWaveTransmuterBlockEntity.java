@@ -609,6 +609,30 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	// ================= 应力 =================
 
 	/**
+	 * <b>本机是否已接入应力</b>——变器"给波赋属性"的总闸门（用户 2026-09 规格）。
+	 *
+	 * <p>判据：{@code hasNetwork() && getSpeed() != 0}。两个因子都取自 Create 的
+	 * {@link KineticBlockEntity}（签名已核实）：</p>
+	 * <ul>
+	 *   <li>{@code hasNetwork()}：本机已挂进一张动能网络（{@code network != null}）＝"接没接通"；</li>
+	 *   <li>{@code getSpeed()}：<b>实际</b>转速——Create 在<b>过载</b>（{@code isOverStressed()}）与
+	 *       tick 暂停时直接返回 0，只有 {@code getTheoreticalSpeed()} 保留名义值＝"转没转起来"。</li>
+	 * </ul>
+	 *
+	 * <p><b>它管什么</b>：未接入应力 → 变器对波<b>不做任何波形 / 属性上的改变</b>——
+	 * 加工波变态不转换（波原样飞过，见 {@code StellarWaveTransmuterPass#tryConvert}）、
+	 * 攻击波变态的攻击场不点燃（见 {@code TransmuterMode#applyField}）。
+	 * 机器"让不让波过"（波口开关 / 入口撞墙 / 对面遣返）是另一回事，本闸门一行都不碰。</p>
+	 *
+	 * <p><b>判据已由用户确认（2026-09-24）＝"转速 ≠ 0"</b>：停转 / 过载时不赋属性。
+	 * 若哪天要放宽成"只要接通网络就算"（停转 / 过载也照旧赋属性），把本方法改成
+	 * {@code return hasNetwork();} 即可——判据全仓只有这一处。</p>
+	 */
+	public boolean isWavePowered() {
+		return hasNetwork() && getSpeed() != 0;
+	}
+
+	/**
 	 * 应力消耗：Σ(被扫<b>动能机</b>实时应力) × (1 + 0.1 × (动能机数 − 1))。
 	 *
 	 * <p>乘子按<b>动能机</b>数算（{@link #scannedKineticCount}）：注液器 / 物品排放器这类

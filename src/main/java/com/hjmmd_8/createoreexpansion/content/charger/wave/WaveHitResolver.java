@@ -32,7 +32,8 @@ import net.neoforged.neoforge.items.IItemHandler;
  *   <li><b>差器</b>三种（四面 / 六面 / 八面）：遣返、转向、均摊分裂；</li>
  *   <li><b>星辉波变器</b>：按变器当前<b>处理模式</b>分流（{@code TransmuterMode}）——
  *       加工波变态：入口开口 → 穿波转换（转成变体波 / 原路遣返 / 撞墙，实现在
- *       {@link StellarWaveTransmuterPass}）；攻击波变态：变器对波透明，波照常穿过；</li>
+ *       {@link StellarWaveTransmuterPass}），<b>未接入应力时不转换、波原样飞过</b>；
+ *       攻击波变态：变器对波透明，波照常穿过；</li>
  *   <li><b>带物品槽方块</b>：交给 {@link AbstractChargerWaveEntity#handleItemInventoryBlock} 钩子；</li>
  *   <li>其余：按撞墙处理（{@link AbstractChargerWaveEntity#onSolidBlockHit} 钩子 + 绽放消散）。</li>
  * </ol>
@@ -154,7 +155,8 @@ public final class WaveHitResolver {
 			// 模式各自对波做什么全部封装在 TransmuterMode 里，此处只按返回的处置执行三选一：
 			//   CONSUMED     —— 已处理完（穿波转换 / 原路遣返），本 tick 结束；
 			//   BLOCKED      —— 波口未开 / 撞到不可穿机壳面，按撞墙消散；
-			//   TRANSPARENT  —— 攻击波变态：变器对波透明（不转换、不拦面、也不推位），继续飞
+			//   TRANSPARENT  —— 变器对波透明：攻击波变态恒如此；加工波变态在<b>未接入应力</b>时
+			//                   也走这条（应力闸门只掐"赋属性"，不改口位——见 TransmuterMode）
 			if (state.getBlock() instanceof StellarWaveTransmuterBlock) {
 				switch (TransmuterMode.at(wave.level(), pos)
 					.onWaveHit(wave, pos)) {

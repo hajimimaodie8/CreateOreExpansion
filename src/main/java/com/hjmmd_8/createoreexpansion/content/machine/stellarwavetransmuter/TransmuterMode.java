@@ -26,15 +26,23 @@ import net.minecraft.world.phys.AABB;
  * <ul>
  *   <li>{@link #PROCESSING} <b>加工波变态</b>（默认）：波口开着才让波穿过，穿波即把原波转成
  *       全能波（携带扫描属性与载荷，见 {@link StellarWaveTransmuterPass#tryConvert}）；
- *       入口未开或撞到不可穿的机壳面 → 按撞墙处理；入口开而对面出口关 → 原路遣返；</li>
+ *       入口未开或撞到不可穿的机壳面 → 按撞墙处理；入口开而对面出口关 → 原路遣返；
+ *       <b>未接入应力时不赋"加工"属性</b>：两口皆开时波原样飞过（见 {@link StellarWaveTransmuterBlockEntity#isWavePowered()}）；</li>
  *   <li>{@link #ATTACK} <b>攻击波变态</b>：变器对波<b>完全透明</b>——不做穿波转换、不遣返、
  *       <b>面开关也不拦波</b>（波照常飞过去）；同时变器自身成为<b>攻击场</b>：读取半径内
  *       <b>确实穿过场</b>的普通波被点燃成攻击波（{@link WaveTypes#ATTACK}；查询框按"两次扫描
  *       之间波最多能走的距离"外扩，穿过与否另按线段判定，见 {@link #applyField}）。
+ *       <b>未接入应力时攻击场不点燃、一个实体都不查</b>（波照旧飞过去，只是不赋攻击属性）。
  *       攻击波是纯攻击、不参与加工（加工路径已由波基类按波型闸门挡住，本模式不提供任何加工逻辑）。
  *       <b>进入本模式时 4 个波口被无条件强制全开、之后就锁死不可切换</b>（见 {@link #onEnter} /
  *       {@link #locksWavePorts()}）。</li>
  * </ul>
+ *
+ * <p><b>应力闸门（用户 2026-09 规格，两态共有）</b>：<b>未接入应力时变器对波不做任何波形 /
+ * 属性上的改变</b>——加工态不转换、攻击态不点燃，波一律原样通过。判据是
+ * {@link StellarWaveTransmuterBlockEntity#isWavePowered()}（{@code hasNetwork() && getSpeed() != 0}），
+ * 两处生效点各一次：{@code StellarWaveTransmuterPass#tryConvert}（转换）与 {@link #applyField}
+ * （场点燃）。<b>机器"让不让波过"（波口 / 遣返 / 撞墙）不归闸门管</b>——那是机壳几何，两者别混。</p>
  *
  * <p><b>与波口开关的区别</b>：模式 = "变器怎么处理波"，存在方块实体里，扳手右键切换
  * （NBT + 同步包，见 {@link StellarWaveTransmuterBlockEntity#cycleMode()}）；
@@ -56,10 +64,13 @@ public enum TransmuterMode {
 		@Override
 		public WaveOutcome onWaveHit(AbstractChargerWaveEntity wave, BlockPos pos) {
 			// 穿波判定本身仍是一处实现（StellarWaveTransmuterPass，含开口三态与载荷抽取），
-			// 这里只把它的三态结果翻译成本枚举的处置口径
+			// 这里只把它的结果翻译成本枚举的处置口径
 			return switch (StellarWaveTransmuterPass.tryConvert(wave, pos)) {
 				case CONVERTED, BOUNCED -> WaveOutcome.CONSUMED;
 				case HIT_WALL -> WaveOutcome.BLOCKED;
+				// 未接入应力（应力闸门在 tryConvert 里，见 StellarWaveTransmuterBlockEntity
+				// #isWavePowered）：不赋"加工"属性，波原样飞过——按透明处理，与攻击波变态同一条出口
+				case PASSED -> WaveOutcome.TRANSPARENT;
 			};
 		}
 	},
@@ -130,6 +141,12 @@ public enum TransmuterMode {
 		 */
 		@Override
 		public void applyField(Level level, BlockPos pos, int radius) {
+			// ===== 应力闸门（用户规格：未接入应力 → 变器对波不做任何属性改变）=====
+			// 未接入应力就连实体查询都不做：本场存在的唯一目的就是"给范围内的波赋攻击属性"，
+			// 闸门关着时它没有任何别的活可干。判据与穿波转换那条闸门同源同口径
+			// （StellarWaveTransmuterBlockEntity#isWavePowered）——两处只有一个定义。
+			if (!wavePowered(level, pos))
+				return;
 			AABB field = fieldBox(pos, radius);
 			for (AbstractChargerWaveEntity wave : level.getEntitiesOfClass(AbstractChargerWaveEntity.class,
 				queryBox(field)))
@@ -217,7 +234,8 @@ public enum TransmuterMode {
 	 * （0 节拍 = 没有场 = 调用方一次都不调）。
 	 *
 	 * <p>默认空实现——加工波变态没有场（它只在波<b>命中</b>时才有效果）；
-	 * 攻击波变态覆写为攻击场。</p>
+	 * 攻击波变态覆写为攻击场（<b>并自带应力闸门</b>：未接入应力的机器一次实体查询都不做，
+	 * 见 {@link #wavePowered}）。</p>
 	 *
 	 * @param radius 本机当前读取半径（扫描已算好的那一个，见
 	 *               {@code StellarWaveTransmuterBlockEntity#resolveRadius()}）
@@ -448,6 +466,26 @@ public enum TransmuterMode {
 			: PROCESSING;
 	}
 
+	// ================= 应力闸门（"要不要给波赋属性"的唯一判据） =================
+
+	/**
+	 * <b>应力闸门读数</b>：坐标处的变器是否已接入应力
+	 * （口径唯一处 = {@link StellarWaveTransmuterBlockEntity#isWavePowered()}：
+	 * {@code hasNetwork() && getSpeed() != 0}）。
+	 *
+	 * <p>读不到方块实体（区块未加载 / 破块瞬间 / 坐标已被替换）时返回 {@code false}——闸门在
+	 * 读不到机器时一律偏向"<b>不</b>赋属性"，不会出现"机器都没了却还在隔空点燃波"。</p>
+	 *
+	 * <p><b>为什么闸门判据放在这里、而不是让调用方判断</b>：调用方（{@code WaveHitResolver} /
+	 * {@code StellarWaveTransmuterBlockEntity#tick}）照旧只按模式分派，一行 {@code if (mode == ...)}
+	 * 都没有；"什么条件下才给波赋属性"作为本模式行为的一部分收在模式自己身上（与
+	 * {@link #locksWavePorts()} / {@link #onEnter} 同一约定）。</p>
+	 */
+	private static boolean wavePowered(Level level, BlockPos pos) {
+		return level != null && level.getBlockEntity(pos) instanceof StellarWaveTransmuterBlockEntity be
+			&& be.isWavePowered();
+	}
+
 	/**
 	 * <b>变器对一次方块命中的处置</b>（由 {@link TransmuterMode#onWaveHit} 给出，调用方照此执行）。
 	 */
@@ -456,7 +494,7 @@ public enum TransmuterMode {
 		CONSUMED,
 		/** 波口未开或撞到不可穿的机壳面：调用方按"撞墙"处理（绽放 + 消散）。 */
 		BLOCKED,
-		/** 本模式下变器对波透明（攻击波变态）：当作这里没有方块，波继续飞。 */
+		/** 本模式下变器对波透明（攻击波变态恒为透明；加工波变态在<b>未接入应力</b>时也是这条出口）：当作这里没有方块，波继续飞。 */
 		TRANSPARENT;
 	}
 }
