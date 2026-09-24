@@ -611,25 +611,61 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	/**
 	 * <b>本机是否已接入应力</b>——变器"给波赋属性"的总闸门（用户 2026-09 规格）。
 	 *
-	 * <p>判据：{@code hasNetwork() && getSpeed() != 0}。两个因子都取自 Create 的
-	 * {@link KineticBlockEntity}（签名已核实）：</p>
+	 * <p>判据：{@code hasNetwork() && getSpeed() != 0 && isSpeedRequirementFulfilled()}。
+	 * 三个因子各有唯一来源：</p>
 	 * <ul>
 	 *   <li>{@code hasNetwork()}：本机已挂进一张动能网络（{@code network != null}）＝"接没接通"；</li>
 	 *   <li>{@code getSpeed()}：<b>实际</b>转速——Create 在<b>过载</b>（{@code isOverStressed()}）与
-	 *       tick 暂停时直接返回 0，只有 {@code getTheoreticalSpeed()} 保留名义值＝"转没转起来"。</li>
+	 *       tick 暂停时直接返回 0，只有 {@code getTheoreticalSpeed()} 保留名义值＝"转没转起来"。
+	 *       判据是 {@code != 0}（用户确认："只要在转"，见{@link TransmuterMode#minimumRpm()} 的
+	 *       取值语义）；</li>
+	 *   <li>{@link #isSpeedRequirementFulfilled()}：<b>本模式的转速门槛</b>
+	 *       （{@link TransmuterMode#minimumRpm()}：加工态 0 = 不额外设门槛，攻击态 128 RPM）——它同时是
+	 *       Create 悬停提示"需求转速 / 没有达到足够的转速"的判据，所以护目镜看到的那两行
+	 *       与<b>这里的实际闸门</b>永远是同一个条件。</li>
 	 * </ul>
 	 *
-	 * <p><b>它管什么</b>：未接入应力 → 变器对波<b>不做任何波形 / 属性上的改变</b>——
-	 * 加工波变态不转换（波原样飞过，见 {@code StellarWaveTransmuterPass#tryConvert}）、
-	 * 攻击波变态的攻击场不点燃（见 {@code TransmuterMode#applyField}）。
-	 * 机器"让不让波过"（波口开关 / 入口撞墙 / 对面遣返）是另一回事，本闸门一行都不碰。</p>
+	 * <p><b>它管什么</b>：未接入应力（含转速为 0）或转速未达本模式门槛 → 变器对波
+	 * <b>不做任何波形 / 属性上的改变</b>——加工波变态不转换（波原样飞过，见
+	 * {@code StellarWaveTransmuterPass#tryConvert}）、攻击波变态的攻击场不点燃、连实体查询都不做
+	 * （见 {@code TransmuterMode#applyField}）。机器"让不让波过"（波口开关 / 入口撞墙 / 对面遣返）
+	 * 是另一回事，本闸门一行都不碰；模式切换与攻击态四口接管行为同样一行都不碰。</p>
 	 *
-	 * <p><b>判据已由用户确认（2026-09-24）＝"转速 ≠ 0"</b>：停转 / 过载时不赋属性。
-	 * 若哪天要放宽成"只要接通网络就算"（停转 / 过载也照旧赋属性），把本方法改成
-	 * {@code return hasNetwork();} 即可——判据全仓只有这一处。</p>
+	 * <p><b>只此一处</b>：全仓"要不要给波赋属性"的判定都读本方法（波命中解析走
+	 * {@code TransmuterMode#wavePowered} → 本方法），<b>没有任何第二个闸门</b>。
+	 * 若哪天要放宽成"只要接通网络就算"（停转 / 过载也照旧赋属性），把第一项之外的两项去掉即可
+	 * （{@code return hasNetwork();}）——判据全仓只有这一处。</p>
 	 */
 	public boolean isWavePowered() {
-		return hasNetwork() && getSpeed() != 0;
+		return hasNetwork() && getSpeed() != 0 && isSpeedRequirementFulfilled();
+	}
+
+	/**
+	 * <b>本机转速是否达到"当前模式的门槛"</b>——覆写 Create 的
+	 * {@code KineticBlockEntity#isSpeedRequirementFulfilled()}（Create 6.0.10 原实现是
+	 * {@code |getSpeed()| >= 方块自报的 IRotate.SpeedLevel} 的门槛值；本机方块没声明档位，
+	 * 原实现恒为真）。
+	 *
+	 * <p>覆写它就是为了<b>一个判据同时服务两件事</b>：</p>
+	 * <ol>
+	 *   <li>变器自己的应力闸门（{@link #isWavePowered()} 的第三个合取项）——攻击态低于 128 RPM
+	 *       时攻击场一次都不跑；</li>
+	 *   <li>Create 自己的悬停提示：{@code KineticBlockEntity#addToTooltip} 里
+	 *       {@code notFastEnough = !isSpeedRequirementFulfilled() && getSpeed() != 0}，
+	 *       为真就打出搅拌器同款的两行（金色"需求转速："+ "显然 &lt;机器名&gt; 没有达到足够的转速。"）。
+	 *       <b>所以我们一行文案都不用自己写、一个新翻译键都不用加</b>，显示出来的东西与机械搅拌器
+	 *       一字不差，还自动跟随 Create 的本地化与配色。</li>
+	 * </ol>
+	 *
+	 * <p><b>门槛由模式自报</b>（{@link TransmuterMode#minimumRpm()}）：本方法<b>不判断模式</b>，
+	 * 以后加"要 64 RPM 的模式"只需在模式常量体里覆写 {@code minimumRpm()}，这里一行都不用改。</p>
+	 *
+	 * <p>按<b>绝对值</b>判定（反转的轴同样算接通），与全仓既有的 {@code Math.abs(getSpeed())}
+	 * 口径一致。只读转速、不读网络：转速 ≠ 0 必然已经挂进了网络。</p>
+	 */
+	@Override
+	public boolean isSpeedRequirementFulfilled() {
+		return Math.abs(getSpeed()) >= mode.minimumRpm();
 	}
 
 	/**
@@ -757,6 +793,27 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		notifyUpdate();
 	}
 
+	/**
+	 * <b>护目镜面板</b>——行序（用户 2026-09-24 规格；本机信息块紧随 {@code super} 的动能转速行之后）：
+	 * <ol>
+	 *   <li>{@code super.addToGoggleTooltip}：Create 自带的动能行（应力影响等），照旧不动；</li>
+	 *   <li>本机灰名行「星辉波变器」（既有键 {@code goggles.stellar_wave_transmuter}）；</li>
+	 *   <li><b>模式行</b>（用户要求"放在第一行"= <b>本机信息块的第一行</b>）——恒显示，不按 Shift
+	 *       也能看到；颜色取 {@link TransmuterMode#displayColor()}（{@link TransmuterGoggles#appendModeLine}）；</li>
+	 *   <li><b>状态行</b>（只在"效果不生效"时出现）：转速为 0（含未接通网络）→ 既有键
+	 *       {@code goggles.stellar_wave_transmuter_idle}（"未接入应力"）；在转但未达本模式门槛
+	 *       （攻击态 128 RPM）→ <b>这里一个字都不写</b>，交给 Create 的悬停提示去打
+	 *       （见 {@link #addToTooltip}，与搅拌器一字不差）；</li>
+	 *   <li>不按 Shift → 既有键 {@code goggles.transmuter_expand_hint}（"按住 Shift 查看机器详情"）；</li>
+	 *   <li>按 Shift 且门槛满足 → {@link TransmuterGoggles#append} 全量读数（<b>从"半径"行起</b>，
+	 *       模式行已在第 3 行输出过，全类只有那一处输出，不会出现两行模式）。</li>
+	 * </ol>
+	 *
+	 * <p><b>为什么状态判据读转速、不读 {@code hasNetwork()}</b>：护目镜在客户端渲染，而转速与网络 id
+	 * 出自同一份同步 NBT（{@code KineticBlockEntity#write} 无条件写 {@code Network}），
+	 * {@code getSpeed() != 0} 已蕴含"挂进了网络"——显示口径与 {@link #isWavePowered()} 等价，
+	 * 又不必让客户端去碰网络表（拿到未同步的 {@code null} 会误报"未接入应力"）。</p>
+	 */
 	@Override
 	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
 		boolean added = super.addToGoggleTooltip(tooltip, isPlayerSneaking);
@@ -764,11 +821,26 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 			.withStyle(ChatFormatting.GRAY));
 		added = true;
 
-		// 两态（用户 2026-09-14 定稿）：
-		//   没按住 Shift → 只给机器名 + 一行"按住 Shift 查看机器详情"（框小，不挡玩家正要点的那一面）；
-		//   按住 Shift   → 一次性把全部读数显示出来。
+		// ③ 模式行：本机信息块的第一行（全类唯一输出点，见 TransmuterGoggles#appendModeLine）
+		TransmuterGoggles.appendModeLine(tooltip, mode);
+
+		// ④ 状态行：效果不生效时才有。两态（用户 2026-09-14 定稿）：
+		//    没按住 Shift → 机器名 + 模式行 + 一行"按住 Shift 查看机器详情"（框小，不挡玩家正要点的那一面）；
+		//    按住 Shift   → 一次性把全部读数显示出来。
 		// 注：上一版是"按第 1 次给概要、按第 2 次给全量"的三档状态机，用户实测指出那个提示行
 		// 本身就藏在本该按住 Shift 才看得见的面板里（自相矛盾且不可发现），故整套撤掉。
+		if (Math.abs(getSpeed()) <= 0) {
+			GoggleUtil.forGoggles(tooltip,
+				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_idle")
+					.withStyle(ChatFormatting.DARK_GRAY));
+			return true;
+		}
+		if (!isSpeedRequirementFulfilled())
+			// 在转、但转速没到本模式门槛（攻击态 < 128 RPM）：Create 自己的悬停块会紧跟在本机信息块
+			// 之后打出"需求转速：/显然 <机器名> 没有达到足够的转速。"（见 addToTooltip）。
+			// 这里刻意一个字都不重复写——要的是"与搅拌器一字不差"，那就让搅拌器那条渲染路径自己说。
+			return true;
+
 		if (!isPlayerSneaking) {
 			GoggleUtil.forGoggles(tooltip,
 				Component.translatable("createoreexpansion.goggles.transmuter_expand_hint",
@@ -778,17 +850,39 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 			return true;
 		}
 
-		if (Math.abs(getSpeed()) <= 0) {
-			GoggleUtil.forGoggles(tooltip,
-				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_idle")
-					.withStyle(ChatFormatting.DARK_GRAY));
-			return true;
-		}
-		TransmuterGoggles.append(tooltip, new TransmuterGoggles.Readout(mode, scanRadius, getSpeed(), scannedHeat,
+		TransmuterGoggles.append(tooltip, new TransmuterGoggles.Readout(scanRadius, getSpeed(), scannedHeat,
 			scannedItemContainers, scannedFluidContainers, scannedEnergyStorages, scannedEnergyStoredFe, scannedCount,
 			scannedStress, scannedTypeIds, recipeTypeCount, payloadItemCount, payloadTypeCount, payloadFluidMb,
 			payloadEnergyFe, rodCreditCount, lastWaveRecipeTypeIds), true);
 		return true;
+	}
+
+	/**
+	 * <b>准心悬停信息</b>（Create 的 {@code IHaveHoveringInformation}，<b>不需要戴护目镜</b>）：
+	 * 先补一行<b>当前模式</b>，再把转速判定的部分交给 Create
+	 * （{@code KineticBlockEntity#addToTooltip}）——转速不足时它自己会打出搅拌器同款两行
+	 * （金色 {@code create.tooltip.speedRequirement} + {@code create.gui.contraptions.not_fast_enough}）。
+	 *
+	 * <p><b>只在"没有护目镜信息"时才补模式行</b>：戴着护目镜时
+	 * {@code GoggleOverlayRenderer} 会先调 {@link #addToGoggleTooltip}（那里已经输出过模式行）、
+	 * 再调本方法，两边都写就会看到两行模式。判据用 {@code tooltip.isEmpty()}——渲染器恰好在两者之间
+	 * 插了一个空行（{@code CommonComponents.EMPTY}），所以"列表非空"就等于"护目镜已经把本机信息块
+	 * 画过了"。</p>
+	 *
+	 * <p>返回值必须把"我加过模式行"也算进去：没戴护目镜时 Create 的悬停块多半什么都不加
+	 * （转速够快、没过载），返回 false 会让渲染器把整块提示丢掉（{@code GoggleOverlayRenderer}
+	 * 会因两个信息接口都没加东西而提前 return）。</p>
+	 */
+	@Override
+	public boolean addToTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
+		boolean modeAdded = false;
+		if (tooltip.isEmpty()) {
+			TransmuterGoggles.appendModeLine(tooltip, mode);
+			modeAdded = true;
+		}
+		// "过载 / 转速不足"两块都由 Create 自己渲染（它就是搅拌器走的那条路径，判据是我们覆写的
+		// isSpeedRequirementFulfilled）——这里不重复实现、也不新增任何翻译键。
+		return super.addToTooltip(tooltip, isPlayerSneaking) || modeAdded;
 	}
 	// ================= NBT =================
 

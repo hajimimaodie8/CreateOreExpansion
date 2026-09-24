@@ -23,7 +23,8 @@ import net.minecraft.resources.ResourceLocation;
  * <p><b>读数口径（历史修复，勿回退）</b>：一律只报"<b>读到了什么</b>"——加热档位、设备台数、
  * 储能量、载荷量、配方类型数；<b>绝不显示方块坐标</b>（用户 2026-09 明确要求）。</p>
  *
- * <p>行序：处理模式 → 半径 → 加热 → 载荷源设备（物品/流体容器、储能）→ 加工机数与应力 → 波加工转速 →
+ * <p>行序：<b>处理模式行由调用方用 {@link #appendModeLine} 先输出</b>，{@link #append} 再从半径 →
+ * 加热 → 载荷源设备（物品/流体容器、储能）→ 加工机数与应力 → 波加工转速 →
  * 绑定机器可加工配方（Shift 展开清单）→ 载荷概览（类型数/辅料·流体·电量/避雷针）→
  * 最近一波可加工属性（Shift）。</p>
  */
@@ -38,7 +39,9 @@ public final class TransmuterGoggles {
 	/**
 	 * 护目镜面板所需的全部读数（调用点打包，见 {@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip}）。
 	 *
-	 * @param mode              当前处理模式（加工波变态 / 攻击波变态；扳手右键切换）
+	 * <p><b>不含处理模式</b>：模式行由调用方经 {@link #appendModeLine} 单独输出（它必须在
+	 * 任何状态下都显示，而本 record 只在"按 Shift 且门槛满足"时才会被构造）。</p>
+	 *
 	 * @param scanRadius        当前扫描半径（能量场档位决定）
 	 * @param speed             本机转速（绝对值；= 波加工转速）
 	 * @param heat              半径内最高热档（NONE = 没读到点着的烈焰燃烧室）
@@ -51,7 +54,7 @@ public final class TransmuterGoggles {
 	 * @param rodCount          半径内已蓄满待释放的强化避雷针台数
 	 * @param lastWaveTypeIds   最近一波穿出时实际可执行的全部类型（Shift）
 	 */
-	public record Readout(TransmuterMode mode, int scanRadius, float speed, BlazeBurnerBlock.HeatLevel heat,
+	public record Readout(int scanRadius, float speed, BlazeBurnerBlock.HeatLevel heat,
 		int itemContainers, int fluidContainers, int energyStorages, int energyStoredFe,
 		int machineCount, float machineStress, List<ResourceLocation> scannedTypeIds, int recipeTypeCount,
 		int payloadItemCount, int payloadTypeCount, int payloadFluidMb, int payloadEnergyFe, int rodCount,
@@ -59,24 +62,39 @@ public final class TransmuterGoggles {
 	}
 
 	/**
-	 * 渲染面板（"处理模式"那一行起，直到"最近一波"行）。
+	 * <b>模式行</b>（本机信息块的第一行）——全类<b>只有这一处</b>输出"当前是什么模式"。
+	 *
+	 * <p>由调用方（{@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip} 与
+	 * {@code #addToTooltip}）在<b>进入面板之前</b>先调一次：这台变器现在在干什么，两态对波的行为
+	 * 完全不同（一个加工、一个是攻击场），玩家第一眼要看到的就是它；而且它在"没按 Shift"、
+	 * "转速为 0"、"转速不足"这几种面板内容各不相同的状态下都必须出现。</p>
+	 *
+	 * <p><b>为什么从 {@link #append} 里挪出来</b>：{@link #append} 只在"已接入应力且转速达到本模式
+	 * 门槛"时才被调用，而这行要求恒显示；两边各写一遍就会在按 Shift 时出现<b>两行模式</b>。
+	 * 所以模式行收在本方法里、由调用方统一先输出，{@link #append} 从"半径"行起。</p>
+	 */
+	public static void appendModeLine(List<Component> tooltip, TransmuterMode mode) {
+		GoggleUtil.forGoggles(tooltip,
+			Component.translatable(mode.translationKey())
+				.withStyle(mode.displayColor()));
+	}
+
+	/**
+	 * 渲染面板（从"半径"那一行起，直到"最近一波"行）。
 	 *
 	 * <p><b>调用时机（2026-09-14 用户定稿，取代上一版"三档按次数展开"）</b>：只有玩家<b>按住 Shift</b>
-	 * 时才会被调用——没按住时调用方只放"机器名 + 一行『按住 Shift 查看机器详情』"。
+	 * <b>且</b>本机转速达到了当前模式的门槛（{@code StellarWaveTransmuterBlockEntity#isSpeedRequirementFulfilled()}）
+	 * 时才会被调用——没按住时调用方只放"机器名 + 模式行 + 一行『按住 Shift 查看机器详情』"。
 	 * 按住 Shift 就<b>一次性把全部读数显示出来</b>，不再有"再按一次才给全量"的隐藏档位
 	 * （上一版那个机制不可发现：用户实测反馈"面板里出现『查看概要』字样，可它本来就要按住 Shift 才看得见"）。</p>
+	 *
+	 * <p><b>模式行不在这里</b>：它由调用方用 {@link #appendModeLine} 先输出（见该方法的说明），
+	 * 本方法从"半径"行开始，避免同一个面板里出现两行模式。</p>
 	 *
 	 * @param sneaking 玩家是否正按住 Shift（护目镜渲染时机即为按键状态；恒为 true 才走到这里）
 	 * @return 恒 true（与 {@code IHaveGoggleInformation} 的约定一致）
 	 */
 	public static boolean append(List<Component> tooltip, Readout r, boolean sneaking) {
-		// 处理模式行放在最前：两态对波的行为完全不同（一个加工、一个是攻击场），
-		// 玩家第一眼要看到的就是"这台变器现在在干什么"
-		GoggleUtil.forGoggles(tooltip,
-			Component.translatable(r.mode()
-				.translationKey())
-				.withStyle(r.mode()
-					.displayColor()));
 		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_radius",
 			r.scanRadius()).withStyle(ChatFormatting.AQUA));
 		// 加热读数（烈焰燃烧室）：范围内有没有点着火的燃烧室、是哪一档——

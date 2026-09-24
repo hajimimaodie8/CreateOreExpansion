@@ -32,7 +32,8 @@ import net.minecraft.world.phys.AABB;
  *       <b>面开关也不拦波</b>（波照常飞过去）；同时变器自身成为<b>攻击场</b>：读取半径内
  *       <b>确实穿过场</b>的普通波被点燃成攻击波（{@link WaveTypes#ATTACK}；查询框按"两次扫描
  *       之间波最多能走的距离"外扩，穿过与否另按线段判定，见 {@link #applyField}）。
- *       <b>未接入应力时攻击场不点燃、一个实体都不查</b>（波照旧飞过去，只是不赋攻击属性）。
+ *       <b>未接入应力、或转速未达本模式门槛</b>（{@link #minimumRpm()} = 128 RPM，
+ *       用户 2026-09-24 规格）时攻击场不点燃、一个实体都不查（波照旧飞过去，只是不赋攻击属性）。
  *       攻击波是纯攻击、不参与加工（加工路径已由波基类按波型闸门挡住，本模式不提供任何加工逻辑）。
  *       <b>进入本模式时 4 个波口被无条件强制全开、之后就锁死不可切换</b>（见 {@link #onEnter} /
  *       {@link #locksWavePorts()}）。</li>
@@ -40,9 +41,15 @@ import net.minecraft.world.phys.AABB;
  *
  * <p><b>应力闸门（用户 2026-09 规格，两态共有）</b>：<b>未接入应力时变器对波不做任何波形 /
  * 属性上的改变</b>——加工态不转换、攻击态不点燃，波一律原样通过。判据是
- * {@link StellarWaveTransmuterBlockEntity#isWavePowered()}（{@code hasNetwork() && getSpeed() != 0}），
+ * {@link StellarWaveTransmuterBlockEntity#isWavePowered()}（
+ * {@code hasNetwork() && getSpeed() != 0 && isSpeedRequirementFulfilled()}），
  * 两处生效点各一次：{@code StellarWaveTransmuterPass#tryConvert}（转换）与 {@link #applyField}
  * （场点燃）。<b>机器"让不让波过"（波口 / 遣返 / 撞墙）不归闸门管</b>——那是机壳几何，两者别混。</p>
+ *
+ * <p><b>转速门槛（用户 2026-09-24 规格）</b>：闸门的转速那一半<b>不是</b>写死的"≠ 0"，
+ * 而是由模式自报的 {@link #minimumRpm()} 决定——加工态 0（只要在转即生效，口径不变），
+ * 攻击态 {@link #ATTACK_MINIMUM_RPM}（{@code |转速| ≥ 128 RPM} 攻击场才生效）。门槛<b>由模式自报</b>，
+ * 闸门与护目镜提示都只读这个自报值，任何调用方都不许出现 {@code if (mode == ATTACK)}。</p>
  *
  * <p><b>与波口开关的区别</b>：模式 = "变器怎么处理波"，存在方块实体里，扳手右键切换
  * （NBT + 同步包，见 {@link StellarWaveTransmuterBlockEntity#cycleMode()}）；
@@ -100,6 +107,20 @@ public enum TransmuterMode {
 		}
 
 		/**
+		 * <b>攻击波变态的起步转速门槛（用户 2026-09-24 规格：转速 128 RPM 以上才开启攻击效果）</b>：
+		 * {@code |转速| ≥ 128 RPM} 攻击场才生效；低于 128 时攻击场<b>一次都不跑</b>
+		 * （不点燃、不赋攻击属性，见 {@link #applyField} 的闸门）。
+		 *
+		 * <p><b>它只掐"攻击效果"，不碰模式本身</b>：扳手照样能切进攻击态，强制四口全开 /
+		 * 口位锁定 / 离开时精确还原（{@link #onEnter} / {@link #locksWavePorts()}）一条都不受影响；
+		 * 加工波变态也不受影响（它的门槛是 0，仍按"转速 ≠ 0"，见基类的 {@link #minimumRpm()}）。</p>
+		 */
+		@Override
+		public float minimumRpm() {
+			return ATTACK_MINIMUM_RPM;
+		}
+
+		/**
 		 * 攻击场：把"本轮确实穿过场盒"的普通波点燃成攻击波（{@link WaveTypes#ATTACK}）。
 		 *
 		 * <p><b>本场只做两件事</b>：一次实体查询（只找波实体）+ 逐个候选的"波最近走过的路径是否与
@@ -142,9 +163,10 @@ public enum TransmuterMode {
 		@Override
 		public void applyField(Level level, BlockPos pos, int radius) {
 			// ===== 应力闸门（用户规格：未接入应力 → 变器对波不做任何属性改变）=====
-			// 未接入应力就连实体查询都不做：本场存在的唯一目的就是"给范围内的波赋攻击属性"，
-			// 闸门关着时它没有任何别的活可干。判据与穿波转换那条闸门同源同口径
-			// （StellarWaveTransmuterBlockEntity#isWavePowered）——两处只有一个定义。
+			// 未接入应力、或（攻击态）转速未达 128 RPM 门槛，就连实体查询都不做：本场存在的
+			// 唯一目的就是"给范围内的波赋攻击属性"，闸门关着时它没有任何别的活可干。
+			// 判据与穿波转换那条闸门同源同口径（StellarWaveTransmuterBlockEntity#isWavePowered，
+			// 里面已经把模式自报的 minimumRpm 一起判了）——两处只有一个定义。
 			if (!wavePowered(level, pos))
 				return;
 			AABB field = fieldBox(pos, radius);
@@ -191,6 +213,17 @@ public enum TransmuterMode {
 	/** 稳定的模式标识：NBT 落盘与翻译键后缀共用，等价于存档格式的一部分（改它要同时处理老存档）。 */
 	private final String key;
 
+	/**
+	 * <b>攻击波变态的起步转速（RPM）</b>——{@code |转速| ≥ 本值} 攻击效果才生效
+	 * （用户 2026-09-24 规格）。
+	 *
+	 * <p><b>与 {@code StellarWaveTransmuterBlockEntity#FIELD_SPEED_THRESHOLD}（同为 128）
+	 * 不是一回事</b>：那个是"变器读取半径 2 格 / 3 格"的能量场档位分档，服务于扫描半径；
+	 * 本值是"攻击场要不要生效"的转速门槛。两者数值巧合相同，<b>概念与消费者都不同</b>——
+	 * 谁调整都不许顺手改另一个，所以刻意各留各的常量、各在自己的类里命名。</p>
+	 */
+	private static final float ATTACK_MINIMUM_RPM = 128.0F;
+
 	/** 护目镜面板上的行颜色（攻击态用红，一眼区分两态）。 */
 	private final ChatFormatting color;
 
@@ -234,8 +267,8 @@ public enum TransmuterMode {
 	 * （0 节拍 = 没有场 = 调用方一次都不调）。
 	 *
 	 * <p>默认空实现——加工波变态没有场（它只在波<b>命中</b>时才有效果）；
-	 * 攻击波变态覆写为攻击场（<b>并自带应力闸门</b>：未接入应力的机器一次实体查询都不做，
-	 * 见 {@link #wavePowered}）。</p>
+	 * 攻击波变态覆写为攻击场（<b>并自带应力闸门</b>：未接入应力<b>或转速未达本模式门槛</b>
+	 * 的机器一次实体查询都不做，见 {@link #wavePowered}）。</p>
 	 *
 	 * @param radius 本机当前读取半径（扫描已算好的那一个，见
 	 *               {@code StellarWaveTransmuterBlockEntity#resolveRadius()}）
@@ -265,6 +298,31 @@ public enum TransmuterMode {
 	 * @return 场扫描间隔（tick）；0 表示本模式没有场
 	 */
 	public int fieldIntervalTicks() {
+		return 0;
+	}
+
+	/**
+	 * <b>本模式的"转速门槛"（RPM）</b>——变器"给波赋属性"所需的最低转速，
+	 * 由<b>模式自报</b>，调用方（{@code StellarWaveTransmuterBlockEntity} 的应力闸门与
+	 * 覆写的 {@code isSpeedRequirementFulfilled()}）<b>一律不写 {@code if (mode == ATTACK)}</b>
+	 * ——与 {@link #fieldIntervalTicks()} / {@link #locksWavePorts()} / {@link #onEnter} 同一约定。
+	 *
+	 * <p><b>取值语义</b>：{@code 0} = 本模式<b>不额外设转速门槛</b>（"必须在转"这半句由应力闸门
+	 * {@code isWavePowered()} 的 {@code getSpeed() != 0} 承担，不是由本方法承担）；
+	 * 正数 = 必须达到该转速，按<b>绝对值</b>判定（{@code Math.abs(getSpeed()) >= 本值}，
+	 * 反转的轴同样算接通，与全仓既有的 {@code Math.abs(getSpeed())} 口径一致）。</p>
+	 *
+	 * <p><b>为什么加工波变态取 0、而不是 1</b>：Create 的转速是浮点数，慢速网络完全可能只有
+	 * 0.5 RPM；门槛写 1 会把"在慢慢转"误判成"转速不足"，把既有的"转速 ≠ 0 就生效"悄悄改成
+	 * "至少 1 RPM"。0 才是"没有额外门槛"的准确表达，也让 {@code |速度| >= 0} 恒真、
+	 * 判据退化成闸门里那一句 {@code getSpeed() != 0}。</p>
+	 *
+	 * <p>攻击波变态覆写为 {@link #ATTACK_MINIMUM_RPM}（128）——用户规格"转速 128 RPM 以上
+	 * 才开启攻击效果"。</p>
+	 *
+	 * @return 本模式的起步转速（RPM）；0 = 不额外设门槛
+	 */
+	public float minimumRpm() {
 		return 0;
 	}
 
@@ -469,9 +527,10 @@ public enum TransmuterMode {
 	// ================= 应力闸门（"要不要给波赋属性"的唯一判据） =================
 
 	/**
-	 * <b>应力闸门读数</b>：坐标处的变器是否已接入应力
+	 * <b>应力闸门读数</b>：坐标处的变器是否已接入应力<b>且</b>转速达到本模式自报的门槛
 	 * （口径唯一处 = {@link StellarWaveTransmuterBlockEntity#isWavePowered()}：
-	 * {@code hasNetwork() && getSpeed() != 0}）。
+	 * {@code hasNetwork() && getSpeed() != 0 && isSpeedRequirementFulfilled()}，
+	 * 其中门槛来自 {@link #minimumRpm()}——攻击态 128 RPM，加工态不额外设门槛）。
 	 *
 	 * <p>读不到方块实体（区块未加载 / 破块瞬间 / 坐标已被替换）时返回 {@code false}——闸门在
 	 * 读不到机器时一律偏向"<b>不</b>赋属性"，不会出现"机器都没了却还在隔空点燃波"。</p>
