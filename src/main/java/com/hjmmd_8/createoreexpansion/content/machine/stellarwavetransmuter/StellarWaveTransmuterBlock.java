@@ -96,8 +96,20 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	/** 模型西侧波口 */
 	public static final BooleanProperty WEST = BooleanProperty.create("open_west");
 
-	/** 非全方块形状（xz 内缩 0.5px，仿 Create 机器避免 AO 遮蔽发黑）。 */
-	private static final VoxelShape SHAPE = box(0.5, 0, 0.5, 15.5, 16, 15.5);
+	/**
+	 * 满格形状 0~16（选中框与机身外沿齐平，不内缩）。
+	 *
+	 * <p><b>2026-09 修正</b>：原值是 {@code box(0.5, 0, 0.5, 15.5, 16, 15.5)}（xz 各内缩 0.5px，
+	 * 照抄 Create 机器"小一圈避免 AO 遮蔽发黑"的老习惯），但本机模型 xz 是<b>满格 0..16</b>——
+	 * 四侧口面恰好贴在 0/16 上。形状内缩后选中框（与碰撞箱）比模型每边小 0.5px，玩家看到的是
+	 * 模型四个面"鼓出"高亮框，观感别扭。同族差波器家族的口径明写为"满格模型配满格框、选中框不内缩"
+	 * （见 {@code AbstractWaveGateBlock} 的 SHAPE 注释），本机模型同样是满格立方体，故一并改为满格。</p>
+	 *
+	 * <p><b>碰撞箱也随之变满格</b>：本类不覆写 {@code getCollisionShape}／{@code getVisualShape}，
+	 * 二者默认委托 {@link #getShape}，因此这一份常量同时决定选中框与碰撞箱；保持默认委托，
+	 * 不为碰撞箱另开一条形状路径。</p>
+	 */
+	private static final VoxelShape SHAPE = box(0, 0, 0, 16, 16, 16);
 
 	public StellarWaveTransmuterBlock(Properties properties) {
 		super(properties);
@@ -251,8 +263,18 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	 * <b>把 4 个波口按掩码整体置位</b>（本类唯一一处"批量改开口"的实现；只动开口属性，
 	 * FACING 与其它属性原样保留）。
 	 *
-	 * <p>掩码位序与 {@code AllBlocks} datagen 的变体号一致：{@code NORTH=8 / EAST=4 / SOUTH=2 / WEST=1}
-	 * （{@link #portMask} 是它的逆运算）。</p>
+	 * <p><b>掩码位序（本类 {@link #withPortMask} / {@link #portMask} 的读写口径）</b>：
+	 * {@code NORTH=8 / EAST=4 / SOUTH=2 / WEST=1}（{@link #portMask} 是它的逆运算；两端一一对应、
+	 * 必须同步改，见下）。</p>
+	 *
+	 * <p><b>2026-09 注释修正（只改注释，实现不动）</b>：原文写"掩码位序与 {@code AllBlocks} datagen
+	 * 的变体号一致：NORTH=8 / EAST=4 / SOUTH=2 / WEST=1"——后半句的位序描述本身没错（它就是本类掩码），
+	 * 但"与 datagen 变体号一致"这半句是错的。实测 {@code AllBlocks} 生成变体时用的是
+	 * <b>{@code NORTH=8 / SOUTH=4 / WEST=2 / EAST=1}</b>（north-only→变体 8、south-only→4、
+	 * west-only→2、east-only→1），生成的 blockstates 亦然：<b>这一份才是与 AllBlocks datagen
+	 * 变体位同序的顺序</b>。也就是说本类掩码把 EAST 放在位 4、SOUTH 放在位 2，与 datagen 变体位序
+	 * 在 E/S、W/E 两处互换，<b>两者不同序</b>，切勿按变体号反推掩码位。掩码只要求本类读写两端自洽
+	 * （功能正常，改动其一必须同步另一端），故实现保持原样。</p>
 	 *
 	 * <p>三个调用点、三种语义：</p>
 	 * <ul>
@@ -277,13 +299,17 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	}
 
 	/**
-	 * <b>读当前 4 个波口为一个 4 位掩码</b>（位序见 {@link #withPortMask}）。
+	 * <b>读当前 4 个波口为一个 4 位掩码</b>（位序 {@code NORTH=8 / EAST=4 / SOUTH=2 / WEST=1}，
+	 * 见 {@link #withPortMask} 的说明；<b>注意与 {@code AllBlocks} datagen 的变体位序
+	 * {@code NORTH=8 / SOUTH=4 / WEST=2 / EAST=1} 不同序</b>，不要混用）。
 	 *
 	 * <p>用途：攻击波变态会在进入的那一刻把四口强制全开并锁死（规格 1/2），玩家自己设的口位被覆盖，
 	 * 所以<b>进入前必须先记下来</b>，离开时原样还回（见
 	 * {@code StellarWaveTransmuterBlockEntity#cycleMode()}）。</p>
 	 */
 	public static int portMask(BlockState state) {
+		// 与 withPortMask 严格互逆：NORTH=8 / EAST=4 / SOUTH=2 / WEST=1。
+		// （这不是 AllBlocks datagen 的变体位序——变体位序是 N=8 / S=4 / W=2 / E=1。）
 		return (state.getValue(NORTH) ? 8 : 0) | (state.getValue(EAST) ? 4 : 0)
 			| (state.getValue(SOUTH) ? 2 : 0) | (state.getValue(WEST) ? 1 : 0);
 	}
