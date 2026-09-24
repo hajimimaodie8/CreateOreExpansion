@@ -69,7 +69,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * </ul>
  *
  * <p><b>2026-09 三条规格（用户定稿）</b>：① <b>进入攻击波变态时无条件把 4 个口强制打开</b>
- * （进入模式的动作为模式自报，见 {@link TransmuterMode#onEnter} → {@link #forceAllPortsOpen}）；
+ * （进入模式的动作为模式自报，见 {@link TransmuterMode#onEnter} → {@link #forceAllPortsOpen}），
+ * <b>离开攻击波变态时把进入前记下的口位原样还回</b>（同一段"口位接管期"的另一端，见
+ * {@link #setPortMask}／{@link #portMask}：少了这一端，玩家从攻击态切回加工态后机器仍是四口全开，
+ * 看不出模式变过、也拿不回自己设的口位——2026-09-24 实测修复）；
  * ② 攻击态下空手右键<b>不改口、也不出开关音效</b>（{@link #toggleWavePort} 的锁口分支在音效之前
  * 返回）；③ <b>放置时四口默认全关</b>（{@link #getStateForPlacement}）——但 blockstate 默认值
  * 仍保持全开，因为它是老存档缺 {@code open_*} 键时的回退值（理由见构造器注释）。</p>
@@ -239,43 +242,80 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 		return modelSide == null ? null : propertyFor(modelSide);
 	}
 
-	// ========== 四口批量置位（放置默认 / 进入攻击波变态，两条规格共用一处实现） ==========
+	// ========== 四口批量置位（放置默认 / 进入攻击波变态 / 离开攻击波变态，三条路径共用一处实现） ==========
+
+	/** 四口全开的掩码（{@link #withPortMask} 的取值域上界）。 */
+	public static final int PORT_MASK_ALL = 0b1111;
 
 	/**
-	 * <b>把 4 个波口一律置为 {@code open}</b>（本类唯一一处"批量改开口"的实现；只动开口属性，
+	 * <b>把 4 个波口按掩码整体置位</b>（本类唯一一处"批量改开口"的实现；只动开口属性，
 	 * FACING 与其它属性原样保留）。
 	 *
-	 * <p>两个调用点、两种语义：</p>
+	 * <p>掩码位序与 {@code AllBlocks} datagen 的变体号一致：{@code NORTH=8 / EAST=4 / SOUTH=2 / WEST=1}
+	 * （{@link #portMask} 是它的逆运算）。</p>
+	 *
+	 * <p>三个调用点、三种语义：</p>
 	 * <ul>
-	 *   <li>放置默认（规格 3）：{@code getStateForPlacement} 传 {@code false} = 新放下的机器四口全关；</li>
-	 *   <li>进入攻击波变态（规格 1）：{@link TransmuterMode#onEnter} 借 {@link #forceAllPortsOpen}
-	 *       传 {@code true} = 无论原来什么状态都强制全开。</li>
+	 *   <li>放置默认（规格 3）：{@code getStateForPlacement} 经 {@link #withAllPorts} 传 false = 四口全关；</li>
+	 *   <li>进入攻击波变态（规格 1）：{@link TransmuterMode#onEnter} 经 {@link #forceAllPortsOpen} 写全开；</li>
+	 *   <li>离开攻击波变态（规格 1 的逆操作）：{@code StellarWaveTransmuterBlockEntity#cycleMode()}
+	 *       经 {@link #setPortMask} 把进入前记下的掩码还回去。</li>
 	 * </ul>
 	 */
+	public static BlockState withPortMask(BlockState state, int mask) {
+		return state.setValue(NORTH, (mask & 8) != 0)
+			.setValue(EAST, (mask & 4) != 0)
+			.setValue(SOUTH, (mask & 2) != 0)
+			.setValue(WEST, (mask & 1) != 0);
+	}
+
+	/**
+	 * 把 4 个波口一律置为 {@code open}（{@link #withPortMask} 的两个饱和取值，读起来更直白的写法）。
+	 */
 	public static BlockState withAllPorts(BlockState state, boolean open) {
-		return state.setValue(NORTH, open)
-			.setValue(EAST, open)
-			.setValue(SOUTH, open)
-			.setValue(WEST, open);
+		return withPortMask(state, open ? PORT_MASK_ALL : 0);
+	}
+
+	/**
+	 * <b>读当前 4 个波口为一个 4 位掩码</b>（位序见 {@link #withPortMask}）。
+	 *
+	 * <p>用途：攻击波变态会在进入的那一刻把四口强制全开并锁死（规格 1/2），玩家自己设的口位被覆盖，
+	 * 所以<b>进入前必须先记下来</b>，离开时原样还回（见
+	 * {@code StellarWaveTransmuterBlockEntity#cycleMode()}）。</p>
+	 */
+	public static int portMask(BlockState state) {
+		return (state.getValue(NORTH) ? 8 : 0) | (state.getValue(EAST) ? 4 : 0)
+			| (state.getValue(SOUTH) ? 2 : 0) | (state.getValue(WEST) ? 1 : 0);
+	}
+
+	/**
+	 * <b>把该位置的变器 4 个波口写成掩码描述的状态</b>（只改 blockstate；状态本来就相同则不下发，
+	 * 避免无谓的方块更新与网络包）。
+	 *
+	 * <p>不动方块实体里的模式——模式由调用方（{@code StellarWaveTransmuterBlockEntity#cycleMode()}）
+	 * 自己写并 {@code notifyUpdate()}。调用方刻意不判断"是不是攻击模式"：两个调用点都按模式自报的
+	 * {@link TransmuterMode#locksWavePorts()} 定界（进入记下 + 强制全开、离开还回），与"锁口不可切换"
+	 * 同属一条行为。</p>
+	 */
+	public static void setPortMask(Level level, BlockPos pos, int mask) {
+		BlockState state = level.getBlockState(pos);
+		if (!(state.getBlock() instanceof StellarWaveTransmuterBlock))
+			return;
+		BlockState updated = withPortMask(state, mask);
+		if (!updated.equals(state))
+			level.setBlock(pos, updated, Block.UPDATE_CLIENTS);
 	}
 
 	/**
 	 * <b>把该位置的变器 4 个波口强制全部打开</b>（规格 1：进入攻击波变态时无条件开放）。
 	 *
-	 * <p>一次性 {@code setBlockState}：只改 blockstate（开口），<b>不动</b>方块实体里的模式——模式由
-	 * 调用方（{@code StellarWaveTransmuterBlockEntity#cycleMode()}）自己写并 {@code notifyUpdate()}。
-	 * 状态本来就全开时不下发（避免无谓的方块更新与网络包）。</p>
+	 * <p>一次性 {@code setBlock}：只改 blockstate（开口），模式由调用方自己写。状态本来就全开时不下发。</p>
 	 *
 	 * <p>调用方刻意不判断"是不是攻击模式"：本方法由 {@link TransmuterMode#onEnter} 按模式自报调用，
 	 * 与 {@link TransmuterMode#locksWavePorts()} 同属"模式常量体自己声明的一条行为"。</p>
 	 */
 	public static void forceAllPortsOpen(Level level, BlockPos pos) {
-		BlockState state = level.getBlockState(pos);
-		if (!(state.getBlock() instanceof StellarWaveTransmuterBlock))
-			return;
-		BlockState opened = withAllPorts(state, true);
-		if (!opened.equals(state))
-			level.setBlock(pos, opened, Block.UPDATE_CLIENTS);
+		setPortMask(level, pos, PORT_MASK_ALL);
 	}
 
 	// ========== 交互分工：空手 = 波口开关，扳手 = 处理模式 ==========

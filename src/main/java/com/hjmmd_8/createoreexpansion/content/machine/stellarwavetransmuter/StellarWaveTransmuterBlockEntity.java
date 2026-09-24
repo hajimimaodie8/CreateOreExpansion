@@ -97,6 +97,21 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 */
 	private TransmuterMode mode = TransmuterMode.PROCESSING;
 
+	/**
+	 * <b>进入"口位接管期"的模式（攻击波变态）之前，玩家设的四口状态</b>
+	 * （{@link StellarWaveTransmuterBlock#portMask}；默认 0 = 四口全关，与放置默认（规格 3）一致）。
+	 *
+	 * <p>攻击波变态一进来就把四口强制全开（规格 1）并锁死（规格 2），玩家自己设的口位在那一刻被覆盖，
+	 * 所以进入前必须先把它们记下来、离开时原样还回（见 {@link #cycleMode()}；
+	 * 口径由 {@link TransmuterMode#locksWavePorts()} 定界）。少了这一步，切回加工态后机器仍是四口全开
+	 * ——玩家看到的与攻击态一模一样、也拿不回自己设的口位，这就是"再用扳手就切不回其它模式了"
+	 * 的观感来源（2026-09-24 实测修复）。</p>
+	 *
+	 * <p>落盘（{@code PortsBeforeTakeover}）：区块卸载/读档时机器可能正处在攻击态，掩码不能丢。
+	 * 老存档没有该键 → 0 = 四口全关（与放置默认同一取值，不会把口位凭空打开）。</p>
+	 */
+	private int portsBeforeTakeover;
+
 	/** 扫描到的加工机器数量（客户端同步用）。 */
 	private int scannedCount;
 	/**
@@ -264,12 +279,24 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 * @return 切换后的模式
 	 */
 	public TransmuterMode cycleMode() {
+		TransmuterMode previous = mode;
 		mode = mode.next();
-		if (level != null && !level.isClientSide)
+		if (level != null && !level.isClientSide) {
+			// 口位交接（三段同属一件事，口径都由模式自报的 locksWavePorts() 定界，本类不写
+			// if (mode == ATTACK)）：
+			//   离开接管口位的模式 → 把进入前记下的口位原样还回去（规格 1 的逆操作：不然四口全开
+			//   会永久留在机器上，切回加工态后机器看不出任何变化、也拿不回玩家自己设的口位）；
+			//   进入接管口位的模式 → 先把当前口位记下来，再由下面的 onEnter 强制全开（规格 1）。
+			// 顺序不能反：还原必须发生在新口位入账之前。
+			if (previous.locksWavePorts())
+				StellarWaveTransmuterBlock.setPortMask(level, worldPosition, portsBeforeTakeover);
+			if (mode.locksWavePorts())
+				portsBeforeTakeover = StellarWaveTransmuterBlock.portMask(level.getBlockState(worldPosition));
 			// 进入新模式的一次性动作（规格 1：攻击波变态强制 4 个波口全开）。
 			// 由模式自报（TransmuterMode#onEnter）——本类刻意不写 if (mode == ATTACK)，
 			// 与 fieldIntervalTicks()/locksWavePorts() 同一约定：模式行为收在模式常量体里。
 			mode.onEnter(level, worldPosition);
+		}
 		notifyUpdate();
 		return mode;
 	}
@@ -747,6 +774,9 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		// 处理模式（加工波变态 / 攻击波变态）：既落盘（读档后模式不丢）也随客户端包同步（护目镜显示），
 		// 故不放在下面的 clientPacket 分支里
 		compound.putString("TransmuterMode", mode.key());
+		// 攻击态接管口位之前记下的四口状态：随机器落盘（区块卸载时机器可能正处在攻击态，
+		// 掩码丢了就会在离开攻击态时把玩家的口位还原成全关）
+		compound.putInt("PortsBeforeTakeover", portsBeforeTakeover);
 		compound.putInt("ScanRadius", scanRadius);
 		compound.putInt("ScannedCount", scannedCount);
 		compound.putInt("ScannedKineticCount", scannedKineticCount);
@@ -787,6 +817,9 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		super.read(compound, registries, clientPacket);
 		// 处理模式：老存档没有该键 → byKey 回退加工波变态（默认态），不会因缺键变成别的模式
 		mode = TransmuterMode.byKey(compound.getString("TransmuterMode"));
+		// 攻击态接管口位之前记下的四口状态（位序见 StellarWaveTransmuterBlock#portMask）：
+		// 老存档没有该键 → 0 = 四口全关，与放置默认（规格 3）一致
+		portsBeforeTakeover = compound.getInt("PortsBeforeTakeover");
 		scanRadius = Mth.clamp(compound.getInt("ScanRadius"), 1, 3);
 		scannedCount = Math.max(0, compound.getInt("ScannedCount"));
 		// 旧存档没有该键（0）：退回"全部机器都算动能机"的旧口径，避免读档后应力变轻

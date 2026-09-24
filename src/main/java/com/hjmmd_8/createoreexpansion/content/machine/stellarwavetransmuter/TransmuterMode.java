@@ -39,9 +39,13 @@ import net.minecraft.world.phys.AABB;
  * <p><b>与波口开关的区别</b>：模式 = "变器怎么处理波"，存在方块实体里，扳手右键切换
  * （NBT + 同步包，见 {@link StellarWaveTransmuterBlockEntity#cycleMode()}）；
  * 波口开关 = "哪一面让波进出"，存在 blockstate 里，空手右键切换
- * （见 {@link StellarWaveTransmuterBlock}）。两者互不干涉，<b>唯一交叉点</b>是"进入攻击波变态时
- * 强制把四口全开"（{@link #onEnter}）；从攻击态切回其它模式<b>不恢复旧值</b>，四口就保持全开，
- * 玩家可以再手动开关。</p>
+ * （见 {@link StellarWaveTransmuterBlock}）。两者互不干涉，<b>唯一交叉点</b>是攻击波变态这段
+ * "口位接管期"（口径由 {@link #locksWavePorts()} 自报）——它必须<b>三段齐全</b>：
+ * <b>进入时</b>先把玩家设的口位记下、再强制全开（{@link #onEnter}）；<b>期间</b>空手右键一律改不动
+ * （{@link #locksWavePorts()}）；<b>离开时</b>把记下的口位原样还回
+ * （{@code StellarWaveTransmuterBlockEntity#cycleMode()} → {@code StellarWaveTransmuterBlock#setPortMask}）。
+ * 少了"还回去"这一段，切回加工态后机器仍是四口全开：玩家看到的状态与攻击态毫无二致、也拿不回自己设的
+ * 口位，于是"再用扳手就切不回其它模式了"（2026-09-24 实测修复）。</p>
  *
  * <p><b>中立性</b>：只用原版 / Create 基础类型，不 import 任何可选联动模组。</p>
  */
@@ -142,6 +146,9 @@ public enum TransmuterMode {
 		/**
 		 * <b>本模式下波口锁死</b>（用户 2026-09 规格）：攻击波变态的 4 个波口恒开，
 		 * 空手右键不得关闭/切换任何一面（见 {@link #locksWavePorts()}）。
+		 *
+		 * <p>同一判定还定界"口位接管期"的另一端：离开本模式时，{@code cycleMode()} 会把进入前记下的
+		 * 口位还回去（否则四口全开会永久留在机器上，切回加工态后看不出模式变过）。</p>
 		 */
 		@Override
 		public boolean locksWavePorts() {
@@ -255,7 +262,14 @@ public enum TransmuterMode {
 	 * 调用方<b>不判断"是不是攻击模式"</b>（别写 {@code if (mode == ATTACK)}）；
 	 * 以后再加"锁口"的模式只需覆写本方法，交互代码一行都不用改。</p>
 	 *
-	 * @return true = 本模式下波口开关被模式接管，空手右键不得改变开口状态
+	 * <p><b>本判定同时是"口位接管期"的唯一口径</b>（{@code StellarWaveTransmuterBlockEntity#cycleMode()}）：
+	 * 切模式时——<b>离开</b>返回 true 的模式 → 把进入那一刻记下的口位原样还回
+	 * （{@code StellarWaveTransmuterBlock#setPortMask}）；<b>进入</b>返回 true 的模式 → 先记下当前口位，
+	 * 再由 {@link #onEnter} 强制全开（规格 1）；期间 {@code toggleWavePort} 据此提前返回。三段是同一件事，
+	 * 都由本方法定界，所以"以后再加一个接管口位的模式"同样只需覆写本方法与 {@link #onEnter}。</p>
+	 *
+	 * @return true = 本模式下波口开关被模式接管（进入时强制全开、期间不可改、离开时还原），
+	 *         空手右键不得改变开口状态
 	 */
 	public boolean locksWavePorts() {
 		return false;
