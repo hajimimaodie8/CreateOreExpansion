@@ -23,7 +23,12 @@ sourceSets.main.resources {
 
     // Exclude common development only resources from finalized outputs
     exclude("**/*.bbmodel") // BlockBench project files
-    exclude("src/generated/**/.cache") // datagen cache files
+    // datagen cache files. NOTE: the resource-relative path is ".cache/<hash>",
+    // so the previous pattern "src/generated/**/.cache" never matched anything and
+    // 6 cache files were shipping inside the released jar. Both the bare and the
+    // nested form are excluded, whichever srcDir produced them.
+    exclude(".cache/**")
+    exclude("**/.cache/**")
 }
 
 repositories {
