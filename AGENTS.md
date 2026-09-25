@@ -101,8 +101,20 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
   Compare-Object @($en.PSObject.Properties.Name) @($zh.PSObject.Properties.Name)
   ```
   顺带：`block…jade_stress_charger` 的英文曾误写为 "Jade Create Charger"，已与护目镜条目统一为 "Jade Stress Charger"。
-- **`core` 是「JarJar 嵌套的共享库」，不是第四个 mod（P3d-β，提交 `1ec773a4`）**：`core/gradle.properties` 里的 `coe_library=true` 是唯一开关，约定插件据此跳过 `mods{}` / `generateModMetadata` / `ideSyncTask`（其余仓库/toolchain/group/version 照旧）。根 `build.gradle` 两行：`jarJar(implementation(project(':core')))` + **`additionalRuntimeClasspath project(':core')`**。
-  - **`additionalRuntimeClasspath` 那一行不是冗余**：MDG 把 classpath 切成两半，进 `<run>LegacyClasspath` 的才算「普通库」，而 jarJar 依赖按设计**不**进 legacy classpath、core 又没有 mods.toml ⇒ 两边落空，实测崩在 `NoClassDefFoundError: …ChargingRecipeTools at CoeItems.<clinit>`。**这一步只有 dev 需要，生产由嵌套 jar 提供。** 消费方（以后 coe/cews/transmutation 各自成 jar 时）都要照抄这两行。
+- **`core` 是「JarJar 嵌套的共享库」，不是第四个 mod（P3d-β，提交 `1ec773a4`）**：`core/gradle.properties` 里的 `coe_library=true` 是唯一开关，约定插件据此跳过 `mods{}` / `generateModMetadata` / `ideSyncTask`（其余仓库/toolchain/group/version 照旧）。根 `build.gradle` 的接线见下一条（**已被 P3m 修正，别照 P3d-β 的旧配方抄**）。
+  - **⛔ 曾经的错误配方（P3d-β 写的，P3m 已推翻并修正）：`additionalRuntimeClasspath project(':core')`**。当时以为它是 dev 可见性的必需品，**它其实正是「core 的类看不见 Minecraft/NeoForge」这个缺陷的根源**——BootstrapLauncher 会把 legacy classpath 上的每个 jar/目录变成 **BOOT 层的自动模块**，而那个模块的加载器是 `new ModuleClassLoader("MC-BOOTSTRAP", cfg, List.of(ModuleLayer.boot()), null)`，**只以 JDK boot 层为父**；MC/NeoForge/Create 全在 **GAME 层**（`TRANSFORMER/...`）⇒ 永远看不见。现象：把一个碰 MC 的类搬进 core 后 `runData` 崩 `NoClassDefFoundError: ModConfigSpec$Builder at AllConfig.<clinit>`，`Caused by: ClassNotFoundException ... BuiltinClassLoader`。
+    **正确配方（P3m 实测，dev-only，发布产物 delta 0 B）**：`evaluationDependsOn(':core')` + 把 core 的 source set 绑进**根 mod 的 `mods{}` 条目**：
+    ```groovy
+    neoForge { mods { "createoreexpansion" { sourceSet(sourceSets.main); sourceSet(project(':core').sourceSets.main) } } }
+    ```
+    MDG 于是把 core 写进 `-Dfml.modFolders`，FML 按 mod 名成组 addPath ⇒ 根与 core 合并成**同一个 GAME 层 mod 文件**，core 的类就看得见 MC/Create。
+    **`evaluationDependsOn(':core')` 是硬性必需**（否则 `project(':core').sourceSets` 静默落回根工程自己的扩展）。`jarJar(implementation(project(':core')))` 照旧保留（编译可见 + 发布嵌套）。
+    **加过的两条错路，别再走**：① `additionalRuntimeClasspath files(project(':core').sourceSets.main.output)`（目录形态）——**照样**是 BOOT 层自动模块（模块名 `main`）；② 只留 `implementation` 删掉 ARC——core 类整个不可见、`runData` 直接失败。
+    **取证工具**：`-Dbsl.debug=true`（注意是 `jvmArgument` 不是 `jvmArgs`）能直接打印 BSL 把哪些路径并进了哪个模块，是查这类问题最省的手段。
+    **一条通用判据**：**core 里的方法只要描述符里出现 MC 类型就不可用**（哪怕方法体 MC-free）——`NoClassDefFoundError` 抛在调用点那一帧。所以「core 能不能放这个类」必须用**真调用一次**来验证，`compileJava`/`runData` 全绿证明不了。
+  - **⚠ 该形态带来的纪律风险**：dev 里根与 core 现在是**同一个 mod 文件**，所以 **dev 再也无法复现 P3d-α 的 `ResolutionException`（包重叠）**——「一个包要么全在 core、要么全在根」变成**只能靠人工纪律维持**，脚本也测不出来。生产拓扑（嵌套 LIBRARY → PLUGIN 层）依旧只有**真 jar 进游戏**才能验证，没有任何 dev 关卡覆盖。
+  - **别再试的路**：把 core 当回真 mod（补 mods.toml + `@Mod("coe_core")` + `mods{coe_core{...}}`）**也能让 dev 看见 MC**，但代价三条：① 日志出现 `Found 2 mods for first modid coe_core, selecting most recent` （java.class.path 上那个 jar 也被当 mod 文件，FML 静默去重、版本并列时选谁无保证）；② core 资源里的 mods.toml 会跟着进 `META-INF/jarjar/` ⇒ **生产里 core 也变成 mod**（等于撤销 P3d-β）；③ P3d-α 的包重叠纪律回归。
+
   - `CoeCore` **已不是 `@Mod`**：`@Mod` / `MOD_ID` / `MOD_BUS` / 构造器 / `onRegister` 全删，`REGISTRY_NAMESPACE` / `LOGGER` / `modLoc` **原地不动**（500+ 处引用零改动）；它原先那 5 个注册动作（数据组件 / 实体类型 / 风扇加工类型 / 旋转载荷 / 配置）搬进 `CreateOreExpansion` 构造器**最前面**，顺序不变。**配置容器仍是 `createoreexpansion`**，`createoreexpansion-common.toml` 文件名一字未变。
   - **dev 的 mod 列表由 MDG 的 `neoForge.mods{}` 决定，不是模板里的 `[[mods]]`**：所以 `cews` / `transmutation` 在 dev 里**从 P3b 起就没出现过**，别把「dev 只有 createoreexpansion + skiller」误判成回归；发布 jar 里的三个 mod 由模板决定。
 - **搬迁粒度是「包」，不是「文件」（JPMS 硬约束，P3d-α 实测）**：同一个 Java 包**不能同时属于两个 mod 文件**，否则启动期直接抛 `java.lang.module.ResolutionException: Modules X and Y export package … to module Z`（当时 1.21.1 的 ModLauncher 把每个 mod 文件当 JPMS 命名模块放进同一层）。dev 里 core 走 legacy classpath（unnamed module 语义）看似可以重叠，**但生产里 JarJar 嵌套的库是 PLUGIN 层的真 JPMS 自动模块**（FML 4.0.42 `NestedLibraryModReader` → `IModFile.Type.LIBRARY`，由 `ModValidator.getPluginResources()` 归到 PLUGIN 层）——**所以纪律不变：一个包要么全在 core、要么全在根；搬走后根侧同名包必须为空。** 这条**只能用真实发布 jar 进游戏验证**，`runData`/`runClient` 覆盖不到。
