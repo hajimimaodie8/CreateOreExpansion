@@ -65,8 +65,10 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 // ⚠ 跨项目读 source set 之前先确认求值顺序：根工程先求值，此时 project(':core').sourceSets
 // 会**落回根工程自己的扩展**（实测 srcDirs/classesDirs 都报成根工程的路径）。
-// 一行 evaluationDependsOn 即可修正——下面 neoForge.mods{} 里要读 core 的 sourceSets。
+// 一行 evaluationDependsOn 即可修正——下面 neoForge.mods{} 里要读 core / coe 的 sourceSets。
 evaluationDependsOn(':core')
+// P3w：同上，:coe 的 sourceSets 也要跨项目读（它是 createoreexpansion 那个 mod 文件）。
+evaluationDependsOn(':coe')
 
 neoForge {
     // Specify the version of NeoForge to use.
@@ -134,7 +136,16 @@ neoForge {
         // define mod <-> source bindings
         // these are used to tell the game which sources are for which mod
         // multi mod projects should define one per mod
-        "${mod_id}" {
+        //
+        // ── P3w：dev 的 mod 文件 = 这个映射的**每个条目**（不是模板里的 [[mods]]）────────
+        // MDG 把每个条目写成一串 `name%%<目录>` 到 -Dfml.modFolders；FML 的
+        // CommonLaunchHandler 按 **name** 分组，UserdevLocator 对**每组**调一次
+        // pipeline.addPath(...) ⇒ **一个条目 = 一个 mod 文件**，同一组里的多个
+        // sourceSet 被并成同一个文件（P3v §4a 实测）。组名本身不参与任何判定，
+        // 它只是分组键（读 UserdevLocator：名字只做 Map 的 key）。
+        // 所以两个条目 = dev 里两个本模组 mod 文件，ModDiscoverer 会打印两行。
+        "cews" {
+            // 根工程输出（CewsMod / TransmutationMod / hub / data / compat / mixin …）
             sourceSet(sourceSets.main)
             // P3M：core 的 classes/resources 也**作为本 mod 的源**交给 FML（dev 限定）。
             // 效果：`-Dfml.modFolders` 里多出 core 的目录，FML 把它们与根工程输出
@@ -142,6 +153,13 @@ neoForge {
             //  多根 union），于是 core 的类由 GAME 层的类加载器定义 → 能看见 MC/NeoForge/Create。
             // 生产不受影响：那里 core 仍是 JarJar 嵌套库，本条只改 dev 的 modFolders。
             sourceSet(project(':core').sourceSets.main)
+        }
+        "coe" {
+            // P3w：:coe 是 **createoreexpansion** 自己的 mod 文件（它的
+            // src/main/templates/META-INF/neoforge.mods.toml 声明该 id），所以必须
+            // **单开一个条目**——塞进上面那个条目会让两份 mods.toml 落进同一个
+            // SecureJar，模棱两可（P3u 实测：多条 sourceSet 进同一组只出一个文件）。
+            sourceSet(project(':coe').sourceSets.main)
         }
     }
 }
@@ -195,6 +213,17 @@ dependencies {
     // 这一步**只影响 dev**（modFolders 是 dev 启动参数）；生产仍由嵌套 jar 提供，
     // 也仍需要上面那行 jarJar(...)。
     jarJar(implementation(project(':core')))
+    // ── coe 模块（P3w：矿物拓展自己的 mod 文件，源码在 coe/，由根 jar 用 JarJar 嵌套）──
+    // ⛔ 这里**必须**是 compileOnly，不能是 implementation：
+    //   implementation(project(':coe')) 会把 coe/build/libs/createoreexpansion-1.0.0.jar 放进
+    //   `sourceSets.main.runtimeClasspath`（MDG 的 run 任务正是取这个集合，见 p3v-EVIDENCE §4b），
+    //   而 FML 的 dev 发现逻辑把 classpath 上每个**带 META-INF/neoforge.mods.toml 且未被
+    //   modFolders 认领**的根也当 mod 文件 → :coe 的 jar 与它的 modFolders 目录是两个不同的根
+    //   → 同一个 createoreexpansion 出现两次 → UniqueModListBuilder 抛
+    //   `fml.modloadingissue.duplicate_mod`（硬崩，不是"选最新"那条温和路径）。
+    //   compileOnly + jarJar(compileOnly(...)) 同时保住「编译期可见」与「发布时嵌进
+    //   META-INF/jarjar/」，而那个 jar 从 runtimeClasspath 上消失（P3v 探针 E 实测：125 项，无 coe jar）。
+    jarJar(compileOnly(project(':coe')))
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
