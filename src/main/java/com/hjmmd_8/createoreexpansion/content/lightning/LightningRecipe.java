@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.lightning;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipeParams;
 import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
 
@@ -18,7 +18,7 @@ import net.minecraft.world.level.Level;
 public class LightningRecipe extends StandardProcessingRecipe<LightningInput> {
 
     public LightningRecipe(ProcessingRecipeParams params) {
-        super(AllRecipeTypes.LIGHTNING, params);
+        super(CoeRecipeTypes.LIGHTNING, params);
     }
 
     @Override

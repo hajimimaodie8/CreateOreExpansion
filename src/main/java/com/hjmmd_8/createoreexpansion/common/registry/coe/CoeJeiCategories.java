@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningBlockCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.base.CreateRecipeCategory;
@@ -31,7 +30,7 @@ public final class CoeJeiCategories {
     public static List<CreateRecipeCategory<?>> categories() {
         return List.of(
             new CreateRecipeCategory.Builder<>(LightningRecipe.class)
-                .addTypedRecipes(AllRecipeTypes.LIGHTNING)
+                .addTypedRecipes(CoeRecipeTypes.LIGHTNING)
                 .catalyst(() -> Blocks.LIGHTNING_ROD)
                 .catalyst(() -> CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
                 .itemIcon(CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
@@ -39,7 +38,7 @@ public final class CoeJeiCategories {
                 .build("lightning", LightningCategory::new),
 
             new CreateRecipeCategory.Builder<>(LightningBlockRecipe.class)
-                .addTypedRecipes(AllRecipeTypes.LIGHTNING_BLOCK)
+                .addTypedRecipes(CoeRecipeTypes.LIGHTNING_BLOCK)
                 .catalyst(() -> Blocks.LIGHTNING_ROD)
                 .catalyst(() -> CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
                 .itemIcon(CoeBlocks.REINFORCED_LIGHTNING_ROD.get())

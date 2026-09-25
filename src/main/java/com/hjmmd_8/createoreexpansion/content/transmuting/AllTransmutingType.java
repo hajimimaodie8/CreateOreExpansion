@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.transmuting;
 
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRecipeTypes;
 import java.util.List;
 
 import javax.annotation.Nullable;
@@ -41,14 +42,14 @@ public class AllTransmutingType implements FanProcessingType {
 
 	@Override
 	public boolean canProcess(ItemStack stack, Level level) {
-		return AllRecipeTypes.TRANSMUTING.find(AllRecipeTypes.wrap(stack), level)
+		return TransmutationRecipeTypes.TRANSMUTING.find(AllRecipeTypes.wrap(stack), level)
 			.isPresent();
 	}
 
 	@Override
 	@Nullable
 	public List<ItemStack> process(ItemStack stack, Level level) {
-		return AllRecipeTypes.TRANSMUTING.find(AllRecipeTypes.wrap(stack), level)
+		return TransmutationRecipeTypes.TRANSMUTING.find(AllRecipeTypes.wrap(stack), level)
 			.map(RecipeHolder::value)
 			.map(r -> RecipeApplier.applyRecipeOn(level, stack, r, true))
 			.orElse(null);

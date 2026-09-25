@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.craft.family;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 import com.simibubi.create.AllDataComponents;
 import com.simibubi.create.content.processing.recipe.ProcessingOutput;
@@ -196,7 +196,7 @@ public final class WaveRecipeFamilies {
 
 		@Override
 		public IRecipeTypeInfo typeInfo() {
-			return AllRecipeTypes.DISMANTLING;
+			return CoeRecipeTypes.DISMANTLING;
 		}
 
 		@Override

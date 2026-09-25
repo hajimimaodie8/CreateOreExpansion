@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import com.hjmmd_8.createoreexpansion.common.AllCreativeModeTabs;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -30,8 +31,8 @@ public final class CewsRegistrate {
     static {
         AllCreativeModeTabs.ensureTabs();
         RegistrateTooltips.install(REGISTRATE, true);
-        // CEWS 的默认创造页 = 能量波阵学页
-        REGISTRATE.defaultCreativeTab(AllCreativeModeTabs.ENERGY_WAVE_STUDY.key());
+        // CEWS 的默认创造页 = 能量波阵学页（本层自己的常量，不再绕 SHARED 聚合入口）
+        REGISTRATE.defaultCreativeTab(CewsCreativeTabs.ENERGY_WAVE_STUDY.key());
     }
 
     private CewsRegistrate() {}

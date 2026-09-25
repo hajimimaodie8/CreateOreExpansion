@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.grinding.recipe;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -80,12 +80,12 @@ public class DismantlingRecipe implements Recipe<SingleRecipeInput> {
 
 	@Override
 	public RecipeSerializer<?> getSerializer() {
-		return AllRecipeTypes.DISMANTLING.getSerializer();
+		return CoeRecipeTypes.DISMANTLING.getSerializer();
 	}
 
 	@Override
 	public RecipeType<?> getType() {
-		return AllRecipeTypes.DISMANTLING.getType();
+		return CoeRecipeTypes.DISMANTLING.getType();
 	}
 
 	public ItemStack getItem() {

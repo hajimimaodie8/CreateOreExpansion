@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.lightning;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.simibubi.create.foundation.recipe.RecipeApplier;
 
 import net.minecraft.core.BlockPos;
@@ -105,7 +106,7 @@ public final class LightningEventHandler {
         ServerLevel level = (ServerLevel) itemEntity.level();
 
         // 优先本模组 lightning 配方；未命中且 CC&A 已加载时，尝试其充电配方（自动适用雷击转化）
-        Optional<RecipeHolder<? extends Recipe<?>>> recipeOpt = AllRecipeTypes.LIGHTNING
+        Optional<RecipeHolder<? extends Recipe<?>>> recipeOpt = CoeRecipeTypes.LIGHTNING
             .find(LightningInput.of(stack.copyWithCount(1)), level)
             .map(holder -> holder);
         if (recipeOpt.isEmpty())
@@ -152,7 +153,7 @@ public final class LightningEventHandler {
             return null;
 
         ItemStack blockAsItem = state.getBlock().asItem().getDefaultInstance();
-        var recipeOpt = AllRecipeTypes.LIGHTNING_BLOCK.find(AllRecipeTypes.wrap(blockAsItem), level);
+        var recipeOpt = CoeRecipeTypes.LIGHTNING_BLOCK.find(AllRecipeTypes.wrap(blockAsItem), level);
         if (recipeOpt.isEmpty())
             return null;
 

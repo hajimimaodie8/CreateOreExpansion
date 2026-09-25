@@ -1,51 +1,11 @@
 package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-// 系列特性登记：物品注册链上写 .tag(AllModItemTags.STELLARSTONE_ITEMS) / .tag(AllModItemTags.THUNDERITE_ITEMS)
-// （Java 没有扩展方法，链上只能写成 .tag(...)；函数版见 SeriesTraits#addStellarstoneTraits(ItemBuilder)。
-//  判定口径 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定，全部收口在 SeriesTraits#isStellarstone/isThunderite）
-import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
-import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.NetheriteStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.SapphireStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.StellarstoneStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.ThunderiteStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
-import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelItem;
 import com.hjmmd_8.createoreexpansion.content.wave.gauge.WaveQueryGaugeItem;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.common.*;
-import com.tterrag.registrate.AbstractRegistrate;
-import com.tterrag.registrate.builders.Builder;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 import com.tterrag.registrate.builders.ItemBuilder;
 import com.tterrag.registrate.util.entry.ItemEntry;
-import com.tterrag.registrate.util.entry.RegistryEntry;
-import com.tterrag.registrate.util.nullness.NonNullFunction;
-import com.tterrag.registrate.util.nullness.NonNullSupplier;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.ItemTags;
-import net.minecraft.world.item.*;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.client.model.generators.ModelFile;
-import net.neoforged.neoforge.common.Tags;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Supplier;
-
-import static com.simibubi.create.AllTags.AllItemTags.CREATE_INGOTS;
-import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
+import net.minecraft.world.item.Item;
 
 /**
  * <b>CEWS（能量波阵学）</b>物品注册：能量构件 / 未完成的能量构件（{@code energy_mechanism}，
@@ -64,7 +24,7 @@ public final class CewsItems {
             .item("incomplete_energy_mechanism", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
-            .removeTab(AllCreativeModeTabs.BASE_TAB.key())
+            .removeTab(CoeCreativeTabs.BASE_TAB.key())
             .register();
 
     // ========== 波情查询仪（手持静态贴图；右键查询最近能量波的波情，查询期间播动画贴图） ==========

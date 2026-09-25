@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.transmutation;
 
 import com.hjmmd_8.createoreexpansion.common.AllCreativeModeTabs;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -29,7 +30,8 @@ public final class TransmutationRegistrate {
         AllCreativeModeTabs.ensureTabs();
         // 本层没有应力充能器 → 不接 ChargerKineticTooltip
         RegistrateTooltips.install(REGISTRATE, false);
-        REGISTRATE.defaultCreativeTab(AllCreativeModeTabs.BASE_TAB.key());
+        // TRANS -> COE 是允许方向（不是环）：TRANS 的默认创造页就是 COE 的基础页
+        REGISTRATE.defaultCreativeTab(CoeCreativeTabs.BASE_TAB.key());
     }
 
     private TransmutationRegistrate() {}

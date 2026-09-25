@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyField;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields;
@@ -35,7 +36,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.fluids.FluidStack;
 
 /**
@@ -383,8 +383,8 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		// 已蓄满待释放的强化避雷针：穿波时波可抽取"释放机会"执行 LIGHTNING 类加工
 		chargedRods = collectChargedRods(radius);
 		if (!chargedRods.isEmpty()
-			&& !types.contains(com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.LIGHTNING))
-			types.add(com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.LIGHTNING);
+			&& !types.contains(CoeRecipeTypes.LIGHTNING))
+			types.add(CoeRecipeTypes.LIGHTNING);
 		// 载荷源设备读数（物品容器 / 流体容器 / 储能设备；护目镜"读取到什么"用，不显示坐标）
 		TransmuterScanner.DeviceCounts devices = scanDeviceCounts(radius);
 		// 只估算可携带载荷（不真抽）；真实抽取发生在波穿过的瞬间（collectPayloadForWave）

@@ -37,8 +37,8 @@ public final class CoeRegistrate {
         AllCreativeModeTabs.ensureTabs();
         // 通用两级提示（描述行 + 动能统计）。充能器专用提示归 CEWS，本层不接。
         RegistrateTooltips.install(REGISTRATE, false);
-        // COE 的默认创造页 = 基础页（矿物拓展）
-        REGISTRATE.defaultCreativeTab(AllCreativeModeTabs.BASE_TAB.key());
+        // COE 的默认创造页 = 基础页（矿物拓展）——本层自己的常量，不再绕 SHARED 聚合入口
+        REGISTRATE.defaultCreativeTab(CoeCreativeTabs.BASE_TAB.key());
     }
 
     private CoeRegistrate() {}

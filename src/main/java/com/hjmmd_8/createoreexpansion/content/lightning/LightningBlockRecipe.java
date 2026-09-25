@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.lightning;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipeParams;
 import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
 
@@ -11,7 +11,7 @@ import net.neoforged.neoforge.items.wrapper.RecipeWrapper;
 public class LightningBlockRecipe extends StandardProcessingRecipe<RecipeWrapper> {
 
     public LightningBlockRecipe(ProcessingRecipeParams params) {
-        super(AllRecipeTypes.LIGHTNING_BLOCK, params);
+        super(CoeRecipeTypes.LIGHTNING_BLOCK, params);
     }
 
     @Override

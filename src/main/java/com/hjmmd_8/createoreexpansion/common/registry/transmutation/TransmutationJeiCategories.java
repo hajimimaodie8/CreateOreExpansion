@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.common.registry.transmutation;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.ProcessingViaFanCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.TransmutingCategory;
@@ -32,7 +31,7 @@ public final class TransmutationJeiCategories {
     public static List<CreateRecipeCategory<?>> categories() {
         return List.of(
             new CreateRecipeCategory.Builder<>(AllTransmutingRecipe.class)
-                .addTypedRecipes(AllRecipeTypes.TRANSMUTING)
+                .addTypedRecipes(TransmutationRecipeTypes.TRANSMUTING)
                 .catalystStack(ProcessingViaFanCategory.getFan("fan_transmuting"))
                 .doubleItemIcon(com.simibubi.create.AllBlocks.ENCASED_FAN.get(),
                     BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE,

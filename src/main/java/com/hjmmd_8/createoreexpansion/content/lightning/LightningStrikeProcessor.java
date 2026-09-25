@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.lightning;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.simibubi.create.content.logistics.depot.DepotBehaviour;
 import com.simibubi.create.content.logistics.depot.DepotBlockEntity;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
@@ -141,7 +141,7 @@ public final class LightningStrikeProcessor {
         boolean processed = false;
         // 候选配方：本模组 lightning 配方 + 其它模组顺带适用的充电配方（经 compat 门面，核心层无硬编码）
         List<RecipeHolder<? extends Recipe<?>>> allRecipes = new ArrayList<>(
-            level.getRecipeManager().getAllRecipesFor(AllRecipeTypes.LIGHTNING.getType()));
+            level.getRecipeManager().getAllRecipesFor(CoeRecipeTypes.LIGHTNING.getType()));
         com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport
             .addChargingRecipes(level, allRecipes);
 

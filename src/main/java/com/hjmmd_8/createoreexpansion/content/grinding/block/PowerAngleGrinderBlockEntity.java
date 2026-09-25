@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.grinding.block;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.GrinderInventory;
@@ -376,7 +377,7 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	private List<RecipeHolder<? extends Recipe<?>>> getRecipes() {
 		// 序列装配：物品处于某个序列加工配方中且当前步骤是角磨步骤（仿动力锯）
 		Optional<RecipeHolder<GrindingRecipe>> assemblyRecipe = SequencedAssemblyRecipe.getRecipe(level,
-			inventory.getStackInSlot(0), AllRecipeTypes.GRINDING.getType(), GrindingRecipe.class);
+			inventory.getStackInSlot(0), CoeRecipeTypes.GRINDING.getType(), GrindingRecipe.class);
 		if (assemblyRecipe.isPresent() && filtering.test(assemblyRecipe.get()
 			.value()
 			.getResultItem(level.registryAccess()))) {

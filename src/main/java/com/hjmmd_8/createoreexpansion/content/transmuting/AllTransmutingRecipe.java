@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.transmuting;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRecipeTypes;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipeParams;
 import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe;
 
@@ -11,7 +11,7 @@ import net.neoforged.neoforge.items.wrapper.RecipeWrapper;
 public class AllTransmutingRecipe extends StandardProcessingRecipe<RecipeWrapper> {
 
     public AllTransmutingRecipe(ProcessingRecipeParams params) {
-        super(AllRecipeTypes.TRANSMUTING, params);
+        super(TransmutationRecipeTypes.TRANSMUTING, params);
     }
 
     @Override

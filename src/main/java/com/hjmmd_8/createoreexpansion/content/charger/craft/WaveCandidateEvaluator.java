@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults.DebugLog;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxRef;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.EnergyDraw;
@@ -22,7 +23,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -660,7 +660,7 @@ public final class WaveCandidateEvaluator {
 		if (!(holder.value() instanceof Recipe<?> r))
 			return false;
 		RecipeType<?> t = r.getType();
-		return t == AllRecipeTypes.LIGHTNING.getType() || t == AllRecipeTypes.LIGHTNING_BLOCK.getType();
+		return t == CoeRecipeTypes.LIGHTNING.getType() || t == CoeRecipeTypes.LIGHTNING_BLOCK.getType();
 	}
 
 	/**

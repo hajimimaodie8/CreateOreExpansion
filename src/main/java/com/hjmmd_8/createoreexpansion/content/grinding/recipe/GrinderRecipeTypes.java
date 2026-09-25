@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 /**
@@ -25,10 +25,10 @@ public final class GrinderRecipeTypes {
 	private static final Map<Integer, List<Supplier<IRecipeTypeInfo>>> BY_TIER = new LinkedHashMap<>();
 
 	static {
-		register(1, AllRecipeTypes.GRINDING);
+		register(1, CoeRecipeTypes.GRINDING);
 		register(2, com.simibubi.create.AllRecipeTypes.CRUSHING);
 		register(2, com.simibubi.create.AllRecipeTypes.MILLING);
-		register(3, AllRecipeTypes.DISMANTLING);
+		register(3, CoeRecipeTypes.DISMANTLING);
 	}
 
 	private GrinderRecipeTypes() {
