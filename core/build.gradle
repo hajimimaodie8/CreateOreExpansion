@@ -33,4 +33,12 @@ dependencies {
     // 两行都是 compileOnly：不进 core 的发布元数据，也不改变运行期由玩家自装 Sable 的事实。
     compileOnly files(rootProject.file('libs/sable-companion-common-1.21.1-1.6.0.jar'))
     compileOnly("maven.modrinth:sable:2.0.3+mc1.21.1")
+    // P3n：common 顶层整包（10 个文件）搬进 core 后，core 的编译面必须补齐它们用到的三个
+    // 外部 API：Registrate 的构建器类型、Flywheel 的 PartialModel、Ponder（catnip）的 Lang。
+    // 坐标与根 build.gradle 逐字同源（同样的 ${...} 属性，根 gradle.properties 对本工程全局可见）；
+    // 一律 compileOnly —— 运行期由根工程的 implementation/runtimeOnly 提供，
+    // core 的发布元数据与嵌套 jar 内容都不因此改变。三行即为全部所需，别再多写。
+    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
+    compileOnly("com.tterrag.registrate:Registrate:${registrate_version}")
+    compileOnly("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
 }
