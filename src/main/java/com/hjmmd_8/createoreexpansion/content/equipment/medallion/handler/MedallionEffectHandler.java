@@ -25,12 +25,15 @@ import net.neoforged.neoforge.event.entity.living.LivingFallEvent;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-import top.theillusivec4.curios.api.CuriosApi;
-
 /**
  * 凝能佩被动效果事件集中处理（与 TransmutationEventHandler 同模式注册）。
  * 黄玉：免摔落；星辉石：免疫嬗乱、虚空上浮不销毁、液体中不销毁（注册名含 stellarstone 全系列）；
  * 雷鸣：雷电吸收。
+ *
+ * <p><b>Curios optional</b>：本类不含任何 Curios 引用 —— "玩家是否佩戴某佩"一律走
+ * {@link IMedallion#isWearing} / {@link IMedallion#findEquipped}（内部经
+ * {@code compat.curios} 桥接）。未装 Curios 时这些查询恒为假，于是佩的被动效果全部静默失效，
+ * 但物品实体侧（星辉/雷鸣系列）的行为与 Curios 无关，照旧生效。</p>
  */
 @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
 public final class MedallionEffectHandler {
@@ -149,10 +152,10 @@ public final class MedallionEffectHandler {
         if (!(event.getEntity() instanceof Player player))
             return;
         boolean absorbed = false;
-        if (IMedallion.isWearing(player, AllItems.THUNDERITE_STRESS_MEDALLION.get())) {
-            CuriosApi.getCuriosInventory(player)
-                .flatMap(inv -> inv.findFirstCurio(AllItems.THUNDERITE_STRESS_MEDALLION.get()))
-                .ifPresent(result -> ToolEnergy.setEnergy(result.stack(), ToolEnergy.getMaxEnergy(result.stack())));
+        // 佩戴雷鸣佩：豁免销毁并把佩补满（未装 Curios 时 findEquipped 恒空 → 本分支不进）
+        ItemStack worn = IMedallion.findEquipped(player, AllItems.THUNDERITE_STRESS_MEDALLION.get());
+        if (!worn.isEmpty()) {
+            ToolEnergy.setEnergy(worn, ToolEnergy.getMaxEnergy(worn));
             absorbed = true;
         }
         for (InteractionHand hand : InteractionHand.values()) {

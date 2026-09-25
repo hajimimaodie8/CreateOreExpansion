@@ -17,9 +17,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 
-import top.theillusivec4.curios.api.SlotContext;
-import top.theillusivec4.curios.api.type.capability.ICurioItem;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,8 +25,15 @@ import java.util.List;
  * 绑定、供能（供应/充能）、模式切换、Shift 概要等通用逻辑集中于此；
  * 子类仅通过 {@link #refundRatio}（回收比率）或覆盖 {@link #onSupplyConsumed} 特化能量回收，
  * 或叠加各自被动效果（如下界合金抗火）。
+ *
+ * <p><b>两支分家（Curios 降为 optional 的前提）</b>：本类<b>不含任何 Curios 引用</b>，
+ * 是"纯物品支线"——未装 Curios 时凝能佩照常注册、可合成、可持有、可绑定与切模式，
+ * 只是没有饰品槽（佩的能力不再生效）。装了 Curios 时注册的是
+ * {@code compat.curios.CurioMedallionItems} 里对应的"饰品支线"子类
+ * （{@code extends} 本类的各佩种实现 + {@code implements ICurioItem}），
+ * 注册 id 与显示名两支完全一致 → 玩家侧无感、存档兼容。</p>
  */
-public abstract class BaseStressMedallionItem extends Item implements ICurioItem, IMedallion {
+public abstract class BaseStressMedallionItem extends Item implements IMedallion {
 
     /** 概要主体（普通色）：#C29149（偏橙褐，Create 风格） */
     private static final Style BODY_STYLE = Style.EMPTY.withColor(0xC29149);
@@ -179,11 +183,9 @@ public abstract class BaseStressMedallionItem extends Item implements ICurioItem
         return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide);
     }
 
-    /** 右键不自动装备到 Curios 槽位（右键保留给模式切换），玩家拖拽放入槽位 */
-    @Override
-    public boolean canEquipFromUse(SlotContext slotContext, ItemStack stack) {
-        return false;
-    }
+    // 改前此处覆写 ICurioItem#canEquipFromUse（右键不自动装备到 Curios 槽位，右键保留给绑定/模式切换）：
+    // 该契约随 ICurioItem 一起搬到饰品支线 compat.curios.CurioMedallionItems.NoAutoEquip，
+    // 装了 Curios 时行为一字未变；未装 Curios 时本类根本不进饰品槽（没有 Curios 槽位）。
 
     /** 按住 Shift 查看概要（仿 Create：主体 #C29149，_下划线_ 标记部分 #EBD777；文本定义于 lang provider） */
     @Override

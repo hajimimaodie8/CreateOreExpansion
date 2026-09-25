@@ -13,6 +13,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.medallion.SapphireStress
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.StellarstoneStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.ThunderiteStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.bridge.MedallionCurios;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelItem;
 import com.hjmmd_8.createoreexpansion.content.wave.gauge.WaveQueryGaugeItem;
@@ -236,9 +237,12 @@ public final class CoeItems {
             .build()
             .register();
 
-    // ========== 饰品：凝能佩（Curios 项链/手饰槽位，槽位数据手写到data/curios/??==========
+    // ========== 饰品：凝能佩（Curios 项链/手饰槽位，槽位数据手写到 data/curios/；Curios 为 optional）==========
+    // 注册期按"Curios 在不在"选两支物品类之一（MedallionCurios.item）：装了 Curios → 饰品支线
+    // （compat.curios.CurioMedallionItems，implements ICurioItem）；没装 → 纯物品支线（本包里的基类）。
+    // 两支的注册 id / 显示名 / 贴图 / 组件完全相同 —— 玩家侧无感，存档读进来还是同一个物品。
     public static final ItemEntry<JadeStressMedallionItem> JADE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
-            .item("jade_stress_medallion", JadeStressMedallionItem::new)
+            .item("jade_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_JADE, JadeStressMedallionItem::new))
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 1000)
                     .component(AllDataComponents.MAX_ENERGY, 1000)
@@ -425,7 +429,7 @@ public final class CoeItems {
             .register();
 
     public static final ItemEntry<TopazStressMedallionItem> TOPAZ_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
-            .item("topaz_stress_medallion", TopazStressMedallionItem::new)
+            .item("topaz_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_TOPAZ, TopazStressMedallionItem::new))
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 2500)
                     .component(AllDataComponents.MAX_ENERGY, 2500)
@@ -613,7 +617,7 @@ public final class CoeItems {
             .register();
 
     public static final ItemEntry<SapphireStressMedallionItem> SAPPHIRE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
-            .item("sapphire_stress_medallion", SapphireStressMedallionItem::new)
+            .item("sapphire_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_SAPPHIRE, SapphireStressMedallionItem::new))
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 5000)
                     .component(AllDataComponents.MAX_ENERGY, 5000)
@@ -627,7 +631,7 @@ public final class CoeItems {
     static { ChargingRecipeTools.register(SAPPHIRE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
     public static final ItemEntry<NetheriteStressMedallionItem> NETHERITE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
-            .item("netherite_stress_medallion", NetheriteStressMedallionItem::new)
+            .item("netherite_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_NETHERITE, NetheriteStressMedallionItem::new))
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 5000)
                     .component(AllDataComponents.MAX_ENERGY, 5000)
@@ -877,7 +881,7 @@ public final class CoeItems {
             .register();
 
     public static final ItemEntry<StellarstoneStressMedallionItem> STELLARSTONE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
-            .item("stellarstone_stress_medallion", StellarstoneStressMedallionItem::new)
+            .item("stellarstone_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_STELLARSTONE, StellarstoneStressMedallionItem::new))
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 10000)
@@ -1099,7 +1103,7 @@ public final class CoeItems {
             .register();
 
     public static final ItemEntry<ThunderiteStressMedallionItem> THUNDERITE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
-            .item("thunderite_stress_medallion", ThunderiteStressMedallionItem::new)
+            .item("thunderite_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_THUNDERITE, ThunderiteStressMedallionItem::new))
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 10000)

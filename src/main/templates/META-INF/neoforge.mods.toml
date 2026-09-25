@@ -88,7 +88,9 @@ side="BOTH"
 
 [[dependencies."${mod_id}"]]
 modId="curios"
-type="required"
+# Curios 为可选联动：装了 Curios → 凝能佩走饰品支线（饰品槽装备/效果/渲染与旧版一致）；
+# 没装 → 凝能佩按纯物品注册（可合成/可持有，只是没有饰品槽效果），绝不因缺类而崩溃。
+type="optional"
 versionRange="[9.5.1,)"
 ordering="NONE"
 side="BOTH"

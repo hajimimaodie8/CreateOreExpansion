@@ -1,28 +1,16 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion;
 
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.item.ItemStack;
-
-import top.theillusivec4.curios.api.SlotContext;
-
-/** 下界合金凝能佩：无能量回收；佩戴时永久抗火（时长 60 tick 续期，图标不闪烁） */
+/**
+ * 下界合金凝能佩（纯物品支线）：无能量回收。
+ *
+ * <p>佩戴时永久抗火（时长 60 tick 续期，图标不闪烁）是<b>饰品槽</b>行为，
+ * 实现已搬到只在装了 Curios 时才会被加载的饰品支线
+ * {@code compat.curios.CurioMedallionItems.Netherite#curioTick}（逻辑逐字不变）。
+ * 未装 Curios 时本类不含任何 Curios 引用，照常注册/合成/持有。</p>
+ */
 public class NetheriteStressMedallionItem extends BaseStressMedallionItem {
 
     public NetheriteStressMedallionItem(Properties properties) {
         super(properties, 0);
-    }
-
-    @Override
-    public void curioTick(SlotContext slotContext, ItemStack stack) {
-        Entity entity = slotContext.entity();
-        if (entity instanceof LivingEntity living && !living.level().isClientSide) {
-            MobEffectInstance effect = living.getEffect(MobEffects.FIRE_RESISTANCE);
-            if (effect == null || effect.getDuration() < 30) {
-                living.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 60, 0, false, false));
-            }
-        }
     }
 }

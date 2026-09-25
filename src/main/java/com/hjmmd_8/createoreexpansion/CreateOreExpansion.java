@@ -63,6 +63,24 @@ public class CreateOreExpansion {
         AllBlocks.register();
         AllBlockEntityTypes.register();
         AllTiers.register();
+
+        // Curios 可选联动（凝能佩/凝能之佩）：Curios 已从 required 降为 optional，因此
+        // ① mods.toml 里 type=optional；② 所有 Curios API 调用只存在于 compat.curios 下的
+        //    CurioMedallionBridge / CurioMedallionItems；③ 仅当 Curios 已安装时才 Class.forName
+        //    触发桥接（未装时绝不触碰 Curios 类 → 不会 NoClassDefFoundError）。
+        // 必须在 AllItems.register() 之前：凝能佩的物品工厂按"桥接在不在"选饰品支线/纯物品支线两支类
+        // （注册 id 与显示名两支一致，玩家侧无感）。
+        if (net.neoforged.fml.ModList.get().isLoaded("curios")) {
+            try {
+                Class.forName("com.hjmmd_8.createoreexpansion.compat.curios.CurioMedallionBridge");
+                LOGGER.info("[Curios] 凝能佩饰品桥接已加载（饰品支线生效，行为与 Curios required 时期一致）");
+            } catch (Throwable t) {
+                LOGGER.warn("[Curios] 凝能佩饰品桥接加载失败 → 凝能佩降级为普通物品（不影响游戏运行）", t);
+            }
+        } else {
+            LOGGER.info("[Curios] 未安装 Curios：凝能佩按纯物品注册（可合成/可持有/可绑定，无饰品槽效果）");
+        }
+
         AllItems.register();
         AllGemTags.register();
         AllFluids.register();
