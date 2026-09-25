@@ -1,33 +1,49 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.ItemStack;
+import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsCreativeTabs;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
+
 import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
 
-import java.util.function.Supplier;
+/**
+ * <b>创造模式标签页的协调入口</b>（P3c：四个"多层枢纽文件"按层拆分后保留的同名入口，住 SHARED 层）。
+ *
+ * <p><b>拆分前</b>：本类是一个枚举，COE 的 {@code base_tab} 与 CEWS 的
+ * {@code energy_wave_study} 两个枚举项、以及那张 {@code DeferredRegister<CreativeModeTab>}
+ * 混在一处。三个层的 Registrate（{@code CoeRegistrate} / {@code CewsRegistrate} /
+ * {@code TransmutationRegistrate}）与两个物品类都靠 {@code AllCreativeModeTabs.BASE_TAB.key()}
+ * 这类引用拿 {@code ResourceKey}，所以入口的<b>类名与两个常量名必须原样保留</b>。</p>
+ *
+ * <p><b>拆分后</b>：两个页的<b>声明</b>搬进各自层的类
+ * （{@link CoeCreativeTabs#BASE_TAB} / {@link CewsCreativeTabs#ENERGY_WAVE_STUDY}），
+ * 本类只负责"按拆分前的顺序登记"：</p>
+ * <ul>
+ *   <li>两个字段的文本顺序 = 拆分前枚举常量的声明顺序（BASE_TAB → ENERGY_WAVE_STUDY），
+ *       于是两层类被初始化的顺序也就是拆分前的顺序；</li>
+ *   <li>{@link #registerTabs()} 按同一顺序把页登记进注册表
+ *       （原实现是遍历 {@code values()}，现在显式按层调用）；</li>
+ *   <li>{@link #ensureTabs()} 的幂等语义、{@link #register(IEventBus)} 的接线时机都不变。</li>
+ * </ul>
+ *
+ * <p><b>标签页顺序</b>（用 {@code withTabsBefore} 链起来，必须无环）：
+ * {@code base_tab}（矿物拓展）→ {@code energy_wave_study}（能量波阵学）→ Create 的调色板。
+ * 也就是"本体的矿物线在前，能量波阵学（CEWS）作为独立板块紧跟其后"——
+ * 链的两端分别声明在 {@link CoeCreativeTabs} 与 {@link CewsCreativeTabs} 里。</p>
+ */
+public final class AllCreativeModeTabs {
 
-// Enum 类 —— 枚举类，用于创建创造物品栏
-public enum AllCreativeModeTabs {
-    // 具体枚举项
+    // ================= 两个创造页：声明在各层，这里只定顺序 =================
     //
-    // 标签页顺序（用 withTabsBefore 链起来，must be 无环）：
-    //   base_tab（矿物拓展）→ energy_wave_study（能量波阵学）→ Create 的调色板
-    // 也就是"本体的矿物线在前，能量波阵学（CEWS）作为独立板块紧跟其后"。
-    @SuppressWarnings("Convert2MethodRef")
-    BASE_TAB("base_tab", "itemGroup.createoreexpansion",
-            tabKey(EnergyWaveStudyTab.TAB_ID), () -> CoeItems.JADE_INGOT.asStack()),
+    // 顺序 = 拆分前枚举常量顺序（BASE_TAB(COE) → ENERGY_WAVE_STUDY(CEWS)），逐字相同。
+    // 恰好也就是本工程的层约定顺序 COE → CEWS。
+
+    /** 矿物拓展页（COE 层：{@link CoeCreativeTabs#BASE_TAB}）。 */
+    public static final LayerCreativeTab BASE_TAB = CoeCreativeTabs.BASE_TAB;
 
     /**
-     * <b>机械动力：能量波阵学</b>（Create: Energy Wave Studies，简称 <b>CEWS</b>）。
+     * <b>机械动力：能量波阵学</b>（Create: Energy Wave Studies，简称 <b>CEWS</b>）页
+     * （CEWS 层：{@link CewsCreativeTabs#ENERGY_WAVE_STUDY}）。
      *
      * <p>能量波系统的机器 + 三种机壳（现有两种）+ 波情查询仪归到这里，作为一个独立板块
      * （用户 2026-09-14 要求）。图标用<b>翡翠应力充能器</b>——它是整条能量波线的起点（波由充能器发出），
@@ -37,49 +53,20 @@ public enum AllCreativeModeTabs {
      * {@link EnergyWaveStudyTab#CONTENTS} 那一份清单为准——所以清单只有一处，标签页内容与
      * 未来的拆包依据共用它。</p>
      */
-    ENERGY_WAVE_STUDY(EnergyWaveStudyTab.TAB_ID,
-            com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(),
-            () -> CewsBlocks.JADE_STRESS_CHARGER.asStack());
+    public static final LayerCreativeTab ENERGY_WAVE_STUDY = CewsCreativeTabs.ENERGY_WAVE_STUDY;
 
-    /** 由 id 构造标签页的 {@link ResourceKey}：<b>不依赖 holder</b>（枚举构造期 holder 还没有）。 */
-    private static ResourceKey<CreativeModeTab> tabKey(String id) {
-        return ResourceKey.create(Registries.CREATIVE_MODE_TAB,
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, id));
-    }
+    // ================= 注册动作（顺序 = 拆分前逐字相同） =================
 
-    // 演出注册器
-    private static final DeferredRegister<CreativeModeTab> TABS
-            = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CoeCore.REGISTRY_NAMESPACE);
-
-
-    // 公开变量
-    public DeferredHolder<CreativeModeTab, CreativeModeTab> holder;
-
-    public final String id;
-    private final String titleTranslationKey;
-    public final Translatable translatable;
-    public final ResourceKey<CreativeModeTab> before;
-    public final Supplier<ItemStack> icon;
-
-    AllCreativeModeTabs(String id, String title,
-                               ResourceKey<CreativeModeTab> before, Supplier<ItemStack> icon) {
-        this.id = id;
-        this.titleTranslationKey = title;
-        this.before = before;
-        this.icon = icon;
-        this.translatable = () -> titleTranslationKey;
-    }
-
-    AllCreativeModeTabs(String id, ResourceKey<CreativeModeTab> before, Supplier<ItemStack> icon) {
-        this(id, "itemGroup." + CoeCore.REGISTRY_NAMESPACE + "." + id, before, icon);
-    }
+    /** 标签页是否已经建好（{@link #ensureTabs()} 的幂等标志）。 */
+    private static boolean tabsRegistered;
 
     /**
-     * 幂等地把枚举项登记进 {@link #TABS}（填好各自 {@link #holder}）。
+     * 幂等地把两个页登记进注册表（填好各自的 holder）。
      *
-     * <p>拆分后 COE / CEWS / TRANS 三个 Registrate 都要在设 {@code defaultCreativeTab} 之前拿到
-     * {@link #BASE_TAB}/{@link #ENERGY_WAVE_STUDY} 的 {@link ResourceKey}，而"谁先被类初始化"
-     * 取决于四个 {@code @Mod} 构造器的顺序——所以这里做成幂等，谁先来谁负责建，后续调用直接返回。</p>
+     * <p>COE / CEWS / TRANS 三个 Registrate 都要在设 {@code defaultCreativeTab} 之前拿到
+     * {@link #BASE_TAB}/{@link #ENERGY_WAVE_STUDY} 的 {@link net.minecraft.resources.ResourceKey}，
+     * 而"谁先被类初始化"取决于四个 {@code @Mod} 构造器的顺序——所以这里做成幂等，
+     * 谁先来谁负责建，后续调用直接返回（与拆分前一致）。</p>
      */
     public static void ensureTabs() {
         if (tabsRegistered) {
@@ -89,27 +76,22 @@ public enum AllCreativeModeTabs {
         registerTabs();
     }
 
-    /** 标签页是否已经建好（{@link #ensureTabs()} 的幂等标志）。 */
-    private static boolean tabsRegistered;
-
-    // 注册物品栏，不向事件总线注册注册器
+    /**
+     * 登记两个页，<b>顺序与拆分前逐字相同</b>：先 COE 的 {@code base_tab}，再 CEWS 的
+     * {@code energy_wave_study}（原实现是遍历枚举 {@code values()}，枚举顺序就是这个顺序）。
+     *
+     * <p>不向事件总线注册注册器——那件事在 {@link #register(IEventBus)} 里。</p>
+     */
     public static void registerTabs() {
-        for (AllCreativeModeTabs tab : values()) {
-            tab.holder = TABS.register(tab.id,
-                    () -> CreativeModeTab.builder()
-                            .title(Component.translatable(tab.titleTranslationKey))
-                            .withTabsBefore(tab.before)
-                            .icon(tab.icon)
-                            .build());
-        }
+        // 层顺序 = 拆分前的枚举顺序：COE → CEWS
+        LayerCreativeTab.registerAll(CoeCreativeTabs.tabs());
+        LayerCreativeTab.registerAll(CewsCreativeTabs.tabs());
     }
 
-    // 向事件总线注册注册器
+    /** 向事件总线注册注册表（原 {@code AllCreativeModeTabs.register}，调用点未变）。 */
     public static void register(IEventBus bus) {
-        TABS.register(bus);
+        LayerCreativeTab.registerOn(bus);
     }
 
-    public ResourceKey<CreativeModeTab> key() {
-        return holder.getKey();
-    }
+    private AllCreativeModeTabs() {}
 }
