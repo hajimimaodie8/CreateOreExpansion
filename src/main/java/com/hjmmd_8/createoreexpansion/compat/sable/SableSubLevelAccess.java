@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.compat.sable;
 
-import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge.Hit;
+import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge.Hit;
 
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;

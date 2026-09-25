@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.compat.sable;
 
-import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
-import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
+import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
+import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;

@@ -5,9 +5,6 @@ import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRegistrate;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
-import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRegistrate;
 import com.simibubi.create.api.registrate.CreateRegistrateRegistrationCallback;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.providers.ProviderType;
@@ -61,14 +58,27 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * {@code parent.getAll(Registries.BLOCK)}（本层注册的方块），拿 COE 的提供器去跑 CEWS 的方块战利品表
  * 会抛 {@code Created block loot tables for non-blocks}（实测）。所以它就是上面"路径带条目名"那一类，
  * 各层各写各的。</p>
+ *
+ * <h2>四、本类零层引用（P3e）</h2>
+ * <p>"哪三层、谁是主层"这件事由集成层经 {@link #installOwnerChain} <b>注入</b>
+ * （调用点 = {@code data/CreateOreExpansionDatagen}，它本来就 import 三层）。本类因此
+ * <b>不 import 任何层专属类</b>，只依赖 SHARED 与第三方 API——这是它能原样搬进 {@code core} 库的前提
+ * （库不许知道任何内容模块）。旧写法是 {@code sharedOwners()} / {@code primaryOwner()} 直接读
+ * {@code CoeRegistrate.REGISTRATE} 等三个静态字段，那是一条 check-layering 看不见的隐藏耦合
+ * （SHARED 文件从不被当作 source 层判定）。</p>
  */
 public class LayerRegistrate extends CreateRegistrate {
 
     /** 并集遍历进行中标志：遍历时再进来的 {@code genData} 只跑"自己那一层"，避免无限递归。 */
     private static boolean mergingSharedData;
 
-    /** 按固定顺序缓存的三层 Registrate（懒建，避免类初始化互相牵连）。 */
+    /** 按固定顺序缓存的三层 Registrate（由集成层经 {@link #installOwnerChain} 注入，懒建已不需要）。 */
+    @Nullable
     private static List<CreateRegistrate> sharedOwners;
+
+    /** "主层" = COE（命名空间代表）：共享路径的并集由它那个提供器负责写。同样由集成层注入。 */
+    @Nullable
+    private static CreateRegistrate primaryOwner;
 
     /** 本层被挂到"会执行的生成器"上的那一个数据提供器（见 {@link #attachDataGenerator}）。 */
     @Nullable
@@ -101,26 +111,24 @@ public class LayerRegistrate extends CreateRegistrate {
     }
 
     /**
-     * 三层 Registrate 的并集顺序（COE → CEWS → TRANS）。
+     * 注入"三层 Registrate 的并集顺序"（COE → CEWS → TRANS）与<b>主层</b>实例。
      *
-     * <p>懒建 + 每次现取字段，既保证顺序固定，又不会在某个 Registrate 的静态初始化过程中
-     * 反过来触发另一层的静态初始化。</p>
+     * <p><b>为什么是注入而不是本类自己去取</b>：本类住 SHARED（将来要原样搬进 {@code core} 库），
+     * 而 {@code CoeRegistrate} / {@code CewsRegistrate} / {@code TransmutationRegistrate} 是三个
+     * <b>层专属</b>类——本类直接 import 它们就等于"库知道内容模块"，是 P3e 修掉的隐藏耦合。
+     * 三层的实例化顺序与并集顺序本来就是<b>集成层</b>的知识（谁驱动 datagen 谁才需要知道"有几层、
+     * 谁是主层"），所以这一句挪到 {@code data/CreateOreExpansionDatagen}（它本来就 import 三层）。</p>
+     *
+     * <p>调用时机：必须在<b>任何</b>共享路径的 {@code genData} 之前（即挂提供器时、生成器运行前）。
+     * 未注入时共享路径一律不写（{@link #genData} 见 {@code primaryOwner == null} 直接返回），
+     * 不会 NPE；非共享路径（方块状态 / 物品模型 / 战利品表…）不受影响。</p>
+     *
+     * @param owners  三层 Registrate，顺序恒为 COE → CEWS → TRANS（决定标签/语言文件的条目顺序）
+     * @param primary 主层（命名空间代表，恒为 COE 的实例）：共享路径的并集由它那个提供器落盘
      */
-    private static List<CreateRegistrate> sharedOwners() {
-        List<CreateRegistrate> owners = sharedOwners;
-        if (owners == null) {
-            owners = List.of(
-                CoeRegistrate.REGISTRATE,
-                CewsRegistrate.REGISTRATE,
-                TransmutationRegistrate.REGISTRATE);
-            sharedOwners = owners;
-        }
-        return owners;
-    }
-
-    /** "主层" = COE（命名空间代表）：共享路径的并集由它那个提供器负责写。 */
-    private static CreateRegistrate primaryOwner() {
-        return CoeRegistrate.REGISTRATE;
+    public static void installOwnerChain(List<CreateRegistrate> owners, CreateRegistrate primary) {
+        sharedOwners = List.copyOf(owners);
+        primaryOwner = primary;
     }
 
     /** 落盘路径<b>不含条目名</b>、三层会互相整文件覆盖的那几类提供器（见类注释"二"）。 */
@@ -162,13 +170,14 @@ public class LayerRegistrate extends CreateRegistrate {
             super.genData(type, gen);
             return;
         }
-        if (this != primaryOwner()) {
+        if (primaryOwner == null || this != primaryOwner) {
             // 非主层：共享路径一律不写（否则会与主层的整文件覆盖打架）。
+            // primaryOwner == null = 集成层还没调 installOwnerChain，同样不写。
             return;
         }
         mergingSharedData = true;
         try {
-            for (CreateRegistrate owner : sharedOwners()) {
+            for (CreateRegistrate owner : sharedOwners == null ? List.<CreateRegistrate>of() : sharedOwners) {
                 // 虚分派回到本覆写；此时 mergingSharedData 为真 → 各自只跑自己那一层的回调。
                 owner.genData(type, gen);
             }

@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.data;
 
+import java.util.List;
+
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
@@ -32,6 +34,11 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * （{@code common/registry/LayerRegistrate#onData} 是空实现，原因见其类注释），
  * 以保证"谁驱动 datagen"这件事只有<b>这一处</b>。</p>
  *
+ * <p>P3e 起它还多担一件事：把<b>三层并集顺序与主层</b>注入 {@link LayerRegistrate}
+ * （{@link LayerRegistrate#installOwnerChain}）。原先这三层实例是 {@code LayerRegistrate}
+ * 自己去读的，那让一个 SHARED 基础设施反向依赖三个层专属类（将来进不了 core 库）；
+ * 而"哪三层、谁是主层"本来就是集成层的知识，放在这里与上面三行 {@code attachDataGenerator} 同源。</p>
+ *
  * <p>产物零变化：注册命名空间仍是 {@code createoreexpansion}；三层各写自己"路径带条目名"的产物
  * （方块状态 / 物品模型 / 战利品表 / 配方…），而<b>路径不含条目名</b>的<b>标签与语言</b>
  * 只在主层那个提供器里按 COE → CEWS → TRANS 的顺序跑三层并集——
@@ -56,6 +63,14 @@ public class CreateOreExpansionDatagen {
         LayerRegistrate.attachDataGenerator(CoeRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, null, event);
         LayerRegistrate.attachDataGenerator(CewsRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, "cews", event);
         LayerRegistrate.attachDataGenerator(TransmutationRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, "transmutation", event);
+
+        // —— 三层并集顺序 + 主层（P3e 从 LayerRegistrate 挪到这里）——
+        // LayerRegistrate 住 SHARED、将来要原样搬进 core 库，不许 import 任何层专属类；
+        // 而"哪三层、谁是主层"本来就是驱动 datagen 的集成层才知道的事。
+        // 顺序恒为 COE → CEWS → TRANS（标签/语言的条目顺序靠它），主层 = COE（命名空间代表）。
+        LayerRegistrate.installOwnerChain(
+            List.of(CoeRegistrate.REGISTRATE, CewsRegistrate.REGISTRATE, TransmutationRegistrate.REGISTRATE),
+            CoeRegistrate.REGISTRATE);
 
         if (event.includeClient()) {
             generator.addProvider(true, new ChineseLangProvider(output));

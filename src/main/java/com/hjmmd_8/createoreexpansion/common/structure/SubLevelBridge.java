@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.wave.bridge;
+package com.hjmmd_8.createoreexpansion.common.structure;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -8,6 +8,12 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Sable（sub-levels 物理结构库）桥接接口 —— 能量波与物理结构的坐标系统勾连。
+ *
+ * <p><b>为什么住 {@code common/structure}（P3e 搬迁）</b>：本接口只描述<b>物理结构</b>的坐标学
+ * （世界↔本地、位姿矩阵、方向变换），不含任何"波"的语义——它之所以曾在
+ * {@code content/wave/bridge/}，只是被波系统第一个用上。搬走的直接原因是：COE 的技能 AOE 策略
+ * 也要用它，而按路径 {@code content/wave/**} 属 CEWS，于是产生一条禁止方向 COE→CEWS。
+ * 具体实现仍住 {@code compat/sable/}（那里才引用 Sable 类型、只在装了 Sable 时加载）。</p>
  *
  * <p><b>背景</b>：航空学（Create Aeronautics）/ Sable 把玩家装配的物理结构（飞机/船/机械结构）
  * 传送到一个无穷远的虚拟子世界（sub-level）中进行物理计算，再通过位姿（Pose）映射回现实。

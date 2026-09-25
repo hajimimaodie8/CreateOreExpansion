@@ -18,6 +18,11 @@
 # Layer of an IMPORT / fully-qualified reference is decided by its package (see Get-TargetLayer),
 # with CORE membership decided by which classes actually live under core/src/main/java.
 #
+# COE also owns the skill system, so two narrow paths are judged as COE rather than SHARED:
+#   integration/skiller/**   (the Skiller integration: skill entries + strategies)
+#   client/tool/**           (the skill preview renderers)
+# The rest of client/ and integration/ stays SHARED on purpose.
+#
 # Exit code: 0 = clean, 1 = violations found.
 #
 # NOTE: this file is deliberately pure ASCII.  Windows PowerShell 5.1 reads a BOM-less
@@ -61,6 +66,12 @@ function Get-FileLayer {
     if ($r -match '^common/registry/transmutation/')  { return 'TRANS' }
     if ($r -match '^content/(charger|wave|machine|energyfield)/') { return 'CEWS' }
     if ($r -match '^content/(transmuting|transmutation)/')        { return 'TRANS' }
+    # the skill system belongs to COE (skill entries are registered in COE, the tools are COE);
+    # these two paths must be tested BEFORE the generic SHARED rule for client/ and integration/.
+    # NOTE: only these sub-paths are COE -- the rest of client/ (MachineRotateClient,
+    # WaveQueryGaugeModelRegistration, client/renderer/**) stays SHARED.
+    if ($r -match '^integration/skiller/') { return 'COE' }
+    if ($r -match '^client/tool/')         { return 'COE' }
     # SHARED: infrastructure, never judged as a source layer
     if ($r -notmatch '/') { return 'SHARED' }                       # mod root package
     if ($r -match '^(common|util|foundation|compat|client|data|mixin|integration)/') { return 'SHARED' }
@@ -79,6 +90,9 @@ function Get-TargetLayer {
     if ($rest -match '^common\.registry\.transmutation\.')  { return 'TRANS' }
     if ($rest -match '^content\.(charger|wave|machine|energyfield)\.') { return 'CEWS' }
     if ($rest -match '^content\.(transmuting|transmutation)\.')        { return 'TRANS' }
+    # skill system == COE (see Get-FileLayer); only the tool/renderer sub-packages, not all of client.
+    if ($rest -match '^integration\.skiller\.') { return 'COE' }
+    if ($rest -match '^client\.tool\.')         { return 'COE' }
     if ($rest -match '^(common|util|foundation|compat|client|data|mixin|integration)\.') { return 'SHARED' }
     return 'COE'
 }

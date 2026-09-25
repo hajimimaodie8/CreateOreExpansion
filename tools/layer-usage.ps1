@@ -7,7 +7,10 @@
 # Read-only.  Writes build\patch\layer-usage.txt and build\patch\core-candidates.txt.
 #
 # Layer rules are copied verbatim from tools\check-layering.ps1 so the two tools
-# always agree.  Deliberately pure ASCII: PowerShell 5.1 reads a BOM-less .ps1 as
+# always agree.  P3e added the two COE skill paths (integration/skiller/**, client/tool/**)
+# to BOTH tools; without that, COE skill files would be counted as SHARED-PURE and land
+# in core-candidates.txt, which is actively wrong.
+# Deliberately pure ASCII: PowerShell 5.1 reads a BOM-less .ps1 as
 # ANSI and can swallow quotes mid-script.
 
 param(
@@ -28,6 +31,9 @@ function Get-FileLayer {
     if ($r -match '^common/registry/transmutation/')  { return 'TRANS' }
     if ($r -match '^content/(charger|wave|machine|energyfield)/') { return 'CEWS' }
     if ($r -match '^content/(transmuting|transmutation)/')        { return 'TRANS' }
+    # the skill system belongs to COE -- kept in sync with tools\check-layering.ps1 (P3e)
+    if ($r -match '^integration/skiller/') { return 'COE' }
+    if ($r -match '^client/tool/')         { return 'COE' }
     if ($r -notmatch '/') { return 'SHARED' }
     if ($r -match '^(common|util|foundation|compat|client|data|mixin|integration)/') { return 'SHARED' }
     return 'COE'

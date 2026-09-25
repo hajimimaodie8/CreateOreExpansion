@@ -8,8 +8,8 @@ import com.hjmmd_8.createoreexpansion.content.wave.block.AbstractWaveGateBlockEn
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
-import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
+import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
+import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;

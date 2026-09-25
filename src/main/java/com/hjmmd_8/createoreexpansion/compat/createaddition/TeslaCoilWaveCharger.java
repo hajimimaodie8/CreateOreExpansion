@@ -79,13 +79,13 @@ public final class TeslaCoilWaveCharger {
 			// 1) 物理结构（Sable sub-level）：波在主世界、结构方块在 sub-level —— 枚举本世界
 			//    全部结构，把波世界坐标反算成本地坐标后在本地 ±2 格内找线圈赋电荷
 			//   （无需波"压到"结构实体方块，贴着结构场/空气飞过也能被电）。
-			com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge bridge =
-				com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges.get();
+			com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge bridge =
+				com.hjmmd_8.createoreexpansion.common.structure.SableBridges.get();
 			if (bridge != null && bridge.isActive()
 				&& wave.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
 				for (Object sub : bridge.subLevels(serverLevel)) {
-					com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge.Hit hit =
-						new com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge.Hit(sub);
+					com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge.Hit hit =
+						new com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge.Hit(sub);
 					if (structureChargeNearby(wave, bridge, hit))
 						return true;
 				}
@@ -123,8 +123,8 @@ public final class TeslaCoilWaveCharger {
 	 * 改在世界坐标播放电音效 + 电火花粒子；冷却写线圈 BE 持久数据）。
 	 */
 	private static boolean structureChargeNearby(AbstractChargerWaveEntity wave,
-		com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge bridge,
-		com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge.Hit hit) {
+		com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge bridge,
+		com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge.Hit hit) {
 		Vec3 localPos = bridge.toLocal(hit, wave.position());
 		BlockPos cell = BlockPos.containing(localPos);
 		for (int dx = -2; dx <= 2; dx++) {
@@ -142,8 +142,8 @@ public final class TeslaCoilWaveCharger {
 
 	/** 结构线圈放电：冷却 → 反射扣电 → 随机电荷 → 冷却标记 → 世界放电音效/电火花。 */
 	private static boolean tryZapStructure(AbstractChargerWaveEntity wave,
-		com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge bridge,
-		com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge.Hit hit,
+		com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge bridge,
+		com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge.Hit hit,
 		TeslaCoilBlockEntity coil) {
 		Level worldLevel = wave.level();
 		long now = worldLevel.getGameTime();
