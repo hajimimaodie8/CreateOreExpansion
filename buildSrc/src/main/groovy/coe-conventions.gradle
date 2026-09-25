@@ -42,13 +42,18 @@ def prop = { String key -> moduleProps.getProperty(key) }
 // 等于给全工程装一个总闸：谁在根里写一行，所有模块都会变成「库」。
 // 没有这个键的模块（coe / cews / transmutation / 根工程）行为与本开关引入前**逐字节相同**。
 //
-// ⚠ 消费方（依赖这个库的那个模块）必须同时写两行，缺一不可：
-//     jarJar(implementation(project(':core')))   // 编译期可见 + 发布时嵌进 META-INF/jarjar/
-//     additionalRuntimeClasspath project(':core')// dev 运行期可见（实测缺这行会 NoClassDefFoundError）
-//   原因：MDG 把 java.class.path 切成两半——进 legacy classpath 的才是普通库，
-//   不进的交给 FML 当「mod 文件候选」；jarJar 依赖按设计不进 legacy classpath，
-//   而库没有 neoforge.mods.toml ⇒ 两边都落空。additionalRuntimeClasspath 正是
-//   MDG 为「不是 mod、但要进运行期的库」准备的配置。
+// ⚠ 消费方（依赖这个库的那个模块）必须同时写三行，缺一不可：
+//     evaluationDependsOn(':core')                              // 跨项目读 sourceSets 前必须（否则落回本工程扩展）
+//     jarJar(implementation(project(':core')))                  // 编译期可见 + 发布时嵌进 META-INF/jarjar/
+//     neoForge { mods { "<本模块 modId>" { sourceSet(project(':core').sourceSets.main) } } }
+//                                                               // dev 运行期可见（把 core 的类并进本 mod 的 mod 文件）
+//   ⚠ 第三行**不是** additionalRuntimeClasspath：P3m 实测证明那条路必崩 ——
+//   MDG 的 additionalRuntimeClasspath 进的是「legacy classpath」，而 BootstrapLauncher 会把
+//   legacy classpath 的每个 jar/目录变成 **BOOT 层**自动模块（类加载器 MC-BOOTSTRAP 只以
+//   JDK boot 层为父）→ 那里看不见 MC/NeoForge，core 的方法体一碰 MC 就
+//   NoClassDefFoundError（jar 与目录两种形态都实测过）。
+//   而 sourceSet(...) 走的是 FML 的 `-Dfml.modFolders`，按 mod 名成组 addPath ⇒ core 的
+//   classes/resources 与根工程输出**合并成同一个 mod 文件**，由 GAME 层类加载器定义 ⇒ 全可见。
 def isLibrary = (prop('coe_library') ?: 'false').toString().trim().toBoolean()
 
 def modId      = prop('mod_id')

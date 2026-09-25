@@ -63,6 +63,11 @@ base {
 // Mojang ships Java 21 to end users in 1.21.1, so mods should target Java 21.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+// ⚠ 跨项目读 source set 之前先确认求值顺序：根工程先求值，此时 project(':core').sourceSets
+// 会**落回根工程自己的扩展**（实测 srcDirs/classesDirs 都报成根工程的路径）。
+// 一行 evaluationDependsOn 即可修正——下面 neoForge.mods{} 里要读 core 的 sourceSets。
+evaluationDependsOn(':core')
+
 neoForge {
     // Specify the version of NeoForge to use.
     version = project.neo_version
@@ -131,6 +136,12 @@ neoForge {
         // multi mod projects should define one per mod
         "${mod_id}" {
             sourceSet(sourceSets.main)
+            // P3M：core 的 classes/resources 也**作为本 mod 的源**交给 FML（dev 限定）。
+            // 效果：`-Dfml.modFolders` 里多出 core 的目录，FML 把它们与根工程输出
+            // **合并成同一个 mod 文件**（UserdevLocator 按 mod 名成组 addPath → 一个 SecureJar
+            //  多根 union），于是 core 的类由 GAME 层的类加载器定义 → 能看见 MC/NeoForge/Create。
+            // 生产不受影响：那里 core 仍是 JarJar 嵌套库，本条只改 dev 的 modFolders。
+            sourceSet(project(':core').sourceSets.main)
         }
     }
 }
@@ -155,24 +166,35 @@ dependencies {
     // MDG 会把 jarJar 依赖一并放进运行时 classpath，无需额外声明。
     //
     // ── core 共享库（P3d：普通库，JarJar 嵌套，不是 mod）──────────────────────────────
-    // 只在 neoForge.mods{} 里登记 createoreexpansion 一个 mod —— core 已经不是一个 mod，
-    // 所以这里**不许**再出现 coe_core（它没有 META-INF/neoforge.mods.toml，
-    // 也不该被 FML 当作 mod 文件去解析）。
-    // 一行即可，不另写 implementation project(':core')：DependencyHandler 的
-    // `implementation(...)` 返回 Dependency 对象，外层 jarJar(...) 再用同一个对象登记到
-    // jarJar 配置 —— 也就是「编译期可见」与「发布时嵌进 META-INF/jarjar/」两件事
-    // 由这一行同时完成（上面那行 skiller 就是同一写法）。再写一行是同一个依赖声明两遍。
+    // core **不是** mod，只有一个 mod 身份 createoreexpansion（这里**不许**出现 "coe_core"
+    // 这样的第二个 mod 名：core 没有也不该有 META-INF/neoforge.mods.toml）。
+    // "core 的类也是本 mod 的类" 这件事用**源绑定**表达 —— 见上面 neoForge.mods{} 里
+    // 那行 `sourceSet(project(':core').sourceSets.main)`，它只改 dev 的 fml.modFolders。
+    // 下面这一行负责另两件事：「编译期可见」与「发布时嵌进 META-INF/jarjar/」。
+    // 不另写 implementation project(':core')：DependencyHandler 的 `implementation(...)`
+    // 返回 Dependency 对象，外层 jarJar(...) 再用同一个对象登记到 jarJar 配置 ——
+    // 两件事由这一行同时完成（上面那行 skiller 就是同一写法）。再写一行是同一个依赖声明两遍。
+    // ⚠ dev 运行期的可见性**不是**由依赖声明决定的（P3m 实测改正了 P3d 的错误结论）：
+    // 上面那行 jarJar(implementation(...)) 已经让「编译期可见 + 发布时嵌进 jar」两件事成立，
+    // core 的 jar 也**确实**会进 runData 的 java.class.path。但**进 java.class.path ≠ 游戏看得见**：
+    //   · BSL（BootstrapLauncher）把 legacy classpath 的每个 jar/目录都变成 **BOOT 层**
+    //     自动模块，其类加载器（堆栈里的 MC-BOOTSTRAP）**只**以 JDK boot 层为父
+    //     （`new ModuleClassLoader("MC-BOOTSTRAP", cfg, List.of(ModuleLayer.boot()), null)`），
+    //     MC/NeoForge/Create 都不在其中 ⇒ core 的方法体一碰 MC 就 NoClassDefFoundError。
+    //   · java.class.path 上**不在 legacy classpath 里**的 jar，只有「本身是 mod 文件
+    //     （含 META-INF/neoforge.mods.toml）」的才会被 FML 收成 GAME 层的 mod 文件；
+    //     普通库 jar 既不是 mod、又不在 GAME 层的类加载器链上 ⇒ **完全不可见**
+    //     （实测：删掉 additionalRuntimeClasspath 后连 ...util.GoggleUtil 本身都 NoClassDefFoundError）。
+    //   · 旧的 `additionalRuntimeClasspath project(':core')` 正是把 core 钉进 BOOT 层那一半，
+    //     所以它**注定看不见 MC**（jar 与目录形态都试过，目录只是让模块名变成目录名 main）。
+    // 正确做法（P3m 落地）＝把 core 的 source set 作为**本 mod 的第二个源**登记进
+    // neoForge.mods{}（见上面 mods 块）。MDG 于是把它写进 `-Dfml.modFolders`，
+    // FML 的 UserdevLocator 按 mod 名成组 addPath → 根输出与 core 输出**合并成同一个
+    // mod 文件**（一个 SecureJar 多根 union），core 的类因此由 **GAME 层**的
+    // TransformingClassLoader 定义 ⇒ MC/NeoForge/Create 全部可见。
+    // 这一步**只影响 dev**（modFolders 是 dev 启动参数）；生产仍由嵌套 jar 提供，
+    // 也仍需要上面那行 jarJar(...)。
     jarJar(implementation(project(':core')))
-    // ⚠ dev 运行期可见性必须**另外**声明一次（实测踩过）：MDG 把 java.class.path 切成两半 ——
-    //   · 进 legacy classpath 的 = 普通库（游戏那一层能看见）
-    //   · 不进的 = 交给 FML 当「mod 文件候选」（有 neoforge.mods.toml 的才成为 mod）
-    // jarJar 依赖按设计**不进** legacy classpath（生产环境由嵌套 jar 提供），
-    // 而 core 没有 mods.toml ⇒ 它既不是 mod、又不在 legacy classpath ⇒
-    // 运行期 NoClassDefFoundError: ...common.charger.ChargingRecipeTools（实测）。
-    // additionalRuntimeClasspath 正是 MDG 为这件事准备的配置
-    // （源码原话："Contains dependencies of every run, that should not be considered boot classpath modules"，
-    //  且每个 run 的 legacyClasspath 都 extendsFrom 它）→ 把它放回「普通库」那一半。
-    additionalRuntimeClasspath project(':core')
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
