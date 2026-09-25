@@ -21,7 +21,8 @@ import net.minecraft.world.phys.BlockHitResult;
  *       机器<b>没有</b>模式 → 扳手照样切开口开关（与空手同一个逻辑）；</li>
  *   <li><b>旋转</b>：一律服从 Create 常规（{@link IWrenchable} 的默认旋转），但本模组所有机器
  *       <b>必须按住 Ctrl + 手持扳手右键</b>才旋转 —— 由客户端拦截后走
- *       {@code MachineRotatePayload}，服务器校验并调用 {@link #rotateAsCreate}。</li>
+ *       {@link MachineRotatePayload}，
+ *       服务器校验并调用 {@link #rotateAsCreate}。</li>
  * </ol>
  *
  * <p><b>为什么"Ctrl"要客户端拦截</b>：Minecraft 的方块交互包不带修饰键，服务器读不到玩家是否按着 Ctrl

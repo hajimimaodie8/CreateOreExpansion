@@ -84,7 +84,10 @@ public class CreateOreExpansion {
         // （init() 自身幂等），行为与拆分前逐字一致。
         modEventBus.addListener(CreateOreExpansion::onRegister);
         // 统一交互规则第 4 条：Ctrl + 扳手右键 = 旋转本模组机器（客户端拦截 → 服务端校验并旋转）
-        modEventBus.addListener(MachineRotatePayload::registerPayloads);
+        // P3o：载荷类（common/machine/MachineRotatePayload）已搬进 core 库，**不 import 本 @Mod 入口**，
+        // 所以"谁来接 mod bus"这件事必须由根侧显式写死（库没有生命周期）。行为与逐个引用写法逐字一致。
+        modEventBus.addListener((net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent event) ->
+                MachineRotatePayload.registerPayloads(event));
 
         // 配置：目标容器<b>必须是</b> createoreexpansion（本 mod 自己的容器）。
         // 文件名 = <modid>-common.toml，挂到别的容器上会让老玩家的

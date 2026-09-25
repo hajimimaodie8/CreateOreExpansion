@@ -84,7 +84,7 @@ public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock
 
 	/**
 	 * 隐藏 Create 默认静态应力行：充能器用自定义行（三实心方块 + 区间提示，
-	 * 见 client.ChargerKineticTooltip），避免默认静态 "4x RPM" 重复。
+	 * 见 common.registry.cews.ChargerKineticTooltip），避免默认静态 "4x RPM" 重复。
 	 */
 	@Override
 	public boolean hideStressImpact() {

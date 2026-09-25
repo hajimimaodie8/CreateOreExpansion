@@ -28,8 +28,7 @@ public final class TransmutationRegistrate {
 
     static {
         AllCreativeModeTabs.ensureTabs();
-        // 本层没有应力充能器 → 不接 ChargerKineticTooltip
-        RegistrateTooltips.install(REGISTRATE, false);
+        RegistrateTooltips.install(REGISTRATE);
         // TRANS -> COE 是允许方向（不是环）：TRANS 的默认创造页就是 COE 的基础页
         REGISTRATE.defaultCreativeTab(CoeCreativeTabs.BASE_TAB.key());
     }

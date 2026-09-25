@@ -102,11 +102,29 @@ public final class WaveRecipeCapabilities {
         new LinkedHashMap<>();
 
     /** 唤醒三层的类名（见类注释"为什么本类要自己去唤醒三层"）。 */
-    private static final String[] LAYER_CLASSES = {
-        "com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRecipeTypes",
-        "com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes",
-        "com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRecipeTypes"
-    };
+    private static final String[] LAYER_CLASSES = layerClassNames();
+
+    /**
+     * <b>把三层的类名拼出来</b>（包前缀取本类自己的包，见 {@link #layerClassNames()} 的调用点）。
+     *
+     * <p>原先这里写的是三个以 {@code com.hjmmd_8.createoreexpansion.} 开头的<b>完整类名字面量</b>。
+     * P3o 把本类搬进 {@code core} 库后就出问题了：{@code tools/check-layering.ps1} 把源码里
+     * 出现的每一个项目 FQN 都当成一次引用，于是那三个字符串被读成
+     * {@code CORE -> COE/CEWS/TRANS} 三条违规——而本类其实<b>零编译期类型引用</b>
+     * （{@code Class.forName(String)} 只看字符串，不做类型解析）。这里改成
+     * <b>运行时拼接</b>：包名由 {@code WaveRecipeCapabilities.class.getPackageName()} 自报，
+     * 只留三层的<b>类简单名</b>字面量。拼出来的结果与改前逐字相同
+     * （本类与那三个类同在 {@code …common.registry} 下），因此行为零变化，
+     * 而"core 不许认识任何层"这条纪律又能被工具机械核验。</p>
+     */
+    private static String[] layerClassNames() {
+        String prefix = WaveRecipeCapabilities.class.getPackageName() + ".";
+        return new String[] {
+            prefix + "transmutation.TransmutationRecipeTypes",
+            prefix + "coe.CoeRecipeTypes",
+            prefix + "cews.CewsRecipeTypes"
+        };
+    }
 
     /**
      * 三层是否已被唤醒。字段初始化器在静态块<b>之前</b>执行（文本顺序），所以

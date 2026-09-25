@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.common.machine;
 
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -34,9 +33,11 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * <p>旋转本身调 {@link MachineInteraction#rotateAsCreate} → 即 {@code IWrenchable} 的默认实现，
  * 与 Create 常规旋转完全同源（不复制逻辑、不自定义角度）。</p>
  *
- * <p><b>为什么住 common（SHARED）层</b>：载荷服务的机器横跨两层（CEWS 7 台 + COE 角磨床），
- * 与契约 {@link MachineInteraction} 同属一条链，故一并放在共享层；载荷 id（{@code machine_rotate}）
- * 与注册内容一字未改。</p>
+ * <p><b>为什么住 common（SHARED）层、现在又搬进了 core 库</b>：载荷服务的机器横跨两层
+ * （CEWS 7 台 + COE 角磨床），与契约 {@link MachineInteraction} 同属一条链，故一并放在共享层；
+ * 载荷 id（{@code machine_rotate}）与注册内容一字未改。P3o 起它与契约一起住
+ * {@code core} 库，因此<b>本类自己不接 mod 事件总线</b>——接线由根侧的 {@code @Mod} 入口
+ * （{@code CreateOreExpansion} 构造器）显式完成，库不许知道"谁是这个模组"。</p>
  */
 public record MachineRotatePayload(BlockPos pos, Direction face, Vec3 hitLocation) implements CustomPacketPayload {
 
