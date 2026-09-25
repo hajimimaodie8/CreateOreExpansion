@@ -5,7 +5,7 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
-import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
+import com.hjmmd_8.createoreexpansion.util.BarTooltipRender;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;

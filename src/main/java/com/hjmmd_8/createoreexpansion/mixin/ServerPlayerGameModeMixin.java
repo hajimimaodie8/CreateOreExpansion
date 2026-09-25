@@ -87,6 +87,6 @@ public class ServerPlayerGameModeMixin {
                         .extraData(ExcavationContextFactory.KEY_ENTITY, this.player);
         CoeSkillRelease.release(this.player, CoeSkillTypes.EXCAVATION, env);
 
-        // 剩余能量显示统一由 ToolEnergy.tryConsume（消耗时）处理：工具行 + 绑定凝能佩行
+        // 剩余能量显示统一由 SkillEnergySpend.tryConsume（消耗时）处理：工具行 + 绑定凝能佩行
     }
 }

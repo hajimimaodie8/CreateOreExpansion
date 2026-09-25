@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
-import com.hjmmd_8.createoreexpansion.common.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnchantments;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
@@ -101,7 +100,7 @@ public class SkillsComponent implements OwnedBySkills {
      * <ul>
      *     <li>只释放 {@link ItemSkill#canRelease} 通过的技能（例如锄头的收割/种植按目标方块二选一）；</li>
      *     <li>释放前做一次总能量预检查，不足则整体放弃；</li>
-     *     <li>能量扣减由各技能在真正生效前通过 {@link ToolEnergy#tryConsume} 自行完成
+     *     <li>能量扣减由各技能在真正生效前通过 {@link SkillEnergySpend#tryConsume} 自行完成
      *     （消耗以 {@link ItemSkill#getCost()} 为准，与注册配置一致）。</li>
      * </ul>
      *
@@ -135,10 +134,10 @@ public class SkillsComponent implements OwnedBySkills {
         }
 
         // 2. 能量预检查：能量不足以下一次（最低消耗的）技能释放时整体放弃。
-        //    无论创造模式与否都消耗能量（与 ToolEnergy.tryConsume 一致），故不做创造豁免，
+        //    无论创造模式与否都消耗能量（与 SkillEnergySpend.tryConsume 一致），故不做创造豁免，
         //    否则低能量提示会被调用方的剩余能量提示覆盖。
         int minCost = toRelease.stream()
-                .mapToInt(data -> SkillEnergyCost.compute(stack, data.skill))
+                .mapToInt(data -> SkillEnergySpend.compute(stack, data.skill))
                 .min()
                 .orElse(0);
         if (!ToolEnergy.canAfford(stack, minCost)) {
@@ -181,7 +180,7 @@ public class SkillsComponent implements OwnedBySkills {
         applySkillBoost(stack, data);
 
         // 能量预检查：不足则整体放弃（提示由低能量逻辑统一处理）
-        if (!ToolEnergy.canAfford(stack, SkillEnergyCost.compute(stack, data.skill))) {
+        if (!ToolEnergy.canAfford(stack, SkillEnergySpend.compute(stack, data.skill))) {
             if (player != null) ToolEnergy.sendLowEnergy(player, stack);
             return false;
         }
@@ -202,7 +201,7 @@ public class SkillsComponent implements OwnedBySkills {
     public static void applySkillBoost(ItemStack stack, DataSkill data) {
         AllSkills.RegisteredDataSkill registered = AllSkills.getData(AllSkills.getId(data.skill));
         if (registered == null) return;
-        int effective = SkillEnergyCost.effectiveLevel(stack, data);
+        int effective = SkillEnergySpend.effectiveLevel(stack, data);
         SkillConfig levelConfig = registered.configForLevel(effective);
         if (levelConfig != null) {
             data.config = levelConfig;

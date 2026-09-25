@@ -84,7 +84,7 @@ public class HurtLivingEntityHandler {
 			return;
 
 		LivingHurtContext context = new LivingHurtContext(event);
-		// 释放成功（能量预检查通过）后进入冷却；剩余能量显示统一由 ToolEnergy.tryConsume 处理
+		// 释放成功（能量预检查通过）后进入冷却；剩余能量显示统一由 SkillEnergySpend.tryConsume 处理
 		if (holder.releaseSkillAt(skillStack, SkillType.HIT_SKILL, slot, context)) {
 			ToolSkillCooldown.startTicks(player, sword, cooldownTicks);
 		}

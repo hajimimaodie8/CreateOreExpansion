@@ -10,7 +10,7 @@ import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
 import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
-import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
+import com.hjmmd_8.createoreexpansion.util.BarTooltipRender;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.infrastructure.config.AllConfigs;
 

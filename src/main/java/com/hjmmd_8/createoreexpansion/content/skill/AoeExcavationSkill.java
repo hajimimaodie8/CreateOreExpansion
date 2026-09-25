@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
@@ -85,7 +85,7 @@ public abstract class AoeExcavationSkill<C extends SkillConfig, S extends SkillS
             if (toDestroy.isEmpty()) return;
 
             // 真正生效前消耗能量
-            if (!ToolEnergy.tryConsume(player, tool, this)) return;
+            if (!SkillEnergySpend.tryConsume(player, tool, this)) return;
 
             BlockBreaker.breakPositions(toDestroy, pos, tool, level, player, getMineableTag());
             // 创造模式无冷却

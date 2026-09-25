@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.*;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
@@ -67,7 +66,7 @@ public class SkinSkill extends AbstractStrategySkill<Entity, EntityStrategy>
         int count = rollDropCount(entity);
 
         // 3. 真正生效前消耗能量
-        if (!ToolEnergy.tryConsume(player, player.getMainHandItem(), this)) return;
+        if (!SkillEnergySpend.tryConsume(player, player.getMainHandItem(), this)) return;
 
         // 4. 从战利品表中随机取一个掉落物，复制 count 份生成
         ItemStack stack = getLoot(context);

@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.energy;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
+import com.hjmmd_8.createoreexpansion.util.BarTooltipRender;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -56,15 +55,15 @@ public class EnergyTooltipHandler {
                 : ToolEnergyColorConfig.DEFAULT.dark;
 
         Integer color = isEmpty
-                ? stack.get(AllDataComponents.ENERGY_COLOR_DARK)
-                : stack.get(AllDataComponents.ENERGY_COLOR);
+                ? stack.get(ToolDataComponents.ENERGY_COLOR_DARK)
+                : stack.get(ToolDataComponents.ENERGY_COLOR);
 
         if (color != null) {
             fillColor = new Color(color % 0xFFFFFF);
         }
 
         // 翠玉之弓（传说武器）：能量条从左（绿）到右（黄）渐变，其余工具保持单色
-        if (stack.getItem() instanceof com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem) {
+        if (stack.getItem() instanceof EnergyGradientTool) {
             tip.add(index, BarTooltipRender.energyGradient(
                     energy, max, BAR_SLOTS, new Color(0x55FF55), new Color(0xFFFF55)));
             return index + 1;
@@ -82,13 +81,13 @@ public class EnergyTooltipHandler {
     public static void addBoundTooltip(ItemTooltipEvent event, int index) {
         ItemStack stack = event.getItemStack();
 
-        ResourceLocation boundMedallion = stack.get(AllDataComponents.BOUND_MEDALLION);
+        ResourceLocation boundMedallion = stack.get(ToolDataComponents.BOUND_MEDALLION);
         if (boundMedallion != null) {
             // 工具侧：绑定单枚佩
             Item item = BuiltInRegistries.ITEM.get(boundMedallion);
             if (item == null || item == Items.AIR)
                 return;
-            int color = item.getDefaultInstance().getOrDefault(AllDataComponents.BIND_COLOR, 0x55FF55);
+            int color = item.getDefaultInstance().getOrDefault(ToolDataComponents.BIND_COLOR, 0x55FF55);
             event.getToolTip().add(index, Component.literal("绑定：")
                     .withStyle(style -> style.withColor(color))
                     .append(Component.translatable(item.getDescriptionId())
@@ -96,11 +95,11 @@ public class EnergyTooltipHandler {
             return;
         }
 
-        List<ResourceLocation> boundTools = stack.get(AllDataComponents.BOUND_TOOL);
+        List<ResourceLocation> boundTools = stack.get(ToolDataComponents.BOUND_TOOL);
         if (boundTools == null || boundTools.isEmpty())
             return;
         // 佩侧：绑定多个工具；「绑定：」用佩的 BIND_COLOR，工具名用各工具自身的能量色
-        int bindColor = stack.getOrDefault(AllDataComponents.BIND_COLOR, 0x55FF55);
+        int bindColor = stack.getOrDefault(ToolDataComponents.BIND_COLOR, 0x55FF55);
         MutableComponent line = Component.literal("绑定：").withStyle(style -> style.withColor(bindColor));
         boolean first = true;
         for (ResourceLocation id : boundTools) {
@@ -109,7 +108,7 @@ public class EnergyTooltipHandler {
                 continue;
             if (!first)
                 line.append("、");
-            int toolColor = item.getDefaultInstance().getOrDefault(AllDataComponents.ENERGY_COLOR, bindColor);
+            int toolColor = item.getDefaultInstance().getOrDefault(ToolDataComponents.ENERGY_COLOR, bindColor);
             line.append(Component.translatable(item.getDescriptionId()).withStyle(style -> style.withColor(toolColor)));
             first = false;
         }

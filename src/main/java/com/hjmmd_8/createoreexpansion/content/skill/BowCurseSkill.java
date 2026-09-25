@@ -2,9 +2,8 @@ package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
-import com.hjmmd_8.createoreexpansion.common.energy.SkillEnergyCost;
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.context.BowShootContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.AbstractSkill;
@@ -83,7 +82,7 @@ public class BowCurseSkill extends AbstractSkill implements ConfigSkill<BowShoot
 			return;
 
 		// 真正生效前消耗能量；不足则放弃（提示由 ToolEnergy 统一发送）
-		if (!ToolEnergy.tryConsume(player, ctx.bow(), this))
+		if (!SkillEnergySpend.tryConsume(player, ctx.bow(), this))
 			return;
 		ToolSkillCooldown.startTicks(player, ctx.bow(), cooldownSeconds * 20);
 
@@ -98,7 +97,7 @@ public class BowCurseSkill extends AbstractSkill implements ConfigSkill<BowShoot
 
 	/** 本次射击携带的技能有效等级（含技能提升附魔；无数据时按 1 级） */
 	private int effectiveLevel(ItemStack bow) {
-		return data != null ? SkillEnergyCost.effectiveLevel(bow, data) : 1;
+		return data != null ? SkillEnergySpend.effectiveLevel(bow, data) : 1;
 	}
 
 	/** 箭命中目标后调用：按等级配置附加凋零 + 缓慢 + 药水云 */

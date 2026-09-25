@@ -67,6 +67,6 @@ public class UseItemHandler {
             released |= holder.releaseSkillAt(skillStack, SkillType.USE_SKILL, 2, context);
         }
 
-        // 剩余能量显示统一由 ToolEnergy.tryConsume（消耗时）处理：工具行 + 绑定凝能佩行
+        // 剩余能量显示统一由 SkillEnergySpend.tryConsume（消耗时）处理：工具行 + 绑定凝能佩行
     }
 }

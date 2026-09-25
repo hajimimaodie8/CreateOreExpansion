@@ -8,6 +8,7 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFact
 import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
 import net.minecraft.server.level.ServerPlayer;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
+import com.hjmmd_8.createoreexpansion.common.energy.EnergyGradientTool;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.context.BowShootContext;
@@ -50,8 +51,12 @@ import net.neoforged.neoforge.event.EventHooks;
  * <p>释放流程：按下时锁定技能键位 → 松手射击时经 {@link SkillsComponent#releaseSkillAt}
  * 统一释放（能量预检查/消耗/冷却走模组体系）→ 发射时把技能 id 写入箭的 persistentData，
  * 命中后由 {@code JadeTopazBowEventHandler} 读取并调用对应技能效果。</p>
+ *
+ * <p><b>P3p</b>：实现 {@link EnergyGradientTool} —— 共享库（core）的能量门面/能量 tooltip
+ * 不能再 {@code instanceof JadeTopazBowItem}（库不 import 层），改判这个零方法标记契约；
+ * 判定结果对现有物品逐个相同。</p>
  */
-public class JadeTopazBowItem extends BowItem {
+public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 
 	/** 箭 persistentData / 弓暂存标记：本次射击携带的技能 id（ResourceLocation 字符串） */
 	public static final String TAG_SKILL = "jade_topaz_skill";
@@ -181,7 +186,7 @@ public class JadeTopazBowItem extends BowItem {
 
 		if (holder.releaseSkillAt(skillStack, SkillType.USE_SKILL, slot, new BowShootContext(player, bow))) {
 			ToolSkillCooldown.startTicks(player, bow, cooldownTicks);
-			// 消耗后的剩余能量提示由 ToolEnergy.tryConsume 内部统一发送
+			// 消耗后的剩余能量提示由 SkillEnergySpend.tryConsume 内部统一发送
 			// （sendRemainingEnergyWithMedallion：护目镜限制 + 凝能佩行/工具行，佩用佩色）
 		}
 	}

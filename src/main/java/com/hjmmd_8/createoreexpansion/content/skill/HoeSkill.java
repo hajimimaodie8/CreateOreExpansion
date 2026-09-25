@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.context.UseOnBlockContext;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.HoeStrategy;
@@ -149,7 +150,7 @@ public class HoeSkill extends AbstractStrategySkill<BlockPos, HoeStrategy>
             ToolEnergy.sendLowEnergy(player, stack);
             return false;
         }
-        ToolEnergy.tryConsume(player, stack, this);
+        SkillEnergySpend.tryConsume(player, stack, this);
         return true;
     }
 

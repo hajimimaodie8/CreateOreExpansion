@@ -19,6 +19,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionBindingRecipe;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionEnergyLink;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
@@ -115,6 +116,13 @@ public class CreateOreExpansion {
         // 必须在 CoeItems.register() 之前：凝能佩的物品工厂按"桥接在不在"选饰品支线/纯物品支线两支类
         // （注册 id 与显示名两支一致，玩家侧无感）。
         bootstrapCurios();
+
+        // P3p：工具能量门面（common.energy.ToolEnergy）已搬进 core，不能再 import 层里的
+        // IMedallion；共享库那边留了契约 common.energy.MedallionLink，具体实现是本层
+        // content.equipment.medallion.MedallionEnergyLink。库没有生命周期，
+        // 「谁来实现契约」必须由根侧在这里写死（与 P3o 的 MachineRotatePayload 载荷接线同一配方）。
+        // 必须在任何游戏内逻辑（tooltip / 技能扣能）之前完成，故放在物品注册之前。
+        MedallionEnergyLink.install();
 
         CoeItems.register();
         AllGemTags.register();

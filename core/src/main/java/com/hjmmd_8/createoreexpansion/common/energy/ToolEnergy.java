@@ -1,9 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common.energy;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
 import java.awt.Color;
@@ -17,12 +13,18 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * 工具能量门面：能量存取、技能释放前的统一消耗编排与剩余能量提示。
+ * 工具能量门面：能量存取、扣减编排与剩余能量提示。
+ *
+ * <p><b>P3p</b>：本类已搬进共享库（core）。旧技能框架（{@code ItemSkill}/{@code DataSkill}）
+ * 专用的「按技能实例算消耗并扣能」那一支搬去了层里的
+ * {@code com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend}，
+ * 这里只留与技能类型无关的部分；凝能佩联动改走 {@link MedallionLink} 注入契约
+ * （层里的 {@code IMedallion} 不能被库 import）。</p>
  *
  * <p>职责边界：</p>
  * <ul>
  *     <li>能量存取与判定（{@link #getEnergy}/{@link #setEnergy}/{@link #canAfford} 等）；</li>
- *     <li>技能释放消耗编排（{@link #tryConsume}，含凝能佩兜底与剩余能量提示）；</li>
+ *     <li>扣能编排（{@link #consume}，含凝能佩兜底与剩余能量提示）；</li>
  *     <li>能量提示（{@link #sendLowEnergy} 等，护目镜限定）。</li>
  * </ul>
  *
@@ -40,7 +42,7 @@ public final class ToolEnergy {
 	 * @return 最大能量值，物品无最大能量值时返回 -1
 	 */
 	public static int getMaxEnergy(ItemStack stack) {
-		Integer mx = stack.getComponents().get(AllDataComponents.MAX_ENERGY);
+		Integer mx = stack.getComponents().get(ToolDataComponents.MAX_ENERGY);
 		if (mx != null)
 			return mx;
 		return -1;
@@ -84,7 +86,7 @@ public final class ToolEnergy {
 	 * @return 能量值，物品无能量值时返回 -1
 	 */
 	public static int getEnergy(ItemStack stack) {
-		Integer energy = stack.getComponents().get(AllDataComponents.ENERGY);
+		Integer energy = stack.getComponents().get(ToolDataComponents.ENERGY);
 		return energy != null ? energy : -1;
 	}
 
@@ -93,7 +95,7 @@ public final class ToolEnergy {
 		if (max <= 0)
 			return;
 		int value = Math.max(0, Math.min(max, energy));
-		stack.set(AllDataComponents.ENERGY, value);
+		stack.set(ToolDataComponents.ENERGY, value);
 	}
 
 	/**
@@ -122,7 +124,7 @@ public final class ToolEnergy {
 	 * @return 可用总量（各段负值按 0 计）
 	 */
 	public static int getAvailable(Player player, ItemStack stack) {
-		ItemStack medallion = IMedallion.findBoundMedallion(player, stack);
+		ItemStack medallion = MedallionLink.get().findBound(player, stack);
 		return storedEnergy(stack) + storedEnergy(medallion);
 	}
 
@@ -148,15 +150,15 @@ public final class ToolEnergy {
 	 */
 	public static boolean canAfford(Player player, ItemStack stack, int amount) {
 		if (amount <= 0) return true;
-		return isChargeMode(IMedallion.findBoundMedallion(player, stack)) || canAfford(stack, amount);
+		return isChargeMode(MedallionLink.get().findBound(player, stack)) || canAfford(stack, amount);
 	}
 
 	/**
 	 * <b>扣除能量</b>（工具 + 凝能佩兜底），成功返回 true。
 	 *
 	 * <p>与技能类型无关的统一扣减入口：有绑定凝能佩时由佩对象自己处理供应/充能两种模式
-	 * （{@link IMedallion#consumeToolEnergy} + 充能模式的 {@link IMedallion#chargeBoundTools}），
-	 * 否则直接扣工具自身 FE。<b>创造模式照旧扣能</b>（与旧 {@link #tryConsume} 一致，
+	 * （{@link MedallionLink#consumeToolEnergy} + 充能模式的 {@link MedallionLink#chargeBoundTools}），
+	 * 否则直接扣工具自身 FE。<b>创造模式照旧扣能</b>（与旧 {@code tryConsume} 一致，
 	 * 创造豁免由技能释放链路自己决定，本方法不做判断）。</p>
 	 *
 	 * <p>门槛沿用 {@link #canAfford(Player, ItemStack, int)}（= 旧 {@code tryConsume} 的预检查），
@@ -172,11 +174,12 @@ public final class ToolEnergy {
 		if (!canAfford(player, stack, amount)) {
 			return false;
 		}
-		ItemStack medallion = IMedallion.findBoundMedallion(player, stack);
-		if (!medallion.isEmpty() && medallion.getItem() instanceof IMedallion medallionImpl) {
-			medallionImpl.consumeToolEnergy(medallion, stack, amount);
+		MedallionLink link = MedallionLink.get();
+		ItemStack medallion = link.findBound(player, stack);
+		if (!medallion.isEmpty() && link.isMedallion(medallion)) {
+			link.consumeToolEnergy(medallion, stack, amount);
 			// 充能模式：扣费后检查所有绑定工具（仅背包内），没满的补满
-			medallionImpl.chargeBoundTools(player, medallion);
+			link.chargeBoundTools(player, medallion);
 		} else {
 			setEnergy(stack, getEnergy(stack) - amount);
 		}
@@ -191,49 +194,23 @@ public final class ToolEnergy {
 
 	/** 该凝能佩是否处于充能模式（空佩恒 false）。 */
 	private static boolean isChargeMode(ItemStack medallion) {
-		return medallion != null && !medallion.isEmpty()
-			&& medallion.getItem() instanceof IMedallion im
-			&& im.isChargeMode(medallion);
+		if (medallion == null || medallion.isEmpty())
+			return false;
+		MedallionLink link = MedallionLink.get();
+		return link.isMedallion(medallion) && link.isChargeMode(medallion);
 	}
 
 	/**
 	 * 技能释放前统一检查并消耗能量。
 	 *
-	 * 由各技能在“真正生效前”调用一次（例如破坏方块前、收割前），
-	 * 能量不足时发送低能量提示并返回 false，技能应放弃本次释放。
-	 *
-	 * 注意：无论创造模式与否都会消耗能量（与旧行为一致），
-	 * 消耗后立即标记物品栏变更，确保客户端能量条同步刷新。
-	 *
-	 * 实现上已把「凝能佩兜底」的判定与扣减抽到
-	 * {@link #canAfford(Player, ItemStack, int)} / {@link #consume(Player, ItemStack, int)}，
-	 * 本方法只负责编排：预检查 → 扣能 → 提示。
-	 *
-	 * @param player 释放技能的玩家（可为 null）
-	 * @param stack  手持的工具
-	 * @param skill  将要释放的技能（通过 {@link ItemSkill#getCost()} 获取消耗）
-	 * @return 是否成功消耗能量（true 表示可以继续执行技能）
+	 * <p><b>P3p 已搬走</b>：本方法原先在这里，因为它按旧技能框架的 {@code ItemSkill} 算消耗
+	 * （要读 {@code SKILLS} 组件与技能注册表），而库不能依赖那些层内类型。
+	 * 现在它是 {@code foundation.item.skill.SkillEnergySpend#tryConsume(Player, ItemStack, ItemSkill)}，
+	 * 方法体逐字未改；本类通过公开的
+	 * {@link #canAfford(Player, ItemStack, int)} / {@link #consume(Player, ItemStack, int)} /
+	 * {@link #sendLowEnergy(Player, ItemStack)} / {@link #sendRemainingEnergyWithMedallion}
+	 * 继续为它提供全部能力。</p>
 	 */
-	public static boolean tryConsume(Player player, ItemStack stack, ItemSkill skill) {
-		int cost = SkillEnergyCost.compute(stack, skill);
-		if (cost == 0) {
-			return true;
-		}
-		// 预检查失败、或扣减失败（能量不足）都按旧行为提示并放弃本次释放
-		if (!canAfford(player, stack, cost) || !consume(player, stack, cost)) {
-			if (player != null) {
-				sendLowEnergy(player, stack);
-			}
-			return false;
-		}
-		if (player != null) {
-			// 强制物品栏同步，确保客户端立即看到能量变化
-			player.getInventory().setChanged();
-			// 同步显示剩余能量：绑定的凝能佩行在上、工具行在下（护目镜判定）
-			sendRemainingEnergyWithMedallion(player, stack, IMedallion.findBoundMedallion(player, stack));
-		}
-		return true;
-	}
 
 	public static void sendLowEnergy(Player player, ItemStack stack) {
 		int colorRGB = getEnergyColor(stack);
@@ -271,7 +248,8 @@ public final class ToolEnergy {
 			player.displayClientMessage(toolLine, true);
 			return;
 		}
-		String mode = medallion.getItem() instanceof IMedallion im && im.isChargeMode(medallion)
+		MedallionLink link = MedallionLink.get();
+		String mode = link.isMedallion(medallion) && link.isChargeMode(medallion)
 			? "充能模式" : "供应模式";
 		Component msg = Component.literal("[" + mode + "]")
 			.withStyle(Style.EMPTY.withColor(ChatFormatting.GRAY))
@@ -290,7 +268,7 @@ public final class ToolEnergy {
 	 */
 	private static Component toolLineComponent(ItemStack tool, int energy, int max) {
 		String text = tool.getHoverName().getString() + "：" + energy + "/" + max;
-		if (tool.getItem() instanceof JadeTopazBowItem) {
+		if (tool.getItem() instanceof EnergyGradientTool) {
 			// 黄（起点）→ 绿（终点）逐字符渐变
 			return gradientText(text, new Color(0xFFFF55), new Color(0x55FF55));
 		}
@@ -324,7 +302,7 @@ public final class ToolEnergy {
 	 * 获取工具能量条颜色（RGB）
 	 */
 	private static int getEnergyColor(ItemStack stack) {
-		Integer colorValue = stack.get(AllDataComponents.ENERGY_COLOR);
+		Integer colorValue = stack.get(ToolDataComponents.ENERGY_COLOR);
 		return colorValue != null ? (colorValue & 0xFFFFFF) : 0xFFFFFF;
 	}
 }

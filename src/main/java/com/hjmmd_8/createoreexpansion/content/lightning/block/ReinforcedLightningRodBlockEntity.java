@@ -4,7 +4,7 @@ import java.awt.Color;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
-import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
+import com.hjmmd_8.createoreexpansion.util.BarTooltipRender;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation;
 

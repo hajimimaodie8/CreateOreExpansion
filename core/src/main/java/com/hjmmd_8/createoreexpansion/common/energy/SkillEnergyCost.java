@@ -1,14 +1,15 @@
 package com.hjmmd_8.createoreexpansion.common.energy;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * 技能能量消耗规则。
+ * 技能能量消耗规则（<b>与技能类型无关的通用算术</b>）。
+ *
+ * <p><b>P3p</b>：本类已搬进共享库（core）。原来那两个按旧技能框架类型算的重载
+ * （{@code effectiveLevel(ItemStack, DataSkill)} / {@code compute(ItemStack, ItemSkill)}）
+ * 要读技能注册表与 {@code SKILLS} 组件，属于层内类型，已整体搬到层里的
+ * {@code com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend}，
+ * 方法体逐字未改。这里只剩这两个只吃 {@code int} 的重载——新内核（Skiller）走的就是它们。</p>
  *
  * <p>{@code 消耗 = 一级消耗(技能注册值) × 当前技能等级}，再乘上减耗附魔的折扣
  * （1 级 90%、2 级 80%、3 级 70%、4 级 60%、5 级及以上 50%）。</p>
@@ -21,26 +22,9 @@ public final class SkillEnergyCost {
 	private SkillEnergyCost() {}
 
 	/**
-	 * 技能有效等级 = min(基础等级 + 技艺提升 - 技艺回溯, 技能满级)，且不低于 1。
-	 * 显示与消耗统一以此为准。技艺提升/技艺回溯 3 级及以上提升量/削减量一律按 2 计，
-	 * 两个附魔可共存（净效果 = 提升量 - 削减量）。
-	 */
-	public static int effectiveLevel(ItemStack stack, DataSkill data) {
-		int base = data.nbt != null ? data.nbt.getInt("Level") : 1;
-		AllSkills.RegisteredDataSkill registered = AllSkills.getData(AllSkills.getId(data.skill));
-		int maxLevel = registered != null ? registered.maxLevel() : 5;
-		int boost = Math.min(ToolEnchantments.skillBoostLevel(stack), 2);
-		int regression = Math.min(ToolEnchantments.skillRegressionLevel(stack), 2);
-		int level = Math.max(1, base) + boost - regression;
-		return Math.max(1, Math.min(level, maxLevel));
-	}
-
-	/**
 	 * 技能有效等级（新内核版重载）= min(基础等级 + 技艺提升 - 技艺回溯, 满级)，且不低于 1。
-	 *
-	 * <p>与 {@link #effectiveLevel(ItemStack, DataSkill)} 同一口径，只是不再需要旧的
-	 * {@code DataSkill}：基础等级来自新内核的技能实例（其 NBT 的 {@code Level}），
-	 * 满级由调用方从本模组的技能注册表查出来传入。</p>
+	 * 技艺提升/技艺回溯 3 级及以上提升量/削减量一律按 2 计，两个附魔可共存（净效果 = 提升量 - 削减量）。
+	 * 显示与消耗统一以此为准。
 	 *
 	 * @param stack     手持工具（读技艺提升/技艺回溯附魔）
 	 * @param baseLevel 物品上该技能的基础等级
@@ -56,7 +40,7 @@ public final class SkillEnergyCost {
 	/**
 	 * 计算一次技能释放的实际能量消耗（新内核版重载）。
 	 *
-	 * <p>口径与 {@link #compute(ItemStack, ItemSkill)} 完全一致：
+	 * <p>口径与旧框架的 {@code SkillEnergySpend#compute(ItemStack, ItemSkill)} 完全一致：
 	 * {@code 消耗 = 一级消耗(注册值) × 有效等级}，再乘减耗附魔折扣
 	 * （1 级 90%、2 级 80%、3 级 70%、4 级 60%、5 级及以上 50%）。
 	 * 区别只是不再依赖旧的 {@code ItemSkill}（旧实现由调用方从配置里取一级消耗、
@@ -78,33 +62,5 @@ public final class SkillEnergyCost {
 			cost = Math.max(1, (int) Math.round(cost * multiplier));
 		}
 		return cost;
-	}
-
-	/**
-	 * 计算一次技能释放的实际能量消耗。
-	 *
-	 * @param stack 手持的工具
-	 * @param skill 将要释放的技能
-	 * @return 实际消耗（&lt;= 0 表示无需能量）
-	 */
-	public static int compute(ItemStack stack, ItemSkill skill) {
-		return compute(stack, skill.getCost(), skillLevel(stack, skill));
-	}
-
-	/**
-	 * 读取工具上指定技能的当前有效等级（含技能提升附魔）。
-	 *
-	 * @return 技能等级，找不到时为 1
-	 */
-	private static int skillLevel(ItemStack stack, ItemSkill skill) {
-		SkillsComponent component = stack.get(AllDataComponents.SKILLS);
-		if (component != null) {
-			for (DataSkill data : component.getAllData()) {
-				if (data.skill == skill) {
-					return effectiveLevel(stack, data);
-				}
-			}
-		}
-		return 1;
 	}
 }

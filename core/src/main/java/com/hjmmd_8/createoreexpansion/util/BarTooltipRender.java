@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.foundation.util;
+package com.hjmmd_8.createoreexpansion.util;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;

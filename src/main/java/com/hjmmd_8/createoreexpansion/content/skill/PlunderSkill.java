@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
@@ -72,7 +72,7 @@ public class PlunderSkill extends AbstractStrategySkill<Entity, EntityStrategy>
         if (player == null) return;
 
         // 真正生效前消耗能量
-        if (!ToolEnergy.tryConsume(player, player.getMainHandItem(), this)) return;
+        if (!SkillEnergySpend.tryConsume(player, player.getMainHandItem(), this)) return;
 
         // 1. 装备夺取（双模式）
         rollPlunder(target, player);
