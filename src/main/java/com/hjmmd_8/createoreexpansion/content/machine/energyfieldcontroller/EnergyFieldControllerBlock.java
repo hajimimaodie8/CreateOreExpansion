@@ -42,7 +42,7 @@ import net.minecraft.network.chat.Component;
  * 本类只负责放置朝向、轴口、盖开关、类型切换与方块实体绑定。</p>
  */
 public class EnergyFieldControllerBlock extends DirectionalKineticBlock
-	implements IBE<EnergyFieldControllerBlockEntity>, com.hjmmd_8.createoreexpansion.content.machine.CewsMachine {
+	implements IBE<EnergyFieldControllerBlockEntity>, com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction {
 
 	/** 接收盖开关：false=关盖（不产场）、true=开盖（可配对产场）。 */
 	public static final net.minecraft.world.level.block.state.properties.BooleanProperty OPEN =
@@ -184,7 +184,7 @@ public class EnergyFieldControllerBlock extends DirectionalKineticBlock
 	}
 	/**
 	 * 本机有特殊切换模式 ⇒ 扳手只做这一件事（切模式），不参与 Ctrl+扳手旋转。
-	 * 见 {@link com.hjmmd_8.createoreexpansion.content.machine.CewsMachine} 的统一交互规则 ③。
+	 * 见 {@link com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction} 的统一交互规则 ③。
 	 */
 	@Override
 	public boolean hasModeSwitch() {

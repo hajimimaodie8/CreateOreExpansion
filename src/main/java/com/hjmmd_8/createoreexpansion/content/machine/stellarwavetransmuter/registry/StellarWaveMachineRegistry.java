@@ -27,9 +27,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
  * 只需一行链式注册——其它逻辑（应力口径、载荷排除、变体波配方执行）全部自动接入：</p>
  *
  * <pre>{@code
- * // 压机（Create 原生）
- * StellarWaveMachineRegistry.register(AllBlocks.MECHANICAL_PRESS.get())
- *     .addTypes(AllRecipeTypes.PRESSING);
+ * // 压机（Create 原生；两处 FQN 是刻意的——本仓也有自己的 AllRecipeTypes，裸名会歧义）
+ * StellarWaveMachineRegistry.register(com.simibubi.create.AllBlocks.MECHANICAL_PRESS.get())
+ *     .addTypes(com.simibubi.create.AllRecipeTypes.PRESSING);
  *
  * // 真空室（Vintage，可附加模式选择器）
  * StellarWaveMachineRegistry.register(VintageBlocks.VACUUM_CHAMBER.get())

@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.machine;
+package com.hjmmd_8.createoreexpansion.common.machine;
 
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
 
@@ -30,10 +30,14 @@ import net.minecraft.world.phys.BlockHitResult;
  *
  * <p><b>默认实现</b>：{@link #hasModeSwitch()} 默认 false（多数机器没有模式）；
  * {@link #onEmptyHandPortToggle} 默认 {@code PASS}（没有开口的机器例如三种充能器、调级器不需要实现它）。
- * 于是新机器的接入方式只有两件事：{@code implements CewsMachine}，在有开口时覆写
+ * 于是新机器的接入方式只有两件事：{@code implements MachineInteraction}，在有开口时覆写
  * {@link #onEmptyHandPortToggle} ∪ 在 {@link IWrenchable#onWrenched} 里调用同一个开口逻辑。</p>
+ *
+ * <p><b>为什么住 common（SHARED）层</b>：它服务两层——CEWS 侧 7 台（差波器家族、变器、场控、三种充能器）
+ * 与 COE 侧 1 台（动力角磨床）。契约若住在 CEWS 包内，COE 的角磨床就得反向 import CEWS
+ * （禁止方向）；名字里的 "Cews" 也随之失真，故改用中性的 {@code MachineInteraction}。</p>
  */
-public interface CewsMachine extends IWrenchable {
+public interface MachineInteraction extends IWrenchable {
 
 	/**
 	 * 本机是否有"特殊切换模式"（例如波变器的 加工波变态 ↔ 攻击波变态、场控的 加速场 ↔ 偏转场、

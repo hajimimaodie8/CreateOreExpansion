@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.data;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
-import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipeTools;
+import com.hjmmd_8.createoreexpansion.common.charger.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;

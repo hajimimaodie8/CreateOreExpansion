@@ -35,7 +35,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * <p><b>渲染</b>：与四面差波器同款——64 个 blockstate 变体模型（6 面 open 组合），
  * 每面整面切换 close/open 纹理，无需方块实体/渲染器。</p>
  */
-public class SixFaceDisperserBlock extends Block implements com.hjmmd_8.createoreexpansion.content.machine.CewsMachine, IBE<SixFaceDisperserBlockEntity> {
+public class SixFaceDisperserBlock extends Block implements com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction, IBE<SixFaceDisperserBlockEntity> {
 
 	/** 上面开口：false=close（关闭）、true=open（打开） */
 	public static final BooleanProperty UP = BooleanProperty.create("open_up");
@@ -176,7 +176,7 @@ public class SixFaceDisperserBlock extends Block implements com.hjmmd_8.createor
 		return state.getValue(propertyFor(side));
 	}
 	/**
-	 * <b>空手右键 = 切开口</b>（统一交互规则 ①②，见 {@link com.hjmmd_8.createoreexpansion.content.machine.CewsMachine}）。
+	 * <b>空手右键 = 切开口</b>（统一交互规则 ①②，见 {@link com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction}）。
 	 *
 	 * <p>手里拿着东西时放行（否则会挡住放方块）；<b>开口判定复用 {@link #onWrenched}</b>——
 	 * 一台机器只有一套"点哪个面切哪个口"的判定，空手与扳手两条入口共用，口径不可能分叉。</p>

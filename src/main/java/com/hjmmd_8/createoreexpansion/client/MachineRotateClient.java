@@ -1,8 +1,8 @@
 package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.content.machine.CewsMachine;
-import com.hjmmd_8.createoreexpansion.content.machine.MachineRotatePayload;
+import com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction;
+import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.Minecraft;
@@ -22,7 +22,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
  * 改为发送 {@link MachineRotatePayload}，由服务器校验并旋转。这样既实现了 Ctrl 语义，
  * 又保证"没按 Ctrl 时扳手不旋转"是服务端权威行为。</p>
  *
- * <p><b>只拦本模组机器</b>：{@code block instanceof CewsMachine} 且该机器<b>没有</b>特殊切换模式
+ * <p><b>只拦本模组机器</b>：{@code block instanceof MachineInteraction} 且该机器<b>没有</b>特殊切换模式
  * （有模式的机器扳手只切模式，不旋转）。其它方块（Create 自己的机器、原版方块）一律放行，
  * 保持 Create/原版手感不变。</p>
  */
@@ -57,7 +57,7 @@ public final class MachineRotateClient {
 			return;
 		if (!(event.getLevel()
 			.getBlockState(event.getPos())
-			.getBlock() instanceof CewsMachine machine))
+			.getBlock() instanceof MachineInteraction machine))
 			return;
 		if (machine.hasModeSwitch())
 			return; // 有模式的机器：扳手只切模式

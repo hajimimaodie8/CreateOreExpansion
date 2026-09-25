@@ -107,7 +107,7 @@ public class CreateOreExpansion {
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload::registerPayloads);
         // 统一交互规则第 4 条：Ctrl + 扳手右键 = 旋转本模组机器（客户端拦截 → 服务端校验并旋转）
-        modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.machine.MachineRotatePayload::registerPayloads);
+        modEventBus.addListener(com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload::registerPayloads);
         // 技能设置开关（"创造模式释放技能是否消耗能量"）的 C2S/S2C 包：服务端权威 + 存进存档
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.integration.skiller.SkillSettingsPayload::registerPayloads);
         modEventBus.addListener(CreateOreExpansion::onRegister);

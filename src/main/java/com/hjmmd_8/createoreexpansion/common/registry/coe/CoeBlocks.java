@@ -1,27 +1,11 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerMovementBehaviour;
-import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlock;
-import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlock;
-import com.hjmmd_8.createoreexpansion.content.charger.block.StellarstoneStressChargerBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalBuddingBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalClusterBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalGrowthConfigs;
-import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlock;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlock;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.DisperserMovingInteraction;
-import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireSpeedRegulatorBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireWaveRegulatorBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneSpeedRegulatorBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneWaveRegulatorBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlock;
-import com.hjmmd_8.createoreexpansion.content.wave.block.WaveSpeedRegulatorBlock;
 import com.hjmmd_8.createoreexpansion.common.*;
 import com.simibubi.create.api.behaviour.interaction.MovingInteractionBehaviour;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;

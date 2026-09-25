@@ -45,7 +45,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * <p><b>方块实体</b>：实现 {@link IBE} 绑定 {@link EnergyWaveDisperserBlockEntity}——
  * 纯静态无数据，仅承载客户端渲染器（按 4 侧开闭状态在顶/底灯盘叠加灯位）。</p>
  */
-public class EnergyWaveDisperserBlock extends Block implements com.hjmmd_8.createoreexpansion.content.machine.CewsMachine, IBE<EnergyWaveDisperserBlockEntity> {
+public class EnergyWaveDisperserBlock extends Block implements com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction, IBE<EnergyWaveDisperserBlockEntity> {
 
 	/** 六向朝向（同 BlockStateProperties.FACING，与 Create DirectionalKineticBlock.FACING 同一实例） */
 	public static final DirectionProperty FACING = BlockStateProperties.FACING;
@@ -263,7 +263,7 @@ public class EnergyWaveDisperserBlock extends Block implements com.hjmmd_8.creat
 		};
 	}
 	/**
-	 * <b>空手右键 = 切开口</b>（统一交互规则 ①②，见 {@link com.hjmmd_8.createoreexpansion.content.machine.CewsMachine}）。
+	 * <b>空手右键 = 切开口</b>（统一交互规则 ①②，见 {@link com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction}）。
 	 *
 	 * <p>手里拿着东西时放行（否则会挡住放方块）；<b>开口判定复用 {@link #onWrenched}</b>——
 	 * 一台机器只有一套"点哪个面切哪个口"的判定，空手与扳手两条入口共用，口径不可能分叉。</p>

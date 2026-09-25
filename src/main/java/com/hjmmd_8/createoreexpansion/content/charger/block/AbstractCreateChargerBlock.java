@@ -28,7 +28,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * 另：{@link #getShape} 返回非全方块形状，避免 AO 遮蔽判定把本机器当遮蔽物导致面发黑。</p>
  */
 public abstract class AbstractCreateChargerBlock extends DirectionalKineticBlock
-	implements com.hjmmd_8.createoreexpansion.content.machine.CewsMachine {
+	implements com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction {
 
 	/**
 	 * 模式/蓄力阶段：0=未接入应力（展示），1/2/3=蓄力阶段（α/β/γ），

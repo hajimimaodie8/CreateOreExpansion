@@ -52,7 +52,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * 满格碰撞箱、机器光照规则（不阻挡天空光、面不发暗）。实现 {@link ICogWheel} 参与齿轮啮合。</p>
  */
 public abstract class AbstractWaveGateBlock<T extends AbstractWaveGateBlockEntity> extends DirectionalKineticBlock
-	implements IBE<T>, ICogWheel, com.hjmmd_8.createoreexpansion.content.machine.CewsMachine {
+	implements IBE<T>, ICogWheel, com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction {
 
 	/** 顶面能量接收面板：false=close（关闭）、true=open（打开） */
 	public static final BooleanProperty RECEIVER_TOP = BooleanProperty.create("receiver_top");
@@ -207,7 +207,7 @@ public abstract class AbstractWaveGateBlock<T extends AbstractWaveGateBlockEntit
 	@Override
 	public abstract BlockEntityType<? extends T> getBlockEntityType();
 	/**
-	 * <b>空手右键 = 切开口</b>（统一交互规则 ①②，见 {@link com.hjmmd_8.createoreexpansion.content.machine.CewsMachine}）。
+	 * <b>空手右键 = 切开口</b>（统一交互规则 ①②，见 {@link com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction}）。
 	 *
 	 * <p>手里拿着东西时放行（否则会挡住放方块）；<b>开口判定复用 {@link #onWrenched}</b>——
 	 * 一台机器只有一套"点哪个面切哪个口"的判定，空手与扳手两条入口共用，口径不可能分叉。</p>

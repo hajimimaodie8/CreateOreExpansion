@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.machine;
+package com.hjmmd_8.createoreexpansion.common.machine;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 
@@ -25,12 +25,16 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * 玩家状态（只有潜行同步）——服务器<b>无从判断</b>玩家是否按着 Ctrl。于是只能在客户端判定 Ctrl，
  * 命中时取消本地交互并发这个包，由服务器执行旋转。这样"没按 Ctrl，扳手绝不旋转"是<u>服务端权威</u>的。</p>
  *
- * <p><b>服务端校验（缺一不可）</b>：① 方块确实实现 {@link CewsMachine}（本模组机器）；
+ * <p><b>服务端校验（缺一不可）</b>：① 方块确实实现 {@link MachineInteraction}（本模组机器）；
  * ② 该机器<b>没有</b>特殊切换模式（有模式的机器扳手只切模式，不旋转）；③ 玩家手持 Create 扳手；
  * ④ 在有效交互距离内。任一不满足即静默丢弃该包。</p>
  *
- * <p>旋转本身调 {@link CewsMachine#rotateAsCreate} → 即 {@code IWrenchable} 的默认实现，
+ * <p>旋转本身调 {@link MachineInteraction#rotateAsCreate} → 即 {@code IWrenchable} 的默认实现，
  * 与 Create 常规旋转完全同源（不复制逻辑、不自定义角度）。</p>
+ *
+ * <p><b>为什么住 common（SHARED）层</b>：载荷服务的机器横跨两层（CEWS 7 台 + COE 角磨床），
+ * 与契约 {@link MachineInteraction} 同属一条链，故一并放在共享层；载荷 id（{@code machine_rotate}）
+ * 与注册内容一字未改。</p>
  */
 public record MachineRotatePayload(BlockPos pos, Direction face, Vec3 hitLocation) implements CustomPacketPayload {
 
@@ -71,7 +75,7 @@ public record MachineRotatePayload(BlockPos pos, Direction face, Vec3 hitLocatio
 			if (!player.mayBuild())
 				return;
 			BlockState state = level.getBlockState(pos);
-			if (!(state.getBlock() instanceof CewsMachine machine))
+			if (!(state.getBlock() instanceof MachineInteraction machine))
 				return; // 不是本模组机器
 			if (machine.hasModeSwitch())
 				return; // 有模式的机器：扳手只切模式，不参与旋转

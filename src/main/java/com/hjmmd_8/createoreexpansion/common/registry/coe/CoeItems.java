@@ -5,7 +5,7 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 // （Java 没有扩展方法，链上只能写成 .tag(...)；函数版见 SeriesTraits#addStellarstoneTraits(ItemBuilder)。
 //  判定口径 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定，全部收口在 SeriesTraits#isStellarstone/isThunderite）
 import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
-import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipeTools;
+import com.hjmmd_8.createoreexpansion.common.charger.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.NetheriteStressMedallionItem;
@@ -16,7 +16,6 @@ import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMed
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.bridge.MedallionCurios;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelItem;
-import com.hjmmd_8.createoreexpansion.content.wave.gauge.WaveQueryGaugeItem;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;

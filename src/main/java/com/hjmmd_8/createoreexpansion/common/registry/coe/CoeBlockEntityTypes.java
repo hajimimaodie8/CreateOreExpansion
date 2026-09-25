@@ -8,24 +8,10 @@ import com.hjmmd_8.createoreexpansion.client.renderer.wave.EnergyWaveDisperserRe
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.OctaEnergyWaveDifferencerRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.SixFaceDisperserRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.WaveGateRenderer;
-import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.charger.block.StellarstoneStressChargerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalBuddingBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlockEntity;
 import com.hjmmd_8.createoreexpansion.client.renderer.StellarWaveTransmuterRenderer;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveRegulatorBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.OctaEnergyWaveDifferencerBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireSpeedRegulatorBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.SapphireWaveRegulatorBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneSpeedRegulatorBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.StellarstoneWaveRegulatorBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.SixFaceDisperserBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.wave.block.WaveSpeedRegulatorBlockEntity;
 import com.hjmmd_8.createoreexpansion.common.*;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
