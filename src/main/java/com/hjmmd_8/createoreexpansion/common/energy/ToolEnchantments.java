@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
+package com.hjmmd_8.createoreexpansion.common.energy;
 
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;

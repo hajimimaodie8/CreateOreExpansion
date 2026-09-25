@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.SkillResource;
 import net.minecraft.resources.ResourceKey;

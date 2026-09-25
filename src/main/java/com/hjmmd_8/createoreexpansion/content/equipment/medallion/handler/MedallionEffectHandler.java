@@ -7,7 +7,7 @@ import com.hjmmd_8.createoreexpansion.common.AllModEffects;
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;

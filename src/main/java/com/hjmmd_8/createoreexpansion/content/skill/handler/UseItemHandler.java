@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.handler;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.context.RightClickItemContext;
 import com.hjmmd_8.createoreexpansion.content.skill.context.UseOnBlockContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;

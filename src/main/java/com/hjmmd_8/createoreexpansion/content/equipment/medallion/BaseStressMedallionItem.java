@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion;
 
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;

@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;

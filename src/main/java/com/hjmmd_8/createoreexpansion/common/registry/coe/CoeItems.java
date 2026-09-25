@@ -14,7 +14,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.medallion.StellarstoneSt
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.ThunderiteStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.bridge.MedallionCurios;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelItem;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;

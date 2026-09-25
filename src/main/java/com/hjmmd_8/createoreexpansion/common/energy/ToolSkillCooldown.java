@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
+package com.hjmmd_8.createoreexpansion.common.energy;
 
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
 import net.minecraft.world.entity.player.Player;

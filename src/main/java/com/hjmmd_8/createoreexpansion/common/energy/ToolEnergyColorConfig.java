@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
+package com.hjmmd_8.createoreexpansion.common.energy;
 
 import java.awt.*;
 

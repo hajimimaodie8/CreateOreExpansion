@@ -1,9 +1,9 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.SkillEnergyCost;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnchantments;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;

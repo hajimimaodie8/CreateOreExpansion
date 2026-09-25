@@ -8,8 +8,8 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFact
 import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
 import net.minecraft.server.level.ServerPlayer;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.context.BowShootContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;

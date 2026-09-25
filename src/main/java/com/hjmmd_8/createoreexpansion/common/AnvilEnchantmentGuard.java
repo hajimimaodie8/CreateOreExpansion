@@ -1,8 +1,7 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllTags.AllItemTags;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnchantments;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceKey;
@@ -30,7 +29,9 @@ import java.util.Map;
  *     <li>在本类 {@link #RESTRICTIONS} 映射中登记「附魔注册键 → 允许的工具 tag」，铁砧即自动生效。</li>
  * </ul>
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+// P3k：modid 改从共享库取（值恒为 "createoreexpansion"，一字未变）——
+// 本类所在的 common 包整体属于 core 库，库不能反向依赖根 @Mod 入口 CreateOreExpansion。
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class AnvilEnchantmentGuard {
 
     /** 附魔注册键 → 允许附上的工具 tag（铁砧合并时校验） */

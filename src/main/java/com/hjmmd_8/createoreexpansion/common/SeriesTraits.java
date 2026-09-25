@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.tterrag.registrate.builders.BlockBuilder;
 import com.tterrag.registrate.builders.ItemBuilder;
 import com.tterrag.registrate.util.nullness.NonNullUnaryOperator;

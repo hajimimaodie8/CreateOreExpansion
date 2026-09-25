@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.context.UseOnBlockContext;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.HoeStrategy;

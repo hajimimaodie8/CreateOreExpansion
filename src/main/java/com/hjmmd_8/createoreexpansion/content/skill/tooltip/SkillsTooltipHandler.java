@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.tooltip;
 
 import com.hjmmd_8.createoreexpansion.common.AllKeys;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
+import com.hjmmd_8.createoreexpansion.common.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;

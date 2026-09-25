@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;

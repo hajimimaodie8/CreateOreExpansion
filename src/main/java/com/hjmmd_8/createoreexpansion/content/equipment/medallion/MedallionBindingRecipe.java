@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.medallion;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.HolderLookup;

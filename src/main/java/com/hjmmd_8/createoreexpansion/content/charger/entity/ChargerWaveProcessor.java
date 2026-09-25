@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.item.ItemEntity;

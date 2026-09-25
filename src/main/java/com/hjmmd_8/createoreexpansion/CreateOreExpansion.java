@@ -54,18 +54,23 @@ import net.neoforged.neoforge.registries.RegisterEvent;
 public class CreateOreExpansion {
 
     /**
-     * COE 模块的 mod id。
+     * COE 模块的 mod id —— <b>转发</b>共享库里的同名常量（P3k：真身已搬到 {@link CoeCore}）。
+     *
+     * <p>保留这个字段是为了让 {@code @Mod} 注解与其余 15 处
+     * {@code @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)} 一行不改：
+     * 初始化式是另一个 {@code static final String} 常量，所以它仍是<b>编译期常量表达式</b>
+     * （JLS 15.29），可以继续出现在注解里。</p>
      *
      * <p><b>别再拿它当命名空间用</b>：注册命名空间是 {@link CoeCore#REGISTRY_NAMESPACE}
      * （值恰好相同，但语义不同——CEWS / TRANS 两个模块也用它）。
      * 需要拼 {@code ResourceLocation} / 注册 id / 语言键前缀时一律用那个常量。</p>
      */
-    public static final String MOD_ID = "createoreexpansion";
-
-    public static IEventBus MOD_BUS;
+    public static final String MOD_ID = CoeCore.MOD_ID;
 
     public CreateOreExpansion(IEventBus modEventBus, ModContainer modContainer) {
-        MOD_BUS = modEventBus;
+        // P3k：MOD 事件总线随「mod 身份」常量一起搬到共享库（库没有生命周期，
+        // 也不该反向依赖 @Mod 入口）；本类只负责在构造时把它填上。全仓无消费者。
+        CoeCore.MOD_BUS = modEventBus;
 
         // ── 共享地基的注册触发（P3d：原 CoeCore 的 @Mod 构造器整体搬到这里）─────────────
         // core 现在是普通库、没有自己的 mod 生命周期，而这些动作本来就是「createoreexpansion

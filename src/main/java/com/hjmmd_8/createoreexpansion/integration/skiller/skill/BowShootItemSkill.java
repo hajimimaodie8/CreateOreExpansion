@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.AutoSkillConfig;

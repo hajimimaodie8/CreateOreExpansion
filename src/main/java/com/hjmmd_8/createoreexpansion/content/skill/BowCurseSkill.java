@@ -2,9 +2,9 @@ package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.common.energy.SkillEnergyCost;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.context.BowShootContext;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.AbstractSkill;

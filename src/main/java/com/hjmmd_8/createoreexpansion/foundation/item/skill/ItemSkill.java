@@ -8,7 +8,7 @@ public interface ItemSkill extends Translatable {
 
     /**
      * 释放技能。技能实现应在真正生效前自行调用
-     * {@link com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy#tryConsume} 消耗能量。
+     * {@link com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy#tryConsume} 消耗能量。
      *
      * @param context 技能上下文
      * @param data    技能data

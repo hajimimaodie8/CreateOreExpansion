@@ -1,11 +1,12 @@
 package com.hjmmd_8.createoreexpansion.common;
 
 import net.minecraft.resources.ResourceLocation;
+import net.neoforged.bus.api.IEventBus;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * <b>core 共享库</b>的命名空间 / 日志出口（P3d：core 已从 mod 降级为<b>普通库</b>）。
+ * <b>core 共享库</b>的命名空间 / 日志 / mod 身份出口（P3d：core 已从 mod 降级为<b>普通库</b>）。
  *
  * <p><b>这个类不是 {@code @Mod} 入口</b>，也没有构造器：core 模块由根 {@code build.gradle} 的
  * {@code jarJar(implementation(project(':core')))} 嵌进 {@code META-INF/jarjar/}，
@@ -13,7 +14,7 @@ import org.apache.logging.log4j.Logger;
  * 不出现在 mod 列表里</b>。它的包因此可以与 {@code createoreexpansion} 重叠——
  * 这正是 P3d 把 core 从 mod 改成库的原因（mod 文件之间不允许同包，见 core/build.gradle 的注释）。</p>
  *
- * <p><b>它留下什么</b>（三个静态成员，500+ 处引用，因此<b>原地不动</b>）：</p>
+ * <p><b>它留下什么</b>（500+ 处引用，因此<b>原地不动</b>）：</p>
  * <ul>
  *   <li><b>注册命名空间</b> {@link #REGISTRY_NAMESPACE} —— 永远是 {@code createoreexpansion}，
  *       与 mod id <b>解耦</b>。任何 {@code ResourceLocation} 的 namespace、注册 id 拼接、
@@ -22,6 +23,18 @@ import org.apache.logging.log4j.Logger;
  *       {@code CreateOreExpansion.modLoc}）。</li>
  *   <li>{@link #LOGGER} —— 全模组唯一日志出口（logger 名仍是 {@code createoreexpansion}，
  *       所以日志前缀与拆分前逐字一致）。</li>
+ * </ul>
+ *
+ * <p><b>P3k 新增的两个「mod 身份」成员</b>（原先住在根 {@code CreateOreExpansion}）：</p>
+ * <ul>
+ *   <li>{@link #MOD_ID} —— mod id {@code createoreexpansion}。之所以要搬进库，是因为
+ *       {@code common/AllConfig} 与 {@code common/AnvilEnchantmentGuard} 用
+ *       {@code @EventBusSubscriber(modid = …)} 引用了它，而 {@code common} 包整体属于库 ⇒
+ *       库不能反向依赖 {@code @Mod} 入口。{@code CreateOreExpansion.MOD_ID} 保留为<b>转发字段</b>
+ *       （{@code static final String = CoeCore.MOD_ID} 仍是编译期常量表达式，可继续用在注解里），
+ *       所以其余 15 处 {@code @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)} 一行未改。</li>
+ *   <li>{@link #MOD_BUS} —— COE 的 MOD 事件总线。它没有消费者（全仓只有赋值、没有读取），
+ *       但仍随 {@link #MOD_ID} 一起搬来，由 {@code CreateOreExpansion} 构造器填入。</li>
  * </ul>
  *
  * <p><b>原来挂在这里的注册动作去哪儿了</b>：数据组件（{@code AllDataComponents}）、
@@ -46,6 +59,27 @@ public final class CoeCore {
      * 仍然全部落在 <b>同一个</b> 命名空间里，老存档/老数据包零影响。</p>
      */
     public static final String REGISTRY_NAMESPACE = "createoreexpansion";
+
+    /**
+     * COE 模块的 mod id —— {@code createoreexpansion}。
+     *
+     * <p>P3k 从 {@code CreateOreExpansion} 搬来：{@code common} 包整体属于共享库，而
+     * {@code AllConfig} / {@code AnvilEnchantmentGuard} 的 {@code @EventBusSubscriber(modid = …)}
+     * 需要它，库不能反向依赖 {@code @Mod} 入口。</p>
+     *
+     * <p><b>字面值不许改</b>：它同时是 mod id 与 {@code neoforge.mods.toml} 里的键；
+     * 注册命名空间另有 {@link #REGISTRY_NAMESPACE}（值相同、语义不同）。</p>
+     */
+    public static final String MOD_ID = "createoreexpansion";
+
+    /**
+     * COE 的 MOD 事件总线（P3k 从 {@code CreateOreExpansion} 搬来）。
+     *
+     * <p>全仓零消费者（只有赋值），保留是为了让「mod 身份」两个常量待在同一处；
+     * 由 {@code CreateOreExpansion} 构造器填入。读取时注意可能为 {@code null}
+     * （类初始化早于构造器）。</p>
+     */
+    public static IEventBus MOD_BUS;
 
     /**
      * 全模组唯一的日志出口。logger 名刻意用 {@link #REGISTRY_NAMESPACE}，

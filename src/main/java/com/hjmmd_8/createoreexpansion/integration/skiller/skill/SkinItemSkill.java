@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
+import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeEntityStrategy;
