@@ -5,6 +5,7 @@
 #   TRANS (mechanical transmutation)     is allowed to depend on COE
 #   COE   must NOT depend on CEWS or TRANS      (no reverse dependency)
 #   TRANS must NOT depend on CEWS
+#   CEWS  must NOT depend on TRANS        (CEWS is installable without TRANS)
 #   CORE  (the shared library module) must NOT depend on COE / CEWS / TRANS
 # Anything may depend on SHARED; SHARED is never judged as a source.
 #
@@ -117,6 +118,11 @@ function Test-Forbidden {
     if ($from -eq 'CORE' -and ($to -eq 'COE' -or $to -eq 'CEWS' -or $to -eq 'TRANS')) { return $true }
     if ($from -eq 'COE'   -and ($to -eq 'CEWS' -or $to -eq 'TRANS')) { return $true }
     if ($from -eq 'TRANS' -and $to -eq 'CEWS') { return $true }
+    # CEWS must stay installable without TRANS (TRANS requires COE, CEWS does not), so it
+    # must never reach into TRANS.  This pair used to be missing from the table -- that is
+    # how the WaveEnvironmentChecks -> AllFanProcessingTypes.TRANSMUTING edge stayed
+    # invisible until the stricter LAYER-OK criterion in layer-usage.ps1 surfaced it.
+    if ($from -eq 'CEWS'  -and $to -eq 'TRANS') { return $true }
     return $false
 }
 
@@ -211,7 +217,7 @@ foreach ($e in $entries) {
 
 Write-Host 'layering check: src/main/java + core/src/main/java'
 Write-Host ('  files by layer : COE={0}  CEWS={1}  TRANS={2}  SHARED={3}  CORE(library)={4}' -f $stats['COE'], $stats['CEWS'], $stats['TRANS'], $stats['SHARED'], $stats['CORE'])
-Write-Host '  forbidden edge directions checked : COE->CEWS, COE->TRANS, TRANS->CEWS, CORE->COE/CEWS/TRANS'
+Write-Host '  forbidden edge directions checked : COE->CEWS, COE->TRANS, TRANS->CEWS, CEWS->TRANS, CORE->COE/CEWS/TRANS'
 if ($NoFqn) { Write-Host '  (fully-qualified-reference pass disabled by -NoFqn)' }
 
 if ($violations.Count -eq 0) {
