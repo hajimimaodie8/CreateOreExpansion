@@ -7,3 +7,15 @@ pluginManagement {
 plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
+
+// ── P3a：多模块骨架（2026-09-25）──────────────────────────────────────────────
+// 只加 include，不动任何现有配置：根工程照旧用自己的 src/main + src/generated
+// 产出单 jar（createoreexpansion-1.0.0.jar），四个模块各有自己的 build.gradle /
+// gradle.properties / src/main/templates/META-INF/neoforge.mods.toml。
+// 回退方式：git checkout -- settings.gradle 并删掉 core/ coe/ cews/ transmutation/
+// all-neoforge/ buildSrc/ 六个目录即可。
+include 'core'          // 共享库：util / 机器交互契约 / 配置 / 标签页 / datagen 基座 / mixin 插件
+include 'coe'           // 矿物扩展（mod id 继续是 createoreexpansion）
+include 'cews'          // 能量波阵学
+include 'transmutation' // 机械嬗化学
+include 'all-neoforge'  // 开发聚合（P3a 占位）

@@ -1,0 +1,11 @@
+// ── transmutation：机械嬗化学（P3a 骨架）───────────────────────────────────────
+// P3c 才把 7 个文件（content/transmuting + foundation/TransmutationEventHandler
+// + registry/transmutation）搬进 transmutation/src/main/java/**（包名一字不改）。
+plugins {
+    id 'net.neoforged.moddev' // 版本由根 build.gradle 的 plugins 块提供
+    id 'coe-conventions'
+}
+
+// P3a 刻意不声明任何跨模块依赖。P3c 起按下面的行接上：
+//   implementation project(':core')
+//   implementation project(':coe')   // 第 4 层强依赖第 2 层（互锁），见四模块方案 §13

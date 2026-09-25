@@ -1,0 +1,14 @@
+// ── core：共享库模块（P3a 骨架）────────────────────────────────────────────────
+// 暂时是空模块：只有元数据 + mods.toml，没有任何 java/资源文件。
+// P3b 才把 108 个共享文件（util / 机器交互契约 / 配置 / 标签页 / datagen 基座 / mixin 插件）
+// 搬进 core/src/main/java/**（包名一字不改）。
+plugins {
+    // 版本由根 build.gradle 的 plugins { id 'net.neoforged.moddev' version '2.0.141' } 提供，
+    // 子模块这里**不能**再写 version（会报 plugin already on the classpath）。
+    id 'net.neoforged.moddev'
+    id 'coe-conventions'
+}
+
+// P3a 刻意不声明任何跨模块依赖（模块之间要保持零代码依赖）。
+// P3b 起再按下面的行接上：
+//   implementation project(':core')

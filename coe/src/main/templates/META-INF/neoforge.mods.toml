@@ -1,0 +1,51 @@
+# ${mod_name} — NeoForge 模块元数据模板（P3a 骨架）
+# 由 buildSrc 的 coe-conventions 插件在 processResources 时展开 TOML 占位符：
+#   模板：<module>/src/main/templates/META-INF/neoforge.mods.toml
+#   展开：<module>/build/generated/sources/modMetadata/META-INF/neoforge.mods.toml
+# 注意：本模块（coe）的 mod_id 必须继续是 createoreexpansion（注册命名空间不变）。
+modLoader = "javafml"
+loaderVersion = "${loader_version_range}"
+license = "${mod_license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
+description = '''${mod_description}'''
+
+# ── P3a 骨架阶段刻意不声明 [[mixins]] ────────────────────────────────────────
+# 本模块还没有自己的 mixin 配置；声明一个不存在的 config 会让加载期直接报错。
+# 搬入代码时（core 的 mixin 插件 / coe 的 createoreexpansion.mixins.json / …）在这里补：
+#   [[mixins]]
+#   config = "${mod_id}.mixins.json"
+
+[[dependencies."${mod_id}"]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+# Create 是四个模块共同的底座（版本区间沿用根工程那份的写法）
+[[dependencies."${mod_id}"]]
+modId = "create"
+type = "required"
+versionRange = "[6.0.10,6.1.0)"
+ordering = "NONE"
+side = "BOTH"
+
+# ── 模块间依赖：P3a 只留注释，不产生任何实际依赖（模块之间保持零代码依赖）──────
+# [[dependencies."${mod_id}"]]
+# modId = "coe_core"
+# type = "required"
+# versionRange = "[1.0.0,)"
+# ordering = "NONE"
+# side = "BOTH"

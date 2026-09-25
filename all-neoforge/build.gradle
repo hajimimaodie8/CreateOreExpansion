@@ -1,0 +1,15 @@
+// ── all-neoforge：开发聚合工程（P3a 只占位）──────────────────────────────────
+// 目标形态（照 Create Aeronautics 的 all-neoforge 写法）：一个 dev 运行环境同时装下
+// core / coe / cews / transmutation 四个模块 —— 在这里 evaluationDependsOn 各模块，
+// 只定义一套 runs，neoForge.mods 里把四个模块的 sourceSet 都登记进来。
+//
+// P3a 刻意**不应用 ModDevGradle**：骨架阶段引入跨模块 evaluationDependsOn 会让
+// `:core:build` 这类单模块构建被别的模块的配置状态牵连，而 P3a 的验收要求恰恰是
+// "每个模块都能各自 build"。P3f 再打开。
+tasks.register('p3aPlaceholder') {
+    group = 'p3a'
+    description = 'P3a 占位：all-neoforge 目前只是目录占位，P3f 才接四模块的 dev 运行环境'
+    doLast {
+        println 'all-neoforge: P3a 占位（尚未接入任何模块）'
+    }
+}

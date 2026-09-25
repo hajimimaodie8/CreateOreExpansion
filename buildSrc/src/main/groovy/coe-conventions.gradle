@@ -1,0 +1,142 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// coe-conventions —— 本工程多模块的共享 Gradle 约定（buildSrc 预编译脚本插件）
+//
+// 思路照 Create Aeronautics / Simulated-Project 的 multiloader-common.gradle：
+//   · 每个模块的 build.gradle 只留"这个模块独有的东西"；
+//   · 各模块都一样的东西（元数据展开 / 依赖仓库 / toolchain / 归档名）只有这一份。
+//
+// 模块 build.gradle 的用法（两行）：
+//     plugins {
+//         id 'net.neoforged.moddev'   // 版本由根 build.gradle 的 plugins 块提供
+//         id 'coe-conventions'
+//     }
+//
+// 硬约束：本插件**不碰根工程**——根 build.gradle 一个字节都不改，照旧产出单 jar。
+// ─────────────────────────────────────────────────────────────────────────────
+
+plugins {
+    id 'java-library'
+}
+
+// ── 1) 读模块自己的元数据 ────────────────────────────────────────────────────
+// 显式读本模块目录下的 gradle.properties，不依赖"项目级 gradle.properties 覆盖
+// 根 gradle.properties"的隐式优先级——根 gradle.properties 里同样有 mod_id /
+// mod_name / mod_license 这些键，拿错就等于四个模块撞同一个 mod id。
+def moduleProps = new Properties()
+def modulePropsFile = new File(project.projectDir, 'gradle.properties')
+if (modulePropsFile.isFile()) {
+    modulePropsFile.withInputStream { moduleProps.load(it) }
+}
+
+// 先取值，再把非保留键挂到 ext 上（顺序不能反：group/description 是 Project 自己的属性）
+def prop = { String key -> moduleProps.getProperty(key) }
+
+def modId      = prop('mod_id')
+def modName    = prop('mod_name') ?: project.findProperty('mod_name')
+def modVersion = prop('mod_version') ?: project.findProperty('mod_version')
+def modLicense = prop('mod_license') ?: project.findProperty('mod_license')
+def modAuthors = prop('mod_authors') ?: project.findProperty('mod_authors')
+def modDesc    = prop('mod_description') ?: prop('description') ?: project.findProperty('mod_description')
+def modGroup   = prop('group') ?: project.findProperty('mod_group_id')
+
+if (modId == null) {
+    throw new GradleException("coe-conventions: ${project.path} 没有 gradle.properties（至少需要 mod_id）")
+}
+
+// group / description / version / name / path 是 Project 自己的属性，塞进 ext 会让
+// `group = xxx` 这类赋值写到 ext 上、project.group 保持默认值 → 一律排除。
+def reservedKeys = ['group', 'description', 'version', 'name', 'path', 'status'] as Set
+moduleProps.each { k, v ->
+    if (!reservedKeys.contains(k.toString())) {
+        project.ext.set(k.toString(), v)
+    }
+}
+
+version = modVersion
+group = modGroup
+description = modDesc
+base {
+    // 未来从根工程退役的模块（coe）必须继续产出 createoreexpansion-1.0.0.jar 这个名字
+    archivesName = modId
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// ── 2) 依赖仓库 ─────────────────────────────────────────────────────────────
+// 与根 build.gradle 的仓库列表保持一致（P3b 搬代码时模块要能解析 create/flywheel/...）。
+repositories {
+    maven { url = project.rootProject.uri('libs-maven') } // 内置 Skiller 的本地 maven 布局（随仓库提交）
+    maven { url = 'https://maven.createmod.net' }         // Create, Ponder, Flywheel
+    maven { url = 'https://maven.ithundxr.dev/snapshots' } // Registrate
+    maven {
+        name = "Jared's maven"
+        url = 'https://maven.blamejared.com/'
+    }
+    maven {
+        name = 'Curios'
+        url = 'https://maven.theillusivec4.top/'
+    }
+    maven { url = 'https://cursemaven.com/' }
+    maven { url = 'https://api.modrinth.com/maven' } // Jade（可选集成）
+}
+
+// ModDevGradle 注册的 localRuntime（dev 期在、不发布）沿用根工程的口径
+if (configurations.findByName('localRuntime') != null) {
+    configurations.runtimeClasspath.extendsFrom(configurations.getByName('localRuntime'))
+}
+
+// ── 3) mods.toml 模板展开 ───────────────────────────────────────────────────
+// 与根 build.gradle 的 generateModMetadata 同一套写法，只是属性表来自本模块。
+def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    def replaceProps = [
+            minecraft_version      : project.findProperty('minecraft_version'),
+            minecraft_version_range: project.findProperty('minecraft_version_range'),
+            neo_version            : project.findProperty('neo_version'),
+            neo_version_range      : project.findProperty('neo_version_range'),
+            loader_version_range   : project.findProperty('loader_version_range'),
+            mod_id                 : modId,
+            mod_name               : modName,
+            mod_license            : modLicense,
+            mod_version            : modVersion,
+            mod_authors            : modAuthors,
+            mod_description        : modDesc
+    ]
+    inputs.properties replaceProps
+    // 模板按 UTF-8 读写（实测本机 Gradle 默认也是 UTF-8，输出与显式指定时逐字节相同；
+    // 这里写死只是为了不让"默认编码"变成隐式依赖）。
+    // ⚠ 模板里**不能出现裸的 ${...}**（哪怕是注释）：ProcessResources 的 expand 走的是
+    // Groovy SimpleTemplateEngine，${...} 会被当成 GString 里的展开运算符 ... 解析，
+    // 直接报 "Failed to parse template script ... Unexpected input: '('"。
+    // 要表达"占位符"这三个字就直接写中文，别写 ${...}。
+    filteringCharset = 'UTF-8'
+    expand replaceProps
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+
+// ── 4) ModDevGradle 配置 ────────────────────────────────────────────────────
+// 注意：这里必须用动态方式拿 neoForge 扩展——buildSrc 的编译 classpath 上没有
+// ModDevGradle（见 buildSrc/build.gradle 的说明），所以不能在预编译期引用其类型。
+def neoForgeExt = extensions.findByName('neoForge')
+if (neoForgeExt == null) {
+    throw new GradleException("coe-conventions: ${project.path} 必须在 plugins {} 里先应用 'net.neoforged.moddev'")
+}
+
+neoForgeExt.version = project.findProperty('neo_version')
+neoForgeExt.parchment {
+    minecraftVersion = project.findProperty('parchment_minecraft_version')
+    mappingsVersion = project.findProperty('parchment_mappings_version')
+}
+neoForgeExt.mods {
+    "${modId}" {
+        sourceSet sourceSets.main
+    }
+}
+neoForgeExt.ideSyncTask generateModMetadata

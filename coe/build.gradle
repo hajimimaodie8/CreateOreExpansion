@@ -1,0 +1,11 @@
+// ── coe：矿物扩展（P3a 骨架）───────────────────────────────────────────────────
+// mod id 必须继续是 createoreexpansion（注册命名空间与 id 一个都不许变）。
+// P3d 才把 154 个文件搬进 coe/src/main/java/**（包名一字不改）+ JarJar 内嵌 skiller。
+plugins {
+    id 'net.neoforged.moddev' // 版本由根 build.gradle 的 plugins 块提供
+    id 'coe-conventions'
+}
+
+// P3a 刻意不声明任何跨模块依赖。P3d 起按下面的行接上：
+//   implementation project(':core')
+//   jarJar(implementation("com.leaf:skiller:1.0.0"))

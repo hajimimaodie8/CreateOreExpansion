@@ -1,0 +1,11 @@
+// ── cews：能量波阵学（P3a 骨架）────────────────────────────────────────────────
+// P3e 才把 107 个文件（content/{charger,wave,machine,energyfield} + registry/cews）
+// 搬进 cews/src/main/java/**（包名一字不改）。
+plugins {
+    id 'net.neoforged.moddev' // 版本由根 build.gradle 的 plugins 块提供
+    id 'coe-conventions'
+}
+
+// P3a 刻意不声明任何跨模块依赖。P3e 起按下面的行接上（CEWS 单向依赖 COE）：
+//   implementation project(':core')
+//   compileOnly project(':coe')      // 材料来自矿物扩展：optional 依赖，运行期用 ModList.isLoaded 判定

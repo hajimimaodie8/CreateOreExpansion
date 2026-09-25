@@ -1,0 +1,13 @@
+// buildSrc 的构建脚本。
+//
+// 只用 Gradle 内置的 groovy-gradle-plugin（预编译脚本插件）。
+// 关键纪律：**这里刻意不声明任何外部插件依赖**（尤其是 ModDevGradle）。
+// 原因：buildSrc 的产物会加到整个 build（含根工程）的 buildscript classpath 上，
+// 若它带上了 net.neoforged.moddev，根 build.gradle 里那句
+//     plugins { id 'net.neoforged.moddev' version '2.0.141' }
+// 就会因为"plugin already on the classpath must not include a version"而报错——
+// 那等于污染根工程（P3a 第一验收标准禁止）。ModDevGradle 继续由根 build.gradle
+// 的 plugins 块提供，子模块只写 `id 'net.neoforged.moddev'`（不带版本）。
+plugins {
+    id 'groovy-gradle-plugin'
+}
