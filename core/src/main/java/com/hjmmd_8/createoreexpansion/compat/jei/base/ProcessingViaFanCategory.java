@@ -1,12 +1,11 @@
-package com.hjmmd_8.createoreexpansion.compat.jei.coe.base;
+package com.hjmmd_8.createoreexpansion.compat.jei.base;
 
 import java.util.List;
 import java.util.function.Supplier;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.compat.jei.coe.base.CreateRecipeCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.base.CreateRecipeCategory;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.simibubi.create.AllPartialModels;

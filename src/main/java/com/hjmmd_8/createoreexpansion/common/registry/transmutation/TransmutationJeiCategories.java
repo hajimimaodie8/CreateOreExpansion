@@ -3,9 +3,9 @@ package com.hjmmd_8.createoreexpansion.common.registry.transmutation;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.compat.jei.coe.base.ProcessingViaFanCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.base.ProcessingViaFanCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.transmutation.TransmutingCategory;
-import com.hjmmd_8.createoreexpansion.compat.jei.coe.base.CreateRecipeCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.base.CreateRecipeCategory;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
 
 import net.minecraft.core.registries.BuiltInRegistries;

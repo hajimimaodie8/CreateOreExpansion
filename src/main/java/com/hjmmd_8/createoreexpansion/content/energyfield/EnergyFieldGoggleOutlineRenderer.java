@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.client.AllRenderTypes;
+import com.hjmmd_8.createoreexpansion.client.render.types.AllRenderTypes;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;

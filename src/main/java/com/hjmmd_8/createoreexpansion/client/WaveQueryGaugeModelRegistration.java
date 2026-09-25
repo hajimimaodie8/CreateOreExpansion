@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.client;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 
 import net.minecraft.client.renderer.item.ItemProperties;
@@ -24,7 +23,7 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
  * 也不收发任何网络包。原版 {@code ItemOverrides.resolve} 是渲染期现查
  * {@code ItemProperties#getProperty}，所以在本事件里注册一定来得及。</p>
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = CoeCore.MOD_ID, value = Dist.CLIENT)
 public class WaveQueryGaugeModelRegistration {
 
 	/**

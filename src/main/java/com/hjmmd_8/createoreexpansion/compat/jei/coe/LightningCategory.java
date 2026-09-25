@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.compat.jei.coe;
 
-import com.hjmmd_8.createoreexpansion.compat.jei.coe.base.ProcessingViaFanCategory;
-
+import com.hjmmd_8.createoreexpansion.compat.jei.base.ProcessingViaFanCategory;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.mojang.blaze3d.vertex.PoseStack;

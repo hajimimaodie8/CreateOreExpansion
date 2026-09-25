@@ -5,7 +5,6 @@ import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.LanguageProvider;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;

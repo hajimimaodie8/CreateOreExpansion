@@ -8,14 +8,18 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 
 /**
- * <b>同名聚合别名</b>（P3k，照 P3c 的模式）：真正的声明住在它所属的层里——
+ * <b>同名聚合别名</b>（P3k，照 P3c 的模式；P3s 复核后确认落点正确、未改）：真正的声明住在它所属的层里——
  * {@link TransmutationEffects}（{@code common/registry/transmutation/}，TRANS 层）。
  *
  * <p><b>为什么保留这个类</b>：{@code transmutation_disorder} 被 COE
  * （{@code MedallionEffectHandler}、{@code JadeTopazBowEventHandler}）与
- * TRANS（{@code AllTransmutingType}、{@code TransmutationEventHandler}）共用，
- * 四个调用点写的都是 {@code AllModEffects.TRANSMUTATION_DISORDER}。保留一个同名别名，
+ * TRANS（{@code AllTransmutingType}）共用，调用点写的都是
+ * {@code AllModEffects.TRANSMUTATION_DISORDER}。保留一个同名别名，
  * 这些调用点只需改 import 一行——类名、字段名、注册 id、注册时机全部不变。</p>
+ *
+ * <p><b>P3s 复核结论</b>：本类不属于"把实现塞进骗人包名"那一类——它自己不持有任何声明，
+ * 只有一行转发，所以留在 {@code common/hub/} 这个「集成层」名字下是诚实的
+ * （同包兄弟 {@code AllFluids} 在本轮也被改成同样的纯转发形状）。</p>
  *
  * <p><b>P3l：本类已从 {@code common/} 顶层挪进 {@code common/hub/}</b>。原因是它无条件转发到
  * TRANS，而 {@code common} 顶层包要整体搬进 core 库——留在那里就是一个 {@code CORE → TRANS}

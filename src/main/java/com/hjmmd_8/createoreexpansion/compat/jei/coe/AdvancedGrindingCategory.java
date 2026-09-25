@@ -4,7 +4,6 @@ import java.util.List;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.compat.jei.coe.animation.AnimatedPowerAngleGrinder;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;

@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.data;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRegistrate;
@@ -45,7 +44,7 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * 与前缀、路径、条目顺序都与拆分前的"单 Registrate"逐字节一致
  * （见 {@code LayerRegistrate#genData}）。</p>
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class CreateOreExpansionDatagen {
 
     @SubscribeEvent

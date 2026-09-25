@@ -50,8 +50,9 @@ public final class AllCreativeModeTabs {
      * 比"波变器"更能代表这一板块（用户指定）。</p>
      *
      * <p>后续要把它整包拆成一个独立的内置 jar（新模块 CEWS），届时"哪些内容属于这个模块"就以
-     * {@link EnergyWaveStudyTab#CONTENTS} 那一份清单为准——所以清单只有一处，标签页内容与
-     * 未来的拆包依据共用它。</p>
+     * {@code common/registry/cews/EnergyWaveStudyTab#CONTENTS} 那一份清单为准——所以清单只有一处，
+     * 标签页内容与未来的拆包依据共用它。那个类在 P3s 已从 {@code common/hub/} 搬进 CEWS 自己的
+     * 注册包（它 17 项全是 CEWS 内容），本入口因此不再 import 它。</p>
      */
     public static final LayerCreativeTab ENERGY_WAVE_STUDY = CewsCreativeTabs.ENERGY_WAVE_STUDY;
 

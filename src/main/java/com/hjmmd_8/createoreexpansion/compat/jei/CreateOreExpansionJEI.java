@@ -12,7 +12,8 @@ import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsJeiCategories;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeJeiCategories;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationJeiCategories;
 import com.hjmmd_8.createoreexpansion.compat.jei.cews.StellarWaveTransmuterCategory;
-import com.hjmmd_8.createoreexpansion.compat.jei.coe.base.CreateRecipeCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.base.CreateRecipeCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.base.JeiRecipeLookup;
 
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -20,7 +21,6 @@ import mezz.jei.api.recipe.category.IRecipeCategory;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
-import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -114,14 +114,15 @@ public class CreateOreExpansionJEI implements IModPlugin {
 		flowCategories.forEach(c -> c.registerCatalysts(registration));
 	}
 
+	/**
+	 * 按配方类型把客户端已知配方喂给消费者（对外兼容面）。
+	 *
+	 * <p><b>P3s</b>：实现已下移到 core 的 {@link JeiRecipeLookup}（同名同签名，方法体逐字未改），
+	 * 这里保留一行转发，是为了不动任何既有调用点；下移的理由见那个类。</p>
+	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static <T extends Recipe<?>> void consumeTypedRecipes(Consumer<RecipeHolder<?>> consumer,
 		RecipeType<?> type) {
-		List<? extends RecipeHolder<?>> map = Minecraft.getInstance()
-			.getConnection()
-			.getRecipeManager()
-			.getAllRecipesFor((RecipeType) type);
-		if (!map.isEmpty())
-			map.forEach(consumer);
+		JeiRecipeLookup.<T>consumeTypedRecipes(consumer, type);
 	}
 }

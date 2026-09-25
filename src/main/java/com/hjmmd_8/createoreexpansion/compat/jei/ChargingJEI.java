@@ -3,7 +3,6 @@ package com.hjmmd_8.createoreexpansion.compat.jei;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.compat.jei.cews.ChargingCategory;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;

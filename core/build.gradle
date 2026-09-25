@@ -41,4 +41,9 @@ dependencies {
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
     compileOnly("com.tterrag.registrate:Registrate:${registrate_version}")
     compileOnly("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
+    // P3s：JEI 的通用基类（compat/jei/base/CreateRecipeCategory + ProcessingViaFanCategory +
+    // JeiRecipeLookup）搬进 core，它们直接引用 mezz.jei 的 IRecipeCategory / IDrawable 等 API。
+    // 坐标与根 build.gradle 逐字同源（compileOnly + 运行期由根工程的 runtimeOnly 提供），
+    // 因此 core 的发布元数据、嵌套 jar 内容与玩家运行期所需的 JEI 版本都不受影响。
+    compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
 }

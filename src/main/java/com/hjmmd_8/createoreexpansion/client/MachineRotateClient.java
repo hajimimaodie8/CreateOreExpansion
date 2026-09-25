@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction;
 import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -26,7 +26,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
  * （有模式的机器扳手只切模式，不旋转）。其它方块（Create 自己的机器、原版方块）一律放行，
  * 保持 Create/原版手感不变。</p>
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = CoeCore.MOD_ID, value = Dist.CLIENT)
 public final class MachineRotateClient {
 
 	private MachineRotateClient() {}

@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.skill.BowCurseSkill;
@@ -36,7 +36,7 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  * <p>技能效果逻辑在各技能类（{@link BowCurseSkill} / {@link BowDisarmSkill}）内，
  * 此处只负责按技能 id 分发。</p>
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class JadeTopazBowEventHandler {
 
 	@SubscribeEvent

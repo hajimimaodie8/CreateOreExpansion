@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.skill;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
 import com.hjmmd_8.createoreexpansion.skill.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.skill.context.HitSkillContext;

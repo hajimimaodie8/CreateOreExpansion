@@ -1,12 +1,10 @@
-package com.hjmmd_8.createoreexpansion.common.hub;
+package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import java.util.List;
 import java.util.function.Supplier;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
+import com.hjmmd_8.createoreexpansion.common.hub.AllCreativeModeTabs;
 
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
@@ -15,6 +13,19 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 
 /**
  * <b>机械动力：能量波阵学</b>（Create: Energy Wave Studies，简称 <b>CEWS</b>）板块的清单与创造标签页内容。
+ *
+ * <p><b>P3s：本类从 {@code common/hub/} 搬进 CEWS 自己的注册包</b>。理由有两条：
+ * ① 它的 17 项清单里每一件都是 CEWS 的东西（{@code CewsBlocks} / {@code CewsItems}），
+ * 一条 COE / TRANS 的成分都没有——它本来就是"CEWS 的清单"，挂在集成层是历史遗留；
+ * ② 它是 CEWS 层文件通向集成层的唯一一条边（{@code CewsMod → common.hub.EnergyWaveStudyTab}），
+ * 搬进本包后 CEWS 的 {@code LAYER-NO} 上下文里不再出现这个 blocker。落点是本包
+ * （{@code common.registry.cews}）而不是新建包：同包的 {@code CewsBlocks}/{@code CewsItems}
+ * 正是清单要读的两个类，且"注册 + 该注册的清单"同住一个层包是诚实的。</p>
+ *
+ * <p><b>调用点零改动</b>：{@code CewsMod} 里那句 {@code modEventBus.addListener(...)} 的
+ * 方法引用只跟着 import 走一行；{@code CreateOreExpansion} 构造器里的
+ * {@code EnergyWaveStudyTab.register()}-式接线（如果将来加）与页 id 常量
+ * {@link #TAB_ID} 的取值一字未变。</p>
  *
  * <p><b>这个类解决什么</b>：能量波系统（充能器 / 调级器 / 波速调节器 / 差波器 / 能量场控制器 /
  * 星辉波变器 / 强化避雷针 / 波情查询仪）原先和矿物、宝石、工具混在同一个标签页里。

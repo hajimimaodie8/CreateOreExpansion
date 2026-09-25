@@ -13,7 +13,8 @@ import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
  *
  * <p><b>为什么这里能引用 CEWS 的页而不违反分层方向</b>：本类读的是
  * {@link LayerCreativeTab#ENERGY_WAVE_STUDY_TAB_ID}（core 的 {@code static final String} 常量，
- * P3q 从 {@code common/hub/EnergyWaveStudyTab} 下移），<b>没有</b> import 任何 CEWS 层的类，
+ * P3q 从 {@code common/hub/EnergyWaveStudyTab} 下移；那个类本身 P3s 又搬到了
+ * {@code common/registry/cews/}），<b>没有</b> import 任何 CEWS 层的类，
  * 所以不存在 COE → CEWS 的编译期依赖。</p>
  *
  * <p><b>本类不做注册动作</b>：创造页注册表住在 {@link LayerCreativeTab}（core），

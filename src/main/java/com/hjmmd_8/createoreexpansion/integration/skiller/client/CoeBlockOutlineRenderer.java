@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
-import com.hjmmd_8.createoreexpansion.client.AllRenderTypes;
+import com.hjmmd_8.createoreexpansion.client.render.types.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.client.tool.OutlineRenderer;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;

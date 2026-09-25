@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.compat.jei.coe;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.compat.jei.coe.animation.AnimatedPowerAngleGrinder;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;

@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.client.renderer.EmptyEntityRenderer;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
@@ -14,7 +14,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = CoeCore.MOD_ID, value = Dist.CLIENT)
 public class JadeTopazBowModelRegistration {
 
     @SubscribeEvent

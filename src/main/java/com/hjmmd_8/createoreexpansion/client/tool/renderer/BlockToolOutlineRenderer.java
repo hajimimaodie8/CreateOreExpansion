@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.client.tool.renderer;
 import com.hjmmd_8.createoreexpansion.client.tool.OutlineRenderer;
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.client.tool.StrategyRenderer;
-import com.hjmmd_8.createoreexpansion.client.AllRenderTypes;
+import com.hjmmd_8.createoreexpansion.client.render.types.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
 import com.hjmmd_8.createoreexpansion.skill.IParams;
 import com.hjmmd_8.createoreexpansion.skill.DataSkill;

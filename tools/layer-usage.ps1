@@ -246,7 +246,10 @@ $layerHits     = @{}
 $layerDirectNo = @{}
 
 # BFS from a layer file; STOP at the first disallowed class on each branch and report
-# it together with the first hop that led there -- that pair is the actionable chain.
+# it together with the first hop that led there -- that pair explains WHY the file is
+# blocked.  P3s: it is NOT the edit target.  "DIRECT" now means "this file's own import
+# set contains the blocker" (see the $importers index in the layer-closure section);
+# the BFS hop is only printed as the "via" chain for files with no direct edge.
 function Get-LayerBlockers {
     param([string]$Start, [string[]]$Allow)
     $seen     = New-Object System.Collections.Generic.HashSet[string]
@@ -460,35 +463,82 @@ foreach ($L in $layerOrder) {
     }
     $rootBlockers = @($blockers | Where-Object { $layerOf[$_] -eq 'SHARED' })
 
+    # ---------------------------------------------------------------------
+    # P3s: the REAL direct importers, per blocker.
+    #
+    # The old "DIRECT -> X" line was the BFS FIRST HOP of Get-LayerBlockers:
+    # when the first hop was itself inside the allowed set, the BFS walked on
+    # and the blocker that surfaced could sit at the END of a long chain --
+    # e.g. StellarWaveEntity "DIRECT -> <a pile of unrelated renderers>",
+    # although the file imports nothing of the sort.  A chain tells you WHY a
+    # file is blocked; it does not tell you WHICH file to edit.
+    #
+    # This index answers the actionable question instead: for blocker B, which
+    # files have a DIRECT edge to B ($deps holds file-to-file edges, so this is
+    # the same relation check-layering.ps1 judges).  Both spellings are printed:
+    # the importer set is the work list, the chain stays as the explanation.
+    # ---------------------------------------------------------------------
+    $importers = @{}
+    foreach ($b in $blockers) {
+        $list = New-Object System.Collections.Generic.List[string]
+        foreach ($x in $allRels) {
+            if ($x -eq $b) { continue }
+            if ($deps[$x].Contains($b)) { $list.Add($x) }
+        }
+        $importers[$b] = @($list | Sort-Object)
+    }
+    $directBlockerCount = @($blockers | Where-Object { $importers[$_].Count -gt 0 }).Count
+
     $layerLines.Add('----------------------------------------------------------------------')
     $layerLines.Add(("--- {0}: {1} files | LAYER-OK={2} | LAYER-NO={3}" -f `
         $L, $all.Count, ($all.Count - $no.Count), $no.Count))
-    $layerLines.Add(("    distinct blocking classes: {0}  (root-resident SHARED: {1})" -f `
-        $blockers.Count, $rootBlockers.Count))
-    $layerConsole.Add(("  {0,-6} files={1,-4} LAYER-OK={2,-4} LAYER-NO={3,-4} blockers={4,-4} root-side={5}" -f `
-        $L, $all.Count, ($all.Count - $no.Count), $no.Count, $blockers.Count, $rootBlockers.Count))
+    $layerLines.Add(("    distinct blocking classes: {0}  (root-resident SHARED: {1}; with a real importer: {2})" -f `
+        $blockers.Count, $rootBlockers.Count, $directBlockerCount))
+    $layerConsole.Add(("  {0,-6} files={1,-4} LAYER-OK={2,-4} LAYER-NO={3,-4} blockers={4,-4} root-side={5,-4} imported={6}" -f `
+        $L, $all.Count, ($all.Count - $no.Count), $no.Count, $blockers.Count, $rootBlockers.Count, $directBlockerCount))
     $layerLines.Add('')
     if ($no.Count -gt 0) {
-        $layerLines.Add('  LAYER-NO files and the chain that blocks them:')
+        # Group only the files whose blocker is NOT directly imported by them --
+        # for those, the "via" chain IS the whole story.  Files with a real
+        # direct edge get a one-line DIRECT entry, which is the edit target.
+        $indOnly = New-Object System.Collections.Generic.List[string]
         foreach ($rel in $no) {
-            $layerLines.Add(("    LAYER-NO  {0}" -f $rel))
-            $hits = @($layerHits[$rel])
-            $dirHits  = @($hits | Where-Object { $layerDirectNo[$rel] -contains $_.Block })
-            $indHits  = @($hits | Where-Object { -not ($layerDirectNo[$rel] -contains $_.Block) })
-            foreach ($h in ($dirHits | Sort-Object Block)) {
-                $layerLines.Add(("        DIRECT  -> {0,-6} {1}" -f $layerOf[$h.Block], $h.Block))
+            if ($layerDirectNo[$rel].Count -gt 0) { continue }
+            $indOnly.Add($rel)
+        }
+        $dirFiles = @($no | Where-Object { $layerDirectNo[$_].Count -gt 0 })
+
+        $layerLines.Add(('  LAYER-NO files with a DIRECT edge to the blocker ({0}) -- these are the files to edit:' -f $dirFiles.Count))
+        foreach ($rel in $dirFiles) {
+            foreach ($b in $layerDirectNo[$rel]) {
+                $layerLines.Add(("    DIRECT  {0}  ->  {1,-6} {2}" -f $rel, $layerOf[$b], $b))
             }
-            foreach ($h in ($indHits | Sort-Object Block)) {
+        }
+        $layerLines.Add('')
+        $layerLines.Add(('  LAYER-NO files blocked only through a chain ({0}):' -f $indOnly.Count))
+        foreach ($rel in $indOnly) {
+            $layerLines.Add(("    LAYER-NO  {0}" -f $rel))
+            foreach ($h in (@($layerHits[$rel]) | Sort-Object Block)) {
                 $layerLines.Add(("        via {0} -> {1,-6} {2}" -f $h.First, $layerOf[$h.Block], $h.Block))
             }
         }
         $layerLines.Add('')
         $layerLines.Add('  distinct blockers for this layer (root-resident SHARED first):')
+        $layerLines.Add('    "files" = LAYER-NO files that reach it (chain included); "importers" =')
+        $layerLines.Add('    files with a DIRECT edge to it -- THAT set, not the file count, is the cut list.')
         foreach ($b in (@($blockers | Where-Object { $layerOf[$_] -eq 'SHARED' }) | Sort-Object)) {
-            $layerLines.Add(("    SHARED  {0,-4} files  {1}" -f $blockUse[$b].Count, $b))
+            $layerLines.Add(("    SHARED  {0,-4} files  {1,-4} importers  {2}" -f `
+                $blockUse[$b].Count, $importers[$b].Count, $b))
+            foreach ($x in $importers[$b]) {
+                $layerLines.Add(("              <- {0,-6} {1}" -f $layerOf[$x], $x))
+            }
         }
         foreach ($b in (@($blockers | Where-Object { $layerOf[$_] -ne 'SHARED' }) | Sort-Object)) {
-            $layerLines.Add(("    {0,-6}  {1,-4} files  {2}" -f $layerOf[$b], $blockUse[$b].Count, $b))
+            $layerLines.Add(("    {0,-6}  {1,-4} files  {2,-4} importers  {3}" -f `
+                $layerOf[$b], $blockUse[$b].Count, $importers[$b].Count, $b))
+            foreach ($x in $importers[$b]) {
+                $layerLines.Add(("              <- {0,-6} {1}" -f $layerOf[$x], $x))
+            }
         }
         $layerLines.Add('')
     }

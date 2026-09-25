@@ -11,8 +11,8 @@ import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
  * 它排在 {@link com.simibubi.create.AllCreativeModeTabs#PALETTES_CREATIVE_TAB}（Create 调色板）
  * 之前，即整条顺序 <b>矿物拓展 → 能量波阵学 → Create 调色板</b>。</p>
  *
- * <p>"哪些物品属于这个页"的唯一清单仍住在 {@code common/hub/EnergyWaveStudyTab#CONTENTS}
- * （集成层）——本类只管页本身。页 id 取
+ * <p>"哪些物品属于这个页"的唯一清单住在同包的 {@code EnergyWaveStudyTab#CONTENTS}
+ * （P3s 从 {@code common/hub/} 搬来，因为它 17 项全是 CEWS 的内容）——本类只管页本身。页 id 取
  * {@link LayerCreativeTab#ENERGY_WAVE_STUDY_TAB_ID}（core 常量，P3q 下移）：CEWS 与 COE
  * 的 {@code withTabsBefore} 链读的是同一个常量，页 id 只有一个来源。</p>
  *

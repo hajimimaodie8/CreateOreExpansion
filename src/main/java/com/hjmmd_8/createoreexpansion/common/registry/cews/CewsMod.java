@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.hub.EnergyWaveStudyTab;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;

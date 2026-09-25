@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.compat.jei.coe.base;
+package com.hjmmd_8.createoreexpansion.compat.jei.base;
 
 import static mezz.jei.api.recipe.RecipeType.createRecipeHolderType;
 
@@ -11,8 +11,6 @@ import javax.annotation.ParametersAreNonnullByDefault;
 
 import org.jetbrains.annotations.NotNull;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.compat.jei.CreateOreExpansionJEI;
 import com.simibubi.create.compat.jei.DoubleItemIcon;
 import com.simibubi.create.compat.jei.EmptyBackground;
 import com.simibubi.create.compat.jei.ItemIcon;
@@ -44,6 +42,24 @@ import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.level.ItemLike;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
+/**
+ * <b>JEI 配方类别的通用基类</b>（P3s：从 {@code compat/jei/coe/base} 搬进 core 共享库，
+ * 包名同步改为 {@code compat.jei.base}——它服务于 COE / CEWS / TRANS 三层，
+ * 原先挂在 COE 名下只是历史遗留）。
+ *
+ * <p><b>为什么必须下移</b>：{@code CoeJeiCategories}（COE）与
+ * {@code TransmutationJeiCategories}（TRANS）都要构造本类，而 TRANS 不能 import COE。
+ * 更关键的是它原先经 {@code CreateOreExpansionJEI} 反向引用 {@code @Mod} 入口
+ * {@code CreateOreExpansion}，那条链让"层 → 根"永远断不干净——下移并改调
+ * {@link JeiRecipeLookup} 之后，本类对根工程零引用。</p>
+ *
+ * <p><b>包名诚实性</b>：落点 {@code core/.../compat/jei/base/} 只描述"JEI 基类"，
+ * 不再假装属于某一层；同包的 {@link JeiRecipeLookup} 是被下移的
+ * {@code CreateOreExpansionJEI#consumeTypedRecipes} 的唯一新家（两边同名同签名）。</p>
+ *
+ * <p>行为零变化：方法体、字段、注册 id、翻译键、JEI 侧栏顺序都一字未动，
+ * 改动只有 package 行、两行死 import 与那一处静态调用。</p>
+ */
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
 public abstract class CreateRecipeCategory<T extends Recipe<?>> implements IRecipeCategory<RecipeHolder<T>> {
@@ -188,7 +204,7 @@ public abstract class CreateRecipeCategory<T extends Recipe<?>> implements IReci
 
 		@SuppressWarnings("unchecked")
 		public Builder<T> addTypedRecipes(IRecipeTypeInfo recipeTypeEntry) {
-			return addRecipeListConsumer(recipes -> CreateOreExpansionJEI.<T>consumeTypedRecipes(recipe -> {
+			return addRecipeListConsumer(recipes -> JeiRecipeLookup.<T>consumeTypedRecipes(recipe -> {
 				if (recipeClass.isInstance(recipe.value()))
 					//noinspection unchecked - checked by if statement above
 					recipes.add((RecipeHolder<T>) recipe);

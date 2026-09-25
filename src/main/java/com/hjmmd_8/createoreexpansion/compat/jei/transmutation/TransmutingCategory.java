@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.compat.jei.transmutation;
 
-import com.hjmmd_8.createoreexpansion.compat.jei.coe.base.ProcessingViaFanCategory;
-
+import com.hjmmd_8.createoreexpansion.compat.jei.base.ProcessingViaFanCategory;
 import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
 import com.simibubi.create.compat.jei.category.animations.AnimatedKinetics;
