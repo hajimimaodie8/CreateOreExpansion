@@ -345,10 +345,8 @@ public class EnglishLangProvider extends LanguageProvider {
         // never the processing-mode readouts). Every band boundary comes from the mode's own band
         // table (TransmuterMode#ATTACK_TIERS via SpeedBands); no rpm number is written here.
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm", "Attack speed: %s RPM (requires %s ~ %s RPM)");
-        // (1) current tier: tier X (this tier's rpm band) - this tier's field box
-        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier", "Attack field: tier %s (%s ~ %s RPM) · %s");
-        // (2) tier reference: every tier with its band and field box, so the player sees the next tier
-        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_table", "Tier reference: %s");
+        // one line per tier (2026-09-25: the single long reference line was too wide);
+        // the current tier is coloured bright by code, the text itself is identical for all tiers
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry", "tier %s (%s ~ %s RPM, %s)");
         // Field-box wording (radius 0 = the box is the machine itself, never "radius 0 blocks")
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core", "the field box is the machine itself");

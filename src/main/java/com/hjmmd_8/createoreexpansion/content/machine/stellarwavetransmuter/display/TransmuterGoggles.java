@@ -201,16 +201,19 @@ public final class TransmuterGoggles {
 	 * <b>攻击波变态的读数（按住 Shift 时）</b>——用户 2026-09 规格：攻击态按住 Shift
 	 * <b>不该显示加工态的内容</b>，只显示攻击态自己的行。
 	 *
-	 * <p>四行（顺序即显示顺序）：</p>
+	 * <p>行序（顺序即显示顺序）：</p>
 	 * <ol>
 	 *   <li><b>转速行</b>：当前转速 + 需求区间（区间两端取模式自报的
 	 *       {@link TransmuterMode#minimumRpm()} 与 {@link TransmuterMode#attackTierCeilingRpm()}，
 	 *       现为 128 ~ 256 RPM）；</li>
-	 *   <li><b>当前档行</b>（用户 2026-09 追加规格："对攻击态下该场合的半径与其所对应的转速进行提示"）：
-	 *       第 X 档 + <b>本档的转速区间</b> + 本档的场盒——玩家一眼看到"我现在这档是多少转速、
-	 *       场多大"；</li>
-	 *   <li><b>三档对照行</b>（同上规格："在第一档、第二档、第三档后面分别加上括号，注明对应的转速"）：
-	 *       逐档列出"第 N 档（下限 ~ 上限 RPM，场盒…）"，让玩家看得到<b>下一档要多少转速</b>；</li>
+	 *   <li><b>档位行 × N</b>（N = {@link TransmuterMode#attackTierCount()}，现为 3）：
+	 *       <b>一档一行</b>，每行"第 N 档（下限 ~ 上限 RPM，场盒…）"。
+	 *       前两版分别把三档挤进一条长对照行（用户 2026-09-25："你这个消息显示太长了，你全写在一行"）
+	 *       ——改成一行一档；<b>当前所处那一档用亮色（白）、其余灰色</b>，三行文案本身同构，
+	 *       颜色就是"我在哪档"的唯一标记。用户把"没到 128 RPM"也算作一个状态（"显然没有达到"），
+	 *       那个状态不在这里另写文案——由 Create 自己的"需求转速 / 显然…没有达到足够的转速"两行承担
+	 *       （见 {@code StellarWaveTransmuterBlockEntity#addToTooltip}），因此<b>未达门槛时本块照常
+	 *       列出三档（全灰）</b>，玩家能直接看到下一档要多少转速；</li>
 	 *   <li><b>说明行</b>：范围内的普通波穿过即被点燃为攻击波。</li>
 	 * </ol>
 	 *
@@ -218,7 +221,7 @@ public final class TransmuterGoggles {
 	 * 分档表（{@link TransmuterMode#attackTier} / {@link TransmuterMode#attackTierLowerRpm} /
 	 * {@link TransmuterMode#attackTierUpperRpm} / {@link TransmuterMode#attackTierRadiusAt} /
 	 * {@link TransmuterMode#attackTierCount}）——<b>这与攻击场判定是同一张表</b>，所以
-	 * "把 256 改成 320、或把 3 档改成 4 档"时，第 ②③ 行的区间与档数<b>自动跟着变</b>
+	 * "把 256 改成 320、或把 3 档改成 4 档"时，档位行的<b>条数</b>与每行边界<b>自动跟着变</b>
 	 * （循环上界就是 {@code attackTierCount()}，边界值就是 {@code attackTierLowerRpm/UpperRpm}）。
 	 * 唯一的加工是把 0 基的档位序号 {@code +1} 变成玩家看到的"第 X 档"，以及把半径 {@code 0}
 	 * 说成人话（"机器本体"）。</p>
@@ -240,42 +243,33 @@ public final class TransmuterGoggles {
 				(int) Math.abs(speed), SpeedBands.formatRpm(mode.minimumRpm()),
 				SpeedBands.formatRpm(mode.attackTierCeilingRpm()))
 				.withStyle(ChatFormatting.GRAY));
-		// ② 当前档行：第 X 档（本档转速区间）· 本档场盒——区间两端直读分档表（上界就是下一档下限，
-		// 不在这里自己算），半径也直读同一张表的档值；"档一位 = 场盒"的对应关系由表保证
-		GoggleUtil.forGoggles(tooltip,
-			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier",
-				tier + 1, SpeedBands.formatRpm(mode.attackTierLowerRpm(tier)),
-				SpeedBands.formatRpm(mode.attackTierUpperRpm(tier)), fieldSize(mode.attackTierRadiusAt(tier)))
-				.withStyle(ChatFormatting.RED));
-		// ③ 三档对照行：逐档列举区间与场盒。循环上界取 attackTierCount()、每档数值取
-		// attackTierLowerRpm/UpperRpm/RadiusAt——本方法与 tierTable() 里没有任何档数或边界常量，
-		// 这就是"改 256→320 或 3→4 档时文案自动跟随"的实现依据
-		GoggleUtil.forGoggles(tooltip,
-			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_table",
-				tierTable(mode)).withStyle(ChatFormatting.GRAY));
-		// ④ 说明行：这个场到底做什么（攻击态没有加工态那些"半径/加热/载荷"读数可说）
+		// ② 档位：<b>一档一行</b>（用户 2026-09-25 规格：原先三档挤在一条长对照行里"太长了"，
+		//    改成一行一档；当前所处那一档用亮色、其余用灰色，所以"我现在在哪档、下一档要多少转速"
+		//    一眼可见）。循环上界 = attackTierCount()、每档三个数都直读分档表——本方法零档数/阈值/
+		//    半径常量，改 256→320 或 3 档改 4 档时行数与边界自动跟随。
+		for (int i = 0; i < mode.attackTierCount(); i++)
+			GoggleUtil.forGoggles(tooltip, 1, tierLine(mode, i, i == tier));
+		// ③ 说明行：这个场到底做什么（攻击态没有加工态那些"半径/加热/载荷"读数可说）
 		GoggleUtil.forGoggles(tooltip,
 			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint")
 				.withStyle(ChatFormatting.DARK_GRAY));
 	}
 
 	/**
-	 * <b>三档对照行的内容</b>：逐档拼"第 N 档（下限 ~ 上限 RPM，场盒…）"，用既有的列表分隔符连接。
+	 * <b>单行档位</b>：{@code 第 N 档（下限 ~ 上限 RPM，场盒…）}，当前档亮色（{@link ChatFormatting#WHITE}）、
+	 * 其余灰色（{@link ChatFormatting#DARK_GRAY}）。
 	 *
-	 * <p>循环上界 {@code mode.attackTierCount()} 与每档的三个数值全部直读模式自报的分档表——
-	 * <b>本方法里没有任何档数、阈值或半径常量</b>：档数从 3 改成 4、或区间从 256 改成 320，
-	 * 这一行自动多一档 / 自动换边界。区间上界（= 下一档下限）由表给出，所以相邻两档不会各写各的。</p>
+	 * <p>颜色是<b>唯一的"当前档"标记</b>（用户 2026-09-25 规格："把当前机器所处状态对应的行，
+	 * 从灰色标成亮色（白色）"）——所以三行文案本身完全同构，只有颜色不同，玩家扫一眼就能定出自己在哪档。</p>
+	 *
+	 * <p>四个数值全部直读模式自报的分档表（循环上界由调用方取 {@code attackTierCount()}）：
+	 * 本方法里没有任何档数、阈值或半径常量。</p>
 	 */
-	private static MutableComponent tierTable(TransmuterMode mode) {
-		MutableComponent line = Component.empty();
-		for (int i = 0; i < mode.attackTierCount(); i++) {
-			if (i > 0)
-				line.append(Component.translatable("createoreexpansion.goggles.list_separator"));
-			line.append(Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry",
-				i + 1, SpeedBands.formatRpm(mode.attackTierLowerRpm(i)),
-				SpeedBands.formatRpm(mode.attackTierUpperRpm(i)), fieldSize(mode.attackTierRadiusAt(i))));
-		}
-		return line;
+	private static MutableComponent tierLine(TransmuterMode mode, int index, boolean current) {
+		return Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry",
+			index + 1, SpeedBands.formatRpm(mode.attackTierLowerRpm(index)),
+			SpeedBands.formatRpm(mode.attackTierUpperRpm(index)), fieldSize(mode.attackTierRadiusAt(index)))
+			.withStyle(current ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY);
 	}
 
 	/**

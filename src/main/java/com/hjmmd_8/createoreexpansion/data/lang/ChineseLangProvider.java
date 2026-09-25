@@ -236,12 +236,9 @@ public class ChineseLangProvider extends LanguageProvider {
         // 攻击态护目镜读数（用户 2026-09 规格：攻击态按住 Shift 只显示攻击态这几行，不显示加工态读数）
         // 区间两端（128 / 256）与三档的每一条边界都由模式自报的分档表给出
         // （TransmuterMode#ATTACK_TIERS，见 SpeedBands），文案里一个转速数字都没有：
-        // 改 256→320 或 3→4 档时这两行自动跟着变
+        // 改 256→320 或 3→4 档时档位行数与每行边界自动跟着变
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm", "攻击转速：%s RPM（需求 %s ~ %s RPM）");
-        // ① 当前档：第 X 档（本档转速区间）· 本档场盒（半径 0 换说法，见 _attack_field_core）
-        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier", "攻击场：第 %s 档（%s ~ %s RPM） · %s");
-        // ② 三档对照：逐档列出区间与场盒，让玩家看得到"下一档要多少转速"（档数由表给出）
-        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_table", "档位对照：%s");
+        // 档位：一档一行（用户 2026-09-25："显示太长了，你全写在一行"→ 拆行；当前档用亮色由代码上色）
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry", "第 %s 档（%s ~ %s RPM，%s）");
         // 场盒说法（半径 0 = 场盒就是机器本体，不写成"半径 0 格"）
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core", "场盒就是机器本体");
