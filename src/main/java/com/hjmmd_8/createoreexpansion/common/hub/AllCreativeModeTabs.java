@@ -15,6 +15,15 @@ import net.neoforged.bus.api.IEventBus;
  * {@code TransmutationRegistrate}）与两个物品类都靠 {@code AllCreativeModeTabs.BASE_TAB.key()}
  * 这类引用拿 {@code ResourceKey}，所以入口的<b>类名与两个常量名必须原样保留</b>。</p>
  *
+ * <p><b>P3t：两个常量已无层内消费者，但入口原样保留</b>。{@code EnergyWaveStudyTab}
+ * 原来读本类的 {@link #ENERGY_WAVE_STUDY} / {@link #BASE_TAB} 来判"塞进新页 / 从基础页剔除"，
+ * 而 hub 是<b>根侧</b>的类——CEWS 真要拆成子模块时看不见它，这条边就是 {@code layer-closure}
+ * 报表里 CEWS 最后的 blocker。现在它改读归属层自己的声明
+ * （{@code CewsCreativeTabs.ENERGY_WAVE_STUDY} 与 {@code CoeCreativeTabs.BASE_TAB}，
+ * 正是这两个字段的值来源，且 {@code CEWS -> COE} 是允许方向）。
+ * 于是本类只剩根侧 {@code CreateOreExpansion} 的 {@code registerTabs()} / {@code register(bus)}
+ * 两个调用；两个常量字段作为入口 API <b>原样保留</b>（值、顺序、语义一字未变）。</p>
+ *
  * <p><b>拆分后</b>：两个页的<b>声明</b>搬进各自层的类
  * （{@link CoeCreativeTabs#BASE_TAB} / {@link CewsCreativeTabs#ENERGY_WAVE_STUDY}），
  * 本类只负责"按拆分前的顺序登记"：</p>

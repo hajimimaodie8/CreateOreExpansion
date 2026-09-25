@@ -1,9 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
+import com.hjmmd_8.createoreexpansion.common.transmutation.TransmutationLink;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
-import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
@@ -34,6 +33,29 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * {@link IMedallion#isWearing} / {@link IMedallion#findEquipped}（内部经
  * {@code compat.curios} 桥接）。未装 Curios 时这些查询恒为假，于是佩的被动效果全部静默失效，
  * 但物品实体侧（星辉/雷鸣系列）的行为与 Curios 无关，照旧生效。</p>
+ *
+ * <p><b>P3t：嬗变液与嬗乱改走 core 契约</b>。本类要读的两个声明都属于 TRANS 层
+ * （{@code common/registry/transmutation/TransmutationFluids} 的嬗变液、{@code TransmutationEffects}
+ * 的嬗乱），而 {@code COE -> TRANS} 是禁止方向，所以改读 core 的窄契约
+ * {@link TransmutationLink}（实现由 TRANS 在声明初始化时注入）。两处判定与旧写法逐字相同：
+ * 液体侧还是 {@code getFluidTypeHeight(嬗变液的 FluidType) > 0}，效果侧还是同一个
+ * {@code ==} 身份比较（两侧类型见下条）；差别只是"谁去拿那两个对象"。
+ * 层文件因此不再 import 集成层的 {@code common/hub/AllFluids} / {@code AllModEffects}。</p>
+ *
+ * <p><b>P3t 顺带发现、刻意未修的既有缺陷</b>：{@link #onEffectApplicable} 里那句判定原本是
+ * {@code event.getEffectInstance().getEffect() == AllModEffects.TRANSMUTATION_DISORDER.get()}，
+ * 而 1.21 起 {@code MobEffectInstance#getEffect()} 返回 {@code Holder<MobEffect>}——于是它是
+ * "Holder 与 MobEffect 的身份比较"，<b>恒为 false</b>（编译能过只因非 final 类可转型成接口）。
+ * 也就是说这条 {@code MobEffectEvent.Applicable} 兜底<b>从来没拦下过任何一次嬗乱</b>；
+ * 真正生效的是 {@code TransmutationEventHandler} 里"接触嬗变液且佩戴星辉石佩就早退"那条主路径
+ * ——所以"星辉石免疫嬗乱"在流体接触这一路是好的，只有<b>非流体源</b>（雷鸣合金工具命中、
+ * 黄玉弓的转化紊乱等）没被拦。</p>
+ *
+ * <p><b>为什么本轮不在修</b>：修法是把比较右侧的 {@code .get()} 去掉（改成比较 holder），
+ * 但那样星辉石佩会开始豁免非流体源的嬗乱 = <b>玩法变化</b>，不属于这一轮（纯分层搬运）的范围。
+ * 本轮只保证搬完行为逐字不变——比较的两侧类型与对象都照旧，缺陷随代码一起搬。
+ * 要修就是一行：{@code event.getEffectInstance().getEffect() == TRANSMUTATION_DISORDER}
+ * （去掉右侧 {@code .get()}），改前需用户确认。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class MedallionEffectHandler {
@@ -56,7 +78,7 @@ public final class MedallionEffectHandler {
     public static void onEffectApplicable(MobEffectEvent.Applicable event) {
         if (event.getEntity() instanceof Player player
             && event.getEffectInstance() != null
-            && event.getEffectInstance().getEffect() == AllModEffects.TRANSMUTATION_DISORDER.get()
+            && TransmutationLink.get().isTransmutationDisorder(event.getEffectInstance().getEffect())
             && IMedallion.isWearing(player, CoeItems.STELLARSTONE_STRESS_MEDALLION.get())) {
             event.setResult(MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
         }
@@ -97,8 +119,7 @@ public final class MedallionEffectHandler {
                     continue;
                 boolean thunderite = isThunderiteItem(item.getItem());
                 boolean stellar = isStellarstoneItem(item.getItem());
-                boolean inTransmutationFluid =
-                    item.getFluidTypeHeight(AllFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D;
+                boolean inTransmutationFluid = TransmutationLink.get().isInTransmutationFluid(item);
                 if (thunderite) {
                     // 雷鸣系列：岩浆中免疫伤害（不销毁）、不燃烧、发光（仅岩浆）
                     boolean inLava = item.isInLava();

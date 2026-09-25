@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.hub.AllCreativeModeTabs;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
@@ -26,6 +26,16 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
  * 方法引用只跟着 import 走一行；{@code CreateOreExpansion} 构造器里的
  * {@code EnergyWaveStudyTab.register()}-式接线（如果将来加）与页 id 常量
  * {@link #TAB_ID} 的取值一字未变。</p>
+ *
+ * <p><b>P3t：页 key 改读「归属层」的声明，不再走集成层别名</b>。{@link #onBuildContents}
+ * 需要两个 {@code ResourceKey}：本层的 {@code energy_wave_study} 与 COE 层的 {@code base_tab}
+ * （用来判"塞进新页"还是"从基础页剔除"）。原先它读 {@code common/hub/AllCreativeModeTabs} 的
+ * 两个转发字段，而 hub 是<b>根侧</b>的类——CEWS 真要拆成子模块时看不见它，这一条边就是
+ * {@code layer-closure} 报表里 CEWS 最后的 blocker。现在改读
+ * {@link CewsCreativeTabs#ENERGY_WAVE_STUDY}（同层，连 import 都不需要）与
+ * {@link CoeCreativeTabs#BASE_TAB}（CEWS → COE，允许方向）；
+ * {@code AllCreativeModeTabs} 里那两个字段本来就是这两者的同名转发，所以
+ * {@code key()} 的取值、以及"哪些页受本方法影响"一个字都没变。层文件不再 import hub。</p>
  *
  * <p><b>这个类解决什么</b>：能量波系统（充能器 / 调级器 / 波速调节器 / 差波器 / 能量场控制器 /
  * 星辉波变器 / 强化避雷针 / 波情查询仪）原先和矿物、宝石、工具混在同一个标签页里。
@@ -101,9 +111,9 @@ public final class EnergyWaveStudyTab {
 	 */
 	public static void onBuildContents(BuildCreativeModeTabContentsEvent event) {
 		ResourceKey<CreativeModeTab> tab = event.getTabKey();
-		boolean intoCews = AllCreativeModeTabs.ENERGY_WAVE_STUDY.key()
+		boolean intoCews = CewsCreativeTabs.ENERGY_WAVE_STUDY.key()
 			.equals(tab);
-		boolean outOfBase = AllCreativeModeTabs.BASE_TAB.key()
+		boolean outOfBase = CoeCreativeTabs.BASE_TAB.key()
 			.equals(tab);
 		if (!intoCews && !outOfBase)
 			return;

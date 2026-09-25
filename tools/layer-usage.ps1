@@ -50,6 +50,11 @@ function Get-FileLayer {
     if ($r -match '^mixin/renderers/coe/') { return 'COE' }
     if ($r -match '^client/renderer/cews/') { return 'CEWS' }
     if ($r -match '^compat/jei/cews/')      { return 'CEWS' }
+    # P3t: the THIRD sibling of the two rules above.  P3r added the COE and CEWS JEI
+    # subtrees but forgot TRANS, so compat/jei/transmutation/TransmutingCategory was
+    # judged SHARED while TransmutationJeiCategories (TRANS) imported it.  Same shape,
+    # same reason: that package holds TRANS's JEI category renderer and nothing else.
+    if ($r -match '^compat/jei/transmutation/') { return 'TRANS' }
     if ($r -notmatch '/') { return 'SHARED' }
     if ($r -match '^(common|util|foundation|compat|client|data|mixin|integration)/') { return 'SHARED' }
     return 'COE'

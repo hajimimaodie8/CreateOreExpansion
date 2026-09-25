@@ -94,6 +94,11 @@ function Get-FileLayer {
     # P3r: CEWS-owned renderer + compat subtrees.
     if ($r -match '^client/renderer/cews/')                    { return 'CEWS' }
     if ($r -match '^compat/jei/cews/')                         { return 'CEWS' }
+    # P3t: the THIRD sibling of the two rules above.  P3r added the COE and CEWS JEI
+    # subtrees but forgot TRANS, so compat/jei/transmutation/TransmutingCategory was
+    # judged SHARED while TransmutationJeiCategories (TRANS) imported it.  Same shape,
+    # same reason: that package holds TRANS's JEI category renderer and nothing else.
+    if ($r -match '^compat/jei/transmutation/')                { return 'TRANS' }
     # SHARED: infrastructure, never judged as a source layer
     if ($r -notmatch '/') { return 'SHARED' }                       # mod root package
     if ($r -match '^(common|util|foundation|compat|client|data|mixin|integration)/') { return 'SHARED' }
@@ -125,6 +130,7 @@ function Get-TargetLayer {
     if ($rest -match '^mixin\.renderers\.coe(\.|$)')                 { return 'COE' }
     if ($rest -match '^client\.renderer\.cews(\.|$)')                { return 'CEWS' }
     if ($rest -match '^compat\.jei\.cews(\.|$)')                     { return 'CEWS' }
+    if ($rest -match '^compat\.jei\.transmutation(\.|$)')            { return 'TRANS' }
     # P3f: tolerate the BARE package name as well as a class inside it.  A file's own
     # `package com.hjmmd_8.createoreexpansion.util;` line is scanned by pass 2 like any
     # other fully-qualified occurrence, and without the (\.|$) alternative the string

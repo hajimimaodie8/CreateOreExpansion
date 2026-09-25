@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler;
 
-import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
+import com.hjmmd_8.createoreexpansion.common.transmutation.TransmutationLink;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -38,7 +38,7 @@ public final class MedallionClientHandler {
                 continue;
             boolean inVoid = item.getY() < -3;
             boolean inFluid = item.isInLava()
-                || item.getFluidTypeHeight(AllFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D;
+                || TransmutationLink.get().isInTransmutationFluid(item);
             if (inVoid || inFluid) {
                 if (random.nextFloat() > 0.25f)
                     continue; // 约每 4 tick 一个粒子
