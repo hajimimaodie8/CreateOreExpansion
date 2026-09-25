@@ -195,7 +195,7 @@ public final class WaveEnvironmentChecks {
 			return null;
 		}
 		if ("createoreexpansion".equals(ns) && "transmuting".equals(path))
-			return com.hjmmd_8.createoreexpansion.common.AllFanProcessingTypes.TRANSMUTING;
+			return com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllFanProcessingTypes.TRANSMUTING;
 		return null;
 	}
 

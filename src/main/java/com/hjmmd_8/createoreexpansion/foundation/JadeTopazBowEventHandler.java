@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.foundation;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllSkills;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.skill.BowCurseSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.BowDisarmSkill;

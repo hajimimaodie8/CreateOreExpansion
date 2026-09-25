@@ -38,7 +38,7 @@ public interface ConfigSkill<T, C extends SkillConfig> extends ItemSkill {
     /**
      * 将配置载入技能实例（若该技能实现了 ConfigSkill）。
      *
-     * <p>在 {@link com.hjmmd_8.createoreexpansion.common.AllSkills.SkillBuilder#register()}
+     * <p>在 {@link com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills.SkillBuilder#register()}
      * 中调用，保证技能实例的字段（如能量消耗）在注册后即为真实值。</p>
      */
     @SuppressWarnings({"unchecked", "rawtypes"})

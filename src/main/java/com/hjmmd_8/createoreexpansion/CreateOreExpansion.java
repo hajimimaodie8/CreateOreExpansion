@@ -1,17 +1,17 @@
 package com.hjmmd_8.createoreexpansion;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
-import com.hjmmd_8.createoreexpansion.common.AllCreativeModeTabs;
+import com.hjmmd_8.createoreexpansion.common.hub.AllCreativeModeTabs;
 import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
-import com.hjmmd_8.createoreexpansion.common.AllFanProcessingTypes;
-import com.hjmmd_8.createoreexpansion.common.AllFluids;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllFanProcessingTypes;
+import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
 import com.hjmmd_8.createoreexpansion.common.AllGemTags;
 import com.hjmmd_8.createoreexpansion.common.AllModEffects;
 import com.hjmmd_8.createoreexpansion.common.AllModPotions;
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
-import com.hjmmd_8.createoreexpansion.common.AllStructureProcessors;
-import com.hjmmd_8.createoreexpansion.common.AllTiers;
+import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllStructureProcessors;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllTiers;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;

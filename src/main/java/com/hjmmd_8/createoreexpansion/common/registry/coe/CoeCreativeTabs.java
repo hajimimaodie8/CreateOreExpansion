@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.EnergyWaveStudyTab;
+import com.hjmmd_8.createoreexpansion.common.hub.EnergyWaveStudyTab;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 
 /**

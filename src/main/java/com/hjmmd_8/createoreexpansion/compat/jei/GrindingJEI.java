@@ -6,7 +6,7 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.AdvancedGrindingCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.DismantlingCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.GrindingCategory;

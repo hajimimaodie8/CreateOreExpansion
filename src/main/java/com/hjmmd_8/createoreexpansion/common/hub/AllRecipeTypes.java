@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.common;
+package com.hjmmd_8.createoreexpansion.common.hub;
 
 import java.util.function.Predicate;
 

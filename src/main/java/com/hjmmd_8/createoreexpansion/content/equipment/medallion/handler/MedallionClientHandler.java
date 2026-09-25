@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler;
 
-import com.hjmmd_8.createoreexpansion.common.AllFluids;
+import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;

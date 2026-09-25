@@ -1,5 +1,4 @@
-package com.hjmmd_8.createoreexpansion.common;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
+package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;

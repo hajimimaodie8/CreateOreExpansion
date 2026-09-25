@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.lightning;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.simibubi.create.foundation.recipe.RecipeApplier;
 

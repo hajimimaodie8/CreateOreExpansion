@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
-import com.hjmmd_8.createoreexpansion.common.AllSkills;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
 import net.minecraft.resources.ResourceLocation;
 

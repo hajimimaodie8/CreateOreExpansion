@@ -1,6 +1,7 @@
-package com.hjmmd_8.createoreexpansion.common;
+package com.hjmmd_8.createoreexpansion.common.registry.transmutation;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingType;
 import com.simibubi.create.api.registry.CreateBuiltInRegistries;
 import com.simibubi.create.content.kinetics.fan.processing.FanProcessingType;

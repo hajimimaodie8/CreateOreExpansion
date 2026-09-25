@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.common;
+package com.hjmmd_8.createoreexpansion.common.hub;
 
 import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsCreativeTabs;

@@ -1,6 +1,7 @@
-package com.hjmmd_8.createoreexpansion.common;
+package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.worldgen.processor.BastionTreasureSapphireProcessor;
 import com.hjmmd_8.createoreexpansion.content.worldgen.processor.EndShipStellarstoneProcessor;
 

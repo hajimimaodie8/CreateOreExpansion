@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults.DebugLog;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxRef;

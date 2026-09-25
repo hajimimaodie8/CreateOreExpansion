@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.compat.jei.category;
 
-import com.hjmmd_8.createoreexpansion.common.AllFluids;
+import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
 import com.simibubi.create.compat.jei.category.animations.AnimatedKinetics;
 

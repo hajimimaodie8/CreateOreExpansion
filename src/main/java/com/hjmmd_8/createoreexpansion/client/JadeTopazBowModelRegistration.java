@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.client.renderer.EmptyEntityRenderer;
-import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 

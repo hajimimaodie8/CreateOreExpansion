@@ -1,9 +1,10 @@
-package com.hjmmd_8.createoreexpansion.common;
+package com.hjmmd_8.createoreexpansion.common.hub;
 
 import java.util.List;
 import java.util.function.Supplier;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 

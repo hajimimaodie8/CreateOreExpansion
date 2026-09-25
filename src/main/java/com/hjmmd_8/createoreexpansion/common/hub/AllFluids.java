@@ -1,6 +1,7 @@
-package com.hjmmd_8.createoreexpansion.common;
+package com.hjmmd_8.createoreexpansion.common.hub;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.transmuting.fluid.TransmutationFluidBlock;
 import com.hjmmd_8.createoreexpansion.content.transmuting.fluid.TransmutationFluid;
 import com.tterrag.registrate.util.entry.FluidEntry;

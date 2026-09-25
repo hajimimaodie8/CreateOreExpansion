@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
-import com.hjmmd_8.createoreexpansion.common.AllCreativeModeTabs;
+import com.hjmmd_8.createoreexpansion.common.hub.AllCreativeModeTabs;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;

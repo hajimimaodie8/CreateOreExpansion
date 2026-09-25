@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
-import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.Candidate;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveAuxResolver;

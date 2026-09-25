@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
-import com.hjmmd_8.createoreexpansion.common.AllStructureProcessors;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllStructureProcessors;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;

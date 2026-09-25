@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.grinding.block;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.GrinderInventory;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.SidedItemHandlers;

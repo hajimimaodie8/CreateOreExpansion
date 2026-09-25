@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.transmuting;
 
-import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRecipeTypes;
 import java.util.List;
