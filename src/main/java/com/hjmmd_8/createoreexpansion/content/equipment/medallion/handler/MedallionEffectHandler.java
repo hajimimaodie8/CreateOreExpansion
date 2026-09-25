@@ -38,24 +38,21 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * （{@code common/registry/transmutation/TransmutationFluids} 的嬗变液、{@code TransmutationEffects}
  * 的嬗乱），而 {@code COE -> TRANS} 是禁止方向，所以改读 core 的窄契约
  * {@link TransmutationLink}（实现由 TRANS 在声明初始化时注入）。两处判定与旧写法逐字相同：
- * 液体侧还是 {@code getFluidTypeHeight(嬗变液的 FluidType) > 0}，效果侧还是同一个
- * {@code ==} 身份比较（两侧类型见下条）；差别只是"谁去拿那两个对象"。
- * 层文件因此不再 import 集成层的 {@code common/hub/AllFluids} / {@code AllModEffects}。</p>
+ * 液体侧还是 {@code getFluidTypeHeight(嬗变液的 FluidType) > 0}，效果侧见下条；
+ * 差别只是"谁去拿那两个对象"。层文件因此不再 import 集成层的
+ * {@code common/hub/AllFluids} / {@code AllModEffects}。</p>
  *
- * <p><b>P3t 顺带发现、刻意未修的既有缺陷</b>：{@link #onEffectApplicable} 里那句判定原本是
+ * <p><b>P3u：修掉了"判据恒假"的既有缺陷</b>。{@link #onEffectApplicable} 里那句判定原本是
  * {@code event.getEffectInstance().getEffect() == AllModEffects.TRANSMUTATION_DISORDER.get()}，
  * 而 1.21 起 {@code MobEffectInstance#getEffect()} 返回 {@code Holder<MobEffect>}——于是它是
  * "Holder 与 MobEffect 的身份比较"，<b>恒为 false</b>（编译能过只因非 final 类可转型成接口）。
  * 也就是说这条 {@code MobEffectEvent.Applicable} 兜底<b>从来没拦下过任何一次嬗乱</b>；
- * 真正生效的是 {@code TransmutationEventHandler} 里"接触嬗变液且佩戴星辉石佩就早退"那条主路径
- * ——所以"星辉石免疫嬗乱"在流体接触这一路是好的，只有<b>非流体源</b>（雷鸣合金工具命中、
- * 黄玉弓的转化紊乱等）没被拦。</p>
- *
- * <p><b>为什么本轮不在修</b>：修法是把比较右侧的 {@code .get()} 去掉（改成比较 holder），
- * 但那样星辉石佩会开始豁免非流体源的嬗乱 = <b>玩法变化</b>，不属于这一轮（纯分层搬运）的范围。
- * 本轮只保证搬完行为逐字不变——比较的两侧类型与对象都照旧，缺陷随代码一起搬。
- * 要修就是一行：{@code event.getEffectInstance().getEffect() == TRANSMUTATION_DISORDER}
- * （去掉右侧 {@code .get()}），改前需用户确认。</p>
+ * 真正生效的只有 {@code TransmutationEventHandler} 里"接触嬗变液且佩戴星辉石佩就早退"那条主路径
+ * ——流体接触这一路是好的，只有<b>非流体源</b>（雷鸣合金工具命中、黄玉弓的转化紊乱等）没被拦。
+ * 现已按用户裁定去掉右侧的 {@code .get()}（改成比较同一个 {@code Holder}，实测本模组施放嬗乱的
+ * 三个现场塞进 {@code MobEffectInstance} 的就是那个 {@code DeferredHolder} 本身）；
+ * 判定实现住在 {@link TransmutationLink} 的 TRANS 侧实现里。
+ * 修后星辉石佩开始豁免<b>所有来源</b>的嬗乱——这是本次唯一的玩法改动。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class MedallionEffectHandler {

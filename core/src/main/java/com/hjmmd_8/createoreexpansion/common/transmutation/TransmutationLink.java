@@ -29,23 +29,26 @@ import net.minecraft.world.entity.Entity;
  * {@code Object2DoubleMap} 要对 key 取哈希）。提成查询后，未注入时一律得到 {@code false}，
  * 调用点的行为与"没有嬗变线"逐字一致，也不需要任何 {@code null} 分支。</p>
  *
- * <p><b>行为等价性</b>：注入实现后两个查询与旧的直读写法一一对应。
- * {@link #isInTransmutationFluid} 用的还是同一个
- * {@code entity.getFluidTypeHeight(TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D} 判定。</p>
+ * <p><b>行为等价性</b>：{@link #isInTransmutationFluid} 用的还是旧的
+ * {@code entity.getFluidTypeHeight(TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D} 判定，
+ * 逐字未变；{@link #isTransmutationDisorder} 的判据在本轮按用户裁定修正（见下两段），
+ * 那是刻意的玩法改动，不是搬运误差。</p>
  *
- * <p><b>{@link #isTransmutationDisorder} 逐字保留了旧调用的比较对象与两侧类型</b>：旧代码写的是
+ * <p><b>{@link #isTransmutationDisorder} 的入参与调用点逐字一致</b>：旧代码写的是
  * {@code event.getEffectInstance().getEffect() == AllModEffects.TRANSMUTATION_DISORDER.get()}，
- * 也就是把一个 {@code Holder<MobEffect>} 与一个 {@code MobEffect} 做<b>身份比较</b>——1.21 起
- * {@code MobEffectInstance#getEffect()} 返回的是 {@code Holder}，所以这个比较<b>恒为
- * {@code false}</b>（编译能过是因为非 final 类可以转型成接口）。也就是说
- * {@code MedallionEffectHandler} 那条"MobEffectEvent.Applicable 兜底"从来没有生效过
- * （嬗乱的主拦截路径是 {@code TransmutationEventHandler} 里对流体接触的早退，那条是好的）。</p>
+ * 左边是 {@code Holder<MobEffect>}（1.21 起 {@code MobEffectInstance#getEffect()} 的返回类型），
+ * 右边是 {@code MobEffect}。契约因此把入参定成 {@code Holder<MobEffect>}，调用点递进来的
+ * 就是 {@code getEffect()} 的返回值，不需要任何转换。</p>
  *
- * <p><b>本轮刻意不修它</b>：修法是把 {@code .get()} 去掉（比较 holder 而不是比较效果对象），
- * 但那样星辉石佩会开始豁免"来自非流体源"的嬗乱 = <b>玩法变化</b>，不属于这一轮
- * （纯分层搬运）的范围。所以契约的入参类型定成 {@code Holder<MobEffect>}——与调用点一致、
- * 也与旧比较的左侧一致，让搬过来的表达式两侧类型逐字不变。根因与一行修法记在
- * {@code MedallionEffectHandler} 的类注释里。</p>
+ * <p><b>P3u：那个恒假的判据已按用户裁定修掉</b>。上面那个"Holder 与 MobEffect 的身份比较"
+ * 编译能过（非 final 类可以转型成接口）却<b>恒为 {@code false}</b>，于是
+ * {@code MedallionEffectHandler} 那条 {@code MobEffectEvent.Applicable} 兜底从来没有生效过：
+ * 嬗乱只在"接触嬗变液"这一路被 {@code TransmutationEventHandler} 的早退拦住，
+ * <b>非流体源</b>（雷鸣合金工具命中、黄玉弓的转化紊乱等）从未被凝能佩拦下。
+ * 修法就是去掉右侧的 {@code .get()}——改成比较同一个 {@code Holder}：
+ * {@code effect == TransmutationEffects.TRANSMUTATION_DISORDER}，实现见
+ * {@code TransmutationFluids.Link#isTransmutationDisorder}。入参类型不变。
+ * 这是本轮唯一的玩法改动：修后星辉石佩豁免<b>所有来源</b>的嬗乱。</p>
  *
  * <p><b>未注入时的可观测性</b>：{@link #NONE} 的两个查询都返回 {@code false} ⇒ "星辉石物品在
  * 嬗变液里不发光/不免疫嬗乱"。而唯一会读本契约的两处都发生在开档之后的 tick / 事件里，
@@ -85,9 +88,9 @@ public interface TransmutationLink {
      * 该效果引用是不是嬗乱。
      *
      * <p>入参是 {@code Holder<MobEffect>}（{@code MobEffectInstance#getEffect()} 的返回类型），
-     * 与旧比较左侧逐字一致。实现侧<b>刻意</b>复刻旧的比较对象与类型组合，因此当前恒为
-     * {@code false}——见类注释「逐字保留了旧调用的比较对象与两侧类型」，那不是本契约的语义意图，
-     * 而是被搬运的既有缺陷。</p>
+     * 与调用点逐字一致。实现由 TRANS 层注入；未注入时返回 {@code false}
+     * （等价于「没有嬗变线」= 凝能佩不豁免嬗乱）。P3u 修掉了旧实现里
+     * "Holder 与 MobEffect 做身份比较"那个恒假判据，详见类注释。</p>
      */
     default boolean isTransmutationDisorder(Holder<MobEffect> effect) {
         return false;

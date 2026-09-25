@@ -39,8 +39,9 @@ import net.neoforged.neoforge.common.Tags;
  * {@link Link}）。原本 COE 层的两个凝能佩处理器直接 import 集成层的 {@code common/hub/AllFluids}、
  * {@code common/hub/AllModEffects} 去读这里的 {@code FluidType} 与嬗乱效果——那是
  * <b>禁止方向</b>（{@code COE -> TRANS}），也是 {@code layer-closure} 报表里最后两个 COE
- * blocker。现在它们改读 core 的契约，本层在自己的静态块里把实现注入进去：写法的变化只有
- * "谁去调 {@code .get()} 拿 FluidType"，语义（同一个 FluidType、同一次身份比较）一字未变。</p>
+ * blocker。现在它们改读 core 的契约，本层在自己的静态块里把实现注入进去：液体侧的写法变化只有
+ * "谁去调 {@code .get()} 拿 FluidType"，语义（同一个 FluidType）一字未变；嬗乱侧的判据随后在
+ * P3u 按用户裁定修正（见下方 {@code Link#isTransmutationDisorder} 的注释）。</p>
  */
 public final class TransmutationFluids {
 
@@ -98,21 +99,27 @@ public final class TransmutationFluids {
 		}
 
 		/**
-		 * <b>逐字保留旧的比较对象与两侧类型</b>：旧代码是
-		 * {@code event.getEffectInstance().getEffect() == TRANSMUTATION_DISORDER.get()}（一个
-		 * {@code Holder<MobEffect>} 与一个 {@code MobEffect} 做身份比较），因此恒为
-		 * {@code false}。缺陷的根因、为什么本轮不修、以及一行修法，见
-		 * {@link TransmutationLink} 的类注释与 {@code MedallionEffectHandler} 的类注释。
+		 * <b>P3u：判据已按用户裁定修正</b>。旧代码是
+		 * {@code event.getEffectInstance().getEffect() == TRANSMUTATION_DISORDER.get()}——左边
+		 * {@code Holder<MobEffect>}、右边 {@code MobEffect}，编译能过（非 final 类可转型成接口）
+		 * 却<b>恒为 {@code false}</b>，所以凝能佩只拦得住"接触嬗变液"那一路。现在去掉右侧的
+		 * {@code .get()}，改成比较同一个 {@code Holder}：{@code effect == TRANSMUTATION_DISORDER}
+		 * ——本模组施放嬗乱的三个现场（{@code AllTransmutingType}、{@code TransmutationEventHandler}、
+		 * 黄玉弓事件处理器）都是把<b>这个 {@code DeferredHolder} 本身</b>塞进
+		 * {@code new MobEffectInstance(...)} 的，所以这个身份比较对它们成立。
+		 * 根因说明见 {@link TransmutationLink} 与 {@code MedallionEffectHandler} 的类注释。
 		 *
-		 * <p>{@code effect != null} 是空值护栏，<b>不改变任何行为</b>：旧代码的左侧
-		 * （{@code MobEffectInstance#getEffect()}）永不为 {@code null}。它同时挡住一个时序坑——
-		 * 若入参为 {@code null} 而右侧那半个 {@code .get()} 照旧求值，就会在
-		 * {@code DeferredHolder} 尚未绑定的时刻（{@code @Mod} 构造期）抛
-		 * {@code Trying to access unbound value}（本轮的探针现场撞到过一次）。</p>
+		 * <p>{@code effect != null} 是空值护栏：旧代码的左侧
+		 * （{@code MobEffectInstance#getEffect()}）永不为 {@code null}，所以它不改变任何行为；
+		 * 它挡住的是一个时序坑——{@code ==} 不会短路，而 {@code TRANSMUTATION_DISORDER}
+		 * 是 {@code TransmutationEffects} 的静态字段，读它本身不碰 holder，但旧写法右侧那句
+		 * {@code .get()} 会，在 {@code DeferredHolder} 尚未绑定的时刻（{@code @Mod} 构造期）
+		 * 抛 {@code Trying to access unbound value}（P3t 的探针现场撞到过一次）。
+		 * 改后右侧已不解引用 holder，这条护栏仍保留（契约的查询不该因为空入参爆掉）。</p>
 		 */
 		@Override
 		public boolean isTransmutationDisorder(Holder<MobEffect> effect) {
-			return effect != null && effect == TransmutationEffects.TRANSMUTATION_DISORDER.get();
+			return effect != null && effect == TransmutationEffects.TRANSMUTATION_DISORDER;
 		}
 	}
 
