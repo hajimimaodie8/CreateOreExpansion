@@ -1,13 +1,17 @@
 package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter;
 
+import java.util.List;
+
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.WavePath;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.display.TransmuterGoggles;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 
@@ -29,9 +33,10 @@ import net.minecraft.world.phys.AABB;
  *       入口未开或撞到不可穿的机壳面 → 按撞墙处理；入口开而对面出口关 → 原路遣返；
  *       <b>未接入应力时不赋"加工"属性</b>：两口皆开时波原样飞过（见 {@link StellarWaveTransmuterBlockEntity#isWavePowered()}）；</li>
  *   <li>{@link #ATTACK} <b>攻击波变态</b>：变器对波<b>完全透明</b>——不做穿波转换、不遣返、
- *       <b>面开关也不拦波</b>（波照常飞过去）；同时变器自身成为<b>攻击场</b>：读取半径内
+ *       <b>面开关也不拦波</b>（波照常飞过去）；同时变器自身成为<b>攻击场</b>：场盒内
  *       <b>确实穿过场</b>的普通波被点燃成攻击波（{@link WaveTypes#ATTACK}；查询框按"两次扫描
  *       之间波最多能走的距离"外扩，穿过与否另按线段判定，见 {@link #applyField}）。
+ *       <b>场盒大小按转速分三档</b>（见下面的"攻击场三档"一段）。
  *       <b>未接入应力、或转速未达本模式门槛</b>（{@link #minimumRpm()} = 128 RPM，
  *       用户 2026-09-24 规格）时攻击场不点燃、一个实体都不查（波照旧飞过去，只是不赋攻击属性）。
  *       攻击波是纯攻击、不参与加工（加工路径已由波基类按波型闸门挡住，本模式不提供任何加工逻辑）。
@@ -50,6 +55,25 @@ import net.minecraft.world.phys.AABB;
  * 而是由模式自报的 {@link #minimumRpm()} 决定——加工态 0（只要在转即生效，口径不变），
  * 攻击态 {@link #ATTACK_MINIMUM_RPM}（{@code |转速| ≥ 128 RPM} 攻击场才生效）。门槛<b>由模式自报</b>，
  * 闸门与护目镜提示都只读这个自报值，任何调用方都不许出现 {@code if (mode == ATTACK)}。</p>
+ *
+ * <p><b>攻击场三档（用户 2026-09 规格，区间三等分 + 线性插值）</b>：攻击态的攻击场大小不再是一个
+ * 固定半径，而是按<b>当前转速</b>在 [{@link #ATTACK_MINIMUM_RPM}, {@link #ATTACK_MAXIMUM_RPM}]
+ * = [128, 256] RPM 上线性插值后三等分：</p>
+ * <ul>
+ *   <li><b>第一档</b>（128 ~ 170.67 RPM）：攻击场盒<b>就是机器本体</b>（场半径 {@code 0}）——
+ *       波必须<b>真的穿过这台机器</b>才会被点燃；</li>
+ *   <li><b>第二档</b>（170.67 ~ 213.33 RPM）：以自身为中心、<b>半径 1 格</b>的立方体（3×3×3）；</li>
+ *   <li><b>第三档</b>（≥ 213.33 RPM，含 256 以上）：以自身为中心、<b>半径 2 格</b>的立方体（5×5×5）。</li>
+ * </ul>
+ * <p>映射<b>只有一处实现</b>（{@link #attackTier}）：场判定（{@link #applyField}）与护目镜读数
+ * （{@link #appendReadout}）都读它，谁都不许再算一份。三档的下界/上界/档数三个常量与
+ * {@link #minimumRpm()} 的自报值同处一个类，<b>全仓没有第二份 128 / 256 / 3 的魔法数字</b>。
+ * 注意<b>攻击场半径与能量场档位的扫描半径是两回事</b>：后者（{@code scanRadius}，1/2/3）只服务
+ * 加工态的扫描读数与载荷抽取，攻击态不再读它。</p>
+ *
+ * <p><b>攻击态的护目镜读数也是模式自报</b>（{@link #appendReadout}）：按住 Shift 时攻击态显示的是
+ * 攻击态自己的三行（转速 + 需求区间 / 档位 + 场盒半径 / 场作用说明），<b>不会串到加工态那堆读数</b>；
+ * 三行里的档位与半径同样来自 {@link #attackTier}，调用方（方块实体）一行模式判断都没有。</p>
  *
  * <p><b>与波口开关的区别</b>：模式 = "变器怎么处理波"，存在方块实体里，扳手右键切换
  * （NBT + 同步包，见 {@link StellarWaveTransmuterBlockEntity#cycleMode()}）；
@@ -96,14 +120,21 @@ public enum TransmuterMode {
 		 * <b>本模式的场节拍</b>：攻击场按"波不可能整段穿过场盒"的最短间隔单独跑
 		 * （公式与推导见 {@link #shortestSafeFieldInterval()}），与每
 		 * {@link StellarWaveTransmuterBlockEntity#scanIntervalTicks()} tick 一次的重扫描解耦；
-		 * 再按波形轨迹能覆盖的观测间隔夹紧（{@link WavePath#MAX_OBSERVATION_GAP_TICKS}）。
+		 * 再按波形轨迹能覆盖的观测间隔夹紧（{@link WavePath#MAX_OBSERVATION_GAP_TICKS}），
+		 * 最后托底在 {@link #FIELD_INTERVAL_FLOOR_TICKS}。
+		 *
+		 * <p><b>三个因子的分工（缺一不可，顺序也固定）</b>：公式值只回答"多久看一眼在直觉尺度上够密"；
+		 * 折线跨度是<b>正确性硬上限</b>（观测间隔超过它，两次观测之间又会冒出没被任何线段覆盖的空档）；
+		 * 下限常量是<b>成本上的主动选择</b>——最小档（场半径 0，棱长 1 格）按公式只能算出 1 tick，
+		 * 而正确性已由折线保证，所以刻意不压到每 tick（理由见 {@link #FIELD_INTERVAL_FLOOR_TICKS}）。</p>
 		 */
 		@Override
 		public int fieldIntervalTicks() {
 			// 夹紧的理由：轨迹折线只覆盖最近 MAX_OBSERVATION_GAP_TICKS tick 的位移，
 			// 观测间隔一旦超过它，两次观测之间又会冒出"没被任何线段覆盖"的空档。
 			// 波速表或公式将来被放宽时，这里也不会漏（两处耦合只此一处，两侧都写了注释）。
-			return Math.min(shortestSafeFieldInterval(), WavePath.MAX_OBSERVATION_GAP_TICKS);
+			return Math.max(FIELD_INTERVAL_FLOOR_TICKS,
+				Math.min(shortestSafeFieldInterval(), WavePath.MAX_OBSERVATION_GAP_TICKS));
 		}
 
 		/**
@@ -121,6 +152,16 @@ public enum TransmuterMode {
 		}
 
 		/**
+		 * <b>攻击场三档区间的上界</b>（{@link #ATTACK_MAXIMUM_RPM} = 256 RPM）——与下界
+		 * {@link #minimumRpm()}（128）、档数（{@link #ATTACK_TIER_COUNT}）同处一个类，
+		 * 三档映射见基类的 {@link #attackTier}。护目镜的"需求 128 ~ 256 RPM"读的就是这两个自报值。
+		 */
+		@Override
+		public float attackTierCeilingRpm() {
+			return ATTACK_MAXIMUM_RPM;
+		}
+
+		/**
 		 * 攻击场：把"本轮确实穿过场盒"的普通波点燃成攻击波（{@link WaveTypes#ATTACK}）。
 		 *
 		 * <p><b>本场只做两件事</b>：一次实体查询（只找波实体）+ 逐个候选的"波最近走过的路径是否与
@@ -132,10 +173,10 @@ public enum TransmuterMode {
 		 * 设备计数 / 载荷估算）是<b>读数</b>，8 tick（≈160ms）玩家已看不出差别，也没有正确性要求；
 		 * 场是<b>穿过判定</b>，观测越稀越可能漏判。按最早的实现（场挂在 8 tick 的重扫描上、判定只看
 		 * "上一 tick 的位移线段"）空档有 7 tick 以上（Create 的 lazyTick 计数让实际周期略长于声明值），
-		 * 而半径 1 的场盒棱长只有 3 格（最高波速 12 格/秒
-		 * = 0.6 格/tick，正面穿场只要 5 tick &lt; 7）——这就是"被波速调节器加速过的波在半径 1 的
-		 * 变器上可能整段穿过而不被点燃"的根因。现在场按 {@link #fieldIntervalTicks()}
-		 * （攻击波变态 = 2 tick）单独跑，重扫描仍每
+		 * 而当时的场盒棱长只有 3 格（最高波速 12 格/秒
+		 * = 0.6 格/tick，正面穿场只要 5 tick &lt; 7；如今最小档的场盒棱长更是只有 1 格）——这就是
+		 * "被波速调节器加速过的波在变器上可能整段穿过而不被点燃"的根因。现在场按
+		 * {@link #fieldIntervalTicks()}（攻击波变态 = 2 tick）单独跑，重扫描仍每
 		 * {@link StellarWaveTransmuterBlockEntity#scanIntervalTicks()} tick 一次，两者互不牵连：
 		 * 这个漏波窗口被关掉，而热源/机器/计数那一整套并没有被一起提速。</p>
 		 *
@@ -159,9 +200,14 @@ public enum TransmuterMode {
 		 *
 		 * <p><b>瞬移不算穿过</b>：机器把波挪位置时（撞机器后推出方块外 / 遣返 / 结构坐标换算）那一跳
 		 * 由波实体的 {@code setPos} 覆写标成外力搬运，折线在此断开，不会被当成飞行位移。</p>
+		 *
+		 * <p><b>场盒半径由本模式自己算</b>：{@link #applyField} 收的是<b>转速</b>（调用方只负责
+		 * 把 {@code getSpeed()} 递进来，不判断模式、也不算半径），半径 = {@link #attackFieldRadius}
+		 * （= {@link #attackTier} 的三档映射，见类注释）。所以攻击场<b>不再取能量场档位的
+		 * {@code scanRadius}</b>——那个数只服务加工态的扫描读数与载荷抽取，两者别混。</p>
 		 */
 		@Override
-		public void applyField(Level level, BlockPos pos, int radius) {
+		public void applyField(Level level, BlockPos pos, float speed) {
 			// ===== 应力闸门（用户规格：未接入应力 → 变器对波不做任何属性改变）=====
 			// 未接入应力、或（攻击态）转速未达 128 RPM 门槛，就连实体查询都不做：本场存在的
 			// 唯一目的就是"给范围内的波赋攻击属性"，闸门关着时它没有任何别的活可干。
@@ -169,7 +215,7 @@ public enum TransmuterMode {
 			// 里面已经把模式自报的 minimumRpm 一起判了）——两处只有一个定义。
 			if (!wavePowered(level, pos))
 				return;
-			AABB field = fieldBox(pos, radius);
+			AABB field = fieldBox(pos, attackFieldRadius(speed));
 			for (AbstractChargerWaveEntity wave : level.getEntitiesOfClass(AbstractChargerWaveEntity.class,
 				queryBox(field)))
 				// 只调用一次"点燃"：是不是普通波由 trySetWaveType 自己判定（一生只能变一次），
@@ -208,6 +254,20 @@ public enum TransmuterMode {
 		public void onEnter(Level level, BlockPos pos) {
 			StellarWaveTransmuterBlock.forceAllPortsOpen(level, pos);
 		}
+
+		/**
+		 * <b>攻击态的护目镜读数</b>（用户 2026-09 规格：攻击态按住 Shift <b>不显示加工态那堆读数</b>）：
+		 * 只输出攻击态自己的三行（转速 + 需求区间 / 档位 + 场盒半径 / 场作用说明）。
+		 * 渲染实现放在 {@link TransmuterGoggles#appendAttackReadout}（{@code display} 包），
+		 * 本常量体只做一句委托——<b>不把一堆文案塞进枚举</b>。
+		 *
+		 * <p>三行里的档位与半径由那边读本模式自报的 {@link #attackTier} / {@link #attackFieldRadius}
+		 * 得到，<b>与攻击场判定共用同一处映射</b>：显示层一个数字都不重算，场与面板永远一致。</p>
+		 */
+		@Override
+		public void appendReadout(List<Component> tooltip, TransmuterGoggles.Readout readout) {
+			TransmuterGoggles.appendAttackReadout(tooltip, this, readout.speed());
+		}
 	};
 
 	/** 稳定的模式标识：NBT 落盘与翻译键后缀共用，等价于存档格式的一部分（改它要同时处理老存档）。 */
@@ -221,8 +281,25 @@ public enum TransmuterMode {
 	 * 不是一回事</b>：那个是"变器读取半径 2 格 / 3 格"的能量场档位分档，服务于扫描半径；
 	 * 本值是"攻击场要不要生效"的转速门槛。两者数值巧合相同，<b>概念与消费者都不同</b>——
 	 * 谁调整都不许顺手改另一个，所以刻意各留各的常量、各在自己的类里命名。</p>
+	 *
+	 * <p>它同时是<b>攻击场三档区间的下界</b>（{@link #attackTier}）——"门槛"与"第一档起点"
+	 * 本就是一回事，所以只留这一个常量，不另开一个同值的档位下界。</p>
 	 */
 	private static final float ATTACK_MINIMUM_RPM = 128.0F;
+
+	/**
+	 * <b>攻击场三档区间的上界（RPM）</b>——三档只覆盖 [128, 256]（用户 2026-09 规格：
+	 * "128~256 这个区间之内均匀分成三个档"）。
+	 *
+	 * <p>超过本值不再加档：第三档是最高档（{@link #ATTACK_TIER_COUNT} 夹紧），
+	 * 转速再高攻击场也不变大。它与 {@link #ATTACK_MINIMUM_RPM}、{@link #ATTACK_TIER_COUNT}
+	 * 三个常量加上 {@link #attackTier} 的公式，构成攻击档位的<b>全部口径</b>，
+	 * 全仓没有第二份 128 / 256 / 3 的魔法数字。</p>
+	 */
+	private static final float ATTACK_MAXIMUM_RPM = 256.0F;
+
+	/** <b>攻击场档数</b>：区间 [128, 256] 三等分（用户 2026-09 规格）。 */
+	private static final int ATTACK_TIER_COUNT = 3;
 
 	/** 护目镜面板上的行颜色（攻击态用红，一眼区分两态）。 */
 	private final ChatFormatting color;
@@ -270,15 +347,20 @@ public enum TransmuterMode {
 	 * 攻击波变态覆写为攻击场（<b>并自带应力闸门</b>：未接入应力<b>或转速未达本模式门槛</b>
 	 * 的机器一次实体查询都不做，见 {@link #wavePowered}）。</p>
 	 *
-	 * @param radius 本机当前读取半径（扫描已算好的那一个，见
-	 *               {@code StellarWaveTransmuterBlockEntity#resolveRadius()}）
+	 * <p><b>为什么参数是转速而不是半径</b>（用户 2026-09 规格）：场的几何是<b>本模式的事</b>。
+	 * 攻击态的场盒大小要按转速分三档（{@link #attackFieldRadius}），而"按档位算半径"这件事
+	 * 收在模式里之后，调用方只需要把 {@code getSpeed()} 递进来——它既<b>不判断模式</b>，
+	 * 也<b>不用知道半径从哪来</b>。之前传的那个半径取自能量场档位的 {@code scanRadius}，
+	 * 那是加工态扫描读数的口径，与攻击场无关，已不再使用。</p>
+	 *
+	 * @param speed 本机当前转速（RPM，<b>可能为负</b>；按绝对值判档，见 {@link #attackFieldRadius}）
 	 */
-	public void applyField(Level level, BlockPos pos, int radius) {
+	public void applyField(Level level, BlockPos pos, float speed) {
 	}
 
 	/**
 	 * <b>本模式"场"的扫描节拍（tick）</b>：变器按此间隔调用一次 {@link #applyField}；
-	 * <b>0 = 本模式没有场</b>（调用方不跑，连半径都不用读）。
+	 * <b>0 = 本模式没有场</b>（调用方不跑，连转速都不用读）。
 	 *
 	 * <p>默认返回 0——加工波变态没有场：它只在波<b>命中</b>变器的那一刻才有效果，没有"在区域内
 	 * 持续作用"这回事，也就不需要任何节拍。攻击波变态覆写为
@@ -292,7 +374,8 @@ public enum TransmuterMode {
 	 *
 	 * <p><b>它必须与 {@link StellarWaveTransmuterBlockEntity#scanIntervalTicks()} 分开</b>：那个
 	 * 是"读数（热源/机器/设备计数/载荷）的刷新间隔"，8 tick ≈ 160ms 足够；本方法是"场（穿过判定）
-	 * 的观测间隔"，它的正确性由"波能不能在两次观测之间整段穿过场盒"决定，必须更短。
+	 * 的观测间隔"——观测越稀，"波整段穿过场盒却没被任何一次观测看见"的风险越大
+	 * （该风险现已由波形路径折线兜住，见 {@link WavePath}，观测间隔退化为成本与余量参数）。
 	 * 一个数值服务两件事必然顾此失彼，故这里另开一个只属于模式的节拍。</p>
 	 *
 	 * @return 场扫描间隔（tick）；0 表示本模式没有场
@@ -324,6 +407,67 @@ public enum TransmuterMode {
 	 */
 	public float minimumRpm() {
 		return 0;
+	}
+
+	// ================= 攻击场三档（口径唯一处：常量 + 下面这一个公式） =================
+
+	/**
+	 * <b>攻击场档位映射</b>——<b>全仓唯一一处</b>把转速翻译成"第几档"的实现
+	 * （用户 2026-09 规格：128~256 RPM 区间三等分 + 线性插值）。
+	 *
+	 * <p>公式（三个常量都在本类里，本式<b>不含任何魔法数字</b>）：</p>
+	 * <pre>
+	 * t    = clamp((|speed| − ATTACK_MINIMUM_RPM) / (ATTACK_MAXIMUM_RPM − ATTACK_MINIMUM_RPM), 0, 1)
+	 * 档位 = clamp(floor(t × ATTACK_TIER_COUNT), 0, ATTACK_TIER_COUNT − 1)
+	 * </pre>
+	 * <p>代入现表数值（128 / 256 / 3 档）：<b>128 ~ 170.67 → 第 0 档</b>、
+	 * <b>170.67 ~ 213.33 → 第 1 档</b>、<b>≥ 213.33（含 256 以上，被夹在最高档）→ 第 2 档</b>。
+	 * 按<b>绝对值</b>判定——反转的轴同样算数，与全仓既有的 {@code Math.abs(getSpeed())} 口径一致。</p>
+	 *
+	 * <p><b>为什么不做成 {@code if (mode == ATTACK)} 那种调用方判断</b>：档位是攻击态自己的读数，
+	 * 场判定（{@link #applyField}）与护目镜（{@link #appendReadout}）都只问本方法一句，
+	 * 谁都不许另算一份——这是"场与面板显示的半径永远是同一个数"的唯一保证。</p>
+	 *
+	 * <p><b>默认实现对非分档模式无意义</b>（加工波变态没有场，本方法永远不会被它调用），
+	 * 但实现刻意不按模式分叉：公式只有这一份，以后要加"别的转速区间/别的档数"的模式，
+	 * 只需让它覆写本方法与两个区间常量。</p>
+	 *
+	 * @param speed 本机转速（RPM，可能为负；本方法内部取绝对值）
+	 * @return 档位序号 {@code 0 ~ ATTACK_TIER_COUNT − 1}（0 = 最低档）
+	 */
+	public int attackTier(float speed) {
+		double t = (Math.abs(speed) - ATTACK_MINIMUM_RPM) / (ATTACK_MAXIMUM_RPM - ATTACK_MINIMUM_RPM);
+		t = Math.max(0.0d, Math.min(1.0d, t));
+		return Math.max(0, Math.min(ATTACK_TIER_COUNT - 1, (int) Math.floor(t * ATTACK_TIER_COUNT)));
+	}
+
+	/**
+	 * <b>攻击场盒半径</b>（格）——由 <b>{@link #attackTier} 的档位映射</b>直接给出。
+	 *
+	 * <p>用户 2026-09 规格订的就是这个一一对应：<b>第 0 档 = 机器本体</b>（半径 {@code 0}，
+	 * 波必须真的穿过这台机器）、<b>第 1 档 = 半径 1 格</b>（3×3×3）、<b>第 2 档 = 半径 2 格</b>
+	 * （5×5×5）。所以本方法不另写一份分支，只是给"档位序号就是半径"这件事一个名字——
+	 * 这样场判定与显示都能读到一个语义明确的数，而<b>映射仍然只有 {@link #attackTier} 一处</b>。</p>
+	 *
+	 * @param speed 本机转速（RPM，可能为负）
+	 * @return 场盒半径（格）；{@code 0} = 场盒就是机器本体（棱长 1 格）
+	 */
+	public int attackFieldRadius(float speed) {
+		return attackTier(speed);
+	}
+
+	/**
+	 * <b>攻击场三档区间的上界（RPM）</b>——护目镜的"需求 %s ~ %s RPM"要打出区间的两端，
+	 * 下界取 {@link #minimumRpm()}（攻击态 = {@link #ATTACK_MINIMUM_RPM}），上界取本方法。
+	 *
+	 * <p>默认返回 {@link #minimumRpm()}（= 没有区间：不分档的模式上下界同值），
+	 * 攻击波变态覆写为 {@link #ATTACK_MAXIMUM_RPM}。<b>显示层因此一个新数字都不用写</b>，
+	 * 区间与 {@link #attackTier} 的映射永远同步。</p>
+	 *
+	 * @return 区间上界（RPM）
+	 */
+	public float attackTierCeilingRpm() {
+		return minimumRpm();
 	}
 
 	/**
@@ -368,26 +512,75 @@ public enum TransmuterMode {
 	public void onEnter(Level level, BlockPos pos) {
 	}
 
+	// ================= 护目镜读数（模式自报，调用方不判断模式） =================
+
+	/**
+	 * <b>本模式"按住 Shift 时"的读数行</b>——默认委托加工波变态那一整套读数
+	 * （{@link TransmuterGoggles#append}），攻击波变态覆写为攻击态自己的三行
+	 * （见 {@link TransmuterGoggles#appendAttackReadout}）。
+	 *
+	 * <p><b>为什么读数也要模式自报</b>（用户 2026-09 规格：攻击态按住 Shift 不该显示加工态内容）：
+	 * 两态的读数是两套完全不同的东西——加工态报"扫描半径 / 加热 / 载荷 / 可加工配方"，
+	 * 攻击态报"转速 + 需求区间 / 档位 + 场盒半径 / 场作用说明"。让调用方
+	 * （{@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip}）写
+	 * {@code if (mode == ATTACK)} 就是把模式知识漏到调用点；收进常量体后，以后再加模式同样
+	 * 只需覆写本方法，方块实体一行都不用改（与 {@link #fieldIntervalTicks()} /
+	 * {@link #locksWavePorts()} / {@link #onEnter} / {@link #applyField} 同一约定）。</p>
+	 *
+	 * @param tooltip 护目镜行列表（调用方已输出过名称行与模式行，见
+	 *                {@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip}）
+	 * @param readout 调用点打包好的本机读数（攻击态只用得到其中的 {@code speed}）
+	 */
+	public void appendReadout(List<Component> tooltip, TransmuterGoggles.Readout readout) {
+		TransmuterGoggles.append(tooltip, readout, true);
+	}
+
 	// ================= 攻击场的几何（各项口径只有一处实现，改动只发生在这里） =================
 
 	/**
-	 * 本机可能取到的<b>场半径下界</b>（格）。
+	 * 本机可能取到的<b>场半径下界</b>（格）——<b>现为 0</b>。
 	 *
-	 * <p>变器的读取半径只有三种取值：不在能量场里 = 1，弱场 = 2，强场 = 3
-	 * （见 {@code StellarWaveTransmuterBlockEntity#resolveRadius()}）。场节拍要成为
-	 * <b>与半径无关</b>的模式属性，就必须按最坏情形算；而"场盒越小 → 波整段穿过越快"，
-	 * 所以下界 1 是最坏情形：按棱长 3 格的场盒算出的节拍，对半径 2/3（棱长 5/7 格）同样安全
-	 * （按公式它们本可放宽到 4/5 tick，这里主动取更严的那个）。</p>
+	 * <p><b>为什么是 0（而不是当初写的 1）</b>：加入攻击场三档之后，最小档（第一档，
+	 * 128 ~ 170.67 RPM）的场盒<b>就是机器本体</b>，半径 {@code 0}、棱长 1 格
+	 * （{@link #attackFieldRadius} → {@link #attackTier}）。节拍公式按"场盒内最短弦长"算，
+	 * 弦长随半径单调递增，所以最小值就是这一档。</p>
+	 *
+	 * <p><b>与扫描半径无关</b>：变器那个 1/2/3 的读取半径
+	 * （{@code StellarWaveTransmuterBlockEntity#resolveRadius()}，能量场档位决定）只服务
+	 * 加工态的读数与载荷抽取，<b>攻击场不再读它</b>——两者别混。</p>
 	 */
-	private static final int MIN_FIELD_RADIUS = 1;
+	private static final int MIN_FIELD_RADIUS = 0;
+
+	/**
+	 * <b>场节拍的实用下限（tick）</b>：{@code fieldIntervalTicks()} 的结果不低于本值——
+	 * <b>实际节拍刻意保持在 2 tick</b>。
+	 *
+	 * <p><b>为什么需要这个下限</b>：{@link #shortestSafeFieldInterval()} 按"波不能整段穿过场盒"
+	 * 的直觉尺度算，最小档（半径 0，棱长 1 格）代入现表只能得到 {@code floor(1 ÷ 0.6 ÷ 2) = 0}
+	 * → 被 {@code max(1, …)} 托到 <b>1 tick</b>。但攻击场的<b>正确性已经不由节拍决定了</b>：
+	 * 判定读的是波自己的路径折线（{@link WavePath}，跨度 {@link WavePath#MAX_OBSERVATION_GAP_TICKS}
+	 * = 4 tick），一次观测就覆盖"自上次观测以来的<b>全部</b>位移"——<b>只要观测间隔 ≤ 折线跨度就不会
+	 * 漏判</b>。把节拍压到 1 tick 换不来任何正确性，只是把"每 tick 一次实体查询"这个成本换回来。
+	 * 1 tick 的收益（更早点燃、候选更少）与代价（每 tick 一查，且与 Create 的 lazyTick 语义无关地
+	 * 常驻）不成比例，故取 2 tick：比旧实现（8 tick 重扫描）密 4 倍，又不到每 tick。</p>
+	 *
+	 * <p>这条下限与正确性无关，纯粹是成本选择；折线跨度那条硬上限（
+	 * {@link WavePath#MAX_OBSERVATION_GAP_TICKS}）仍然照旧夹在最外层。</p>
+	 */
+	private static final int FIELD_INTERVAL_FLOOR_TICKS = 2;
 
 	/**
 	 * 场节拍的<b>安全系数</b>：节拍 ≤ 整段穿场耗时 ÷ 2。
 	 *
-	 * <p>取 2 的理由：判定只覆盖"最近一 tick 的位移线段"，两次场扫描之间有 {@code 节拍 − 1} tick
-	 * 的空档；只要 {@code 节拍 − 1} 小于"整段穿场耗时"（= 场盒内最短弦长 ÷ 每 tick 位移），
-	 * 波就不可能整段穿过而不被任何一次覆盖到。除以 2 让该不等式恒成立且留一倍余量
-	 * （现表下：穿场 5 tick、节拍 2 tick、空档 1 tick）。</p>
+	 * <p>取 2 的理由（历史口径，本值只影响公式给出的"直觉尺度"）：早先判定只覆盖
+	 * "最近一 tick 的位移线段"，两次场扫描之间有 {@code 节拍 − 1} tick 的空档；只要
+	 * {@code 节拍 − 1} 小于"整段穿场耗时"（= 场盒内最短弦长 ÷ 每 tick 位移），波就不可能整段
+	 * 穿过而不被任何一次覆盖到。除以 2 让该不等式留一倍余量。</p>
+	 *
+	 * <p><b>现在它的角色</b>：判定已改为读波形路径折线（{@link WavePath}，一次观测覆盖自上次
+	 * 观测以来的全部位移），所以正确性不再依赖这个不等式；本值剩下的作用是把公式输出压到一个
+	 * 偏保守的小数字上，再交给 {@link #FIELD_INTERVAL_FLOOR_TICKS} 与
+	 * {@link WavePath#MAX_OBSERVATION_GAP_TICKS} 从两侧收口。</p>
 	 */
 	private static final double FIELD_INTERVAL_SAFETY = 2.0d;
 
@@ -404,7 +597,8 @@ public enum TransmuterMode {
 	 *   <li>服务端卡顿造成的 tick 抖动。</li>
 	 * </ul>
 	 * <p>1 格 ≈ 上限速度（12 格/秒）下 1.7 tick 的行程，足以覆盖上述量级（约 3 个同时生效的
-	 * 最高档加速场叠加），又远小于半径本身的量级（半径 1 的场盒边长 3 格）。</p>
+	 * 最高档加速场叠加）；对最小档（半径 0，场盒棱长仅 1 格）而言这个余量比场盒本身还大一个量级，
+	 * 但外扩只放宽"看得到谁"，不放宽"算不算穿过"，所以只是多几个候选。</p>
 	 */
 	private static final double TRAVEL_SLACK = 1.0d;
 
@@ -469,13 +663,18 @@ public enum TransmuterMode {
 	 *       方块遍历）。</li>
 	 * </ul>
 	 *
-	 * <p><b>代入现表数值</b>：最大波速 12 格/秒 → 0.6 格/tick；半径 1 → 棱长 3 格 → 穿场
-	 * 3 ÷ 0.6 = 5 tick → 5 ÷ 2 = 2（向下取整）→ <b>2 tick</b>。（半径 2/3 的棱长 5/7 格对应
-	 * 8.33/11.67 → 4/5 tick，本方法主动取半径下界，对它们只会更安全。）</p>
+	 * <p><b>代入现表数值</b>：最大波速 12 格/秒 → 0.6 格/tick；最小档半径 0（= 机器本体）→ 棱长
+	 * 1 格 → 穿场 1 ÷ 0.6 = 1.67 tick → ÷ 2 = 0.83 → 向下取整 0 → 被 {@code max(1, …)} 托到
+	 * <b>1 tick</b>。第二/三档（半径 1/2，棱长 3/5 格）分别对应 2.5 / 4.17 → <b>2 / 4 tick</b>，
+	 * 本方法一律取最小档，对它们只会更保守。</p>
 	 *
-	 * <p>由此得到的保证：{@code 节拍 − 1} 恒小于整段穿场耗时（若波速极高导致算出的节拍被夹到 1，
-	 * 则两次观测之间干脆没有空档，覆盖是逐 tick 完整的），所以"正面穿场整段落在观测空档"
-	 * 不可能发生。</p>
+	 * <p><b>它只是公式，不是最终节拍</b>：攻击态的实际节拍见 {@code fieldIntervalTicks()}——
+	 * 三档里最小档给出的 1 tick 会被成本下限 {@link #FIELD_INTERVAL_FLOOR_TICKS}（= 2 tick）
+	 * 抬回去，理由见该常量。</p>
+	 *
+	 * <p>由此得到的保证（历史口径，供对照）：{@code 节拍 − 1} 恒小于整段穿场耗时（若波速极高导致
+	 * 算出的节拍被夹到 1，则两次观测之间干脆没有空档，覆盖是逐 tick 完整的），所以"正面穿场整段
+	 * 落在观测空档"不可能发生。</p>
 	 *
 	 * <p><b>本公式现在的角色（2026-09 起）</b>：正确性已由波形路径折线保证——场一次判定覆盖
 	 * "自上次观测以来的全部位移"（见 {@link #applyField}），所以本值只需要不慢于"波整段穿场的耗时"

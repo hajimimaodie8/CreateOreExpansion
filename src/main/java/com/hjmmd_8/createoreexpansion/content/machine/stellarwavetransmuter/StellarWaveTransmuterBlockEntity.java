@@ -217,18 +217,24 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 *
 	 * <p><b>为什么场不能挂在重扫描上</b>：{@link #refreshScan()} 那一套（热源 / 机器 / 设备计数 /
 	 * 载荷估算）是<b>读数</b>，8 tick ≈ 160ms 已足够，也确实不能提速（提速等于把那整套的代价乘几倍）。
-	 * 但攻击场是<b>穿过判定</b>：它的判定只看"最近一 tick 的位移线段"，两次场扫描之间有
-	 * {@code 节拍 − 1} tick 完全没有被覆盖，波只要在这段空档里整段穿过场盒就一次都不会被点燃。
-	 * 8 tick 下空档有 7 tick，而半径 1 的场盒棱长只有 3 格、最高波速 12 格/秒（0.6 格/tick）时
-	 * 正面穿场只要 5 tick &lt; 7 —— 这就是"被波速调节器加速过的波在半径 1 的变器上可能整段
-	 * 穿过而不被点燃"的根因。现在场按模式自报的节拍（{@link TransmuterMode#fieldIntervalTicks()}，
-	 * 攻击波变态 = 2 tick，空档 1 tick）单独跑，重扫描仍是 {@link #SCAN_INTERVAL} tick。</p>
+	 * 但攻击场是<b>穿过判定</b>：观测越稀，波"整段穿过场盒却没被任何一次观测看见"的风险越大。
+	 * 按最早的实现（场挂在重扫描上、判定只看"上一 tick 的位移线段"）8 tick 下空档有 7 tick，
+	 * 而当时的场盒棱长只有 3 格、最高波速 12 格/秒（0.6 格/tick）时正面穿场只要 5 tick &lt; 7
+	 * —— 这就是"被波速调节器加速过的波在变器上可能整段穿过而不被点燃"的根因；
+	 * 加入攻击场三档后最小档的场盒棱长更是只有 1 格。现在场按模式自报的节拍
+	 * （{@link TransmuterMode#fieldIntervalTicks()}，攻击波变态 = 2 tick）单独跑，
+	 * 重扫描仍是 {@link #SCAN_INTERVAL} tick。</p>
+	 *
+	 * <p><b>正确性现在不靠节拍</b>：判定读的是波自己的路径折线
+	 * （{@code content.charger.entity.WavePath}，跨度 4 tick）——一次观测覆盖"自上次观测以来的
+	 * 全部位移"，<b>只要观测间隔 ≤ 折线跨度就不会漏判</b>。节拍因此退化为成本参数，
+	 * 2 tick 是成本上的主动选择（见 {@code TransmuterMode#FIELD_INTERVAL_FLOOR_TICKS}）。</p>
 	 *
 	 * <p><b>一个诚实的旁注</b>：Create 的 {@code SmartBlockEntity#tick()} 用"先比较后自减"的计数
 	 * （{@code if (lazyTickCounter-- <= 0)}），所以重扫描的实际周期是
 	 * {@link #SCAN_INTERVAL} + 1 = 9 tick，而非字面的 8；旧实现空档实际是 8 tick。这既不影响
-	 * 本类的分工，也不影响场节拍公式（{@link TransmuterMode#fieldIntervalTicks()} 只依赖波速表与
-	 * 场盒棱长，与重扫描周期无关），只是"旧实现漏波"这一判断的前提数字更宽松一点。</p>
+	 * 本类的分工，也不影响场节拍公式（{@link TransmuterMode#fieldIntervalTicks()} 只依赖波速表、
+	 * 场盒棱长与折线跨度，与重扫描周期无关），只是"旧实现漏波"这一判断的前提数字更宽松一点。</p>
 	 *
 	 * <p><b>为什么这不等于"每 tick 开销"</b>：一轮场只做一次实体查询（只找波实体）+ 几个候选的
 	 * 线段判定，<b>没有任何方块遍历</b>；加工波变态（节拍 0）连查询都不做。相比之下同一台机器每
@@ -252,12 +258,11 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		if (++fieldTickCounter < interval)
 			return;
 		fieldTickCounter = 0;
-		// 半径复用重扫描已算好的 scanRadius，而不是在这里再调一次 resolveRadius()：
-		// resolveRadius() 每次都要遍历本维度的能量场、并按场源字符串回查场控方块实体（不便宜），
-		// 节拍从 8 tick 缩到 2 tick 后每轮都调等于把那份代价乘 4；scanRadius 由 refreshScan 每
-		// 8 tick 刷新一次，陈旧窗口 ≤8 tick，与"读数本来就 8 tick 一刷新"完全同一量级，
-		// 且这样点燃范围与护目镜显示的读取半径始终是同一个数。
-		mode.applyField(level, worldPosition, Math.max(1, scanRadius));
+		// 只递转速，不递半径：场的几何（攻击态按转速分三档的场盒大小）由模式自己算
+		// （TransmuterMode#attackFieldRadius），本类既不判断模式、也不知道半径从哪来。
+		// getSpeed() 是网络侧缓存值（O(1)），比 refreshScan 那边每次都要遍历能量场、
+		// 按场源字符串回查场控方块实体的 resolveRadius() 便宜得多。
+		mode.applyField(level, worldPosition, getSpeed());
 	}
 
 	// ================= 处理模式（双态） =================
@@ -794,19 +799,25 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	}
 
 	/**
-	 * <b>护目镜面板</b>——行序（用户 2026-09-24 规格；本机信息块紧随 {@code super} 的动能转速行之后）：
+	 * <b>护目镜面板</b>——行序（用户 2026-09-24 规格；<b>Create 的动能行挪到末尾</b>）：
 	 * <ol>
-	 *   <li>{@code super.addToGoggleTooltip}：Create 自带的动能行（应力影响等），照旧不动；</li>
-	 *   <li>本机灰名行「星辉波变器」（既有键 {@code goggles.stellar_wave_transmuter}）；</li>
-	 *   <li><b>模式行</b>（用户要求"放在第一行"= <b>本机信息块的第一行</b>）——恒显示，不按 Shift
-	 *       也能看到；颜色取 {@link TransmuterMode#displayColor()}（{@link TransmuterGoggles#appendModeLine}）；</li>
+	 *   <li><b>名称行</b>「星辉波变器」（既有键 {@code goggles.stellar_wave_transmuter}，灰色）——
+	 *       <b>整个本机信息块的第一行</b>（用户要求"机器名称放在最前面"）；</li>
+	 *   <li><b>模式行</b>（紧随名称行）——恒显示，不按 Shift 也能看到；颜色取
+	 *       {@link TransmuterMode#displayColor()}（{@link TransmuterGoggles#appendModeLine}，
+	 *       全类唯一输出点）；</li>
 	 *   <li><b>状态行</b>（只在"效果不生效"时出现）：转速为 0（含未接通网络）→ 既有键
 	 *       {@code goggles.stellar_wave_transmuter_idle}（"未接入应力"）；在转但未达本模式门槛
 	 *       （攻击态 128 RPM）→ <b>这里一个字都不写</b>，交给 Create 的悬停提示去打
 	 *       （见 {@link #addToTooltip}，与搅拌器一字不差）；</li>
 	 *   <li>不按 Shift → 既有键 {@code goggles.transmuter_expand_hint}（"按住 Shift 查看机器详情"）；</li>
-	 *   <li>按 Shift 且门槛满足 → {@link TransmuterGoggles#append} 全量读数（<b>从"半径"行起</b>，
-	 *       模式行已在第 3 行输出过，全类只有那一处输出，不会出现两行模式）。</li>
+	 *   <li>按 Shift 且门槛满足 → <b>读数由模式自报</b>（{@link TransmuterMode#appendReadout}）：
+	 *       加工态是 {@link TransmuterGoggles#append} 的全量读数（<b>从"半径"行起</b>，
+	 *       模式行已在第 2 行输出过，全类只有那一处输出，不会出现两行模式）；
+	 *       攻击态是攻击态自己的三行（{@link TransmuterGoggles#appendAttackReadout}）——
+	 *       用户 2026-09 规格：攻击态按住 Shift <b>不该显示加工态的内容</b>；</li>
+	 *   <li><b>末尾</b>：{@code super.addToGoggleTooltip}——Create 自带的动能行
+	 *       （动能统计 / 应力影响）。它原先排在<b>最前</b>，用户要求名称行在最前面，故挪到这里。</li>
 	 * </ol>
 	 *
 	 * <p><b>为什么状态判据读转速、不读 {@code hasNetwork()}</b>：护目镜在客户端渲染，而转速与网络 id
@@ -816,15 +827,15 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	 */
 	@Override
 	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
-		boolean added = super.addToGoggleTooltip(tooltip, isPlayerSneaking);
+		// ① 名称行：用户 2026-09-24 规格——"星辉波变器"这个机器名称<b>放在最前面</b>，
+		//    它是整个本机信息块的第一行（既有翻译键，灰色）。
 		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter")
 			.withStyle(ChatFormatting.GRAY));
-		added = true;
 
-		// ③ 模式行：本机信息块的第一行（全类唯一输出点，见 TransmuterGoggles#appendModeLine）
+		// ② 模式行：紧随名称行（全类唯一输出点，见 TransmuterGoggles#appendModeLine）
 		TransmuterGoggles.appendModeLine(tooltip, mode);
 
-		// ④ 状态行：效果不生效时才有。两态（用户 2026-09-14 定稿）：
+		// ③ 状态行 / 读数行：效果不生效时才有。两态（用户 2026-09-14 定稿）：
 		//    没按住 Shift → 机器名 + 模式行 + 一行"按住 Shift 查看机器详情"（框小，不挡玩家正要点的那一面）；
 		//    按住 Shift   → 一次性把全部读数显示出来。
 		// 注：上一版是"按第 1 次给概要、按第 2 次给全量"的三档状态机，用户实测指出那个提示行
@@ -833,56 +844,67 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 			GoggleUtil.forGoggles(tooltip,
 				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_idle")
 					.withStyle(ChatFormatting.DARK_GRAY));
-			return true;
-		}
-		if (!isSpeedRequirementFulfilled())
+		} else if (!isSpeedRequirementFulfilled()) {
 			// 在转、但转速没到本模式门槛（攻击态 < 128 RPM）：Create 自己的悬停块会紧跟在本机信息块
 			// 之后打出"需求转速：/显然 <机器名> 没有达到足够的转速。"（见 addToTooltip）。
 			// 这里刻意一个字都不重复写——要的是"与搅拌器一字不差"，那就让搅拌器那条渲染路径自己说。
-			return true;
-
-		if (!isPlayerSneaking) {
+		} else if (!isPlayerSneaking) {
 			GoggleUtil.forGoggles(tooltip,
 				Component.translatable("createoreexpansion.goggles.transmuter_expand_hint",
 					Component.translatable("create.tooltip.keyShift")
 						.withStyle(ChatFormatting.WHITE))
 					.withStyle(ChatFormatting.DARK_GRAY));
-			return true;
+		} else {
+			// 按 Shift：读数<b>由模式自报</b>（用户 2026-09 规格：攻击态按住 Shift 不显示加工态内容）
+			// ——加工态走 TransmuterGoggles.append 那套全量读数，攻击态走攻击态自己的三行。
+			// 本类一行 if (mode == ATTACK) 都没有，两套读数的分派收在 TransmuterMode#appendReadout 里。
+			mode.appendReadout(tooltip, new TransmuterGoggles.Readout(scanRadius, getSpeed(), scannedHeat,
+				scannedItemContainers, scannedFluidContainers, scannedEnergyStorages, scannedEnergyStoredFe,
+				scannedCount, scannedStress, scannedTypeIds, recipeTypeCount, payloadItemCount, payloadTypeCount,
+				payloadFluidMb, payloadEnergyFe, rodCreditCount, lastWaveRecipeTypeIds));
 		}
 
-		TransmuterGoggles.append(tooltip, new TransmuterGoggles.Readout(scanRadius, getSpeed(), scannedHeat,
-			scannedItemContainers, scannedFluidContainers, scannedEnergyStorages, scannedEnergyStoredFe, scannedCount,
-			scannedStress, scannedTypeIds, recipeTypeCount, payloadItemCount, payloadTypeCount, payloadFluidMb,
-			payloadEnergyFe, rodCreditCount, lastWaveRecipeTypeIds), true);
+		// ④ Create 自带的动能行（动能统计 / 应力影响）——用户 2026-09-24 规格：<b>挪到末尾</b>。
+		//    它从"最先"改到这里之后，名称行才是整个本机信息块的第一行。
+		super.addToGoggleTooltip(tooltip, isPlayerSneaking);
+		// 名称行必然已加 → 恒 true。返回值必须兜住"我加过东西"（Create 侧收到 false 会丢掉整块提示）。
 		return true;
 	}
 
 	/**
 	 * <b>准心悬停信息</b>（Create 的 {@code IHaveHoveringInformation}，<b>不需要戴护目镜</b>）：
-	 * 先补一行<b>当前模式</b>，再把转速判定的部分交给 Create
+	 * 先补一行<b>机器名称</b>、再补一行<b>当前模式</b>，然后把转速判定的部分交给 Create
 	 * （{@code KineticBlockEntity#addToTooltip}）——转速不足时它自己会打出搅拌器同款两行
 	 * （金色 {@code create.tooltip.speedRequirement} + {@code create.gui.contraptions.not_fast_enough}）。
 	 *
-	 * <p><b>只在"没有护目镜信息"时才补模式行</b>：戴着护目镜时
-	 * {@code GoggleOverlayRenderer} 会先调 {@link #addToGoggleTooltip}（那里已经输出过模式行）、
-	 * 再调本方法，两边都写就会看到两行模式。判据用 {@code tooltip.isEmpty()}——渲染器恰好在两者之间
+	 * <p><b>行序与护目镜一致</b>（用户 2026-09 规格）：名称行（既有键
+	 * {@code goggles.stellar_wave_transmuter}）在最前，模式行紧随其后——悬停路径这两行与戴护目镜时
+	 * 看到的头两行完全相同，玩家换不换护目镜都不必重新找位置。</p>
+	 *
+	 * <p><b>只在"没有护目镜信息"时才补这两行</b>：戴着护目镜时
+	 * {@code GoggleOverlayRenderer} 会先调 {@link #addToGoggleTooltip}（那里已经输出过名称行与模式行）、
+	 * 再调本方法，两边都写就会看到两行名称/模式。判据用 {@code tooltip.isEmpty()}——渲染器恰好在两者之间
 	 * 插了一个空行（{@code CommonComponents.EMPTY}），所以"列表非空"就等于"护目镜已经把本机信息块
 	 * 画过了"。</p>
 	 *
-	 * <p>返回值必须把"我加过模式行"也算进去：没戴护目镜时 Create 的悬停块多半什么都不加
+	 * <p>返回值必须把"我加过这两行"也算进去：没戴护目镜时 Create 的悬停块多半什么都不加
 	 * （转速够快、没过载），返回 false 会让渲染器把整块提示丢掉（{@code GoggleOverlayRenderer}
 	 * 会因两个信息接口都没加东西而提前 return）。</p>
 	 */
 	@Override
 	public boolean addToTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
-		boolean modeAdded = false;
+		boolean added = false;
 		if (tooltip.isEmpty()) {
+			// 名称行在最前、模式行随后（与 addToGoggleTooltip 的头两行同序）
+			GoggleUtil.forGoggles(tooltip,
+				Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter")
+					.withStyle(ChatFormatting.GRAY));
 			TransmuterGoggles.appendModeLine(tooltip, mode);
-			modeAdded = true;
+			added = true;
 		}
 		// "过载 / 转速不足"两块都由 Create 自己渲染（它就是搅拌器走的那条路径，判据是我们覆写的
 		// isSpeedRequirementFulfilled）——这里不重复实现、也不新增任何翻译键。
-		return super.addToTooltip(tooltip, isPlayerSneaking) || modeAdded;
+		return super.addToTooltip(tooltip, isPlayerSneaking) || added;
 	}
 	// ================= NBT =================
 

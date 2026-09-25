@@ -341,6 +341,11 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "Energy payload: %s FE");
         add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "Charged rods: %s (1 strike drawn per wave; the wave strikes wherever it hits)");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "Recent wave can process:");
+        // Attack-mode goggles readout (2026-09 spec: in attack mode Shift shows only these three lines,
+        // never the processing-mode readouts). Both interval ends come from the mode itself.
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm", "Attack speed: %s RPM (requires %s ~ %s RPM)");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier", "Attack field: tier %s · field radius %s blocks");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint", "Normal waves crossing the field are ignited into attack waves");
         // Goggles panel: without Shift only the machine name + this hint (Shift shows every readout at once)
         add("createoreexpansion.goggles.transmuter_expand_hint", "Hold [%s] for machine details");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "Linked to %s machines · recipes");

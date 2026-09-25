@@ -23,10 +23,18 @@ import net.minecraft.resources.ResourceLocation;
  * <p><b>读数口径（历史修复，勿回退）</b>：一律只报"<b>读到了什么</b>"——加热档位、设备台数、
  * 储能量、载荷量、配方类型数；<b>绝不显示方块坐标</b>（用户 2026-09 明确要求）。</p>
  *
- * <p>行序：<b>处理模式行由调用方用 {@link #appendModeLine} 先输出</b>，{@link #append} 再从半径 →
- * 加热 → 载荷源设备（物品/流体容器、储能）→ 加工机数与应力 → 波加工转速 →
+ * <p>行序（用户 2026-09 规格：<b>机器名称行放最前面</b>）：调用方先输出<b>名称行</b>
+ * （{@code createoreexpansion.goggles.stellar_wave_transmuter}，灰色）→ 再输出<b>模式行</b>
+ * （{@link #appendModeLine}，全类唯一输出点）→ 然后才是我方读数行：加工态由 {@link #append} 渲染
+ * （半径 → 加热 → 载荷源设备（物品/流体容器、储能）→ 加工机数与应力 → 波加工转速 →
  * 绑定机器可加工配方（Shift 展开清单）→ 载荷概览（类型数/辅料·流体·电量/避雷针）→
- * 最近一波可加工属性（Shift）。</p>
+ * 最近一波可加工属性（Shift）），攻击态由 {@link #appendAttackReadout} 渲染（转速 + 需求区间 →
+ * 档位 + 场盒半径 → 场作用说明）→ 最后由调用方追加 Create 的动能行
+ * （{@code super.addToGoggleTooltip} 的"动能统计/应力影响"），<b>排在末尾</b>。</p>
+ *
+ * <p><b>两态读数不混</b>：哪一套读数由<b>模式自报</b>
+ * （{@link TransmuterMode#appendReadout}）——攻击态按住 Shift 看到的是攻击态的三行，
+ * <b>不会串到加工态那堆读数</b>，调用方一行 {@code if (mode == ATTACK)} 都没有。</p>
  */
 public final class TransmuterGoggles {
 
@@ -186,6 +194,45 @@ public final class TransmuterGoggles {
 				.withStyle(ChatFormatting.GRAY));
 		}
 		return true;
+	}
+
+	/**
+	 * <b>攻击波变态的读数（按住 Shift 时）</b>——用户 2026-09 规格：攻击态按住 Shift
+	 * <b>不该显示加工态的内容</b>，只显示攻击态自己的三行。
+	 *
+	 * <p>三行（顺序即显示顺序）：</p>
+	 * <ol>
+	 *   <li><b>转速行</b>：当前转速 + 需求区间（区间两端取模式自报的
+	 *       {@link TransmuterMode#minimumRpm()} 与 {@link TransmuterMode#attackTierCeilingRpm()}，
+	 *       现为 128 ~ 256 RPM）；</li>
+	 *   <li><b>档位/攻击场半径行</b>：第 X 档 + 场盒半径 N 格；</li>
+	 *   <li><b>说明行</b>：范围内的普通波穿过即被点燃为攻击波。</li>
+	 * </ol>
+	 *
+	 * <p><b>档位与半径读的是规格一的那个映射本身</b>（{@link TransmuterMode#attackTier} /
+	 * {@link TransmuterMode#attackFieldRadius}）——与攻击场判定<b>同一处实现</b>，
+	 * 本方法一个数字都不重算；唯一的加工是把 0 基的档位序号 {@code +1} 变成玩家看到的"第 X 档"。</p>
+	 *
+	 * <p>调用链：{@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip} →
+	 * {@link TransmuterMode#appendReadout}（模式自报）→ 本方法（攻击态那一支）。</p>
+	 *
+	 * @param mode  当前模式（必为攻击波变态；档位/半径/区间都由它自报，本方法不判断模式）
+	 * @param speed 本机当前转速（RPM，可能为负；显示与判档都取绝对值）
+	 */
+	public static void appendAttackReadout(List<Component> tooltip, TransmuterMode mode, float speed) {
+		// ① 转速行：当前转速 + 需求区间（两个端点都自报，显示层不写 128/256）
+		GoggleUtil.forGoggles(tooltip,
+			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm",
+				(int) Math.abs(speed), (int) mode.minimumRpm(), (int) mode.attackTierCeilingRpm())
+				.withStyle(ChatFormatting.GRAY));
+		// ② 档位/半径行：两个数都来自 attackTier 那一个映射（半径就是档位序号，见 attackFieldRadius）
+		GoggleUtil.forGoggles(tooltip,
+			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier",
+				mode.attackTier(speed) + 1, mode.attackFieldRadius(speed)).withStyle(ChatFormatting.RED));
+		// ③ 说明行：这个场到底做什么（攻击态没有加工态那些"半径/加热/载荷"读数可说）
+		GoggleUtil.forGoggles(tooltip,
+			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint")
+				.withStyle(ChatFormatting.DARK_GRAY));
 	}
 
 	/** 配方类型显示名**单行汇总**：顿号连接，最多 {@value #MAX_LISTED_TYPES} 项，超出补"等"。 */

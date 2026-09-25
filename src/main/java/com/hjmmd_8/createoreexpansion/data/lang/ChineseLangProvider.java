@@ -233,6 +233,11 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "电量载荷：%s FE");
         add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "已蓄满避雷针：%s 台（每发波抽取 1 次，波打中哪里就在哪里落雷）");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "最近波可加工：");
+        // 攻击态护目镜读数（用户 2026-09 规格：攻击态按住 Shift 只显示攻击态这三行，不显示加工态读数）
+        // 区间两端（128 / 256）由模式自报（TransmuterMode#minimumRpm / #attackTierCeilingRpm），不写进文案
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm", "攻击转速：%s RPM（需求 %s ~ %s RPM）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier", "攻击场：第 %s 档 · 场盒半径 %s 格");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint", "范围内的普通波穿过即被点燃为攻击波");
         // 护目镜面板：没按住 Shift 时只有机器名 + 这一行提示（按住 Shift 一次性显示全部读数）
         add("createoreexpansion.goggles.transmuter_expand_hint", "按住 [%s] 查看机器详情");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "已绑定 %s 台机器 · 可加工配方");
