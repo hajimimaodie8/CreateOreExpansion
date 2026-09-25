@@ -134,11 +134,17 @@ public class EnglishLangProvider extends LanguageProvider {
         add(CoeBlocks.STELLARSTONE_LARGE_BUD.get(), "Large Stellarstone Crystal Bud");
         add(CoeBlocks.STELLARSTONE_CLUSTER.get(), "Stellarstone Crystal Cluster");
         add(CoeBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
-        add(CewsBlocks.JADE_STRESS_CHARGER.get(), "Jade Create Charger");
+        // NOTE: this used to read "Jade Create Charger" while the goggle entry for the same
+        // machine read "Jade Stress Charger"; both now use the same wording.
+        add(CewsBlocks.JADE_STRESS_CHARGER.get(), "Jade Stress Charger");
+        add(CewsBlocks.SAPPHIRE_STRESS_CHARGER.get(), "Sapphire Stress Charger");
         add(CewsBlocks.STELLARSTONE_STRESS_CHARGER.get(), "Stellarstone Stress Charger");
         add(CewsBlocks.STELLAR_WAVE_TRANSMUTER.get(), "Stellar Wave Transmuter");
+        add(CewsBlocks.ENERGY_FIELD_CONTROLLER.get(), "Energy Field Controller");
         add(CewsBlocks.STELLARSTONE_WAVE_REGULATOR.get(), "Stellarstone Wave Regulator");
         add(CewsBlocks.STELLARSTONE_SPEED_REGULATOR.get(), "Stellarstone Speed Regulator");
+        add(CewsBlocks.SAPPHIRE_WAVE_REGULATOR.get(), "Sapphire Wave Regulator");
+        add(CewsBlocks.SAPPHIRE_SPEED_REGULATOR.get(), "Sapphire Speed Regulator");
         add("createoreexpansion.goggles.stellarstone_wave_regulator", "Stellarstone Wave Regulator");
         add("createoreexpansion.goggles.stellarstone_speed_regulator", "Stellarstone Speed Regulator");
         add("createoreexpansion.goggles.stellarstone_wave_boost", "Level Boost: +%s per pass");
@@ -240,6 +246,19 @@ public class EnglishLangProvider extends LanguageProvider {
         add(CoeItems.NETHERITE_STRESS_MEDALLION.get(), "Netherite Stress Medallion");
         add(CoeItems.STELLARSTONE_STRESS_MEDALLION.get(), "Stellarstone Stress Medallion");
         add(CoeItems.THUNDERITE_STRESS_MEDALLION.get(), "Thunderite Stress Medallion");
+        // Thunderite material line — these keys existed in the Chinese provider only, so English
+        // clients were showing raw translation keys for the whole set.
+        add(CoeBlocks.THUNDERITE_BLOCK.get(), "Thunderite Block");
+        add(CoeItems.THUNDERITE_SCRAP.get(), "Thunderite Scrap");
+        add(CoeItems.THUNDERITE_INGOT.get(), "Thunderite Ingot");
+        add(CoeItems.THUNDERITE_SHEET.get(), "Thunderite Sheet");
+        add(CoeItems.THUNDERITE_ROD.get(), "Thunderite Rod");
+        add(CoeItems.THUNDERITE_WIRE.get(), "Thunderite Wire");
+        add(CoeItems.THUNDERITE_SWORD.get(), "Thunderite Sword");
+        add(CoeItems.THUNDERITE_PICKAXE.get(), "Thunderite Pickaxe");
+        add(CoeItems.THUNDERITE_AXE.get(), "Thunderite Axe");
+        add(CoeItems.THUNDERITE_SHOVEL.get(), "Thunderite Shovel");
+        add(CoeItems.THUNDERITE_HOE.get(), "Thunderite Hoe");
 
         // ========== Medallion Shift summary ==========
         add("item.createoreexpansion.medallion.hold_shift", "Hold [%1$s] for Summary");
@@ -289,6 +308,8 @@ public class EnglishLangProvider extends LanguageProvider {
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");
+        add("fluid.createoreexpansion.transmutation_fluid", "Transmutation Fluid");
+        add("block.createoreexpansion.transmutation_fluid", "Transmutation Fluid");
         add("item.createoreexpansion.transmutation_fluid_bucket", "Transmutation Fluid Bucket");
         add("createoreexpansion.recipe.fan_transmuting", "Transmuting");
         add("createoreexpansion.recipe.fan_transmuting.fan", "Encased Fan");
