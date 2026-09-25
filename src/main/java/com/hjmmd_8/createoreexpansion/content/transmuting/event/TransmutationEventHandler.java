@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.foundation;
+package com.hjmmd_8.createoreexpansion.content.transmuting.event;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +17,18 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
+/**
+ * <b>嬗变液接触玩家的“嬗乱”发作</b>（TRANS 层的特性）。
+ *
+ * <p><b>P3i 归位</b>：本类原先住在共享路径 {@code foundation/TransmutationEventHandler}，
+ * 但内容<b>全部是 TRANS 的</b>——接触的流体是 {@code AllFluids.TRANSMUTATION_FLUID}（嬗变液），
+ * 施加的效果是 {@code AllModEffects.TRANSMUTATION_DISORDER}（嬗乱），二者都属于机械嬗变化
+ * （{@code content/transmuting/**}）。共享路径只是历史巧合；分层体检按路径把它算成 SHARED，
+ * 于是"TRANS 的特性借道共享层"这件事在工具里看不见。搬到 {@code content/transmuting/event/}
+ * 后它才真正归 TRANS 层，方向是 TRANS → COE（读 {@code CoeItems.STELLARSTONE_STRESS_MEDALLION}，
+ * 允许方向），键位 {@code @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)} 与
+ * {@code MOD_ID} 一律未改，行为逐字不变。</p>
+ */
 @EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
 public final class TransmutationEventHandler {
 

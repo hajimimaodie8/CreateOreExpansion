@@ -1,6 +1,8 @@
 package com.hjmmd_8.createoreexpansion.common.registry.transmutation;
 
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRecipeType;
+import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities;
+import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities.LayerOrder;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
 
 /**
@@ -18,6 +20,18 @@ public final class TransmutationRecipeTypes {
     /** 嬗变加工：{@code createoreexpansion:transmuting}。 */
     public static final LayerRecipeType TRANSMUTING =
         LayerRecipeType.processing("TRANSMUTING", AllTransmutingRecipe::new);
+
+    /**
+     * <b>本层的波加工能力登记</b>（P3i）：把自己这一份配方类型交给
+     * {@link WaveRecipeCapabilities}。
+     *
+     * <p><b>只装 CEWS 时本类根本不会被初始化</b> ⇒ 登记表里就没有 {@code transmuting}
+     * ⇒（波变器的鼓风机少一项可加工类型），但没有任何一层因此崩掉。这是本方案刻意要的性质：
+     * "少一项能力" 而不是 "少一层就报错"。</p>
+     */
+    static {
+        WaveRecipeCapabilities.addOrdered(LayerOrder.TRANS).add(TRANSMUTING);
+    }
 
     private TransmutationRecipeTypes() {}
 }

@@ -1,6 +1,8 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRecipeType;
+import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities;
+import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities.LayerOrder;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
@@ -39,6 +41,18 @@ public final class CoeRecipeTypes {
     /** 拆解（装备/工具 → 材料）：{@code createoreexpansion:dismantling}。 */
     public static final LayerRecipeType DISMANTLING =
         LayerRecipeType.serializer("DISMANTLING", () -> new DismantlingRecipe.Serializer());
+
+    /**
+     * <b>本层的波加工能力登记</b>（P3i）：把自己这一份配方类型交给
+     * {@link WaveRecipeCapabilities}，顺序即下面 {@code add(...)} 的参数顺序。
+     *
+     * <p>方向是「COE → 登记表（SHARED）」——登记表不 import 任何层、本类也不 import 别层的配方类型，
+     * 所以它不产生任何跨层引用。放在静态块里 = "谁被类初始化，谁就登记自己"。</p>
+     */
+    static {
+        WaveRecipeCapabilities.addOrdered(LayerOrder.COE)
+            .add(LIGHTNING, LIGHTNING_BLOCK, GRINDING, DISMANTLING);
+    }
 
     private CoeRecipeTypes() {}
 }

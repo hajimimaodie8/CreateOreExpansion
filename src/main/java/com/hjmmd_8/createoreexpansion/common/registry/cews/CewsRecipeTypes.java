@@ -1,6 +1,8 @@
 package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRecipeType;
+import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities;
+import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities.LayerOrder;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 
 /**
@@ -19,6 +21,17 @@ public final class CewsRecipeTypes {
     /** 充能加工：{@code createoreexpansion:charging}（等级是配方自带的 {@code level} 字段）。 */
     public static final LayerRecipeType CHARGING =
         LayerRecipeType.serializer("CHARGING", () -> new ChargingRecipe.Serializer<>(ChargingRecipe::new));
+
+    /**
+     * <b>本层的波加工能力登记</b>（P3i）：把自己这一份配方类型交给
+     * {@link WaveRecipeCapabilities}。
+     *
+     * <p>三层的登记互不知情：本类只 import 登记表（SHARED），不 import 也不引用
+     * COE / TRANS 的任何配方类型——这正是"机械换向后 CEWS 不再硬依赖 TRANS"的那条性质。</p>
+     */
+    static {
+        WaveRecipeCapabilities.addOrdered(LayerOrder.CEWS).add(CHARGING);
+    }
 
     private CewsRecipeTypes() {}
 }

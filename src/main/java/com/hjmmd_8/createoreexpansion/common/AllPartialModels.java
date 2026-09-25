@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 
 import dev.engine_room.flywheel.lib.model.baked.PartialModel;
 

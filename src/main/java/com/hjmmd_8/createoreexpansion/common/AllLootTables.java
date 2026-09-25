@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;

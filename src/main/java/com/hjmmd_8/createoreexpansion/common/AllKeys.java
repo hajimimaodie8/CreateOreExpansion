@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.createmod.catnip.client.ConflictSafeKeyMapping;

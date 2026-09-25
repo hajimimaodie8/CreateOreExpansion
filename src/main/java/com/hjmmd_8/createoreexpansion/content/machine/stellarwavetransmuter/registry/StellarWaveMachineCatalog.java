@@ -1,9 +1,14 @@
 package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry;
+import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import org.jetbrains.annotations.Nullable;
+
+import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 /**
  * 星辉波变器"加工机目录"：本仓库全部联动机器的<b>集中声明处</b>。
@@ -62,6 +67,18 @@ import java.util.List;
  *                     —— 该文件是"波能执行哪些配方族"的唯一清单；本目录只管"机器 → 配方类型"。
  *   能量场控制器 / 波闸 / 非加工机：不产出可携配方类型
  * </pre>
+ *
+ * <h2>P3i：本目录如何拿到"本模组的配方类型"</h2>
+ *
+ * <p>本文件属 <b>CEWS</b>。改前它经聚合入口 {@code common/AllRecipeTypes} 读三层常量，
+ * 机械换向后会变成一条真实的 <b>CEWS → TRANS 硬依赖</b>。现在改为<b>只问登记表</b>：
+ * {@code common/registry/WaveRecipeCapabilities} 持有"可被波加工的配方类型"集合，
+ * 三层各自在自己的 {@code XxxRecipeTypes} 类初始化里登记自己那一份
+ * （COE 4 项 / CEWS 1 项 / TRANS 1 项，见各层静态块），本目录用 {@link #waveType(String)}
+ * 按 id 取。<b>本文件因此不再 import {@code AllRecipeTypes}，也不 import 任何别层的配方类型。</b></p>
+ *
+ * <p>顺序由登记表里的<b>显式排序键</b>（{@code LayerOrder}）决定，与"谁先被类初始化"无关；
+ * 而目录最终呈现的列表顺序仍由本文件的机器登记先后决定（与改前逐项相同）。</p>
  */
 public final class StellarWaveMachineCatalog {
 
@@ -82,6 +99,10 @@ public final class StellarWaveMachineCatalog {
 	public static void init() {
 		if (!nativesRegistered) {
 			nativesRegistered = true;
+			// 先把"可被波加工的配方类型"登记表唤醒（各层在自己的类初始化里登记自己那一份），
+			// 再登记机器——下面的 registerCreateNatives/registerOwnMachines 全部经 waveType(id)
+			// 从表里取档案，不再引用任何一层的配方类型常量。见 WaveRecipeCapabilities。
+			WaveRecipeCapabilities.ensureInitialized();
 			registerCreateNatives();
 			registerOwnMachines();
 		}
@@ -124,7 +145,7 @@ public final class StellarWaveMachineCatalog {
 		registerMachine(
 			com.simibubi.create.AllBlocks.ENCASED_FAN.get(),
 			com.simibubi.create.AllRecipeTypes.SPLASHING, com.simibubi.create.AllRecipeTypes.HAUNTING,
-			com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.TRANSMUTING);
+			waveType("transmuting"));
 		// 机械手：装配线的核心步骤机 → deploying/item_application ＋ 序列装配 sequenced_assembly
 		registerMachine(
 			com.simibubi.create.AllBlocks.DEPLOYER.get(),
@@ -156,9 +177,9 @@ public final class StellarWaveMachineCatalog {
 	private static void registerOwnMachines() {
 		StellarWaveMachineRegistry.register(
 			com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks.POWER_ANGLE_GRINDER.get())
-			.addTypes(com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.GRINDING,
+			.addTypes(waveType("grinding"),
 				com.simibubi.create.AllRecipeTypes.CRUSHING, com.simibubi.create.AllRecipeTypes.MILLING,
-				com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.DISMANTLING)
+				waveType("dismantling"))
 			.withSelector(StellarWaveMachineCatalog::angleGrinderTypes)
 			.register();
 		// 应力充能器（翡翠/蓝宝石/星辉石）：提供 createoreexpansion:charging 能力
@@ -166,13 +187,37 @@ public final class StellarWaveMachineCatalog {
 		//  否则"变体波给工具充能"这类老玩法会因没有携带者而被挡掉）
 		registerMachine(
 			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.JADE_STRESS_CHARGER.get(),
-			com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.CHARGING);
+			waveType("charging"));
 		registerMachine(
 			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.SAPPHIRE_STRESS_CHARGER.get(),
-			com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.CHARGING);
+			waveType("charging"));
 		registerMachine(
 			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.STELLARSTONE_STRESS_CHARGER.get(),
-			com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.CHARGING);
+			waveType("charging"));
+	}
+
+	/**
+	 * 从<b>波加工能力登记表</b>里按配方类型 id 取档案（{@link WaveRecipeCapabilities}，P3i）。
+	 *
+	 * <p><b>为什么目录不直接引用三层的常量</b>：本文件属 CEWS。改前它经聚合入口
+	 * {@code common/AllRecipeTypes} 读 TRANS 的 {@code TRANSMUTING} / COE 的
+	 * {@code GRINDING}、{@code DISMANTLING} / CEWS 的 {@code CHARGING}——机械换向后这就是
+	 * 一条真实的 <b>CEWS → TRANS 硬依赖</b>。改成登记表之后，本文件既不 import
+	 * {@code AllRecipeTypes}，也不 import 任何别层的配方类型，只问"表里有没有"。</p>
+	 *
+	 * <p><b>找不到时返回 null（不抛）</b>：某一层不在（例：只装了 CEWS）时它的登记项根本不会进表，
+	 * 这里必须"少一项"而不是"崩一次"；{@code null} 会被 {@code addTypes} / {@code registerMachine}
+	 * 静默跳过。注意<b>整表为空</b>时（表未初始化）也会走到这条路径，所以这里同样不能抛。</p>
+	 *
+	 * @param id 配方类型 id（如 {@code transmuting}、{@code grinding}、{@code charging}）
+	 */
+	@Nullable
+	private static IRecipeTypeInfo waveType(String id) {
+		for (IRecipeTypeInfo type : WaveRecipeCapabilities.all())
+			if (type != null && type.getId() != null
+				&& id.equals(type.getId().getPath()))
+				return type;
+		return null;
 	}
 
 	/**
@@ -204,7 +249,7 @@ public final class StellarWaveMachineCatalog {
 			.getFor(tier.level);
 	}
 
-	/** 单台机器快捷登记（目录统一写法：{@code registerMachine(block, types...)}）。 */
+	/** 单台机器快捷登记（目录统一写法：{@code registerMachine(block, types...)}；null 类型忽略）。 */
 	private static void registerMachine(net.minecraft.world.level.block.Block block,
 		com.simibubi.create.foundation.recipe.IRecipeTypeInfo... types) {
 		StellarWaveMachineRegistry.register(block)
