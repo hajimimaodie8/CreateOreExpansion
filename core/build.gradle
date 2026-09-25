@@ -26,4 +26,11 @@ dependencies {
     // 本轮搬进来的 ChargingRecipeTools 只用到 Minecraft 的 ItemLike，
     // 这一行是为后续共享文件预留的编译面（不多不少：flywheel/ponder/Registrate 等仍是根工程的事）。
     compileOnly("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+    // P3f：整包搬进 core 的 compat/sable/** 直接引用 Sable 的类型（Pose3d/Pose3dc、SubLevel、
+    // ServerSubLevel、LevelPlot、ServerSubLevelContainer…），所以 core 自己也需要 Sable 的编译面。
+    // 与根 build.gradle 同一坐标、同一写法（Sable 的位姿/包围盒数学类位于 embedded 的
+    // sable-companion jar，编译期不可见 → 从 jarjar 提取后作为本地 file 依赖；路径相对**根工程**）。
+    // 两行都是 compileOnly：不进 core 的发布元数据，也不改变运行期由玩家自装 Sable 的事实。
+    compileOnly files(rootProject.file('libs/sable-companion-common-1.21.1-1.6.0.jar'))
+    compileOnly("maven.modrinth:sable:2.0.3+mc1.21.1")
 }

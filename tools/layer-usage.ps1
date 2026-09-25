@@ -177,9 +177,100 @@ $strictPath = Join-Path $Repo 'build\patch\core-candidates-strict.txt'
 Write-Host ("strict core set (clean AND used by more than one layer): {0}" -f $strict.Count)
 Write-Host "strict list : $strictPath"
 
+# ---------------------------------------------------------------------------
+# P3f: package-level aggregation.
+#
+# JPMS says one Java package may not belong to two mod files at once, so the move
+# unit is a WHOLE package: a package may only enter `core` when every one of its
+# files is transitively clean (i.e. -not $tainted).  A single dirty file keeps the
+# whole package in the root project.
+#
+# Writes build\patch\core-packages.txt     -- package dirs that are whole-pure
+#        build\patch\package-usage.txt     -- full per-package report
+# ---------------------------------------------------------------------------
+
+$pkgOf = @{}
+foreach ($rel in $rels) {
+    $dir = Split-Path -Parent $rel
+    if ([string]::IsNullOrEmpty($dir)) { $dir = '.' }   # the mod root package
+    $pkgOf[$rel] = $dir
+}
+
+$pkgMembers = @{}
+foreach ($rel in $rels) {
+    $p = $pkgOf[$rel]
+    if (-not $pkgMembers.ContainsKey($p)) { $pkgMembers[$p] = New-Object System.Collections.Generic.List[string] }
+    $pkgMembers[$p].Add($rel)
+}
+
+$pkgReport    = New-Object System.Collections.Generic.List[string]
+$corePackages = New-Object System.Collections.Generic.List[string]
+$pkgFileCount = 0
+$pkgPureCount = 0
+$pkgMultiLayer = 0
+
+$pkgReport.Add('=== packages ===')
+$pkgReport.Add('  PURE = every file in the package is transitively clean -> the WHOLE package')
+$pkgReport.Add('         may move into `core` (JPMS forbids splitting a package across modules).')
+$pkgReport.Add('  uses = layers (COE/CEWS/TRANS) that reference at least one file of this package.')
+$pkgReport.Add('')
+
+foreach ($p in ($pkgMembers.Keys | Sort-Object)) {
+    $members = $pkgMembers[$p]
+    $dirty   = New-Object System.Collections.Generic.List[string]
+    $users   = New-Object System.Collections.Generic.HashSet[string]
+    $outSet  = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($rel in $members) {
+        if ($tainted.Contains($rel)) { $dirty.Add($rel) }
+        foreach ($u in $refBy[$rel]) {
+            $ul = $layerOf[$u]
+            if ($ul -ne 'SHARED') { [void]$users.Add($ul) }
+        }
+        foreach ($t in $deps[$rel]) {
+            $tl = $layerOf[$t]
+            if ($tl -ne 'SHARED') { [void]$outSet.Add($tl) }
+        }
+    }
+    $whole = ($dirty.Count -eq 0)
+    $u = (($users  | Sort-Object) -join ',')
+    $o = (($outSet | Sort-Object) -join ',')
+    if ($u -eq '') { $u = '-' }
+    if ($o -eq '') { $o = '-' }
+    $mark = ''
+    if ($whole) {
+        $mark = ' PURE'
+        $pkgPureCount++
+        $pkgFileCount += $members.Count
+        $corePackages.Add($p)
+        if ($users.Count -gt 1) { $pkgMultiLayer++ }
+    }
+    $pkgReport.Add(("  {0,-14} files={1,-3} uses={2,-14} refs={3,-14}{4}  {5}" -f `
+        $p, $members.Count, $u, $o, $mark, $p))
+    foreach ($rel in ($members | Sort-Object)) {
+        $s = ' ok  '
+        if ($tainted.Contains($rel)) { $s = ' DIRTY' }
+        $pkgReport.Add(("        {0} {1}" -f $s, $rel))
+    }
+    $pkgReport.Add('')
+}
+
+$pkgReport.Add('=== whole-pure packages (move unit for `core`) ===')
+foreach ($p in $corePackages) {
+    $pkgReport.Add(("  {0,-6} {1}" -f $pkgMembers[$p].Count, $p))
+}
+
+$pkgOut = Join-Path $Repo 'build\patch\package-usage.txt'
+[System.IO.File]::WriteAllLines($pkgOut, $pkgReport)
+$pkgListOut = Join-Path $Repo 'build\patch\core-packages.txt'
+[System.IO.File]::WriteAllLines($pkgListOut, $corePackages)
+
 Write-Host ('files by layer : COE={0}  CEWS={1}  TRANS={2}  SHARED={3}' -f $layerStats['COE'], $layerStats['CEWS'], $layerStats['TRANS'], $layerStats['SHARED'])
 Write-Host ("SHARED safe for `core` (transitively clean): {0}" -f $pure)
 Write-Host ("SHARED reachable-from-a-layer (needs a decision): {0}" -f (($rels | Where-Object { $layerOf[$_] -eq 'SHARED' -and $tainted.Contains($_) } | Measure-Object).Count))
 Write-Host ("SHARED referenced from more than one layer: {0}" -f $crossLayer)
+Write-Host ("whole-pure packages (move as a unit): {0}  covering {1} files" -f $pkgPureCount, $pkgFileCount)
+Write-Host ("  ... of which referenced from more than one layer: {0}" -f $pkgMultiLayer)
 Write-Host "report : $outPath"
 Write-Host "candidates : $candPath"
+Write-Host "package report : $pkgOut"
+Write-Host "core packages  : $pkgListOut"

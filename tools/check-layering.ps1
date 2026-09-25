@@ -18,6 +18,11 @@
 # Layer of an IMPORT / fully-qualified reference is decided by its package (see Get-TargetLayer),
 # with CORE membership decided by which classes actually live under core/src/main/java.
 #
+# P3f note: Get-TargetLayer also accepts a BARE top-level package name, and pass 2 ignores a
+# file's own `package ...;` line.  Neither changes the layer of any class reference; both close
+# a false positive that only appears once a SHARED-path package lives under core/
+# (core\util\*.java used to report "CORE -> COE" against their own package declaration).
+#
 # COE also owns the skill system, so two narrow paths are judged as COE rather than SHARED:
 #   integration/skiller/**   (the Skiller integration: skill entries + strategies)
 #   client/tool/**           (the skill preview renderers)
@@ -93,7 +98,14 @@ function Get-TargetLayer {
     # skill system == COE (see Get-FileLayer); only the tool/renderer sub-packages, not all of client.
     if ($rest -match '^integration\.skiller\.') { return 'COE' }
     if ($rest -match '^client\.tool\.')         { return 'COE' }
-    if ($rest -match '^(common|util|foundation|compat|client|data|mixin|integration)\.') { return 'SHARED' }
+    # P3f: tolerate the BARE package name as well as a class inside it.  A file's own
+    # `package com.hjmmd_8.createoreexpansion.util;` line is scanned by pass 2 like any
+    # other fully-qualified occurrence, and without the (\.|$) alternative the string
+    # "...createoreexpansion.util" missed this rule and fell through to the `return 'COE'`
+    # default -> core\util\*.java reported a bogus "CORE -> COE" edge (5 false positives).
+    # Get-FileLayer never had the asymmetry: `util/Foo.java` matches '^util/'.
+    # Only bare top-level SHARED package names are affected -- no class FQN changes layer.
+    if ($rest -match '^(common|util|foundation|compat|client|data|mixin|integration)(\.|$)') { return 'SHARED' }
     return 'COE'
 }
 
@@ -165,7 +177,9 @@ foreach ($e in $entries) {
         # ---- pass 2: fully-qualified references in code (skip comments and imports)
         if (-not $NoFqn -and -not $isImport) {
             $trim = $line.TrimStart()
-            if ($trim -notmatch '^(\*|//|/\*)') {
+            # a `package x.y.z;` declaration DEFINES that package, it never depends on it
+            # (P3f: core\util\*.java tripped a bogus "CORE -> COE" edge on their own package line)
+            if ($trim -notmatch '^(\*|//|/\*)' -and $trim -notmatch '^package\s') {
                 foreach ($mm in [regex]::Matches($line, 'com\.hjmmd_8\.createoreexpansion\.[A-Za-z0-9_.]+')) {
                     [void]$targets.Add($mm.Value)
                 }
