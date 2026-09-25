@@ -59,13 +59,17 @@ import net.minecraft.world.phys.AABB;
  *
  * <p><b>攻击场三档（用户 2026-09 规格，区间三等分 + 线性插值）</b>：攻击态的攻击场大小不再是一个
  * 固定半径，而是按<b>当前转速</b>在 [{@link #ATTACK_MINIMUM_RPM}, {@link #ATTACK_MAXIMUM_RPM}]
- * = [128, 256] RPM 上线性插值后三等分：</p>
+ * = [128, 256] RPM 上线性插值后三等分。分档下限<b>量化为整数 RPM</b>（用户 2026-09 口径：
+ * 转速档位不出现小数；{@link SpeedBands#linear(float, float, int, int)} 里四舍五入）：</p>
  * <ul>
- *   <li><b>第一档</b>（128 ~ 170.67 RPM）：攻击场盒<b>就是机器本体</b>（场半径 {@code 0}）——
+ *   <li><b>第一档</b>（128 ~ 170 RPM）：攻击场盒<b>就是机器本体</b>（场半径 {@code 0}）——
  *       波必须<b>真的穿过这台机器</b>才会被点燃；</li>
- *   <li><b>第二档</b>（170.67 ~ 213.33 RPM）：以自身为中心、<b>半径 1 格</b>的立方体（3×3×3）；</li>
- *   <li><b>第三档</b>（≥ 213.33 RPM，含 256 以上）：以自身为中心、<b>半径 2 格</b>的立方体（5×5×5）。</li>
+ *   <li><b>第二档</b>（171 ~ 212 RPM）：以自身为中心、<b>半径 1 格</b>的立方体（3×3×3）；</li>
+ *   <li><b>第三档</b>（≥ 213 RPM，含 256 以上）：以自身为中心、<b>半径 2 格</b>的立方体（5×5×5）。</li>
  * </ul>
+ * <p>区间文案与判定<b>同表</b>：判定是半开的 {@code [下限, 下一档下限)}，显示读
+ * {@link TransmuterMode#attackTierUpperRpm(int)}（= 下一档下限 − 1）写成闭区间，
+ * 两者读的是同一个 {@link #ATTACK_TIERS}。</p>
  * <p>映射<b>只有一处实现</b>（{@link #ATTACK_TIERS} 这张分档表；{@link #attackTier} 只是它的读取口）：
  * 场判定（{@link #applyField}）与护目镜读数（{@link #appendReadout}）都读同一张表，谁都不许再算一份。
  * 三个常量只喂给那一句工厂调用、<b>不出现在任何方法体里</b>，全仓没有第二份"128 / 256 / 3 档 / 各档半径"。
@@ -444,8 +448,8 @@ public enum TransmuterMode {
 	 * {@code SpeedBands.linear(ATTACK_MINIMUM_RPM, ATTACK_MAXIMUM_RPM, ATTACK_TIER_COUNT, 0)}
 	 * 构造，<b>本方法体内一个数字都没有</b>——改区间或改档数只动那一句工厂调用。</p>
 	 *
-	 * <p>代入现表数值（128 / 256 / 3 档）：<b>128 ~ 170.67 → 第 0 档</b>、
-	 * <b>170.67 ~ 213.33 → 第 1 档</b>、<b>≥ 213.33（含 256 以上，被夹在最高档）→ 第 2 档</b>。
+	 * <p>代入现表数值（128 / 256 / 3 档，下限已量化为整数）：<b>128 ~ 170 → 第 0 档</b>、
+	 * <b>171 ~ 212 → 第 1 档</b>、<b>≥ 213（含 256 以上，被夹在最高档）→ 第 2 档</b>。
 	 * 按<b>绝对值</b>判定——反转的轴同样算数，与全仓既有的 {@code Math.abs(getSpeed())} 口径一致；
 	 * 低于第一档下限的转速落在第一档（向下夹紧，见 {@link SpeedBands#indexAt(float)}）。</p>
 	 *
@@ -500,13 +504,18 @@ public enum TransmuterMode {
 	}
 
 	/**
-	 * <b>第 index 档的上限转速</b>（RPM，<b>不含</b>；最后一档 = {@link #attackTierCeilingRpm()}）
-	 * ——护目镜的档位区间文案读它。
+	 * <b>第 index 档的上限转速</b>（RPM，<b>含</b>；末档 = {@link #attackTierCeilingRpm()}）
+	 * ——护目镜的档位区间文案读它，与 {@link #attackTierLowerRpm(int)} 配成<b>闭区间</b>
+	 * （{@code 下限 ~ 上限}，相邻两档不重不漏：值 = {@link SpeedBands#upperInclusiveRpm(int)}，
+	 * 非末档就是"下一档下限 − 1"，末档取 {@link SpeedBands#topRpm()}）。
+	 *
+	 * <p><b>末档那一行不读本方法</b>：末档没有这样一个上界，护目镜改用"≥下限"的写法
+	 * （另一条翻译键，见 {@code TransmuterGoggles#tierLine}）。</p>
 	 *
 	 * @param index 档位序号（0 基）
 	 */
 	public float attackTierUpperRpm(int index) {
-		return ATTACK_TIERS.upperRpm(index);
+		return ATTACK_TIERS.upperInclusiveRpm(index);
 	}
 
 	/**

@@ -346,8 +346,11 @@ public class EnglishLangProvider extends LanguageProvider {
         // table (TransmuterMode#ATTACK_TIERS via SpeedBands); no rpm number is written here.
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm", "Attack speed: %s RPM (requires %s ~ %s RPM)");
         // one line per tier (2026-09-25: the single long reference line was too wide);
-        // the current tier is coloured bright by code, the text itself is identical for all tiers
+        // the current tier is coloured bright by code, the text itself is identical for all tiers.
+        // Closed intervals (2026-09-25): "lower ~ (next lower - 1)" for every tier but the last,
+        // and "%s+" for the last one; band lowers are integer rpm (see SpeedBands#linear).
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry", "tier %s (%s ~ %s RPM, %s)");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry_open", "tier %s (%s+ RPM, %s)");
         // Field-box wording (radius 0 = the box is the machine itself, never "radius 0 blocks")
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core", "the field box is the machine itself");
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius", "field box radius %s blocks");

@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.charger.block;
 
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
+import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 import java.awt.Color;
 import java.util.List;
 
@@ -19,6 +20,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -40,13 +43,27 @@ import net.minecraft.world.phys.Vec3;
  *     <li>护目镜蓄力能量条（复用工具能量条，填充色随充能态）。</li>
  * </ul>
  *
- * <p>子类（翡翠充能器/星辉石充能器）只需覆写：</p>
+ * <p><b>档位的唯一来源 = 一张 {@link SpeedBands} 表</b>（2026-09 整理）：判定（{@link #getModeForSpeed()}）
+ * 与显示（{@link #getStateName(int, int)} 的 RPM 区间、护目镜的逐档列举）都读
+ * {@link #speedTierBands(int)}，<b>谁都不许另算一份</b>。基线的三档 α/β/γ 下限量化为整数
+ * （{@code equalSteps(1, max, 3, 1)} → {@code 1 / max/2+1 / max}），区间文案写成闭区间
+ * （非末档 {@code 下限~（下一档下限 − 1）}、末档 {@code ≥下限}）。</p>
+ *
+ * <p><b>护目镜的档位行</b>（2026-09 用户规格，与变器攻击态同一套方案）：<b>一档一行列出全部档位</b>，
+ * 排在机器名之后；当前所处档用它的<b>光芒色</b>（{@link #getWaveColor(int)}，即指示灯颜色）高亮、
+ * 其余档 {@link ChatFormatting#DARK_GRAY}；未接入应力（{@code MODE == 0}）时先给一行
+ * {@code charger_idle}「未接入应力」，N 行档位照常列出但全部暗灰（与变器"未达门槛也列全档"一致）。</p>
+ *
+ * <p>子类（翡翠充能器/蓝宝石充能器/星辉石充能器）只需覆写：</p>
  * <ul>
+ *     <li>{@link #createSpeedTierBands(int)} —— 本机的转速档位表（基线给翡翠的三档；<b>档位与转速
+ *         无关的手动等级机型返回 {@code null}</b>，护目镜逐档列举随即退化成现状的单行）；</li>
  *     <li>{@link #createWave(Level, Vec3, Vec3, int)} —— 发射各自的能量波实体；</li>
  *     <li>{@link #getWaveColor(int)} —— 档位指示色（默认查 {@link WaveLevels#indicatorColor(int)}
- *         标准 5 档表，翡翠子类覆写为只认 α~γ）；</li>
+ *         标准 5 档表，翡翠子类覆写为只认 α~γ；也是当前档档位行的高亮色）；</li>
  *     <li>{@link #getMachineName()} —— 护目镜标题；</li>
- *     <li>{@link #getGoggleColor(int)} —— 护目镜状态行颜色（默认跟随粒子颜色）。</li>
+ *     <li>{@link #getGoggleColor(int)} —— 单行档位文案的颜色（只服务"没有转速档位"的机型，
+ *         有档位表的机型逐档上色，用不到它）。</li>
  * </ul>
  */
 public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntity {
@@ -170,19 +187,68 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 	/**
 	 * 按转速解析充能态：0=无应力，1=α（≤½ 上限转速），2=β（½~上限转速），3=γ（≥上限转速）。
 	 *
-	 * <p>档位按 Create 配置的转速上限 {@code maxRotationSpeed}（默认 256 RPM）等比划分，
-	 * 上限可调（config 修改/整合包覆盖）时档位自动跟随，不硬编码数值。</p>
+	 * <p><b>实现已不是内联三元，而是读分档表</b>（2026-09 整理）：判定与显示共用
+	 * {@link #speedTierBands(int)} 这一个对象（{@link SpeedBands#valueAt(float)}），
+	 * 本方法体内<b>一个阈值都没有</b>——改档数/边界只动 {@link #createSpeedTierBands(int)}。
+	 * 档位按 Create 配置的转速上限 {@code maxRotationSpeed}（默认 256 RPM，可调）现算，
+	 * 上限改掉时判定与文案一起跟随。</p>
+	 *
+	 * <p><b>本方法决定 blockstate {@code MODE}（玩法侧）</b>：重构只允许改"非整数转速"的归档
+	 * （整数下限量化所致），<b>整数转速下的档位逐个不变</b>（{@code build/patch} 里的逐点对照程序为证）。</p>
 	 */
 	protected int getModeForSpeed() {
 		float speed = Math.abs(getSpeed());
 		if (speed <= 0)
 			return 0;
-		int max = AllConfigs.server().kinetics.maxRotationSpeed.get();
-		if (speed <= max / 2f)
-			return 1;
-		if (speed < max)
-			return 2;
-		return 3;
+		SpeedBands bands = speedTierBands(AllConfigs.server().kinetics.maxRotationSpeed.get());
+		// 没有转速档位的机型（手动等级，如星辉石充能器）必须自行覆写本方法；这里返回 0 是"无档位"的兜底
+		return bands == null ? 0 : bands.valueAt(speed);
+	}
+
+	// ================= 转速档位表（判定与显示的唯一来源，按 max 缓存） =================
+
+	/** 档位表缓存对应的转速上限（{@link #speedTierBands(int)} 的重建判据）。 */
+	private int cachedBandMax = Integer.MIN_VALUE;
+
+	/** 按 {@link #cachedBandMax} 缓存下来的档位表（null = 本机档位与转速无关）。 */
+	private SpeedBands cachedSpeedBands;
+
+	/**
+	 * <b>本机的转速档位表</b>（判定与显示的唯一来源）——按给定的转速上限现算一张表。
+	 *
+	 * <p>默认 = 基线的三档 α/β/γ：下限 {@code 1 / max/2+1 / max}（<b>整数</b>），档值 1/2/3
+	 * （= 波等级，也就是 blockstate {@code MODE}）。用
+	 * {@link SpeedBands#equalSteps(float, float, int, int)}（下限<b>向上取整</b>）而不是四舍五入，
+	 * 是为了让整数转速下的归档与改造前逐点一致——{@code speed <= max/2 → 1}、{@code speed < max → 2}、
+	 * 否则 3 这一套整数语义，等价于"分界 1 / max/2+1 / max"，而四舍五入会在某些 max 上挪动一格。</p>
+	 *
+	 * <p><b>返回 null 的机型</b>（档位与转速无关，例如手动等级槽的星辉石充能器）：护目镜的
+	 * "逐档列举"这条路会退化成现状的<b>单行</b>（{@link #getStateName(int, int)} + {@link #getGoggleColor(int)}），
+	 * 行为与文案一个字都不变。</p>
+	 *
+	 * <p>Create 的 {@code maxRotationSpeed} 配置最小值是 64（见 {@code CKinetics}），
+	 * 所以 {@code 1 / max/2+1 / max} 恒为严格升序，不会触发 {@link SpeedBands} 的构造校验。</p>
+	 */
+	protected SpeedBands createSpeedTierBands(int max) {
+		return SpeedBands.equalSteps(1, max, 3, WaveLevels.LOW);
+	}
+
+	/**
+	 * 取本机的档位表（<b>按 {@code max} 缓存</b>，配置改了自动重建）。
+	 *
+	 * <p>判定（{@link #getModeForSpeed()}）、区间文案（{@link #getStateName(int, int)}）与护目镜的
+	 * 逐档列举都走这里，读的是<b>同一个对象</b>：文案写"β 充能态（129~255 RPM）"时判定就不可能
+	 * 把 128 算进第二档——那两件事读的是同一个 {@code lowerRpm}。</p>
+	 *
+	 * @param max Create 配置的转速上限（RPM）
+	 * @return 本机的档位表；{@code null} = 本机档位与转速无关（见 {@link #createSpeedTierBands(int)}）
+	 */
+	protected final SpeedBands speedTierBands(int max) {
+		if (max != cachedBandMax) {
+			cachedSpeedBands = createSpeedTierBands(max);
+			cachedBandMax = max;
+		}
+		return cachedSpeedBands;
 	}
 
 	/** 沿 FACING 方向发射当前充能态（blockstate MODE）对应的能量波。 */
@@ -369,7 +435,13 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 		return indicatorColorForMode(mode);
 	}
 
-	/** 护目镜状态行颜色（默认跟随粒子颜色） */
+	/**
+	 * <b>单行</b>档位文案的颜色（默认跟随粒子颜色）。
+	 *
+	 * <p><b>只有"没有转速档位"的机型用得到它</b>（{@link #createSpeedTierBands(int)} 返回 null，
+	 * 护目镜退化回单行——见 {@link #addToGoggleTooltip}）；有档位表的机型逐档上色，
+	 * 当前档用它的<b>光芒色</b>（{@link #getWaveColor(int)}）、其余暗灰，不经过本方法。</p>
+	 */
 	protected ChatFormatting getGoggleColor(int mode) {
 		return switch (mode) {
 			case 2 -> ChatFormatting.GREEN;
@@ -380,22 +452,47 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 	}
 
 	/**
-	 * 护目镜状态行文字（按当前充能档位）：翡翠 α/β/γ；蓝宝石子类覆写支持 ε/ω。
+	 * 护目镜档位行文字（按充能档位）：翡翠 α/β/γ；蓝宝石子类覆写支持 ε/ω。
+	 *
+	 * <p>RPM 区间<b>直读 {@link #speedTierBands(int)}</b>（与 {@link #getModeForSpeed()} 同一张表）：
+	 * 非末档写"下限~（下一档下限 − 1）"的<b>闭区间</b>（{@link SpeedBands#upperInclusiveRpm(int)}），
+	 * 末档写"≥下限"。下限已量化成整数，所以文案里不会再出现小数位。</p>
 	 *
 	 * @param mode 当前充能档位（blockstate MODE）
-	 * @param max  Create 配置的转速上限（默认 256），用于显示档位 RPM 区间
+	 * @param max  Create 配置的转速上限（默认 256），用于现算档位 RPM 区间
 	 */
 	protected Component getStateName(int mode, int max) {
-		return switch (mode) {
-			case 1 -> Component.translatable("createoreexpansion.goggles.charger_low", max / 2);
-			case 2 -> Component.translatable("createoreexpansion.goggles.charger_high", max / 2 + 1, max - 1);
-			case 3 -> Component.translatable("createoreexpansion.goggles.charger_gamma", max);
-			default -> Component.translatable("createoreexpansion.goggles.charger_idle");
-		};
+		SpeedBands bands = speedTierBands(max);
+		if (bands == null || mode < 1 || mode > bands.count())
+			return Component.translatable("createoreexpansion.goggles.charger_idle");
+		int index = mode - 1;
+		if (index == 0)
+			// 首档：词条里已写死下界 1（= 本表首档下限）
+			return Component.translatable("createoreexpansion.goggles.charger_low",
+				SpeedBands.formatRpm(bands.upperInclusiveRpm(index)));
+		if (index == bands.count() - 1)
+			// 末档：≥下限（没有这样的上界，故不写"~ 上界"）
+			return Component.translatable("createoreexpansion.goggles.charger_gamma",
+				SpeedBands.formatRpm(bands.lowerRpm(index)));
+		return Component.translatable("createoreexpansion.goggles.charger_high",
+			SpeedBands.formatRpm(bands.lowerRpm(index)), SpeedBands.formatRpm(bands.upperInclusiveRpm(index)));
 	}
 
 	/** 护目镜标题（如"翡翠应力充能器"） */
 	protected abstract Component getMachineName();
+
+	/**
+	 * <b>档位行</b>：当前所处档用它的<b>光芒色</b>（{@link #getWaveColor(int)} 的指示灯 ARGB 去掉
+	 * alpha 后的 RGB）高亮，其余档 {@link ChatFormatting#DARK_GRAY}（用户 2026-09 规格：
+	 * 充能器与变器攻击态同一套"一档一行、当前档高亮"方案，<b>只有高亮色不同</b>——
+	 * 变器用白，充能器用该档自己的光芒色）。颜色是"我在哪档"的唯一标记，各行文案本身同构。
+	 */
+	private static MutableComponent tierLine(Component text, boolean current, int waveColor) {
+		MutableComponent line = text.copy();
+		return current
+			? line.withStyle(style -> style.withColor(TextColor.fromRgb(waveColor & 0xFFFFFF)))
+			: line.withStyle(ChatFormatting.DARK_GRAY);
+	}
 
 	@Override
 	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
@@ -410,8 +507,24 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 		// 档位区间按 Create 配置的转速上限（maxRotationSpeed，默认 256）动态计算后作为参数传入，
 		// 别人修改上限配置时护目镜显示的 RPM 区间自动跟随（不硬编码数值）
 		int max = AllConfigs.server().kinetics.maxRotationSpeed.get();
-		GoggleUtil.forGoggles(tooltip, getStateName(mode, max).copy()
-			.withStyle(getGoggleColor(mode)));
+		// 判定与显示同源（见 speedTierBands）；null = 本机档位与转速无关 → 保持现状的单行
+		SpeedBands bands = speedTierBands(max);
+		if (bands == null) {
+			GoggleUtil.forGoggles(tooltip, getStateName(mode, max).copy()
+				.withStyle(getGoggleColor(mode)));
+		} else {
+			// 未接入应力：保留既有"未接入应力"行（颜色沿用旧的单行口径），档位行照常列全
+			if (mode <= 0)
+				GoggleUtil.forGoggles(tooltip, getStateName(0, max).copy()
+					.withStyle(getGoggleColor(0)));
+			// 一档一行列全部档位（排在机器名之后）：档值与档号都由分档表给出（档值 = 波等级 = MODE），
+			// 当前档高亮成该档的光芒色、其余暗灰。循环上界 = 档数，所以改档数/改上限时行数自动跟随。
+			for (int i = 0; i < bands.count(); i++) {
+				int level = bands.valueOfIndex(i);
+				GoggleUtil.forGoggles(tooltip,
+					tierLine(getStateName(level, max), level == mode, getWaveColor(level)));
+			}
+		}
 
 		// 蓄力进度能量条（复用工具能量条 BarTooltipRender，填充色=当前充能态颜色）
 		// 发射弹出动画期间（popTicks>0）显示满格，与能量波射出瞬间同步。

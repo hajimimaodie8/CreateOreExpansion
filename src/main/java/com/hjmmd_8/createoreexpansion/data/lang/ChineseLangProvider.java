@@ -238,8 +238,11 @@ public class ChineseLangProvider extends LanguageProvider {
         // （TransmuterMode#ATTACK_TIERS，见 SpeedBands），文案里一个转速数字都没有：
         // 改 256→320 或 3→4 档时档位行数与每行边界自动跟着变
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm", "攻击转速：%s RPM（需求 %s ~ %s RPM）");
-        // 档位：一档一行（用户 2026-09-25："显示太长了，你全写在一行"→ 拆行；当前档用亮色由代码上色）
+        // 档位：一档一行（用户 2026-09-25："显示太长了，你全写在一行"→ 拆行；当前档用亮色由代码上色）。
+        // 区间改成闭区间（2026-09-25）：非末档"下限 ~ （下一档下限 − 1）"、末档"≥下限"，
+        // 分档下限已量化为整数 RPM（见 SpeedBands#linear），所以这里不会再出现小数。
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry", "第 %s 档（%s ~ %s RPM，%s）");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry_open", "第 %s 档（≥%s RPM，%s）");
         // 场盒说法（半径 0 = 场盒就是机器本体，不写成"半径 0 格"）
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core", "场盒就是机器本体");
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius", "场盒半径 %s 格");

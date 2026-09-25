@@ -207,7 +207,8 @@ public final class TransmuterGoggles {
 	 *       {@link TransmuterMode#minimumRpm()} 与 {@link TransmuterMode#attackTierCeilingRpm()}，
 	 *       现为 128 ~ 256 RPM）；</li>
 	 *   <li><b>档位行 × N</b>（N = {@link TransmuterMode#attackTierCount()}，现为 3）：
-	 *       <b>一档一行</b>，每行"第 N 档（下限 ~ 上限 RPM，场盒…）"。
+	 *       <b>一档一行</b>，非末档"第 N 档（下限 ~ 上界 RPM，场盒…）"、末档"第 N 档（≥下限 RPM，场盒…）"
+	 *       （都是闭区间，相邻两档不重不漏）。
 	 *       前两版分别把三档挤进一条长对照行（用户 2026-09-25："你这个消息显示太长了，你全写在一行"）
 	 *       ——改成一行一档；<b>当前所处那一档用亮色（白）、其余灰色</b>，三行文案本身同构，
 	 *       颜色就是"我在哪档"的唯一标记。用户把"没到 128 RPM"也算作一个状态（"显然没有达到"），
@@ -227,7 +228,8 @@ public final class TransmuterGoggles {
 	 * 说成人话（"机器本体"）。</p>
 	 *
 	 * <p>所有 RPM 数字都过 {@link SpeedBands#formatRpm(float)}（本模组转速文案的唯一格式化）：
-	 * 整数不带 {@code .0}、分档边界这类循环小数保留一位（{@code 170.666 → "170.7"}）。</p>
+	 * 档位边界经分档表量化后都是整数，所以区间里不会再出现 {@code .0} 或小数位
+	 * （现表：{@code 128 ~ 170 / 171 ~ 212 / ≥213}）。</p>
 	 *
 	 * <p>调用链：{@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip} →
 	 * {@link TransmuterMode#appendReadout}（模式自报）→ 本方法（攻击态那一支）。</p>
@@ -262,14 +264,23 @@ public final class TransmuterGoggles {
 	 * <p>颜色是<b>唯一的"当前档"标记</b>（用户 2026-09-25 规格："把当前机器所处状态对应的行，
 	 * 从灰色标成亮色（白色）"）——所以三行文案本身完全同构，只有颜色不同，玩家扫一眼就能定出自己在哪档。</p>
 	 *
-	 * <p>四个数值全部直读模式自报的分档表（循环上界由调用方取 {@code attackTierCount()}）：
-	 * 本方法里没有任何档数、阈值或半径常量。</p>
+	 * <p><b>区间是闭区间</b>：非末档用 {@code 下限 ~ 上界}（上界 = 下一档下限 − 1，
+	 * 见 {@link TransmuterMode#attackTierUpperRpm(int)}），<b>末档没有上界</b>，改用
+	 * {@code ≥下限} 的另一条词条——两条词条只在"有没有上界"这一点上不同，数字仍然全部来自同一张分档表，
+	 * 所以本方法里没有任何档数、阈值或半径常量。</p>
 	 */
 	private static MutableComponent tierLine(TransmuterMode mode, int index, boolean current) {
-		return Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry",
-			index + 1, SpeedBands.formatRpm(mode.attackTierLowerRpm(index)),
-			SpeedBands.formatRpm(mode.attackTierUpperRpm(index)), fieldSize(mode.attackTierRadiusAt(index)))
-			.withStyle(current ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY);
+		int tier = index + 1;
+		MutableComponent size = fieldSize(mode.attackTierRadiusAt(index));
+		MutableComponent range = index == mode.attackTierCount() - 1
+			// 末档：≥下限（与充能器 γ/ω 档同一种写法）
+			? Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry_open",
+				tier, SpeedBands.formatRpm(mode.attackTierLowerRpm(index)), size)
+			// 其余档：下限 ~ （下一档下限 − 1），闭区间、相邻两档不重叠
+			: Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry",
+				tier, SpeedBands.formatRpm(mode.attackTierLowerRpm(index)),
+				SpeedBands.formatRpm(mode.attackTierUpperRpm(index)), size);
+		return range.withStyle(current ? ChatFormatting.WHITE : ChatFormatting.DARK_GRAY);
 	}
 
 	/**

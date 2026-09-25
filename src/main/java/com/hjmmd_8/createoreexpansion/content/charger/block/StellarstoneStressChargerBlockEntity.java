@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
+import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 import com.simibubi.create.foundation.blockEntity.SmartBlockEntity;
 import com.simibubi.create.foundation.blockEntity.behaviour.BehaviourType;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
@@ -219,6 +220,19 @@ public class StellarstoneStressChargerBlockEntity extends AbstractCreateChargerB
 		if (Math.abs(getSpeed()) <= 0.0F)
 			return 0;
 		return getManualLevel();
+	}
+
+	/**
+	 * <b>本机没有"转速档位表"</b>（{@code null}）——档位是手动等级槽的持久设置，
+	 * 与转速无关（见 {@link #getModeForSpeed()}）。
+	 *
+	 * <p>覆写成 {@code null} 是让基类护目镜那条"一档一行列出全部档位"的路<b>自动退化成现状的单行</b>
+	 * （{@link #getStateName(int, int)} + {@code getGoggleColor}），本机的行为与文案一个字都不变——
+	 * 它没有"当前转速落在哪一档"这回事，逐档列举（还要按转速上色）对它没有意义。</p>
+	 */
+	@Override
+	protected SpeedBands createSpeedTierBands(int max) {
+		return null;
 	}
 
 	/** 发射：与翡翠/蓝宝石充能器共用同一通用能量波实体（颜色按波等级统一）。 */
