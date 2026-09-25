@@ -1,6 +1,10 @@
 package com.hjmmd_8.createoreexpansion;
 
+import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.common.AllCreativeModeTabs;
+import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
+import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.AllFanProcessingTypes;
 import com.hjmmd_8.createoreexpansion.common.AllFluids;
 import com.hjmmd_8.createoreexpansion.common.AllGemTags;
 import com.hjmmd_8.createoreexpansion.common.AllModEffects;
@@ -9,6 +13,7 @@ import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.AllStructureProcessors;
 import com.hjmmd_8.createoreexpansion.common.AllTiers;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
@@ -18,21 +23,24 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.registries.RegisterEvent;
 
 /**
  * <b>COE（矿物拓展）的 {@code @Mod} 入口</b>。
  *
  * <p><b>P3b 之后这个类的身份变了</b>：它<b>不再</b>代表"整个模组"，只代表
  * <b>矿物拓展（mod id 仍是 {@code createoreexpansion}）这一个模块</b>。
- * 同一份 jar 里现在有四个 {@code @Mod}：{@code coe_core}（{@link CoeCore}）、
- * 本类、{@code cews}（{@code common.registry.cews.CewsMod}）、
- * {@code transmutation}（{@code common.registry.transmutation.TransmutationMod}）。</p>
+ * 同一份 jar 里现在有三个 {@code @Mod}：本类、{@code cews}（{@code common.registry.cews.CewsMod}）、
+ * {@code transmutation}（{@code common.registry.transmutation.TransmutationMod}）；
+ * {@code common.CoeCore} <b>不是</b> {@code @Mod}（P3d 起 core 是 JarJar 嵌套的普通库）。</p>
  *
  * <p><b>哪些东西<b>不</b>在这里了</b>（它们随各自的模块搬走，但注册命名空间一个字没变）：</p>
  * <ul>
- *   <li>命名空间常量 / {@code modLoc} / 日志器 / 配置 / 数据组件 / 实体类型 / 风扇加工类型 /
- *       旋转载荷 → {@link CoeCore}（core 层，命名空间 {@code createoreexpansion}）；</li>
+ *   <li>命名空间常量 / {@code modLoc} / 日志器 → {@link CoeCore}（共享库，命名空间 {@code createoreexpansion}）；
+ *       而<b>它们原先的注册触发</b>（配置 / 数据组件 / 实体类型 / 风扇加工类型 / 旋转载荷）
+ *       在 P3d 反过来<b>搬回到本类构造器</b>——库没有生命周期，那本就是 mod 的职责；</li>
  *   <li>CEWS 的机器、页签内容、能量场载荷、Jade 波插件、Sable 桥接 → {@code CewsMod}；</li>
  *   <li>TRANS 的物品 → {@code TransmutationMod}。</li>
  * </ul>
@@ -58,6 +66,27 @@ public class CreateOreExpansion {
 
     public CreateOreExpansion(IEventBus modEventBus, ModContainer modContainer) {
         MOD_BUS = modEventBus;
+
+        // ── 共享地基的注册触发（P3d：原 CoeCore 的 @Mod 构造器整体搬到这里）─────────────
+        // core 现在是普通库、没有自己的 mod 生命周期，而这些动作本来就是「createoreexpansion
+        // 这个 mod 的初始化」，所以目标容器/事件总线都还是本 mod 的，一个字没变。
+        // 顺序与拆分前 CoeCore 构造器内逐条一致（数据组件 → 实体类型 → 风扇加工钩子 →
+        // 旋转载荷 → 配置），并且整块排在本类其余注册触发<b>之前</b>，
+        // 保持它们相对既有注册触发顺序的先后关系不变。
+        AllDataComponents.register(modEventBus);
+        AllEntityTypes.register(modEventBus);
+        // 风扇加工类型（Create 的注册表）：沿用拆分前的写法，RegisterEvent 每次触发都调用
+        // （init() 自身幂等），行为与拆分前逐字一致。
+        modEventBus.addListener(CreateOreExpansion::onRegister);
+        // 统一交互规则第 4 条：Ctrl + 扳手右键 = 旋转本模组机器（客户端拦截 → 服务端校验并旋转）
+        modEventBus.addListener(MachineRotatePayload::registerPayloads);
+
+        // 配置：目标容器<b>必须是</b> createoreexpansion（本 mod 自己的容器）。
+        // 文件名 = <modid>-common.toml，挂到别的容器上会让老玩家的
+        // createoreexpansion-common.toml 被静默弃用（设置"丢一次"）。
+        // 另一个理由：AllConfig 自身是 @EventBusSubscriber(modid = createoreexpansion)，
+        // 只有挂在本容器上，ModConfigEvent 才会送达它。
+        modContainer.registerConfig(ModConfig.Type.COMMON, AllConfig.SPEC);
 
         // 本层 Registrate 的事件接线。静态块里已经设好 tooltip 工厂与默认创造页（基础页）；
         // 见 CoeRegistrate 的类注释（顺序由类初始化保证）。
@@ -97,8 +126,21 @@ public class CreateOreExpansion {
 
         bootstrapJade();
 
-        CoeCore.LOGGER.info("[COE] mod 初始化完成（mod id={}，注册命名空间={}）：矿物拓展内容已注册",
+        CoeCore.LOGGER.info("[COE] mod 初始化完成（mod id={}，注册命名空间={}）：矿物拓展内容已注册，"
+                + "共享地基（配置/数据组件/实体类型/风扇加工类型/旋转载荷）已由本构造器接线",
             MOD_ID, CoeCore.REGISTRY_NAMESPACE);
+    }
+
+    /**
+     * {@code RegisterEvent} 上的风扇加工类型注册钩子。
+     *
+     * <p>P3d 之前住在 {@code CoeCore#onRegister}（那时 core 还是 {@code @Mod}）；
+     * core 改成普通库后随注册动作一起搬回本 mod，<b>语义与拆分前逐字相同</b>：
+     * 每次 {@code RegisterEvent} 触发都调 {@code AllFanProcessingTypes.init()}（自身幂等），
+     * 由它的类初始化把 {@code transmuting} 注册进 Create 的 {@code FAN_PROCESSING_TYPE}。</p>
+     */
+    private static void onRegister(RegisterEvent event) {
+        AllFanProcessingTypes.init();
     }
 
     /** Curios 可选联动引导：只在 Curios 在场时加载桥接类（未装则凝能佩降级为纯物品，不崩）。 */

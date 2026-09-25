@@ -1,7 +1,16 @@
-// ── core：共享库模块（P3a 骨架）────────────────────────────────────────────────
-// 暂时是空模块：只有元数据 + mods.toml，没有任何 java/资源文件。
-// P3b 才把 108 个共享文件（util / 机器交互契约 / 配置 / 标签页 / datagen 基座 / mixin 插件）
-// 搬进 core/src/main/java/**（包名一字不改）。
+// ── core：共享库模块（P3d-β：已从 mod 改成普通库）─────────────────────────────
+// 身份变了：core **不是** mod，是一份被 JarJar 嵌进根 jar 的普通库
+// （core/gradle.properties 里的 coe_library=true 是唯一开关，见 buildSrc/coe-conventions）：
+//   · 没有 src/main/templates/META-INF/neoforge.mods.toml（库没有 mod 元数据）
+//   · 不在 neoForge.mods{} 里登记 mod（dev 运行期不再出现 coe_core）
+//   · 仍然应用 MDG，仍然拿 Minecraft / NeoForge / Create 的编译 classpath
+//
+// 为什么必须这样：core 当 mod 时，NeoForge 1.21.1 的 ModLauncher 把每个 mod 文件当成一个
+// JPMS 命名模块，同一个 Java 包不允许同时属于两个 mod 文件 —— 实测直接崩在
+//   java.lang.module.ResolutionException: Modules coe_core and createoreexpansion
+//   export package com.hjmmd_8.createoreexpansion.common.machine to module rhino
+// 普通库 jar 进的是 unnamed module、不参与模块解析，于是包可以重叠、
+// 搬迁粒度从「包」放宽回「类」（同一个类仍只能存在于一处，否则会出现两个 Class 对象）。
 plugins {
     // 版本由根 build.gradle 的 plugins { id 'net.neoforged.moddev' version '2.0.141' } 提供，
     // 子模块这里**不能**再写 version（会报 plugin already on the classpath）。
@@ -9,6 +18,12 @@ plugins {
     id 'coe-conventions'
 }
 
-// P3a 刻意不声明任何跨模块依赖（模块之间要保持零代码依赖）。
-// P3b 起再按下面的行接上：
-//   implementation project(':core')
+dependencies {
+    // 库模式不注册 mod，但共享层将来要放的是「与 Create 打交道的契约」
+    // （机器交互 / 应力口径 / 配方登记表…），所以这里保留 Create 的编译期依赖：
+    // 与根 build.gradle 同一坐标、同一写法（:slim + transitive=false），
+    // compileOnly ⇒ 不进 core 的发布元数据、也不会在运行期重复提供 Create。
+    // 本轮搬进来的 ChargingRecipeTools 只用到 Minecraft 的 ItemLike，
+    // 这一行是为后续共享文件预留的编译面（不多不少：flywheel/ponder/Registrate 等仍是根工程的事）。
+    compileOnly("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+}

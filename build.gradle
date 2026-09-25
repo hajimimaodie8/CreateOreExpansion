@@ -148,6 +148,26 @@ dependencies {
     jarJar(implementation("com.leaf:skiller:1.0.0"))
     // 开发环境（runClient/runData）需要 Skiller 作为一个真实 mod 在场：
     // MDG 会把 jarJar 依赖一并放进运行时 classpath，无需额外声明。
+    //
+    // ── core 共享库（P3d：普通库，JarJar 嵌套，不是 mod）──────────────────────────────
+    // 只在 neoForge.mods{} 里登记 createoreexpansion 一个 mod —— core 已经不是一个 mod，
+    // 所以这里**不许**再出现 coe_core（它没有 META-INF/neoforge.mods.toml，
+    // 也不该被 FML 当作 mod 文件去解析）。
+    // 一行即可，不另写 implementation project(':core')：DependencyHandler 的
+    // `implementation(...)` 返回 Dependency 对象，外层 jarJar(...) 再用同一个对象登记到
+    // jarJar 配置 —— 也就是「编译期可见」与「发布时嵌进 META-INF/jarjar/」两件事
+    // 由这一行同时完成（上面那行 skiller 就是同一写法）。再写一行是同一个依赖声明两遍。
+    jarJar(implementation(project(':core')))
+    // ⚠ dev 运行期可见性必须**另外**声明一次（实测踩过）：MDG 把 java.class.path 切成两半 ——
+    //   · 进 legacy classpath 的 = 普通库（游戏那一层能看见）
+    //   · 不进的 = 交给 FML 当「mod 文件候选」（有 neoforge.mods.toml 的才成为 mod）
+    // jarJar 依赖按设计**不进** legacy classpath（生产环境由嵌套 jar 提供），
+    // 而 core 没有 mods.toml ⇒ 它既不是 mod、又不在 legacy classpath ⇒
+    // 运行期 NoClassDefFoundError: ...common.charger.ChargingRecipeTools（实测）。
+    // additionalRuntimeClasspath 正是 MDG 为这件事准备的配置
+    // （源码原话："Contains dependencies of every run, that should not be considered boot classpath modules"，
+    //  且每个 run 的 legacyClasspath 都 extendsFrom 它）→ 把它放回「普通库」那一半。
+    additionalRuntimeClasspath project(':core')
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")

@@ -31,6 +31,26 @@ if (modulePropsFile.isFile()) {
 // 先取值，再把非保留键挂到 ext 上（顺序不能反：group/description 是 Project 自己的属性）
 def prop = { String key -> moduleProps.getProperty(key) }
 
+// ── 1b) 库模式开关（P3d）：coe_library=true → 本模块是一个**普通库**，不是一个 mod ────
+// 为什么要有这个开关：NeoForge 1.21.1 的 ModLauncher 把每个 mod 文件当成一个 JPMS 命名模块，
+// 同一个 Java 包不允许同时属于两个 mod 文件（实测：
+// java.lang.module.ResolutionException: Modules coe_core and createoreexpansion export package ...）。
+// 普通库 jar 进的是 unnamed module，不参与模块解析 ⇒ 包可以重叠、搬迁粒度从「包」放宽回「类」。
+//
+// 取值规则：**只看本模块自己的 gradle.properties**（缺省 false）。
+// 刻意不用 project.findProperty('coe_library')——那会连根 gradle.properties 一起命中，
+// 等于给全工程装一个总闸：谁在根里写一行，所有模块都会变成「库」。
+// 没有这个键的模块（coe / cews / transmutation / 根工程）行为与本开关引入前**逐字节相同**。
+//
+// ⚠ 消费方（依赖这个库的那个模块）必须同时写两行，缺一不可：
+//     jarJar(implementation(project(':core')))   // 编译期可见 + 发布时嵌进 META-INF/jarjar/
+//     additionalRuntimeClasspath project(':core')// dev 运行期可见（实测缺这行会 NoClassDefFoundError）
+//   原因：MDG 把 java.class.path 切成两半——进 legacy classpath 的才是普通库，
+//   不进的交给 FML 当「mod 文件候选」；jarJar 依赖按设计不进 legacy classpath，
+//   而库没有 neoforge.mods.toml ⇒ 两边都落空。additionalRuntimeClasspath 正是
+//   MDG 为「不是 mod、但要进运行期的库」准备的配置。
+def isLibrary = (prop('coe_library') ?: 'false').toString().trim().toBoolean()
+
 def modId      = prop('mod_id')
 def modName    = prop('mod_name') ?: project.findProperty('mod_name')
 def modVersion = prop('mod_version') ?: project.findProperty('mod_version')
@@ -39,8 +59,12 @@ def modAuthors = prop('mod_authors') ?: project.findProperty('mod_authors')
 def modDesc    = prop('mod_description') ?: prop('description') ?: project.findProperty('mod_description')
 def modGroup   = prop('group') ?: project.findProperty('mod_group_id')
 
-if (modId == null) {
+if (modId == null && !isLibrary) {
     throw new GradleException("coe-conventions: ${project.path} 没有 gradle.properties（至少需要 mod_id）")
+}
+if (modId == null) {
+    // 库模式允许没有 mod_id（库里本来就没有 mod 概念）；归档名退回工程名。
+    modId = project.name
 }
 
 // group / description / version / name / path 是 Project 自己的属性，塞进 ext 会让
@@ -91,35 +115,41 @@ if (configurations.findByName('localRuntime') != null) {
     configurations.runtimeClasspath.extendsFrom(configurations.getByName('localRuntime'))
 }
 
-// ── 3) mods.toml 模板展开 ───────────────────────────────────────────────────
+// ── 3) mods.toml 模板展开（**库模式跳过**）────────────────────────────────────
 // 与根 build.gradle 的 generateModMetadata 同一套写法，只是属性表来自本模块。
-def generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
-    def replaceProps = [
-            minecraft_version      : project.findProperty('minecraft_version'),
-            minecraft_version_range: project.findProperty('minecraft_version_range'),
-            neo_version            : project.findProperty('neo_version'),
-            neo_version_range      : project.findProperty('neo_version_range'),
-            loader_version_range   : project.findProperty('loader_version_range'),
-            mod_id                 : modId,
-            mod_name               : modName,
-            mod_license            : modLicense,
-            mod_version            : modVersion,
-            mod_authors            : modAuthors,
-            mod_description        : modDesc
-    ]
-    inputs.properties replaceProps
-    // 模板按 UTF-8 读写（实测本机 Gradle 默认也是 UTF-8，输出与显式指定时逐字节相同；
-    // 这里写死只是为了不让"默认编码"变成隐式依赖）。
-    // ⚠ 模板里**不能出现裸的 ${...}**（哪怕是注释）：ProcessResources 的 expand 走的是
-    // Groovy SimpleTemplateEngine，${...} 会被当成 GString 里的展开运算符 ... 解析，
-    // 直接报 "Failed to parse template script ... Unexpected input: '('"。
-    // 要表达"占位符"这三个字就直接写中文，别写 ${...}。
-    filteringCharset = 'UTF-8'
-    expand replaceProps
-    from 'src/main/templates'
-    into 'build/generated/sources/modMetadata'
+// 库没有 mod 元数据 ⇒ 既不展开模板，也不把展开结果挂成 resources 源目录
+// （挂着的后果是 core 的 jar/classes 里带一份 [[mods]] coe_core，dev 运行期 FML 仍会把它
+//  当成一个 mod 去找 @Mod 入口，而 CoeCore 已经不是 @Mod 了 → dangling_entrypoint 直接崩）。
+def generateModMetadata = null
+if (!isLibrary) {
+    generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+        def replaceProps = [
+                minecraft_version      : project.findProperty('minecraft_version'),
+                minecraft_version_range: project.findProperty('minecraft_version_range'),
+                neo_version            : project.findProperty('neo_version'),
+                neo_version_range      : project.findProperty('neo_version_range'),
+                loader_version_range   : project.findProperty('loader_version_range'),
+                mod_id                 : modId,
+                mod_name               : modName,
+                mod_license            : modLicense,
+                mod_version            : modVersion,
+                mod_authors            : modAuthors,
+                mod_description        : modDesc
+        ]
+        inputs.properties replaceProps
+        // 模板按 UTF-8 读写（实测本机 Gradle 默认也是 UTF-8，输出与显式指定时逐字节相同；
+        // 这里写死只是为了不让"默认编码"变成隐式依赖）。
+        // ⚠ 模板里**不能出现裸的 ${...}**（哪怕是注释）：ProcessResources 的 expand 走的是
+        // Groovy SimpleTemplateEngine，${...} 会被当成 GString 里的展开运算符 ... 解析，
+        // 直接报 "Failed to parse template script ... Unexpected input: '('"。
+        // 要表达"占位符"这三个字就直接写中文，别写 ${...}。
+        filteringCharset = 'UTF-8'
+        expand replaceProps
+        from 'src/main/templates'
+        into 'build/generated/sources/modMetadata'
+    }
+    sourceSets.main.resources.srcDir generateModMetadata
 }
-sourceSets.main.resources.srcDir generateModMetadata
 
 // ── 4) ModDevGradle 配置 ────────────────────────────────────────────────────
 // 注意：这里必须用动态方式拿 neoForge 扩展——buildSrc 的编译 classpath 上没有
@@ -134,9 +164,17 @@ neoForgeExt.parchment {
     minecraftVersion = project.findProperty('parchment_minecraft_version')
     mappingsVersion = project.findProperty('parchment_mappings_version')
 }
-neoForgeExt.mods {
-    "${modId}" {
-        sourceSet sourceSets.main
+if (isLibrary) {
+    // 库模式：一个字都不注册。
+    // · 不写 neoForgeExt.mods{}  → MDG 不会为本工程登记 mod（dev 运行期少一个 mod 文件）
+    // · 不写 ideSyncTask         → 那个任务在库模式下根本不存在（generateModMetadata 被跳过）
+    // 注意这里**不碰** neoForgeExt.version / parchment：库同样需要 MDG 提供
+    // Minecraft / NeoForge 编译 classpath（以及下面 repositories 里的 Create 等）。
+} else {
+    neoForgeExt.mods {
+        "${modId}" {
+            sourceSet sourceSets.main
+        }
     }
+    neoForgeExt.ideSyncTask generateModMetadata
 }
-neoForgeExt.ideSyncTask generateModMetadata
