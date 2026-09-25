@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.content.energyfield;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;

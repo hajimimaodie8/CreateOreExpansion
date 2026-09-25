@@ -5,7 +5,6 @@ import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 import java.awt.Color;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
 import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;

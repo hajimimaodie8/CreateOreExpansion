@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
 import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.skill.ISkillInstance;

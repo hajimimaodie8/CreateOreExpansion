@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
-import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.recipe.RecipeAutomation;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults.DebugLog;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxRef;
@@ -173,7 +173,7 @@ public final class WaveCandidateEvaluator {
 		// 兼容开关：AllConfig.waveRequireCarriedType = false 时回到旧的全库行为。
 		java.util.Set<ResourceLocation> allowedTypeIds = ctx.allowedTypeIds;
 		for (RecipeHolder<?> holder : allWaveRecipes(ctx)) {
-			if (AllRecipeTypes.shouldIgnoreInAutomation(holder))
+			if (RecipeAutomation.shouldIgnoreInAutomation(holder))
 				continue;
 			Recipe<?> candidateRecipe = holder.value();
 			if (!isTypeAllowed(candidateRecipe, allowedTypeIds)) {

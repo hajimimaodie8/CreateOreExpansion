@@ -3,7 +3,9 @@ package com.hjmmd_8.createoreexpansion.content.charger.craft;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults.DebugLog;
+import com.simibubi.create.api.registry.CreateBuiltInRegistries;
 import com.simibubi.create.content.kinetics.fan.processing.FanProcessingType;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
@@ -195,7 +197,13 @@ public final class WaveEnvironmentChecks {
 			return null;
 		}
 		if ("createoreexpansion".equals(ns) && "transmuting".equals(path))
-			return com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllFanProcessingTypes.TRANSMUTING;
+			// P3q：原先写的是 TRANS 层 AllFanProcessingTypes.TRANSMUTING 的全限定名——那是
+			// CEWS -> TRANS 的跨层引用（check-layering 的禁止表里没有这一对，所以工具看不见，
+			// 但任务书的允许方向只有 CEWS->COE / TRANS->COE，且 CEWS 拆成子模块后不该认识
+			// TRANS 的类）。嬗变媒介是<b>已按 id 注册进 Create 注册表</b>的对象
+			// （createoreexpansion:transmuting），所以按 id 取即可：值同一个实例，
+			// 依赖方向变成 CEWS -> CORE（CoeCore.modLoc + Create 注册表）。
+			return CreateBuiltInRegistries.FAN_PROCESSING_TYPE.get(CoeCore.modLoc("transmuting"));
 		return null;
 	}
 

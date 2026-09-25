@@ -3,8 +3,6 @@ package com.hjmmd_8.createoreexpansion.content.energyfield;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.PacketFlow;

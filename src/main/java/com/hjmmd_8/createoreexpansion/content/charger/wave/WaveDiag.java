@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.charger.wave;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**

@@ -4,7 +4,6 @@ package com.hjmmd_8.createoreexpansion.content.charger.entity;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;

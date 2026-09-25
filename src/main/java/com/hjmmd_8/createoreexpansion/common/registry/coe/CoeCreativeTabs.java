@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.hub.EnergyWaveStudyTab;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 
 /**
@@ -13,12 +12,12 @@ import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
  * <b>矿物拓展 → 能量波阵学 → Create 调色板</b>（与拆分前的枚举顺序逐字一致）。</p>
  *
  * <p><b>为什么这里能引用 CEWS 的页而不违反分层方向</b>：本类读的是
- * {@link EnergyWaveStudyTab#TAB_ID}（SHARED 层的 {@code common/EnergyWaveStudyTab}，一个
- * {@code static final String} 常量），<b>没有</b> import 任何 CEWS 层的类，
+ * {@link LayerCreativeTab#ENERGY_WAVE_STUDY_TAB_ID}（core 的 {@code static final String} 常量，
+ * P3q 从 {@code common/hub/EnergyWaveStudyTab} 下移），<b>没有</b> import 任何 CEWS 层的类，
  * 所以不存在 COE → CEWS 的编译期依赖。</p>
  *
- * <p><b>本类不做注册动作</b>：创造页注册表住在 {@link LayerCreativeTab}（SHARED），
- * 由协调入口 {@code common/AllCreativeModeTabs} 按层顺序登记——这是"注册顺序不变"的前提。</p>
+ * <p><b>本类不做注册动作</b>：创造页注册表住在 {@link LayerCreativeTab}（core），
+ * 由根侧注入的登记动作按层顺序登记——这是"注册顺序不变"的前提。</p>
  */
 public final class CoeCreativeTabs {
 
@@ -27,7 +26,7 @@ public final class CoeCreativeTabs {
     public static final LayerCreativeTab BASE_TAB = LayerCreativeTab.of(
         "base_tab",
         "itemGroup.createoreexpansion",
-        LayerCreativeTab.tabKey(EnergyWaveStudyTab.TAB_ID),
+        LayerCreativeTab.tabKey(LayerCreativeTab.ENERGY_WAVE_STUDY_TAB_ID),
         () -> CoeItems.JADE_INGOT.asStack());
 
     /** 本层页的声明顺序（由协调入口读取，顺序 = 拆分前的枚举顺序）。 */

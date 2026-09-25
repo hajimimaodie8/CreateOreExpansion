@@ -14,6 +14,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.AllStructureProcessors
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllTiers;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
+import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
@@ -69,6 +70,16 @@ public class CreateOreExpansion {
     public static final String MOD_ID = CoeCore.MOD_ID;
 
     public CreateOreExpansion(IEventBus modEventBus, ModContainer modContainer) {
+        // P3q：「按层顺序登记所有创造页」这件事只有根侧知道全貌（COE 的 base_tab 必须排在
+        // CEWS 的 energy_wave_study 之前），而三个层的 Registrate 都要在设 defaultCreativeTab
+        // 之前拿到自己的页 key。于是层的 Registrate 调 core 的 LayerCreativeTab.ensureRegistered()
+        // 发请求，这里把真正的登记动作（common/hub 的协调入口，hub 只许往下引用层）注入进去。
+        // 形状与 P3e 的 LayerRegistrate.installOwnerChain / P3p 的 MedallionLink 相同。
+        // 注入点放在最前面：installTabRegistrar 对"注入之前就来过的请求"会补跑，
+        // 所以 FML 构造 mod 的顺序（COE 未必第一个）不影响结果；类初始化时机与拆分前一致
+        // ——请求发生在 CoeRegistrate 的静态块里，那时才真正初始化 hub 并 registerTabs()。
+        LayerCreativeTab.installTabRegistrar(() -> AllCreativeModeTabs.registerTabs());
+
         // P3k：MOD 事件总线随「mod 身份」常量一起搬到共享库（库没有生命周期，
         // 也不该反向依赖 @Mod 入口）；本类只负责在构造时把它填上。全仓无消费者。
         CoeCore.MOD_BUS = modEventBus;

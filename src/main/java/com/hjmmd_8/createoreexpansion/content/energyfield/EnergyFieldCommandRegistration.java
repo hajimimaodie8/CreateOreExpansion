@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
 import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
 
@@ -27,7 +27,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * 数据经 {@link EnergyFieldSyncPayload} 从服务端同步。故本类只负责命令注册与
  * 登录/换维度时的补发同步。</p>
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class EnergyFieldCommandRegistration {
 
 	@SubscribeEvent

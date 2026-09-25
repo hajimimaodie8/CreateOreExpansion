@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.transmuting;
 
-import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.recipe.RecipeAutomation;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRecipeTypes;
 import java.util.List;
@@ -11,7 +11,7 @@ import org.joml.Vector3f;
 
 import com.simibubi.create.content.kinetics.fan.processing.FanProcessingType;
 import com.simibubi.create.foundation.recipe.RecipeApplier;
-import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 
 import net.createmod.catnip.theme.Color;
 import net.minecraft.core.BlockPos;
@@ -42,14 +42,14 @@ public class AllTransmutingType implements FanProcessingType {
 
 	@Override
 	public boolean canProcess(ItemStack stack, Level level) {
-		return TransmutationRecipeTypes.TRANSMUTING.find(AllRecipeTypes.wrap(stack), level)
+		return TransmutationRecipeTypes.TRANSMUTING.find(RecipeAutomation.wrap(stack), level)
 			.isPresent();
 	}
 
 	@Override
 	@Nullable
 	public List<ItemStack> process(ItemStack stack, Level level) {
-		return TransmutationRecipeTypes.TRANSMUTING.find(AllRecipeTypes.wrap(stack), level)
+		return TransmutationRecipeTypes.TRANSMUTING.find(RecipeAutomation.wrap(stack), level)
 			.map(RecipeHolder::value)
 			.map(r -> RecipeApplier.applyRecipeOn(level, stack, r, true))
 			.orElse(null);
@@ -85,7 +85,7 @@ public class AllTransmutingType implements FanProcessingType {
 		if (level.isClientSide)
 			return;
 		if (entity instanceof Player player && !player.isSpectator())
-			player.addEffect(new MobEffectInstance(AllModEffects.TRANSMUTATION_DISORDER, 60, 0));
+			player.addEffect(new MobEffectInstance(TransmutationEffects.TRANSMUTATION_DISORDER, 60, 0));
 	}
 
 }

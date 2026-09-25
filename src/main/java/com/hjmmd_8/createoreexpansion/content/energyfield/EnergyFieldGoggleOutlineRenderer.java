@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.client.AllRenderTypes;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -39,7 +39,7 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *   <li><b>淡出完成</b>：alpha 收敛到 0 后才从状态表移除，渲染自然消失。</li>
  * </ul>
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = CoeCore.MOD_ID, value = Dist.CLIENT)
 public final class EnergyFieldGoggleOutlineRenderer {
 
 	/** 加速场 = 天蓝；偏转场 = 品红。 */

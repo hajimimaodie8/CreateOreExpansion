@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.lightning;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.recipe.RecipeAutomation;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.simibubi.create.foundation.recipe.RecipeApplier;
 
@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class LightningEventHandler {
 
     /** 闪电落地效果（原版火焰）之后才执行的方块转化任务，避免转化结果被火焰覆盖 */
@@ -153,7 +153,7 @@ public final class LightningEventHandler {
             return null;
 
         ItemStack blockAsItem = state.getBlock().asItem().getDefaultInstance();
-        var recipeOpt = CoeRecipeTypes.LIGHTNING_BLOCK.find(AllRecipeTypes.wrap(blockAsItem), level);
+        var recipeOpt = CoeRecipeTypes.LIGHTNING_BLOCK.find(RecipeAutomation.wrap(blockAsItem), level);
         if (recipeOpt.isEmpty())
             return null;
 

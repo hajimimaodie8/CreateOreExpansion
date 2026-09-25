@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.google.common.collect.Maps;
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.BowCurseSkill;

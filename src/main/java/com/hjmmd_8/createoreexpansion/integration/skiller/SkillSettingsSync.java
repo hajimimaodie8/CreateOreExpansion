@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 import net.minecraft.server.level.ServerPlayer;
 
@@ -21,7 +21,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
  *
  * @since 1.0.0
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class SkillSettingsSync {
 
     private SkillSettingsSync() {

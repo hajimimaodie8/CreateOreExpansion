@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 // 系列特性登记：物品注册链上写 .tag(AllModItemTags.STELLARSTONE_ITEMS) / .tag(AllModItemTags.THUNDERITE_ITEMS)
 // （Java 没有扩展方法，链上只能写成 .tag(...)；函数版见 SeriesTraits#addStellarstoneTraits(ItemBuilder)。
 //  判定口径 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定，全部收口在 SeriesTraits#isStellarstone/isThunderite）

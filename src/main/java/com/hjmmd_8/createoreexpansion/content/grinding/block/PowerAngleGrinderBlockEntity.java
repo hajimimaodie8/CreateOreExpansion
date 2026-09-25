@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.grinding.block;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
-import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.recipe.RecipeAutomation;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.GrinderInventory;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.SidedItemHandlers;
@@ -403,7 +403,7 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		return recipes.stream()
 			.filter(RecipeConditions.outputMatchesFilter(filtering))
 			.filter(RecipeConditions.firstIngredientMatches(inventory.getStackInSlot(0)))
-			.filter(r -> !AllRecipeTypes.shouldIgnoreInAutomation(r))
+			.filter(r -> !RecipeAutomation.shouldIgnoreInAutomation(r))
 			.collect(Collectors.toList());
 	}
 

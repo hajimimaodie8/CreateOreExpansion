@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
@@ -35,7 +35,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * {@code compat.curios} 桥接）。未装 Curios 时这些查询恒为假，于是佩的被动效果全部静默失效，
  * 但物品实体侧（星辉/雷鸣系列）的行为与 Curios 无关，照旧生效。</p>
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class MedallionEffectHandler {
 
     private MedallionEffectHandler() {

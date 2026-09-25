@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
-import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolDataComponents;
 import com.hjmmd_8.createoreexpansion.common.registry.DataComponentRegistrar;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;

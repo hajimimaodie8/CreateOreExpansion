@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedModifiableAttribute;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttribute;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttributeType;
 
 /**

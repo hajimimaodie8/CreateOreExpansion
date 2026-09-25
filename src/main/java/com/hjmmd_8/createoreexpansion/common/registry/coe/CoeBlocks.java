@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalBuddingBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalClusterBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalGrowthConfigs;

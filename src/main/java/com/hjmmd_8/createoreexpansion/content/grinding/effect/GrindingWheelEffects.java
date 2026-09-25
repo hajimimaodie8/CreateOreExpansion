@@ -3,8 +3,6 @@ package com.hjmmd_8.createoreexpansion.content.grinding.effect;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-
 import net.minecraft.resources.ResourceLocation;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 

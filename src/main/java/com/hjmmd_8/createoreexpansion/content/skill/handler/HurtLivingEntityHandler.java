@@ -1,10 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.skill.handler;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.content.skill.context.LivingHurtContext;
@@ -22,7 +21,7 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
 import java.util.List;
 
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class HurtLivingEntityHandler {
 	/** 防重入：技能造成的后续伤害（如夺取的吸血）不得再次触发技能，否则同一 tick 内会递归释放直至能量耗尽 */
 	private static boolean releasing = false;

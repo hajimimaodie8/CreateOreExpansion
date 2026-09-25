@@ -1,7 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.PacketFlow;

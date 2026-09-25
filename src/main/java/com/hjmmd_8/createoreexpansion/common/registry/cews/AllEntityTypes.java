@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;

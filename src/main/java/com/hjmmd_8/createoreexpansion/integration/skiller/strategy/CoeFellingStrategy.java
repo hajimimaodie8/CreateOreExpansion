@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
 import com.hjmmd_8.createoreexpansion.foundation.util.BlockSearch;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;

@@ -210,6 +210,87 @@ foreach ($rel in $rels) {
     }
 }
 
+# ---------------------------------------------------------------------------
+# P3q: layer-residency closure -- "can this layer become its own Gradle module?"
+#
+# check-layering.ps1 asserts DIRECTION (CEWS->COE and TRANS->COE allowed, the other
+# directions forbidden).  It does NOT answer the question the P3g failure raised: a
+# layer sub-module compiles against project(':core') and NOTHING in src/main/java, so
+# every project class its files reach -- transitively -- must be either
+#   * CORE  (already in the shared library), or
+#   * the SAME layer (it travels with the sub-module), or
+#   * an ALLOWED lower layer (CEWS->COE, TRANS->COE).
+# ONE root-resident SHARED class (common/hub/**, data/**, CreateOreExpansion, ...) in
+# that closure is enough for LAYER-NO: the sub-module cannot see it.  This column and
+# build\patch\layer-closure.txt are the recomputable criterion for "can this layer be
+# split out yet"; the LAYER-NO list is the work order for the next round.
+# ---------------------------------------------------------------------------
+$layerOrder = @('COE', 'CEWS', 'TRANS')
+$layerAllowed = @{
+    'COE'   = @('COE', 'CORE')
+    'CEWS'  = @('CEWS', 'COE', 'CORE')
+    'TRANS' = @('TRANS', 'COE', 'CORE')
+}
+$layerVerdict  = @{}
+$layerHits     = @{}
+$layerDirectNo = @{}
+
+# BFS from a layer file; STOP at the first disallowed class on each branch and report
+# it together with the first hop that led there -- that pair is the actionable chain.
+function Get-LayerBlockers {
+    param([string]$Start, [string[]]$Allow)
+    $seen     = New-Object System.Collections.Generic.HashSet[string]
+    $q        = New-Object System.Collections.Generic.Queue[string]
+    $firstHop = @{}
+    $hits     = New-Object System.Collections.Generic.List[object]
+    if ($deps.ContainsKey($Start)) {
+        foreach ($t in $deps[$Start]) {
+            if ($seen.Add($t)) { $q.Enqueue($t); $firstHop[$t] = $t }
+        }
+    }
+    while ($q.Count -gt 0) {
+        $n = $q.Dequeue()
+        if ($Allow -notcontains $layerOf[$n]) {
+            $hits.Add([pscustomobject]@{ First = $firstHop[$n]; Block = $n })
+            continue
+        }
+        if (-not $deps.ContainsKey($n)) { continue }
+        foreach ($t in $deps[$n]) {
+            if ($seen.Add($t)) { $q.Enqueue($t); $firstHop[$t] = $firstHop[$n] }
+        }
+    }
+    foreach ($h in $hits) { Write-Output $h }
+}
+
+foreach ($rel in $rels) {
+    $own = $layerOf[$rel]
+    if ($own -eq 'SHARED') { continue }
+    $allow = $layerAllowed[$own]
+    $directNo = New-Object System.Collections.Generic.List[string]
+    foreach ($t in $deps[$rel]) {
+        if ($allow -notcontains $layerOf[$t]) { $directNo.Add($t) }
+    }
+    $layerDirectNo[$rel] = @($directNo | Sort-Object)
+    $layerHits[$rel]     = @(Get-LayerBlockers $rel $allow)
+    if ($layerHits[$rel].Count -eq 0) { $layerVerdict[$rel] = 'LAYER-OK' }
+    else                              { $layerVerdict[$rel] = 'LAYER-NO' }
+}
+
+# cross-check: the closure definition and the BFS must agree (they are two spellings
+# of "is any disallowed class reachable").  A mismatch would mean a BFS bug.
+$layerMismatch = 0
+foreach ($rel in $rels) {
+    if ($layerOf[$rel] -eq 'SHARED') { continue }
+    $allow = $layerAllowed[$layerOf[$rel]]
+    $badClo = 0
+    foreach ($t in $clo[$rel].Open) { if ($allow -notcontains $layerOf[$t]) { $badClo++ } }
+    $badBfs = @($layerHits[$rel]).Count
+    if (($badClo -eq 0) -ne ($badBfs -eq 0)) {
+        $layerMismatch++
+        Write-Host ("layer verdict mismatch: {0} closure={1} bfs={2}" -f $rel, $badClo, $badBfs)
+    }
+}
+
 $report = New-Object System.Collections.Generic.List[string]
 $coreCandidates = New-Object System.Collections.Generic.List[string]
 
@@ -283,9 +364,14 @@ foreach ($rel in $rels) {
 
 $report.Add('')
 $report.Add('=== layer files ===')
+$report.Add('  LAYER-OK = the whole project closure stays inside core + this layer + the')
+$report.Add('             allowed lower layers (CEWS->COE, TRANS->COE) -> splittable today')
+$report.Add('  LAYER-NO = a root-resident class is reachable -> this file cannot leave the')
+$report.Add('             root project yet (blocking chain in layer-closure.txt)')
+$report.Add('')
 foreach ($rel in $rels) {
     if ($layerOf[$rel] -eq 'SHARED') { continue }
-    $report.Add(("  {0,-7} {1}" -f $layerOf[$rel], $rel))
+    $report.Add(("  {0,-7} {1,-9} {2}" -f $layerOf[$rel], $layerVerdict[$rel], $rel))
 }
 
 # ---------------------------------------------------------------------------
@@ -330,6 +416,76 @@ $cloIn.Add('')
 foreach ($l in $cloLines) { $cloIn.Add($l) }
 $report.Add('')
 foreach ($l in $cloIn) { $report.Add($l) }
+
+# ---------------------------------------------------------------------------
+# P3q: layer-closure report -- the "can this layer be split out" work order.
+# For every LAYER-NO file it prints the blocking chain: the DIRECT offender when
+# there is one, otherwise "via <first hop> -> <blocker>" (the blocker sits behind an
+# allowed-layer file that is itself blocked).  Then the distinct blockers per layer,
+# which is the list of root-resident classes the next round has to remove.
+# ---------------------------------------------------------------------------
+$layerLines = New-Object System.Collections.Generic.List[string]
+$layerLines.Add('=== layer-closure (P3q) ===')
+$layerLines.Add('  LAYER-OK = EVERY project class this layer file reaches (import, fully-qualified')
+$layerLines.Add('  reference, same-package simple name, wildcard import -- transitively) is CORE,')
+$layerLines.Add('  a file of the SAME layer, or a file of an ALLOWED lower layer (CEWS->COE,')
+$layerLines.Add('  TRANS->COE).  LAYER-NO = a root-resident SHARED class (common/hub/**, data/**,')
+$layerLines.Add('  CreateOreExpansion, ...) is reachable: a layer sub-module compiles against')
+$layerLines.Add('  project(:core) only and cannot see it.  ONE such class is enough.')
+$layerLines.Add('  The split target is exactly: closure(LAYER) subset of {CORE} + allowed layers.')
+$layerLines.Add('')
+
+$layerConsole = New-Object System.Collections.Generic.List[string]
+foreach ($L in $layerOrder) {
+    $all = @($rels | Where-Object { $layerOf[$_] -eq $L })
+    $no  = @($all | Where-Object { $layerVerdict[$_] -eq 'LAYER-NO' })
+    $blockers = New-Object System.Collections.Generic.HashSet[string]
+    $blockUse = @{}
+    foreach ($rel in $no) {
+        foreach ($h in @($layerHits[$rel])) {
+            [void]$blockers.Add($h.Block)
+            if (-not $blockUse.ContainsKey($h.Block)) { $blockUse[$h.Block] = New-Object System.Collections.Generic.HashSet[string] }
+            [void]$blockUse[$h.Block].Add($rel)
+        }
+    }
+    $rootBlockers = @($blockers | Where-Object { $layerOf[$_] -eq 'SHARED' })
+
+    $layerLines.Add('----------------------------------------------------------------------')
+    $layerLines.Add(("--- {0}: {1} files | LAYER-OK={2} | LAYER-NO={3}" -f `
+        $L, $all.Count, ($all.Count - $no.Count), $no.Count))
+    $layerLines.Add(("    distinct blocking classes: {0}  (root-resident SHARED: {1})" -f `
+        $blockers.Count, $rootBlockers.Count))
+    $layerConsole.Add(("  {0,-6} files={1,-4} LAYER-OK={2,-4} LAYER-NO={3,-4} blockers={4,-4} root-side={5}" -f `
+        $L, $all.Count, ($all.Count - $no.Count), $no.Count, $blockers.Count, $rootBlockers.Count))
+    $layerLines.Add('')
+    if ($no.Count -gt 0) {
+        $layerLines.Add('  LAYER-NO files and the chain that blocks them:')
+        foreach ($rel in $no) {
+            $layerLines.Add(("    LAYER-NO  {0}" -f $rel))
+            $hits = @($layerHits[$rel])
+            $dirHits  = @($hits | Where-Object { $layerDirectNo[$rel] -contains $_.Block })
+            $indHits  = @($hits | Where-Object { -not ($layerDirectNo[$rel] -contains $_.Block) })
+            foreach ($h in ($dirHits | Sort-Object Block)) {
+                $layerLines.Add(("        DIRECT  -> {0,-6} {1}" -f $layerOf[$h.Block], $h.Block))
+            }
+            foreach ($h in ($indHits | Sort-Object Block)) {
+                $layerLines.Add(("        via {0} -> {1,-6} {2}" -f $h.First, $layerOf[$h.Block], $h.Block))
+            }
+        }
+        $layerLines.Add('')
+        $layerLines.Add('  distinct blockers for this layer (root-resident SHARED first):')
+        foreach ($b in (@($blockers | Where-Object { $layerOf[$_] -eq 'SHARED' }) | Sort-Object)) {
+            $layerLines.Add(("    SHARED  {0,-4} files  {1}" -f $blockUse[$b].Count, $b))
+        }
+        foreach ($b in (@($blockers | Where-Object { $layerOf[$_] -ne 'SHARED' }) | Sort-Object)) {
+            $layerLines.Add(("    {0,-6}  {1,-4} files  {2}" -f $layerOf[$b], $blockUse[$b].Count, $b))
+        }
+        $layerLines.Add('')
+    }
+}
+
+$layerCloPath = Join-Path $Repo 'build\patch\layer-closure.txt'
+[System.IO.File]::WriteAllLines($layerCloPath, $layerLines)
 
 $outPath = Join-Path $Repo 'build\patch\layer-usage.txt'
 [System.IO.File]::WriteAllLines($outPath, $report)
@@ -500,3 +656,9 @@ foreach ($rel in ($rels | Where-Object { (Split-Path -Parent $_) -eq 'common' })
         Write-Host ("  {0,-26} BLOCKED by {1}" -f $name, $why)
     }
 }
+
+# ---- P3q: layer-closure summary -------------------------------------------
+Write-Host ''
+Write-Host ("layer-closure (P3q): can this layer become its own Gradle module?  (closure verdict mismatches: {0})" -f $layerMismatch)
+foreach ($l in $layerConsole) { Write-Host $l }
+Write-Host "layer-closure detail : $layerCloPath"

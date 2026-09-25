@@ -1,5 +1,4 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.AllSoundEvents;

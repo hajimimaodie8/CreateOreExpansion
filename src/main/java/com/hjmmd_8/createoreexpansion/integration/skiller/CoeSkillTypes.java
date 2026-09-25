@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.leaf.skiller.foundation.skill.SkillType;
 import com.leaf.skiller.foundation.skill.SkillTypeFactory;
 import net.minecraft.resources.ResourceLocation;

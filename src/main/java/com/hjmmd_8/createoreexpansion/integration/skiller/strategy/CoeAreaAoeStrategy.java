@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
 import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;

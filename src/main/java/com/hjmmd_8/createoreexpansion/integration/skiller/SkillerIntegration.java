@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowShootSkillContext;

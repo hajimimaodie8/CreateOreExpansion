@@ -1,7 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry;
 import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 
 import java.util.ArrayList;
 import java.util.List;

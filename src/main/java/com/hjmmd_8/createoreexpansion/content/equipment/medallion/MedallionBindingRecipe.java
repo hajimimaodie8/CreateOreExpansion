@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.mojang.serialization.MapCodec;

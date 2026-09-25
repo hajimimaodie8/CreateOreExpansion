@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.handler;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllModifiableAttributes;
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedModifiableAttribute;
@@ -28,7 +28,7 @@ import java.util.List;
  * 多技能工具（如蓝宝石铲绑引渠+平场）只对当前释放的技能生效减速，
  * 避免叠加多个技能的修饰器。
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class BreakBlockSpeedHandler {
 
     @SubscribeEvent

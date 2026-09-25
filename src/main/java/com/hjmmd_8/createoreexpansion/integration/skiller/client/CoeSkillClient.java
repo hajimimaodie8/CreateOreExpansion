@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
-import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.client.SkillSettingsScreen;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
@@ -40,7 +40,7 @@ import java.util.Objects;
  *
  * @since 1.0.0
  */
-@EventBusSubscriber(modid = CreateOreExpansion.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = CoeCore.MOD_ID, value = Dist.CLIENT)
 public final class CoeSkillClient {
 
     /** 槽位 → 键位，顺序即槽位 0/1/2（键一/键二/键三） */
