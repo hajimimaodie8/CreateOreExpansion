@@ -233,10 +233,19 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "电量载荷：%s FE");
         add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "已蓄满避雷针：%s 台（每发波抽取 1 次，波打中哪里就在哪里落雷）");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "最近波可加工：");
-        // 攻击态护目镜读数（用户 2026-09 规格：攻击态按住 Shift 只显示攻击态这三行，不显示加工态读数）
-        // 区间两端（128 / 256）由模式自报（TransmuterMode#minimumRpm / #attackTierCeilingRpm），不写进文案
+        // 攻击态护目镜读数（用户 2026-09 规格：攻击态按住 Shift 只显示攻击态这几行，不显示加工态读数）
+        // 区间两端（128 / 256）与三档的每一条边界都由模式自报的分档表给出
+        // （TransmuterMode#ATTACK_TIERS，见 SpeedBands），文案里一个转速数字都没有：
+        // 改 256→320 或 3→4 档时这两行自动跟着变
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm", "攻击转速：%s RPM（需求 %s ~ %s RPM）");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier", "攻击场：第 %s 档 · 场盒半径 %s 格");
+        // ① 当前档：第 X 档（本档转速区间）· 本档场盒（半径 0 换说法，见 _attack_field_core）
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier", "攻击场：第 %s 档（%s ~ %s RPM） · %s");
+        // ② 三档对照：逐档列出区间与场盒，让玩家看得到"下一档要多少转速"（档数由表给出）
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_table", "档位对照：%s");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry", "第 %s 档（%s ~ %s RPM，%s）");
+        // 场盒说法（半径 0 = 场盒就是机器本体，不写成"半径 0 格"）
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core", "场盒就是机器本体");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius", "场盒半径 %s 格");
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint", "范围内的普通波穿过即被点燃为攻击波");
         // 护目镜面板：没按住 Shift 时只有机器名 + 这一行提示（按住 Shift 一次性显示全部读数）
         add("createoreexpansion.goggles.transmuter_expand_hint", "按住 [%s] 查看机器详情");

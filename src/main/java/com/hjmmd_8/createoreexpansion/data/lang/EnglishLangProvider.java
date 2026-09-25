@@ -341,10 +341,18 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.goggles.stellar_wave_transmuter_energy", "Energy payload: %s FE");
         add("createoreexpansion.goggles.stellar_wave_transmuter_rods", "Charged rods: %s (1 strike drawn per wave; the wave strikes wherever it hits)");
         add("createoreexpansion.goggles.stellar_wave_transmuter_last_wave", "Recent wave can process:");
-        // Attack-mode goggles readout (2026-09 spec: in attack mode Shift shows only these three lines,
-        // never the processing-mode readouts). Both interval ends come from the mode itself.
+        // Attack-mode goggles readout (2026-09 spec: in attack mode Shift shows only these lines,
+        // never the processing-mode readouts). Every band boundary comes from the mode's own band
+        // table (TransmuterMode#ATTACK_TIERS via SpeedBands); no rpm number is written here.
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm", "Attack speed: %s RPM (requires %s ~ %s RPM)");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier", "Attack field: tier %s · field radius %s blocks");
+        // (1) current tier: tier X (this tier's rpm band) - this tier's field box
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier", "Attack field: tier %s (%s ~ %s RPM) · %s");
+        // (2) tier reference: every tier with its band and field box, so the player sees the next tier
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_table", "Tier reference: %s");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry", "tier %s (%s ~ %s RPM, %s)");
+        // Field-box wording (radius 0 = the box is the machine itself, never "radius 0 blocks")
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core", "the field box is the machine itself");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius", "field box radius %s blocks");
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint", "Normal waves crossing the field are ignited into attack waves");
         // Goggles panel: without Shift only the machine name + this hint (Shift shows every readout at once)
         add("createoreexpansion.goggles.transmuter_expand_hint", "Hold [%s] for machine details");

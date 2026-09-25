@@ -8,6 +8,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.display.TransmuterGoggles;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
+import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -65,15 +66,16 @@ import net.minecraft.world.phys.AABB;
  *   <li><b>第二档</b>（170.67 ~ 213.33 RPM）：以自身为中心、<b>半径 1 格</b>的立方体（3×3×3）；</li>
  *   <li><b>第三档</b>（≥ 213.33 RPM，含 256 以上）：以自身为中心、<b>半径 2 格</b>的立方体（5×5×5）。</li>
  * </ul>
- * <p>映射<b>只有一处实现</b>（{@link #attackTier}）：场判定（{@link #applyField}）与护目镜读数
- * （{@link #appendReadout}）都读它，谁都不许再算一份。三档的下界/上界/档数三个常量与
- * {@link #minimumRpm()} 的自报值同处一个类，<b>全仓没有第二份 128 / 256 / 3 的魔法数字</b>。
+ * <p>映射<b>只有一处实现</b>（{@link #ATTACK_TIERS} 这张分档表；{@link #attackTier} 只是它的读取口）：
+ * 场判定（{@link #applyField}）与护目镜读数（{@link #appendReadout}）都读同一张表，谁都不许再算一份。
+ * 三个常量只喂给那一句工厂调用、<b>不出现在任何方法体里</b>，全仓没有第二份"128 / 256 / 3 档 / 各档半径"。
  * 注意<b>攻击场半径与能量场档位的扫描半径是两回事</b>：后者（{@code scanRadius}，1/2/3）只服务
  * 加工态的扫描读数与载荷抽取，攻击态不再读它。</p>
  *
  * <p><b>攻击态的护目镜读数也是模式自报</b>（{@link #appendReadout}）：按住 Shift 时攻击态显示的是
- * 攻击态自己的三行（转速 + 需求区间 / 档位 + 场盒半径 / 场作用说明），<b>不会串到加工态那堆读数</b>；
- * 三行里的档位与半径同样来自 {@link #attackTier}，调用方（方块实体）一行模式判断都没有。</p>
+ * 攻击态自己的四行（转速 + 需求区间 / 当前档位 + 该档转速区间 + 场盒 / 三档对照表 / 场作用说明），
+ * <b>不会串到加工态那堆读数</b>；四行里的档位、区间与半径同样来自 {@link #ATTACK_TIERS}，
+ * 调用方（方块实体）一行模式判断都没有。</p>
  *
  * <p><b>与波口开关的区别</b>：模式 = "变器怎么处理波"，存在方块实体里，扳手右键切换
  * （NBT + 同步包，见 {@link StellarWaveTransmuterBlockEntity#cycleMode()}）；
@@ -152,13 +154,14 @@ public enum TransmuterMode {
 		}
 
 		/**
-		 * <b>攻击场三档区间的上界</b>（{@link #ATTACK_MAXIMUM_RPM} = 256 RPM）——与下界
-		 * {@link #minimumRpm()}（128）、档数（{@link #ATTACK_TIER_COUNT}）同处一个类，
-		 * 三档映射见基类的 {@link #attackTier}。护目镜的"需求 128 ~ 256 RPM"读的就是这两个自报值。
+		 * <b>攻击场档位区间的上界</b>——<b>从分档表派生</b>（{@link #ATTACK_TIERS} 最后一档的上限），
+		 * 方法体里不再抄一份 {@link #ATTACK_MAXIMUM_RPM}：改 256→320 只动
+		 * {@link #ATTACK_TIERS} 的工厂调用那一句，本方法自动跟随。护目镜的
+		 * "需求 %s ~ %s RPM"读的就是本方法与 {@link #minimumRpm()} 这两个自报值。
 		 */
 		@Override
 		public float attackTierCeilingRpm() {
-			return ATTACK_MAXIMUM_RPM;
+			return ATTACK_TIERS.topRpm();
 		}
 
 		/**
@@ -257,12 +260,12 @@ public enum TransmuterMode {
 
 		/**
 		 * <b>攻击态的护目镜读数</b>（用户 2026-09 规格：攻击态按住 Shift <b>不显示加工态那堆读数</b>）：
-		 * 只输出攻击态自己的三行（转速 + 需求区间 / 档位 + 场盒半径 / 场作用说明）。
+		 * 只输出攻击态自己的四行（转速 + 需求区间 / 当前档位与区间 + 场盒 / 三档对照表 / 场作用说明）。
 		 * 渲染实现放在 {@link TransmuterGoggles#appendAttackReadout}（{@code display} 包），
 		 * 本常量体只做一句委托——<b>不把一堆文案塞进枚举</b>。
 		 *
-		 * <p>三行里的档位与半径由那边读本模式自报的 {@link #attackTier} / {@link #attackFieldRadius}
-		 * 得到，<b>与攻击场判定共用同一处映射</b>：显示层一个数字都不重算，场与面板永远一致。</p>
+		 * <p>四行里的档位、转速区间与半径由那边读本模式自报的 {@link #attackTier} /
+		 * {@link #attackFieldRadius} 与 {@link #ATTACK_TIERS}（区间/对照表）得到，<b>与攻击场判定共用同一处映射</b>：显示层一个数字都不重算，场与面板永远一致。</p>
 		 */
 		@Override
 		public void appendReadout(List<Component> tooltip, TransmuterGoggles.Readout readout) {
@@ -300,6 +303,27 @@ public enum TransmuterMode {
 
 	/** <b>攻击场档数</b>：区间 [128, 256] 三等分（用户 2026-09 规格）。 */
 	private static final int ATTACK_TIER_COUNT = 3;
+
+	/**
+	 * <b>攻击场档位的全部分档口径</b>（{@link SpeedBands}，2026-09 抽象整理）——
+	 * <b>本类的判定与显示层读的是同一个对象</b>，全仓没有第二份"128 / 256 / 3 档 / 各档半径"。
+	 *
+	 * <p>它就是"攻击场三档"这件事本身：{@link SpeedBands#indexAt(float)} 回答第几档
+	 * （{@link #attackTier}）、{@link SpeedBands#valueAt(float)} 回答该档的场盒半径
+	 * （{@link #attackFieldRadius}）、{@link SpeedBands#lowerRpm(int)} /
+	 * {@link SpeedBands#upperRpm(int)} 回答每档的转速区间（护目镜的区间文案与三档对照表）、
+	 * {@link SpeedBands#topRpm()} 回答区间上界（{@link #attackTierCeilingRpm()}）。</p>
+	 *
+	 * <p><b>用户规格的验收点就在这一句</b>：把 256 改成 320、或把 3 档改成 4 档，
+	 * <b>只改本句的三个参数</b>——档位边界、每档半径、护目镜上"第 N 档（下限 ~ 上限 RPM，
+	 * 场盒半径 M 格）"以及三档对照表全部自动跟着变，因为下游一个新数字都没有。</p>
+	 *
+	 * <p>档值从 {@code 0} 起逐档 {@code +1}：攻击场的"第 N 档"与"场盒半径"在用户规格里
+	 * 就是同一个数（0 = 机器本体、1 = 半径 1 格、2 = 半径 2 格），所以这里用基值 0 直接编码
+	 * 这个一一对应，而不是另开一张半径表。</p>
+	 */
+	private static final SpeedBands ATTACK_TIERS =
+		SpeedBands.linear(ATTACK_MINIMUM_RPM, ATTACK_MAXIMUM_RPM, ATTACK_TIER_COUNT, 0);
 
 	/** 护目镜面板上的行颜色（攻击态用红，一眼区分两态）。 */
 	private final ChatFormatting color;
@@ -409,60 +433,99 @@ public enum TransmuterMode {
 		return 0;
 	}
 
-	// ================= 攻击场三档（口径唯一处：常量 + 下面这一个公式） =================
+	// ================= 攻击场三档（口径唯一处：下面这一个 SpeedBands 表） =================
 
 	/**
-	 * <b>攻击场档位映射</b>——<b>全仓唯一一处</b>把转速翻译成"第几档"的实现
-	 * （用户 2026-09 规格：128~256 RPM 区间三等分 + 线性插值）。
+	 * <b>攻击场档位映射</b>——把转速翻译成"第几档"。
 	 *
-	 * <p>公式（三个常量都在本类里，本式<b>不含任何魔法数字</b>）：</p>
-	 * <pre>
-	 * t    = clamp((|speed| − ATTACK_MINIMUM_RPM) / (ATTACK_MAXIMUM_RPM − ATTACK_MINIMUM_RPM), 0, 1)
-	 * 档位 = clamp(floor(t × ATTACK_TIER_COUNT), 0, ATTACK_TIER_COUNT − 1)
-	 * </pre>
+	 * <p><b>实现已不是内联公式，而是读分档表</b>（2026-09 抽象整理）：判定与显示共用
+	 * {@link #ATTACK_TIERS} 这一个对象（{@link SpeedBands#indexAt(float)}），
+	 * 本方法只是给它一个与"攻击场"这个语义绑定的名字。表由
+	 * {@code SpeedBands.linear(ATTACK_MINIMUM_RPM, ATTACK_MAXIMUM_RPM, ATTACK_TIER_COUNT, 0)}
+	 * 构造，<b>本方法体内一个数字都没有</b>——改区间或改档数只动那一句工厂调用。</p>
+	 *
 	 * <p>代入现表数值（128 / 256 / 3 档）：<b>128 ~ 170.67 → 第 0 档</b>、
 	 * <b>170.67 ~ 213.33 → 第 1 档</b>、<b>≥ 213.33（含 256 以上，被夹在最高档）→ 第 2 档</b>。
-	 * 按<b>绝对值</b>判定——反转的轴同样算数，与全仓既有的 {@code Math.abs(getSpeed())} 口径一致。</p>
+	 * 按<b>绝对值</b>判定——反转的轴同样算数，与全仓既有的 {@code Math.abs(getSpeed())} 口径一致；
+	 * 低于第一档下限的转速落在第一档（向下夹紧，见 {@link SpeedBands#indexAt(float)}）。</p>
 	 *
 	 * <p><b>为什么不做成 {@code if (mode == ATTACK)} 那种调用方判断</b>：档位是攻击态自己的读数，
 	 * 场判定（{@link #applyField}）与护目镜（{@link #appendReadout}）都只问本方法一句，
 	 * 谁都不许另算一份——这是"场与面板显示的半径永远是同一个数"的唯一保证。</p>
 	 *
 	 * <p><b>默认实现对非分档模式无意义</b>（加工波变态没有场，本方法永远不会被它调用），
-	 * 但实现刻意不按模式分叉：公式只有这一份，以后要加"别的转速区间/别的档数"的模式，
-	 * 只需让它覆写本方法与两个区间常量。</p>
+	 * 但实现刻意不按模式分叉：表只有这一份，以后要加"别的转速区间/别的档数"的模式，
+	 * 只需让它指向另一张表。</p>
 	 *
-	 * @param speed 本机转速（RPM，可能为负；本方法内部取绝对值）
-	 * @return 档位序号 {@code 0 ~ ATTACK_TIER_COUNT − 1}（0 = 最低档）
+	 * @param speed 本机转速（RPM，可能为负；表内部取绝对值）
+	 * @return 档位序号 {@code 0 ~ count()-1}（0 = 最低档）
 	 */
 	public int attackTier(float speed) {
-		double t = (Math.abs(speed) - ATTACK_MINIMUM_RPM) / (ATTACK_MAXIMUM_RPM - ATTACK_MINIMUM_RPM);
-		t = Math.max(0.0d, Math.min(1.0d, t));
-		return Math.max(0, Math.min(ATTACK_TIER_COUNT - 1, (int) Math.floor(t * ATTACK_TIER_COUNT)));
+		return ATTACK_TIERS.indexAt(speed);
 	}
 
 	/**
-	 * <b>攻击场盒半径</b>（格）——由 <b>{@link #attackTier} 的档位映射</b>直接给出。
+	 * <b>攻击场盒半径</b>（格）——由 <b>{@link #ATTACK_TIERS} 的档值</b>直接给出。
 	 *
 	 * <p>用户 2026-09 规格订的就是这个一一对应：<b>第 0 档 = 机器本体</b>（半径 {@code 0}，
 	 * 波必须真的穿过这台机器）、<b>第 1 档 = 半径 1 格</b>（3×3×3）、<b>第 2 档 = 半径 2 格</b>
-	 * （5×5×5）。所以本方法不另写一份分支，只是给"档位序号就是半径"这件事一个名字——
-	 * 这样场判定与显示都能读到一个语义明确的数，而<b>映射仍然只有 {@link #attackTier} 一处</b>。</p>
+	 * （5×5×5）。分档表就是按这个对应构造的（{@code linear(..., 0)} → 档值 0/1/2），
+	 * 所以本方法只做一次取值，<b>表里的档值就是场盒半径本身</b>——
+	 * 这样场判定与显示读到的都是同一个数，半径也不会在别处再抄一份。</p>
 	 *
 	 * @param speed 本机转速（RPM，可能为负）
 	 * @return 场盒半径（格）；{@code 0} = 场盒就是机器本体（棱长 1 格）
 	 */
 	public int attackFieldRadius(float speed) {
-		return attackTier(speed);
+		return ATTACK_TIERS.valueAt(speed);
+	}
+
+	// ===== 攻击场档位的只读视图（显示层逐档列举用；读数与判定共用 ATTACK_TIERS 一张表） =====
+
+	/**
+	 * <b>攻击场档数</b>——护目镜的"档位对照"行要逐档列举，这是它的循环上界。
+	 * 直读 {@link #ATTACK_TIERS}，所以改档数（3 → 4）时对照行自动多出一档。
+	 */
+	public int attackTierCount() {
+		return ATTACK_TIERS.count();
 	}
 
 	/**
-	 * <b>攻击场三档区间的上界（RPM）</b>——护目镜的"需求 %s ~ %s RPM"要打出区间的两端，
+	 * <b>第 index 档的下限转速</b>（RPM，含）——护目镜的档位区间文案读它。
+	 *
+	 * @param index 档位序号（0 基）
+	 */
+	public float attackTierLowerRpm(int index) {
+		return ATTACK_TIERS.lowerRpm(index);
+	}
+
+	/**
+	 * <b>第 index 档的上限转速</b>（RPM，<b>不含</b>；最后一档 = {@link #attackTierCeilingRpm()}）
+	 * ——护目镜的档位区间文案读它。
+	 *
+	 * @param index 档位序号（0 基）
+	 */
+	public float attackTierUpperRpm(int index) {
+		return ATTACK_TIERS.upperRpm(index);
+	}
+
+	/**
+	 * <b>第 index 档对应的场盒半径</b>（格）——护目镜三档对照行里"这一档场盒多大"读它，
+	 * 与 {@link #attackFieldRadius(float)} <b>同源</b>（后者只是"当前转速落在哪一档"的同一次取值）。
+	 *
+	 * @param index 档位序号（0 基）
+	 */
+	public int attackTierRadiusAt(int index) {
+		return ATTACK_TIERS.valueOfIndex(index);
+	}
+
+	/**
+	 * <b>攻击场档位区间的上界（RPM）</b>——护目镜的"需求 %s ~ %s RPM"要打出区间的两端，
 	 * 下界取 {@link #minimumRpm()}（攻击态 = {@link #ATTACK_MINIMUM_RPM}），上界取本方法。
 	 *
 	 * <p>默认返回 {@link #minimumRpm()}（= 没有区间：不分档的模式上下界同值），
-	 * 攻击波变态覆写为 {@link #ATTACK_MAXIMUM_RPM}。<b>显示层因此一个新数字都不用写</b>，
-	 * 区间与 {@link #attackTier} 的映射永远同步。</p>
+	 * 攻击波变态覆写为 {@link #ATTACK_TIERS} 最后一档的上限（现在 = 256，但没有第二个 256）。
+	 * <b>显示层因此一个新数字都不用写</b>，区间与 {@link #attackTier} 的映射永远同步。</p>
 	 *
 	 * @return 区间上界（RPM）
 	 */
@@ -516,12 +579,12 @@ public enum TransmuterMode {
 
 	/**
 	 * <b>本模式"按住 Shift 时"的读数行</b>——默认委托加工波变态那一整套读数
-	 * （{@link TransmuterGoggles#append}），攻击波变态覆写为攻击态自己的三行
+	 * （{@link TransmuterGoggles#append}），攻击波变态覆写为攻击态自己的四行
 	 * （见 {@link TransmuterGoggles#appendAttackReadout}）。
 	 *
 	 * <p><b>为什么读数也要模式自报</b>（用户 2026-09 规格：攻击态按住 Shift 不该显示加工态内容）：
 	 * 两态的读数是两套完全不同的东西——加工态报"扫描半径 / 加热 / 载荷 / 可加工配方"，
-	 * 攻击态报"转速 + 需求区间 / 档位 + 场盒半径 / 场作用说明"。让调用方
+	 * 攻击态报"转速 + 需求区间 / 当前档位与区间 + 场盒 / 三档对照表 / 场作用说明"。让调用方
 	 * （{@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip}）写
 	 * {@code if (mode == ATTACK)} 就是把模式知识漏到调用点；收进常量体后，以后再加模式同样
 	 * 只需覆写本方法，方块实体一行都不用改（与 {@link #fieldIntervalTicks()} /
@@ -542,14 +605,18 @@ public enum TransmuterMode {
 	 *
 	 * <p><b>为什么是 0（而不是当初写的 1）</b>：加入攻击场三档之后，最小档（第一档，
 	 * 128 ~ 170.67 RPM）的场盒<b>就是机器本体</b>，半径 {@code 0}、棱长 1 格
-	 * （{@link #attackFieldRadius} → {@link #attackTier}）。节拍公式按"场盒内最短弦长"算，
-	 * 弦长随半径单调递增，所以最小值就是这一档。</p>
+	 * （{@link #attackFieldRadius}）。节拍公式按"场盒内最短弦长"算，弦长随半径单调递增，
+	 * 所以最小值就是这一档。</p>
+	 *
+	 * <p><b>它是从分档表派生的、不是又一个 0</b>：本值 = {@link #ATTACK_TIERS} 第一档的档值
+	 * （{@link SpeedBands#valueOfIndex(int)}），所以"第一档的半径"全仓仍然只有一处定义——
+	 * 若哪天第一档不再是机器本体（比如基值改成 1），节拍公式自动跟着换，不会留一个孤立的 0。</p>
 	 *
 	 * <p><b>与扫描半径无关</b>：变器那个 1/2/3 的读取半径
 	 * （{@code StellarWaveTransmuterBlockEntity#resolveRadius()}，能量场档位决定）只服务
 	 * 加工态的读数与载荷抽取，<b>攻击场不再读它</b>——两者别混。</p>
 	 */
-	private static final int MIN_FIELD_RADIUS = 0;
+	private static final int MIN_FIELD_RADIUS = ATTACK_TIERS.valueOfIndex(0);
 
 	/**
 	 * <b>场节拍的实用下限（tick）</b>：{@code fieldIntervalTicks()} 的结果不低于本值——

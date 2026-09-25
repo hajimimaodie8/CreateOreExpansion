@@ -16,6 +16,7 @@ import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.scan
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.scan.TransmuterScanner.HeatReading;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
+import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
 
@@ -43,9 +44,12 @@ import net.neoforged.neoforge.fluids.FluidStack;
  * <p><b>当前实现（阶段一：扫描骨架）</b>——完整链路（波变体携带配方、命中执行
  * 链式加工、辅料/流体/电量抽取）分阶段接入，本类先落地机器本体与扫描底座：</p>
  * <ul>
- *   <li><b>扫描半径</b>：基础 1 格；本机处于能量场（{@link EnergyFields}）内时按
- *       <b>蓝宝石能量场控制器 128 RPM 分档</b>——场源控制器转速 ≥128 → 3 格，否则 2 格；
- *       不新增场控机器，复用现有能量场控（含 source 解析回查控制器转速）；</li>
+ *   <li><b>扫描半径</b>：基础 1 格（不在能量场里时）；本机处于能量场（{@link EnergyFields}）内时
+ *       按<b>场源控制器转速</b>分档（口径唯一处 = {@link #FIELD_RADIUS_BANDS} 这一张
+ *       {@link SpeedBands} 表：{@code |转速| < 128 RPM → 2 格}、{@code ≥ 128 → 3 格}；
+ *       场源解析不出控制器转速时按最低档 2 格）——分档表这个形状与攻击场三档同源，
+ *       而不是把阈值与档值内联成三元；不新增场控机器，复用现有能量场控
+ *       （含 source 解析回查控制器转速）；</li>
  *   <li><b>扫描内容</b>：把半径内注册表认可的加工机器（{@code registry.StellarWaveMachineRegistry}，
  *       各模组联动注册）收集为快照：数量 + 各自实时应力消耗之和；</li>
  *   <li><b>加热读数</b>（2026-09 修复）：烈焰燃烧室不是动能机器，单独扫描半径内<b>最高热档</b>
@@ -67,6 +71,24 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 	private static final int FIELD_RADIUS_HIGH = 3;
 	/** 场控转速分档阈值（RPM）：≥ 此值视为"强场"（半径 3），否则半径 2。 */
 	private static final float FIELD_SPEED_THRESHOLD = 128.0F;
+
+	/**
+	 * <b>能量场扫描半径的分档表</b>（2026-09 抽象整理：取代原先 {@code resolveRadius()} 里的
+	 * 内联三元 + 魔法数字）——两档：{@code |场控转速| < }{@value #FIELD_SPEED_THRESHOLD}
+	 * {@code RPM → }{@value #FIELD_RADIUS_LOW}{@code 格}、
+	 * {@code ≥ }{@value #FIELD_SPEED_THRESHOLD}{@code RPM → }{@value #FIELD_RADIUS_HIGH}{@code 格}。
+	 *
+	 * <p>用共享抽象 {@link SpeedBands} 而不是再写一份三元：阈值与档值只有这一处定义，
+	 * 判定（{@link #resolveRadius()}）读它、以后要做读数也只读它，
+	 * 分档表这个形状与攻击场三档（{@code TransmuterMode#ATTACK_TIERS}）完全一致，
+	 * 全仓不再有第二套"内联阈值分档"写法。</p>
+	 *
+	 * <p>这里只登记"场控转速 → 扫描半径"这一个概念。<b>与攻击场的 128 RPM 门槛无关</b>：
+	 * 那个是 {@code TransmuterMode#ATTACK_MINIMUM_RPM}（同为 128 但概念、消费者都不同，
+	 * 刻意各留各的常量，谁调整都不许顺手改另一个）。</p>
+	 */
+	private static final SpeedBands FIELD_RADIUS_BANDS = SpeedBands.of(
+		new float[] { 0.0F, FIELD_SPEED_THRESHOLD }, new int[] { FIELD_RADIUS_LOW, FIELD_RADIUS_HIGH });
 
 	/** 扫描刷新间隔（tick；8 tick ≈ 160ms 响应）。 */
 	private static final int SCAN_INTERVAL = 8;
@@ -431,7 +453,28 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 		notifyUpdate();
 	}
 
-	/** 按能量场在场与场源控制器转速解析当前扫描半径。 */
+	/**
+	 * 按能量场在场与场源控制器转速解析当前扫描半径（分档口径唯一处：
+	 * {@link #FIELD_RADIUS_BANDS}）。
+	 *
+	 * <p><b>原先的写法</b>是内联三元 {@code speed >= 0 ? (speed >= FIELD_SPEED_THRESHOLD ? HIGH : LOW) : LOW}
+	 * ——阈值、两个半径、以及"解析失败怎么办"全挤在一行里，读数层看不见这张表。
+	 * 现在阈值与档值只存在于 {@link #FIELD_RADIUS_BANDS} 这一句表构造里。</p>
+	 *
+	 * <p><b>那个 {@code speed >= 0} 分支的真相（别再误读一次）</b>：它<b>不是</b>"判断转向"，
+	 * 而是"判断解析是否失败"。{@link #fieldControllerSpeed(String)} 成功解析时返回的<b>本来就是
+	 * {@code Math.abs(fc.getSpeed())}</b>（见该方法），只有"非场控产场 / 坐标解析不了 / 查不到
+	 * 方块实体"才返回哨兵 {@code -1}。所以此处显式判 {@code < 0} 等价于原先的
+	 * {@code speed >= 0} 那一支，<b>反转的传动轴一直走的是高档</b>（绝对值 ≥ 128 即高档），
+	 * 本次重构<b>没有</b>改动任何转向语义。</p>
+	 *
+	 * <p><b>哨兵 {@code -1} 为什么仍落在最低档</b>：{@link SpeedBands#valueAt(float)} 按
+	 * {@code Math.abs(rpm)} 判档，{@code |-1| = 1 < FIELD_SPEED_THRESHOLD} → 第 0 档
+	 * （{@code FIELD_RADIUS_LOW} = 2 格），与历史行为逐位一致。这里仍保留显式分支（而不是直接把
+	 * 哨兵丢给表）是为了让"解析失败 → 低档"这条语义<b>在代码里看得见</b>：万一将来阈值被调到
+	 * 小于 1（例如 0.5），哨兵的绝对值 {@code 1} 会越过它落到高档，静默改变行为；显式分支
+	 * 把这条语义钉死在读代码的人眼前，也钉死在行为上。</p>
+	 */
 	private int resolveRadius() {
 		if (level == null)
 			return 1;
@@ -440,15 +483,24 @@ public class StellarWaveTransmuterBlockEntity extends KineticBlockEntity {
 			if (!field.contains(center))
 				continue;
 			float speed = fieldControllerSpeed(field.source());
-			// 场源可解析出控制器转速：按 128 RPM 分档；解析失败（调试场/结构场）按低档
-			return speed >= 0 ? (speed >= FIELD_SPEED_THRESHOLD ? FIELD_RADIUS_HIGH : FIELD_RADIUS_LOW)
-				: FIELD_RADIUS_LOW;
+			// 解析失败哨兵（-1）：非场控产场 / 结构场 / 查不到场控 → 按最低档（历史行为，勿改）。
+			// 不把这个哨兵直接喂给表，理由见本方法 javadoc 最后一段（避免阈值被调到 <1 时静默变档）。
+			if (speed < 0)
+				return FIELD_RADIUS_BANDS.valueOfIndex(0);
+			// 场控转速（绝对值，见 fieldControllerSpeed）→ 分档表取半径：< 128 → 2 格、≥ 128 → 3 格
+			return FIELD_RADIUS_BANDS.valueAt(speed);
 		}
 		return 1;
 	}
 
-	/** 解析场源字符串（形如 {@code controller:ax,ay,az|bx,by,bz}）回查任一端场控的当前转速；
-	 * 非场控产场 / 无法解析返回 -1。 */
+	/**
+	 * 解析场源字符串（形如 {@code controller:ax,ay,az|bx,by,bz}）回查任一端场控的当前转速；
+	 * 非场控产场 / 无法解析返回 {@code -1}（哨兵）。
+	 *
+	 * <p><b>成功时返回的是绝对值</b>（{@code Math.abs(fc.getSpeed())}）：调用方
+	 * （{@link #resolveRadius()}）拿到的负数<b>只可能是哨兵</b>——这一点是本方法的口径，
+	 * 也正是"分档不涉及转向"的原因（反转的场控轴按同样转速分档）。</p>
+	 */
 	private float fieldControllerSpeed(String source) {
 		if (source == null || !source.startsWith("controller:"))
 			return -1;

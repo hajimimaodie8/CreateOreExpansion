@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.Tran
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.hjmmd_8.createoreexpansion.util.RecipeTypeNames;
+import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
 
 import net.minecraft.ChatFormatting;
@@ -29,7 +30,7 @@ import net.minecraft.resources.ResourceLocation;
  * （半径 → 加热 → 载荷源设备（物品/流体容器、储能）→ 加工机数与应力 → 波加工转速 →
  * 绑定机器可加工配方（Shift 展开清单）→ 载荷概览（类型数/辅料·流体·电量/避雷针）→
  * 最近一波可加工属性（Shift）），攻击态由 {@link #appendAttackReadout} 渲染（转速 + 需求区间 →
- * 档位 + 场盒半径 → 场作用说明）→ 最后由调用方追加 Create 的动能行
+ * 当前档位 + 本档转速区间 + 场盒 → 三档对照表 → 场作用说明）→ 最后由调用方追加 Create 的动能行
  * （{@code super.addToGoggleTooltip} 的"动能统计/应力影响"），<b>排在末尾</b>。</p>
  *
  * <p><b>两态读数不混</b>：哪一套读数由<b>模式自报</b>
@@ -198,41 +199,96 @@ public final class TransmuterGoggles {
 
 	/**
 	 * <b>攻击波变态的读数（按住 Shift 时）</b>——用户 2026-09 规格：攻击态按住 Shift
-	 * <b>不该显示加工态的内容</b>，只显示攻击态自己的三行。
+	 * <b>不该显示加工态的内容</b>，只显示攻击态自己的行。
 	 *
-	 * <p>三行（顺序即显示顺序）：</p>
+	 * <p>四行（顺序即显示顺序）：</p>
 	 * <ol>
 	 *   <li><b>转速行</b>：当前转速 + 需求区间（区间两端取模式自报的
 	 *       {@link TransmuterMode#minimumRpm()} 与 {@link TransmuterMode#attackTierCeilingRpm()}，
 	 *       现为 128 ~ 256 RPM）；</li>
-	 *   <li><b>档位/攻击场半径行</b>：第 X 档 + 场盒半径 N 格；</li>
+	 *   <li><b>当前档行</b>（用户 2026-09 追加规格："对攻击态下该场合的半径与其所对应的转速进行提示"）：
+	 *       第 X 档 + <b>本档的转速区间</b> + 本档的场盒——玩家一眼看到"我现在这档是多少转速、
+	 *       场多大"；</li>
+	 *   <li><b>三档对照行</b>（同上规格："在第一档、第二档、第三档后面分别加上括号，注明对应的转速"）：
+	 *       逐档列出"第 N 档（下限 ~ 上限 RPM，场盒…）"，让玩家看得到<b>下一档要多少转速</b>；</li>
 	 *   <li><b>说明行</b>：范围内的普通波穿过即被点燃为攻击波。</li>
 	 * </ol>
 	 *
-	 * <p><b>档位与半径读的是规格一的那个映射本身</b>（{@link TransmuterMode#attackTier} /
-	 * {@link TransmuterMode#attackFieldRadius}）——与攻击场判定<b>同一处实现</b>，
-	 * 本方法一个数字都不重算；唯一的加工是把 0 基的档位序号 {@code +1} 变成玩家看到的"第 X 档"。</p>
+	 * <p><b>本方法一个档位数字都不写</b>：档位、每档的转速区间、每档的场盒半径全部直读模式自报的
+	 * 分档表（{@link TransmuterMode#attackTier} / {@link TransmuterMode#attackTierLowerRpm} /
+	 * {@link TransmuterMode#attackTierUpperRpm} / {@link TransmuterMode#attackTierRadiusAt} /
+	 * {@link TransmuterMode#attackTierCount}）——<b>这与攻击场判定是同一张表</b>，所以
+	 * "把 256 改成 320、或把 3 档改成 4 档"时，第 ②③ 行的区间与档数<b>自动跟着变</b>
+	 * （循环上界就是 {@code attackTierCount()}，边界值就是 {@code attackTierLowerRpm/UpperRpm}）。
+	 * 唯一的加工是把 0 基的档位序号 {@code +1} 变成玩家看到的"第 X 档"，以及把半径 {@code 0}
+	 * 说成人话（"机器本体"）。</p>
+	 *
+	 * <p>所有 RPM 数字都过 {@link SpeedBands#formatRpm(float)}（本模组转速文案的唯一格式化）：
+	 * 整数不带 {@code .0}、分档边界这类循环小数保留一位（{@code 170.666 → "170.7"}）。</p>
 	 *
 	 * <p>调用链：{@code StellarWaveTransmuterBlockEntity#addToGoggleTooltip} →
 	 * {@link TransmuterMode#appendReadout}（模式自报）→ 本方法（攻击态那一支）。</p>
 	 *
-	 * @param mode  当前模式（必为攻击波变态；档位/半径/区间都由它自报，本方法不判断模式）
+	 * @param mode  当前模式（必为攻击波变态；档位/区间/半径都由它自报，本方法不判断模式）
 	 * @param speed 本机当前转速（RPM，可能为负；显示与判档都取绝对值）
 	 */
 	public static void appendAttackReadout(List<Component> tooltip, TransmuterMode mode, float speed) {
+		int tier = mode.attackTier(speed);
 		// ① 转速行：当前转速 + 需求区间（两个端点都自报，显示层不写 128/256）
 		GoggleUtil.forGoggles(tooltip,
 			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm",
-				(int) Math.abs(speed), (int) mode.minimumRpm(), (int) mode.attackTierCeilingRpm())
+				(int) Math.abs(speed), SpeedBands.formatRpm(mode.minimumRpm()),
+				SpeedBands.formatRpm(mode.attackTierCeilingRpm()))
 				.withStyle(ChatFormatting.GRAY));
-		// ② 档位/半径行：两个数都来自 attackTier 那一个映射（半径就是档位序号，见 attackFieldRadius）
+		// ② 当前档行：第 X 档（本档转速区间）· 本档场盒——区间两端直读分档表（上界就是下一档下限，
+		// 不在这里自己算），半径也直读同一张表的档值；"档一位 = 场盒"的对应关系由表保证
 		GoggleUtil.forGoggles(tooltip,
 			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier",
-				mode.attackTier(speed) + 1, mode.attackFieldRadius(speed)).withStyle(ChatFormatting.RED));
-		// ③ 说明行：这个场到底做什么（攻击态没有加工态那些"半径/加热/载荷"读数可说）
+				tier + 1, SpeedBands.formatRpm(mode.attackTierLowerRpm(tier)),
+				SpeedBands.formatRpm(mode.attackTierUpperRpm(tier)), fieldSize(mode.attackTierRadiusAt(tier)))
+				.withStyle(ChatFormatting.RED));
+		// ③ 三档对照行：逐档列举区间与场盒。循环上界取 attackTierCount()、每档数值取
+		// attackTierLowerRpm/UpperRpm/RadiusAt——本方法与 tierTable() 里没有任何档数或边界常量，
+		// 这就是"改 256→320 或 3→4 档时文案自动跟随"的实现依据
+		GoggleUtil.forGoggles(tooltip,
+			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_table",
+				tierTable(mode)).withStyle(ChatFormatting.GRAY));
+		// ④ 说明行：这个场到底做什么（攻击态没有加工态那些"半径/加热/载荷"读数可说）
 		GoggleUtil.forGoggles(tooltip,
 			Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint")
 				.withStyle(ChatFormatting.DARK_GRAY));
+	}
+
+	/**
+	 * <b>三档对照行的内容</b>：逐档拼"第 N 档（下限 ~ 上限 RPM，场盒…）"，用既有的列表分隔符连接。
+	 *
+	 * <p>循环上界 {@code mode.attackTierCount()} 与每档的三个数值全部直读模式自报的分档表——
+	 * <b>本方法里没有任何档数、阈值或半径常量</b>：档数从 3 改成 4、或区间从 256 改成 320，
+	 * 这一行自动多一档 / 自动换边界。区间上界（= 下一档下限）由表给出，所以相邻两档不会各写各的。</p>
+	 */
+	private static MutableComponent tierTable(TransmuterMode mode) {
+		MutableComponent line = Component.empty();
+		for (int i = 0; i < mode.attackTierCount(); i++) {
+			if (i > 0)
+				line.append(Component.translatable("createoreexpansion.goggles.list_separator"));
+			line.append(Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry",
+				i + 1, SpeedBands.formatRpm(mode.attackTierLowerRpm(i)),
+				SpeedBands.formatRpm(mode.attackTierUpperRpm(i)), fieldSize(mode.attackTierRadiusAt(i))));
+		}
+		return line;
+	}
+
+	/**
+	 * <b>场盒的人话说法</b>：半径 {@code 0}（= 场盒就是机器本体那一档）说成"场盒就是机器本体"
+	 * ——玩家看不懂"半径 0 格"（用户 2026-09 规格明确要求这一档换个说法）；其余档直接报半径格数。
+	 *
+	 * <p>这是<b>显示层</b>的措辞规则（不是分档口径）：判定那边 {@code 0} 就是 {@code 0}，
+	 * 这里只是把同一个数翻译成中文。</p>
+	 */
+	private static MutableComponent fieldSize(int radius) {
+		return radius <= 0
+			? Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core")
+			: Component.translatable("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius", radius);
 	}
 
 	/** 配方类型显示名**单行汇总**：顿号连接，最多 {@value #MAX_LISTED_TYPES} 项，超出补"等"。 */
