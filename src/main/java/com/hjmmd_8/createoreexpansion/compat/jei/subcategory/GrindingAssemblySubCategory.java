@@ -10,6 +10,7 @@ import com.simibubi.create.content.processing.sequenced.SequencedRecipe;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.recipe.IFocusGroup;
 import net.minecraft.client.gui.GuiGraphics;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 序列加工 JEI 子分类：角磨步骤的机器动画（装有铁角磨轮的动力角磨床）。
@@ -17,7 +18,7 @@ import net.minecraft.client.gui.GuiGraphics;
 public class GrindingAssemblySubCategory extends SequencedAssemblySubCategory {
 
 	private final AnimatedPowerAngleGrinder grinder = new AnimatedPowerAngleGrinder(
-		AllPartialModels.GRINDING_WHEELS.get(CreateOreExpansion.modLoc("iron_grinding_wheel")));
+		AllPartialModels.GRINDING_WHEELS.get(CoeCore.modLoc("iron_grinding_wheel")));
 
 	public GrindingAssemblySubCategory() {
 		super(25);

@@ -27,6 +27,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 星辉波变器"工作原理"JEI 分类（无真实配方，单张流程说明卡）。
@@ -43,7 +44,7 @@ public class StellarWaveTransmuterCategory implements IRecipeCategory<StellarWav
 
 	/** 展示卡 JEI 类型（内容为无字段占位对象，仅用于驱动分类展示）。 */
 	public static final RecipeType<FlowRecipe> TYPE =
-		RecipeType.create(CreateOreExpansion.MOD_ID, "stellar_wave_transmuter", FlowRecipe.class);
+		RecipeType.create(CoeCore.REGISTRY_NAMESPACE, "stellar_wave_transmuter", FlowRecipe.class);
 
 	/** 无字段占位：展示卡本身即说明，不依赖任何真实配方数据。 */
 	public static final class FlowRecipe {

@@ -85,7 +85,7 @@ public enum AllRecipeTypes implements IRecipeTypeInfo, StringRepresentable {
 
 	AllRecipeTypes(Supplier<RecipeSerializer<?>> serializerSupplier) {
 		String name = Lang.asId(name());
-		id = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, name);
+		id = ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, name);
 		this.serializerSupplier = serializerSupplier;
 		serializerObject = Registers.SERIALIZER_REGISTER.register(name, serializerSupplier);
 		typeObject = Registers.TYPE_REGISTER.register(name, () -> RecipeType.simple(id));
@@ -134,9 +134,9 @@ public enum AllRecipeTypes implements IRecipeTypeInfo, StringRepresentable {
 
 	private static class Registers {
 		private static final DeferredRegister<RecipeSerializer<?>> SERIALIZER_REGISTER =
-			DeferredRegister.create(BuiltInRegistries.RECIPE_SERIALIZER, CreateOreExpansion.MOD_ID);
+			DeferredRegister.create(BuiltInRegistries.RECIPE_SERIALIZER, CoeCore.REGISTRY_NAMESPACE);
 		private static final DeferredRegister<RecipeType<?>> TYPE_REGISTER =
-			DeferredRegister.create(Registries.RECIPE_TYPE, CreateOreExpansion.MOD_ID);
+			DeferredRegister.create(Registries.RECIPE_TYPE, CoeCore.REGISTRY_NAMESPACE);
 	}
 
 }

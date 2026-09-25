@@ -23,6 +23,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 范围 AOE 策略（新内核版）——开岩 / 引渠 / 平场共用的"挖哪些方块"计算。
@@ -44,14 +45,14 @@ public class CoeAreaAoeStrategy implements SkillStrategy<BlockPos, ExcavationSki
 
     /** 注册 id：{@code createoreexpansion:area_aoe} */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "area_aoe");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "area_aoe");
 
     /** 该策略在 {@code skiller:skill_strategy} 注册表中的键（技能用 {@code getStrategy()} 引用它）。 */
     public static final ResourceKey<SkillStrategy<?, ?>> KEY = createKey();
 
     /** 客户端预览渲染器 id（W5 注册；本轮先给稳定 id，预览仍由旧渲染器提供）。 */
     public static final ResourceLocation RENDERER_ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "block_outline");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "block_outline");
 
     /** 与旧 {@code AoeExcavationSkill.PICK_DISTANCE} 一致 */
     private static final double PICK_DISTANCE = 20.0D;

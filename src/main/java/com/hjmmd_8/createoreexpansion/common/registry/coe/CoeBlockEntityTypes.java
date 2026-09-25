@@ -21,7 +21,7 @@ import com.tterrag.registrate.util.entry.BlockEntityEntry;
  */
 public final class CoeBlockEntityTypes {
 
-	public static final BlockEntityEntry<PowerAngleGrinderBlockEntity> POWER_ANGLE_GRINDER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntityEntry<PowerAngleGrinderBlockEntity> POWER_ANGLE_GRINDER = CoeRegistrate.REGISTRATE
 		.blockEntity("power_angle_grinder", PowerAngleGrinderBlockEntity::new)
 		.validBlocks(CoeBlocks.POWER_ANGLE_GRINDER)
 		.renderer(() -> GrinderRenderer::new)
@@ -30,13 +30,13 @@ public final class CoeBlockEntityTypes {
 	// ===== 能量感应灯方块实体：与方块一同暂时下架（待重做模型后恢复） =====
 
 	/** 强化避雷针方块实体（γ 充能状态；渲染用原版避雷针模型，无需自定义渲染器） */
-	public static final BlockEntityEntry<ReinforcedLightningRodBlockEntity> REINFORCED_LIGHTNING_ROD = CreateOreExpansion.REGISTRATE
+	public static final BlockEntityEntry<ReinforcedLightningRodBlockEntity> REINFORCED_LIGHTNING_ROD = CoeRegistrate.REGISTRATE
 		.blockEntity("reinforced_lightning_rod", ReinforcedLightningRodBlockEntity::new)
 		.validBlocks(CoeBlocks.REINFORCED_LIGHTNING_ROD)
 		.register();
 
 	/** 水晶芽床生长进度方块实体（四种宝石芽床共用） */
-	public static final BlockEntityEntry<CrystalBuddingBlockEntity> CRYSTAL_BUDDING = CreateOreExpansion.REGISTRATE
+	public static final BlockEntityEntry<CrystalBuddingBlockEntity> CRYSTAL_BUDDING = CoeRegistrate.REGISTRATE
 		.blockEntity("crystal_budding", CrystalBuddingBlockEntity::new)
 		.validBlocks(CoeBlocks.JADE_BUDDING_BLOCK, CoeBlocks.TOPAZ_BUDDING_BLOCK,
 			CoeBlocks.SAPPHIRE_BUDDING_BLOCK, CoeBlocks.STELLARSTONE_BUDDING_BLOCK)

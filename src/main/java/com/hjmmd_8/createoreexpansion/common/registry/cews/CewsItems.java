@@ -54,13 +54,13 @@ import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
  */
 public final class CewsItems {
 
-    public static final ItemEntry<Item> ENERGY_MECHANISM = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> ENERGY_MECHANISM = CewsRegistrate.REGISTRATE
             .item("energy_mechanism", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> INCOMPLETE_ENERGY_MECHANISM = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> INCOMPLETE_ENERGY_MECHANISM = CewsRegistrate.REGISTRATE
             .item("incomplete_energy_mechanism", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
@@ -69,7 +69,7 @@ public final class CewsItems {
 
     // ========== 波情查询仪（手持静态贴图；右键查询最近能量波的波情，查询期间播动画贴图） ==========
 
-    public static final ItemEntry<WaveQueryGaugeItem> WAVE_QUERY_GAUGE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<WaveQueryGaugeItem> WAVE_QUERY_GAUGE = CewsRegistrate.REGISTRATE
             .item("wave_query_gauge", WaveQueryGaugeItem::new)
             // 模型走手写 JSON（models/item/wave_query_gauge.json：默认静态 idle + overrides 挂
             // createoreexpansion:scanning 指向动画模型），故这里给空的 datagen 模型提供者，

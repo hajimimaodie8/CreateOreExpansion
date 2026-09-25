@@ -14,8 +14,8 @@ public class AllSpriteShifts {
 
     private static CTSpriteShiftEntry omni(String name) {
         return CTSpriteShifter.getCT(AllCTTypes.OMNIDIRECTIONAL,
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "block/" + name),
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "block/" + name + "_connected"));
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "block/" + name),
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "block/" + name + "_connected"));
     }
 
     public static void register() {}

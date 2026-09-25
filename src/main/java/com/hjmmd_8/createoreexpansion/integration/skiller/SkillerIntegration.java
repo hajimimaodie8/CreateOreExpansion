@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller;
 
+
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFactory;
@@ -137,7 +139,7 @@ public final class SkillerIntegration {
 
     /** 技能条目 id：{@code createoreexpansion:<path>}（必须与旧 {@code AllSkills} 一字不差）。 */
     private static ResourceLocation skillId(String path) {
-        return ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, path);
+        return ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, path);
     }
 
     /**
@@ -171,7 +173,7 @@ public final class SkillerIntegration {
      */
     private static void registerExcavationSkills(RegisterEvent event) {
         for (String path : new String[]{"shatter", "channel", "grade"}) {
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, path);
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, path);
             event.register(SkillerRegistries.SKILL, id,
                     () -> new ItemSkillRegistration<ExcavationSkillContext>(
                             CoeSkillTypes.EXCAVATION, ExcavationContextFactory.KEY, new AreaAoeItemSkill()));
@@ -190,7 +192,7 @@ public final class SkillerIntegration {
      * 翻译键（{@code skill.createoreexpansion.fell}）与物品上的技能绑定都靠它。</p>
      */
     private static void registerFellingSkill(RegisterEvent event) {
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "fell");
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "fell");
         event.register(SkillerRegistries.SKILL, id,
                 () -> new ItemSkillRegistration<ExcavationSkillContext>(
                         CoeSkillTypes.EXCAVATION, ExcavationContextFactory.KEY, new FellingItemSkill()));
@@ -198,7 +200,7 @@ public final class SkillerIntegration {
 
     /** 注册自检日志：确认 Skiller 的自定义注册表真的收到了 RegisterEvent，以及当前条目数。 */
     private static void logRegistry(String name, int size) {
-        CreateOreExpansion.LOGGER.info("[Skiller] registry event: {} -> entries={}", name, size);
+        CoeCore.LOGGER.info("[Skiller] registry event: {} -> entries={}", name, size);
     }
 
     /**
@@ -211,11 +213,11 @@ public final class SkillerIntegration {
         int contextFactories = SkillerBuiltInRegistries.CONTEXT_FACTORIES.keySet().size();
         int resources = SkillerBuiltInRegistries.SKILL_RESOURCES.keySet().size();
         int skills = SkillerBuiltInRegistries.SKILLS.keySet().size();
-        CreateOreExpansion.LOGGER.info(
+        CoeCore.LOGGER.info(
                 "[Skiller] 内核接线自检：上下文工厂={}（本模组应 ≥1）、技能资源={}（应 ≥1）、技能条目={}（W4 起逐个增加）",
                 contextFactories, resources, skills);
         if (resources < 2) {
-            CreateOreExpansion.LOGGER.error(
+            CoeCore.LOGGER.error(
                     "[Skiller] 技能资源注册似乎没生效（当前 {} 个，预期至少包含 skiller:empty 与本模组的 tool_energy）",
                     resources);
         }

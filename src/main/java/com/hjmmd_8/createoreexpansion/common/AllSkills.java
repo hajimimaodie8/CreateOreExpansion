@@ -208,7 +208,7 @@ public final class AllSkills {
         }
 
         public SkillBuilder(String id, Class<T> skillType, Class<S> strategyType) {
-            this(CreateOreExpansion.modLoc(id), skillType, strategyType);
+            this(CoeCore.modLoc(id), skillType, strategyType);
         }
 
         public SkillBuilder<T, S> skill(Function<S, T> factory) {

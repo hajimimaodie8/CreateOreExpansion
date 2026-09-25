@@ -16,6 +16,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 临时调试命令（验证能量场用，控制器方块做好后移除）：
@@ -101,7 +102,7 @@ public final class EnergyFieldDebugCommands {
 		waves.get(0)
 			.setCharge(charge);
 		src.sendSuccess(() -> Component.literal("已给最近的波赋 " + charge + " 电荷"), true);
-		CreateOreExpansion.LOGGER.info("[能量场调试] 给波赋 {} 电荷: pos={}, 波等级={}, 距玩家={} 格",
+		CoeCore.LOGGER.info("[能量场调试] 给波赋 {} 电荷: pos={}, 波等级={}, 距玩家={} 格",
 			charge,
 			waves.get(0).position(),
 			waves.get(0).getWaveLevel(),
@@ -120,7 +121,7 @@ public final class EnergyFieldDebugCommands {
 		EnergyFields.add(server, new EnergyField(type, region, direction, strength));
 		src.sendSuccess(() -> Component.literal("已注册 " + type + " 场 (强度 " + strength
 			+ ", 方向 " + direction + ", 区域 " + region + ")"), true);
-		CreateOreExpansion.LOGGER.info("[能量场调试] 注册 {} 场: 中心={}, 边长={}, 方向={}, 强度={}, 区域={}",
+		CoeCore.LOGGER.info("[能量场调试] 注册 {} 场: 中心={}, 边长={}, 方向={}, 强度={}, 区域={}",
 			type, pos, size, direction, strength, region);
 		// 同步给客户端（护目镜场域指示框的数据源）
 		EnergyFieldSyncPayload.broadcastToDimension(server);

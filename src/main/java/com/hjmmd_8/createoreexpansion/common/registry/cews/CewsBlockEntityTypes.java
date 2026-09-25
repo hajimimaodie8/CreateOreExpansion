@@ -37,7 +37,7 @@ import com.tterrag.registrate.util.entry.BlockEntityEntry;
  */
 public final class CewsBlockEntityTypes {
 
-	public static final BlockEntityEntry<JadeStressChargerBlockEntity> JADE_STRESS_CHARGER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntityEntry<JadeStressChargerBlockEntity> JADE_STRESS_CHARGER = CewsRegistrate.REGISTRATE
 		.blockEntity("jade_stress_charger", JadeStressChargerBlockEntity::new)
 		.validBlocks(CewsBlocks.JADE_STRESS_CHARGER)
 		.renderer(() -> CreateChargerRenderer::new)
@@ -45,7 +45,7 @@ public final class CewsBlockEntityTypes {
 
 	/** 蓝宝石应力充能器方块实体（双模式：普通连续发射 / 储存簇射；渲染与翡翠共用 CreateChargerRenderer） */
 	public static final BlockEntityEntry<SapphireStressChargerBlockEntity> SAPPHIRE_STRESS_CHARGER =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("sapphire_stress_charger", SapphireStressChargerBlockEntity::new)
 			.validBlocks(CewsBlocks.SAPPHIRE_STRESS_CHARGER)
 			.renderer(() -> CreateChargerRenderer::new)
@@ -53,7 +53,7 @@ public final class CewsBlockEntityTypes {
 
 	/** 星辉石应力充能器方块实体（手动发射等级 + 双模式；渲染与翡翠/蓝宝石共用 CreateChargerRenderer） */
 	public static final BlockEntityEntry<StellarstoneStressChargerBlockEntity> STELLARSTONE_STRESS_CHARGER =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("stellarstone_stress_charger", StellarstoneStressChargerBlockEntity::new)
 			.validBlocks(CewsBlocks.STELLARSTONE_STRESS_CHARGER)
 			.renderer(() -> CreateChargerRenderer::new)
@@ -61,7 +61,7 @@ public final class CewsBlockEntityTypes {
 
 	/** 能量场控制器方块实体（应力 → 场强档位；渲染：FACING 反面底部传动轴） */
 	public static final BlockEntityEntry<EnergyFieldControllerBlockEntity> ENERGY_FIELD_CONTROLLER =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("energy_field_controller", EnergyFieldControllerBlockEntity::new)
 			.validBlocks(CewsBlocks.ENERGY_FIELD_CONTROLLER)
 			.renderer(() -> FieldControllerRenderer::new)
@@ -69,21 +69,21 @@ public final class CewsBlockEntityTypes {
 
 	/** 星辉波变器方块实体（扫描加工机 → 为穿过的波附加加工属性；渲染：FACING 反面底部传动轴） */
 	public static final BlockEntityEntry<StellarWaveTransmuterBlockEntity> STELLAR_WAVE_TRANSMUTER =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("stellar_wave_transmuter", StellarWaveTransmuterBlockEntity::new)
 			.validBlocks(CewsBlocks.STELLAR_WAVE_TRANSMUTER)
 			.renderer(() -> StellarWaveTransmuterRenderer::new)
 			.register();
 
 	/** 能量调级器方块实体（齿轮随应力旋转） */
-	public static final BlockEntityEntry<EnergyWaveRegulatorBlockEntity> ENERGY_WAVE_REGULATOR = CreateOreExpansion.REGISTRATE
+	public static final BlockEntityEntry<EnergyWaveRegulatorBlockEntity> ENERGY_WAVE_REGULATOR = CewsRegistrate.REGISTRATE
 		.blockEntity("energy_wave_regulator", EnergyWaveRegulatorBlockEntity::new)
 		.validBlocks(CewsBlocks.ENERGY_WAVE_REGULATOR)
 		.renderer(() -> WaveGateRenderer::new)
 		.register();
 
 	/** 波速调节器方块实体（齿轮随应力旋转，渲染与调级器共用 WaveGateRenderer） */
-	public static final BlockEntityEntry<WaveSpeedRegulatorBlockEntity> WAVE_SPEED_REGULATOR = CreateOreExpansion.REGISTRATE
+	public static final BlockEntityEntry<WaveSpeedRegulatorBlockEntity> WAVE_SPEED_REGULATOR = CewsRegistrate.REGISTRATE
 		.blockEntity("wave_speed_regulator", WaveSpeedRegulatorBlockEntity::new)
 		.validBlocks(CewsBlocks.WAVE_SPEED_REGULATOR)
 		.renderer(() -> WaveGateRenderer::new)
@@ -91,7 +91,7 @@ public final class CewsBlockEntityTypes {
 
 	/** 蓝宝石能量调级器方块实体（渲染与翡翠调级器共用 WaveGateRenderer） */
 	public static final BlockEntityEntry<SapphireWaveRegulatorBlockEntity> SAPPHIRE_WAVE_REGULATOR =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("sapphire_wave_regulator", SapphireWaveRegulatorBlockEntity::new)
 			.validBlocks(CewsBlocks.SAPPHIRE_WAVE_REGULATOR)
 			.renderer(() -> WaveGateRenderer::new)
@@ -99,7 +99,7 @@ public final class CewsBlockEntityTypes {
 
 	/** 蓝宝石波速调节器方块实体（渲染与翡翠波速调节器共用 WaveGateRenderer） */
 	public static final BlockEntityEntry<SapphireSpeedRegulatorBlockEntity> SAPPHIRE_SPEED_REGULATOR =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("sapphire_speed_regulator", SapphireSpeedRegulatorBlockEntity::new)
 			.validBlocks(CewsBlocks.SAPPHIRE_SPEED_REGULATOR)
 			.renderer(() -> WaveGateRenderer::new)
@@ -107,7 +107,7 @@ public final class CewsBlockEntityTypes {
 
 	/** 星辉石能量调级器方块实体（渲染与蓝宝石/翡翠调级器共用 WaveGateRenderer） */
 	public static final BlockEntityEntry<StellarstoneWaveRegulatorBlockEntity> STELLARSTONE_WAVE_REGULATOR =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("stellarstone_wave_regulator", StellarstoneWaveRegulatorBlockEntity::new)
 			.validBlocks(CewsBlocks.STELLARSTONE_WAVE_REGULATOR)
 			.renderer(() -> WaveGateRenderer::new)
@@ -115,21 +115,21 @@ public final class CewsBlockEntityTypes {
 
 	/** 星辉石波速调节器方块实体（渲染与翡翠/蓝宝石波速调节器共用 WaveGateRenderer） */
 	public static final BlockEntityEntry<StellarstoneSpeedRegulatorBlockEntity> STELLARSTONE_SPEED_REGULATOR =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("stellarstone_speed_regulator", StellarstoneSpeedRegulatorBlockEntity::new)
 			.validBlocks(CewsBlocks.STELLARSTONE_SPEED_REGULATOR)
 			.renderer(() -> WaveGateRenderer::new)
 			.register();
 
 	/** 能量波差器方块实体（无应力静态，承载灯盘自定义渲染：按4侧面开闭状态叠灯位） */
-	public static final BlockEntityEntry<EnergyWaveDisperserBlockEntity> ENERGY_WAVE_DISPERSER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntityEntry<EnergyWaveDisperserBlockEntity> ENERGY_WAVE_DISPERSER = CewsRegistrate.REGISTRATE
 		.blockEntity("energy_wave_disperser", EnergyWaveDisperserBlockEntity::new)
 		.validBlocks(CewsBlocks.ENERGY_WAVE_DISPERSER)
 		.renderer(() -> EnergyWaveDisperserRenderer::new)
 		.register();
 
 	/** 六面能量波差器方块实体（无朝向静态，承载指示灯渲染：按相邻面开闭状态在面上叠灯） */
-	public static final BlockEntityEntry<SixFaceDisperserBlockEntity> SIX_FACE_DISPERSER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntityEntry<SixFaceDisperserBlockEntity> SIX_FACE_DISPERSER = CewsRegistrate.REGISTRATE
 		.blockEntity("six_face_disperser", SixFaceDisperserBlockEntity::new)
 		.validBlocks(CewsBlocks.SIX_FACE_DISPERSER)
 		.renderer(() -> SixFaceDisperserRenderer::new)
@@ -137,7 +137,7 @@ public final class CewsBlockEntityTypes {
 
 	/** 八面能量波差器方块实体（纯静态；承载顶/底 8 向指示灯渲染：开口方向灯亮） */
 	public static final BlockEntityEntry<OctaEnergyWaveDifferencerBlockEntity> OCTA_ENERGY_WAVE_DIFFERENCER =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.blockEntity("octa_energy_wave_differencer", OctaEnergyWaveDifferencerBlockEntity::new)
 			.validBlocks(CewsBlocks.OCTA_ENERGY_WAVE_DIFFERENCER)
 			.renderer(() -> OctaEnergyWaveDifferencerRenderer::new)

@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.data;
 
+
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
@@ -92,7 +94,7 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
     /** 单条拆磨配方：装备 → 材料 × 权重系数 */
     private void dismantling(RecipeOutput output, ItemLike item, ItemLike result, int materialCount, String name) {
         DismantlingRecipe recipe = new DismantlingRecipe(new ItemStack(item), new ItemStack(result), materialCount);
-        output.accept(CreateOreExpansion.modLoc("dismantling/" + name), recipe, null, new ICondition[0]);
+        output.accept(CoeCore.modLoc("dismantling/" + name), recipe, null, new ICondition[0]);
     }
 
     /** 粗矿序列配方：切割 → 压片 → 角磨，整个流程循环 2 遍，过渡物为粗矿本身，结果池 4 项各 25%。
@@ -121,7 +123,7 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
     /** 单条工具充能配方：输入单个能量物品，输出=输入工具本身（充能后仍是该工具，JEI 直观显示）。
      * @param level 配方要求的充能等级（1=α、2=β、3=γ、4=ε、5=ω） */
     private void charging(RecipeOutput output, ItemLike item, String name, int level) {
-        new ChargingRecipe.Builder(CreateOreExpansion.modLoc(name))
+        new ChargingRecipe.Builder(CoeCore.modLoc(name))
             .withLevel(level)
             .require(item)
             .output(item, 1)

@@ -24,7 +24,7 @@ public class AllDataComponents {
     public static final Codec<List<String>> LIST_STRING_CODEC = Codec.STRING.listOf();
 
     private static final DeferredRegister.DataComponents DATA_COMPONENTS
-            = DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, CreateOreExpansion.MOD_ID);
+            = DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, CoeCore.REGISTRY_NAMESPACE);
 
     /**
      * ItemSkill StreamCodec - 网络同步使用

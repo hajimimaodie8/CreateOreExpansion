@@ -1,78 +1,74 @@
 package com.hjmmd_8.createoreexpansion;
 
-import com.hjmmd_8.createoreexpansion.client.ChargerKineticTooltip;
-import com.hjmmd_8.createoreexpansion.common.*;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
+import com.hjmmd_8.createoreexpansion.common.AllCreativeModeTabs;
+import com.hjmmd_8.createoreexpansion.common.AllFluids;
+import com.hjmmd_8.createoreexpansion.common.AllGemTags;
+import com.hjmmd_8.createoreexpansion.common.AllModEffects;
+import com.hjmmd_8.createoreexpansion.common.AllModPotions;
+import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.AllStructureProcessors;
+import com.hjmmd_8.createoreexpansion.common.AllTiers;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
-import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionBindingRecipe;
-import com.simibubi.create.foundation.data.CreateRegistrate;
-import com.simibubi.create.foundation.item.ItemDescription;
-import com.simibubi.create.foundation.item.KineticStats;
-import com.simibubi.create.foundation.item.TooltipModifier;
-import net.createmod.catnip.lang.FontHelper;
-import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.registries.RegisterEvent;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
+/**
+ * <b>COE（矿物拓展）的 {@code @Mod} 入口</b>。
+ *
+ * <p><b>P3b 之后这个类的身份变了</b>：它<b>不再</b>代表"整个模组"，只代表
+ * <b>矿物拓展（mod id 仍是 {@code createoreexpansion}）这一个模块</b>。
+ * 同一份 jar 里现在有四个 {@code @Mod}：{@code coe_core}（{@link CoeCore}）、
+ * 本类、{@code cews}（{@code common.registry.cews.CewsMod}）、
+ * {@code transmutation}（{@code common.registry.transmutation.TransmutationMod}）。</p>
+ *
+ * <p><b>哪些东西<b>不</b>在这里了</b>（它们随各自的模块搬走，但注册命名空间一个字没变）：</p>
+ * <ul>
+ *   <li>命名空间常量 / {@code modLoc} / 日志器 / 配置 / 数据组件 / 实体类型 / 风扇加工类型 /
+ *       旋转载荷 → {@link CoeCore}（core 层，命名空间 {@code createoreexpansion}）；</li>
+ *   <li>CEWS 的机器、页签内容、能量场载荷、Jade 波插件、Sable 桥接 → {@code CewsMod}；</li>
+ *   <li>TRANS 的物品 → {@code TransmutationMod}。</li>
+ * </ul>
+ *
+ * <p><b>Registrate 分家</b>：本层（{@code common/registry/coe/**} + {@code AllFluids} +
+ * {@code SeriesTraits}）的注册引用 {@link CoeRegistrate#REGISTRATE}。
+ * 那个实例的 {@code CreateRegistrate} 命名空间参数<b>仍是</b> {@code createoreexpansion}
+ * （见 {@code common/registry/LayerRegistrate}），所以注册 id 与拆分前逐字一致。</p>
+ */
 @Mod(CreateOreExpansion.MOD_ID)
 public class CreateOreExpansion {
 
-    // 声明 ModId
+    /**
+     * COE 模块的 mod id。
+     *
+     * <p><b>别再拿它当命名空间用</b>：注册命名空间是 {@link CoeCore#REGISTRY_NAMESPACE}
+     * （值恰好相同，但语义不同——CEWS / TRANS 两个模块也用它）。
+     * 需要拼 {@code ResourceLocation} / 注册 id / 语言键前缀时一律用那个常量。</p>
+     */
     public static final String MOD_ID = "createoreexpansion";
-
-    // 创建 Logger
-    public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
 
     public static IEventBus MOD_BUS;
 
-    // 创建Create的注册器 —— Registrate
-    public static final CreateRegistrate REGISTRATE = CreateRegistrate.create(MOD_ID);
-
-    static {
-        // 为 Registrate 添加机械动力的应力条显示等等
-        REGISTRATE.setTooltipModifierFactory(item -> {
-            TooltipModifier modifier = new ItemDescription.Modifier(item, FontHelper.Palette.STANDARD_CREATE)
-                    .andThen(TooltipModifier.mapNull(KineticStats.create(item)))
-                    // 充能器：三实心方块 + 自定义区间应力提示（隐藏 Create 默认静态行，见 ChargerKineticTooltip）
-                    .andThen(TooltipModifier.mapNull(ChargerKineticTooltip.create(item)));
-            return modifier;
-        });
-
-        AllCreativeModeTabs.registerTabs();
-
-        // 设置默认的创造模式标签
-        // 注意不能用错了，不能用成 setCreativeModeTab
-        REGISTRATE.defaultCreativeTab(AllCreativeModeTabs.BASE_TAB.key());
-    }
-
     public CreateOreExpansion(IEventBus modEventBus, ModContainer modContainer) {
         MOD_BUS = modEventBus;
-        REGISTRATE.registerEventListeners(modEventBus);
+
+        // 本层 Registrate 的事件接线。静态块里已经设好 tooltip 工厂与默认创造页（基础页）；
+        // 见 CoeRegistrate 的类注释（顺序由类初始化保证）。
+        CoeRegistrate.REGISTRATE.registerEventListeners(modEventBus);
 
         AllCreativeModeTabs.register(modEventBus);
-        // CEWS（能量波阵学）标签页的内容构建：清单见 EnergyWaveStudyTab.CONTENTS
-        // （往新页放 + 从基础页剔除都在那一处，注册代码一行不动）
-        modEventBus.addListener(EnergyWaveStudyTab::onBuildContents);
 
-        AllDataComponents.register(modEventBus);
-        AllEntityTypes.register(modEventBus);
-        // P2a：原来的 AllBlocks / AllBlockEntityTypes 外观类已删除，这里按层显式触发类初始化。
-        // 顺序必须保持"方块层 → 方块实体层"、且每层内部先 COE 再 CEWS（与拆分前逐层一致）。
+        // 按层显式触发类初始化（顺序与拆分前逐层一致）。
+        // CEWS / TRANS 两层的方块与物品由它们各自的 @Mod 构造器触发（见 CewsMod / TransmutationMod）。
         CoeBlocks.register();
-        CewsBlocks.register();
         CoeBlockEntityTypes.register();
-        CewsBlockEntityTypes.register();
         AllTiers.register();
 
         // Curios 可选联动（凝能佩/凝能之佩）：Curios 已从 required 降为 optional，因此
@@ -81,21 +77,9 @@ public class CreateOreExpansion {
         //    触发桥接（未装时绝不触碰 Curios 类 → 不会 NoClassDefFoundError）。
         // 必须在 CoeItems.register() 之前：凝能佩的物品工厂按"桥接在不在"选饰品支线/纯物品支线两支类
         // （注册 id 与显示名两支一致，玩家侧无感）。
-        if (net.neoforged.fml.ModList.get().isLoaded("curios")) {
-            try {
-                Class.forName("com.hjmmd_8.createoreexpansion.compat.curios.CurioMedallionBridge");
-                LOGGER.info("[Curios] 凝能佩饰品桥接已加载（饰品支线生效，行为与 Curios required 时期一致）");
-            } catch (Throwable t) {
-                LOGGER.warn("[Curios] 凝能佩饰品桥接加载失败 → 凝能佩降级为普通物品（不影响游戏运行）", t);
-            }
-        } else {
-            LOGGER.info("[Curios] 未安装 Curios：凝能佩按纯物品注册（可合成/可持有/可绑定，无饰品槽效果）");
-        }
+        bootstrapCurios();
 
-        // P2a：按层显式触发物品注册类初始化（COE → CEWS → TRANS，与拆分前一致）
         CoeItems.register();
-        CewsItems.register();
-        TransmutationItems.register();
         AllGemTags.register();
         AllFluids.register();
         AllModEffects.register(modEventBus);
@@ -105,107 +89,48 @@ public class CreateOreExpansion {
         AllStructureProcessors.register(modEventBus);
         MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
-        modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload::registerPayloads);
-        // 统一交互规则第 4 条：Ctrl + 扳手右键 = 旋转本模组机器（客户端拦截 → 服务端校验并旋转）
-        modEventBus.addListener(com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload::registerPayloads);
+
         // 技能设置开关（"创造模式释放技能是否消耗能量"）的 C2S/S2C 包：服务端权威 + 存进存档
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.integration.skiller.SkillSettingsPayload::registerPayloads);
-        modEventBus.addListener(CreateOreExpansion::onRegister);
         // 技能内核（Skiller）接线：注册上下文工厂 / 技能资源 / 技能条目，并接上迁移闸门
         com.hjmmd_8.createoreexpansion.integration.skiller.SkillerIntegration.register(modEventBus);
 
-        // Jade 可选集成：仅当 Jade 已安装时才反射加载插件类（未安装时绝不触碰 Jade 类，
-        // 避免"标注 optional 仍硬编码调用导致崩溃"——见 compat.jade.WaveJadePlugin 注释）
-        if (net.neoforged.fml.ModList.get().isLoaded("jade")) {
-            try {
-                Class.forName("com.hjmmd_8.createoreexpansion.compat.jade.WaveJadePlugin");
-                // 第二个 Jade 插件：工作盆物品行实时化——整条接管 Jade 原生物品行
-                // （BasinLiveItemStorage 注册在 BasinBlock 上、优先级压过通用物品存储，逐 tick 取数）
-                Class.forName("com.hjmmd_8.createoreexpansion.compat.jade.BasinLiveJadePlugin");
-                LOGGER.info("[Jade] 能量波信息显示 + 工作盆物品行实时化插件已加载");
-            } catch (Throwable t) {
-                LOGGER.warn("[Jade] 能量波信息显示插件加载失败（不影响游戏运行）", t);
-            }
-        }
+        bootstrapJade();
 
-        // Sable 可选集成：仅当 Sable（航空学物理结构库）已安装时才反射加载桥接实现，
-        // 让能量波与物理结构上的机器（充能器/波闸/差波器）通过位姿矩阵勾连（世界↔本地坐标）。
-        // 未装 Sable 时绝不触碰 Sable 类（compat.sable.SableSubLevelBridge 直接引用 Sable 类型）。
-        // 桥接注册与物理属性验证均在 SableSubLevelBridge 静态块内完成（Class.forName 触发）。
-        //
-        // 判据（2026-09-20 修正）：原先只看 modId "sable"，但实测 jar 里
-        //   libs/sable-companion-common-1.21.1-1.6.0.jar 的 modId 是 "sablecompanion"，
-        //   而 libs/aeronautics-neoforge-1.21.1-1.3.0.jar 才声明依赖 modId "sable"；
-        //   我们真正使用的类是 dev.ryanhcode.sable.companion.math.Pose3dc（来自前者）。
-        // 用户实例里主 sable 未加载（或被 bundled 进嵌套 jar）→ 旧判据为假 → 整条物理结构链路惰性。
-        // 新判据：① 先看类在不在（首选，直接对应我们依赖的东西）；② 再退化为任一 modId 命中。
-        String sableByClass = detectSableByClass();
-        String sableByModId = (sableByClass != null) ? null : detectSableByModId();
-        String sableCriterion = (sableByClass != null) ? sableByClass : sableByModId;
-        if (sableCriterion != null) {
+        CoeCore.LOGGER.info("[COE] mod 初始化完成（mod id={}，注册命名空间={}）：矿物拓展内容已注册",
+            MOD_ID, CoeCore.REGISTRY_NAMESPACE);
+    }
+
+    /** Curios 可选联动引导：只在 Curios 在场时加载桥接类（未装则凝能佩降级为纯物品，不崩）。 */
+    private static void bootstrapCurios() {
+        if (ModList.get().isLoaded("curios")) {
             try {
-                Class.forName("com.hjmmd_8.createoreexpansion.compat.sable.SableSubLevelBridge");
-                LOGGER.info("[Sable] 物理结构桥接已加载（判据：{}）", sableCriterion);
+                Class.forName("com.hjmmd_8.createoreexpansion.compat.curios.CurioMedallionBridge");
+                CoeCore.LOGGER.info("[Curios] 凝能佩饰品桥接已加载（饰品支线生效，行为与 Curios required 时期一致）");
             } catch (Throwable t) {
-                LOGGER.warn("[Sable] 物理结构桥接加载失败（判据：{} 已命中，不影响游戏运行）", sableCriterion, t);
+                CoeCore.LOGGER.warn("[Curios] 凝能佩饰品桥接加载失败 → 凝能佩降级为普通物品（不影响游戏运行）", t);
             }
         } else {
-            LOGGER.warn("[Sable] 物理结构桥接未加载：类 dev.ryanhcode.sable.companion.math.Pose3dc 不在场，"
-                + "且 modId sable / sablecompanion / aeronautics 均未加载（哪条判据都没命中）");
+            CoeCore.LOGGER.info("[Curios] 未安装 Curios：凝能佩按纯物品注册（可合成/可持有/可绑定，无饰品槽效果）");
         }
-
-        modContainer.registerConfig(ModConfig.Type.COMMON, AllConfig.SPEC);
     }
 
     /**
-     * 判据①：我们真正依赖的 Sable 类在不在（运行期反射探测，编译期无需该类在场）。
+     * Jade 可选集成：仅当 Jade 已安装时才反射加载插件类（未安装时绝不触碰 Jade 类，
+     * 避免"标注 optional 仍硬编码调用导致崩溃"——见 compat.jade.BasinLiveJadePlugin 注释）。
      *
-     * <p>用 {@code Class.forName(name, false, loader)} <b>不初始化</b>目标类，避免副作用；
-     * 依次尝试上下文 / 本模组 / Minecraft（即游戏层，聚合了所有 mod jar）的类加载器，
-     * 任一能加载到即视为"物理结构库在场"。</p>
-     *
-     * @return 命中时的判据文案（写进日志），未命中返回 {@code null}
+     * <p><b>归属判定</b>：{@code BasinLiveJadePlugin} 接管的是<b>工作盆</b>的物品行实时化
+     * （矿物拓展加工线），所以留在 COE；另一个 Jade 插件 {@code WaveJadePlugin}
+     * （能量波/波情显示）随 CEWS 模块走。</p>
      */
-    private static String detectSableByClass() {
-        // 与 compat.sable.SablePose 的 import 一致：dev.ryanhcode.sable.companion.math.Pose3dc
-        final String probe = "dev.ryanhcode.sable.companion.math.Pose3dc";
-        ClassLoader[] candidates = new ClassLoader[] {
-            Thread.currentThread().getContextClassLoader(),
-            CreateOreExpansion.class.getClassLoader(),
-            net.minecraft.world.level.Level.class.getClassLoader(),
-            ClassLoader.getSystemClassLoader(),
-        };
-        for (ClassLoader loader : candidates) {
-            if (loader == null) {
-                continue;
-            }
+    private static void bootstrapJade() {
+        if (ModList.get().isLoaded("jade")) {
             try {
-                Class.forName(probe, false, loader);
-                return "类 " + probe + " 在场";
-            } catch (Throwable ignored) {
-                // 换下一个类加载器继续探测
+                Class.forName("com.hjmmd_8.createoreexpansion.compat.jade.BasinLiveJadePlugin");
+                CoeCore.LOGGER.info("[Jade] 工作盆物品行实时化插件已加载（COE）");
+            } catch (Throwable t) {
+                CoeCore.LOGGER.warn("[Jade] 工作盆物品行实时化插件加载失败（不影响游戏运行）", t);
             }
         }
-        return null;
-    }
-
-    /** 判据②（兜底）：Sable 主 jar / companion / 航空学 任一 modId 已加载。未命中返回 {@code null}。 */
-    private static String detectSableByModId() {
-        net.neoforged.fml.ModList modList = net.neoforged.fml.ModList.get();
-        String[] modIds = { "sable", "sablecompanion", "aeronautics" };
-        for (String modId : modIds) {
-            if (modList.isLoaded(modId)) {
-                return "modId " + modId + " 已加载";
-            }
-        }
-        return null;
-    }
-
-    public static void onRegister(RegisterEvent event) {
-        AllFanProcessingTypes.init();
-    }
-
-    public static ResourceLocation modLoc(String path) {
-        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
     }
 }

@@ -17,17 +17,17 @@ public class AllTags {
 		WIRES_ALL_METAL("wires/all_metal"),
 		DUSTS("dusts"),
 		/** 有技能的工具（减耗/技能提升附魔可附） */
-		SKILL_TOOLS(CreateOreExpansion.modLoc("skill_tools")),
+		SKILL_TOOLS(CoeCore.modLoc("skill_tools")),
 		/** 释放技能有冷却的工具（迅启附魔可附） */
-		COOLDOWN_TOOLS(CreateOreExpansion.modLoc("cooldown_tools")),
+		COOLDOWN_TOOLS(CoeCore.modLoc("cooldown_tools")),
 		/** 角磨轮（动力角磨床可安装的配件，通用安装 tag） */
-		GRINDING_WHEELS(CreateOreExpansion.modLoc("grinding_wheels")),
+		GRINDING_WHEELS(CoeCore.modLoc("grinding_wheels")),
 		/** 一级角磨轮（铁） */
-		GRINDING_WHEELS_TIER_1(CreateOreExpansion.modLoc("grinding_wheels/tier_1")),
+		GRINDING_WHEELS_TIER_1(CoeCore.modLoc("grinding_wheels/tier_1")),
 		/** 二级角磨轮（钻石/翡翠/黄玉） */
-		GRINDING_WHEELS_TIER_2(CreateOreExpansion.modLoc("grinding_wheels/tier_2")),
+		GRINDING_WHEELS_TIER_2(CoeCore.modLoc("grinding_wheels/tier_2")),
 		/** 三级角磨轮（蓝宝石/星辉石） */
-		GRINDING_WHEELS_TIER_3(CreateOreExpansion.modLoc("grinding_wheels/tier_3"));
+		GRINDING_WHEELS_TIER_3(CoeCore.modLoc("grinding_wheels/tier_3"));
 
 		public final TagKey<Item> tag;
 
@@ -48,7 +48,7 @@ public class AllTags {
 
 		AllFluidTags(String path) {
 			this.tag = TagKey.create(Registries.FLUID,
-				ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, path));
+				ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, path));
 		}
 
 		@SuppressWarnings("deprecation")

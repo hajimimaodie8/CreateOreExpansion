@@ -18,6 +18,7 @@ import mezz.jei.api.registration.IRecipeRegistration;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeInput;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 充能配方 JEI 集成：α/β/γ 三个充能等级共用**一个**分类
@@ -30,7 +31,7 @@ import net.minecraft.world.item.crafting.RecipeInput;
 @JeiPlugin
 public class ChargingJEI implements IModPlugin {
 
-	private static final ResourceLocation ID = CreateOreExpansion.modLoc("charging_jei");
+	private static final ResourceLocation ID = CoeCore.modLoc("charging_jei");
 
 	private final List<CreateRecipeCategory<?>> allCategories = new ArrayList<>();
 
@@ -49,7 +50,7 @@ public class ChargingJEI implements IModPlugin {
 			.catalyst(CewsBlocks.SAPPHIRE_STRESS_CHARGER::get)
 			.itemIcon(CewsBlocks.JADE_STRESS_CHARGER.get())
 			.emptyBackground(177, 70)
-			.build(CreateOreExpansion.modLoc("charging"), ChargingCategory::new));
+			.build(CoeCore.modLoc("charging"), ChargingCategory::new));
 	}
 
 	private static <T extends Recipe<? extends RecipeInput>> CreateRecipeCategory.Builder<T> builder(Class<T> recipeClass) {

@@ -44,12 +44,12 @@ public enum AllCreativeModeTabs {
     /** 由 id 构造标签页的 {@link ResourceKey}：<b>不依赖 holder</b>（枚举构造期 holder 还没有）。 */
     private static ResourceKey<CreativeModeTab> tabKey(String id) {
         return ResourceKey.create(Registries.CREATIVE_MODE_TAB,
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, id));
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, id));
     }
 
     // 演出注册器
     private static final DeferredRegister<CreativeModeTab> TABS
-            = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CreateOreExpansion.MOD_ID);
+            = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CoeCore.REGISTRY_NAMESPACE);
 
 
     // 公开变量
@@ -71,8 +71,26 @@ public enum AllCreativeModeTabs {
     }
 
     AllCreativeModeTabs(String id, ResourceKey<CreativeModeTab> before, Supplier<ItemStack> icon) {
-        this(id, "itemGroup." + CreateOreExpansion.MOD_ID + "." + id, before, icon);
+        this(id, "itemGroup." + CoeCore.REGISTRY_NAMESPACE + "." + id, before, icon);
     }
+
+    /**
+     * 幂等地把枚举项登记进 {@link #TABS}（填好各自 {@link #holder}）。
+     *
+     * <p>拆分后 COE / CEWS / TRANS 三个 Registrate 都要在设 {@code defaultCreativeTab} 之前拿到
+     * {@link #BASE_TAB}/{@link #ENERGY_WAVE_STUDY} 的 {@link ResourceKey}，而"谁先被类初始化"
+     * 取决于四个 {@code @Mod} 构造器的顺序——所以这里做成幂等，谁先来谁负责建，后续调用直接返回。</p>
+     */
+    public static void ensureTabs() {
+        if (tabsRegistered) {
+            return;
+        }
+        tabsRegistered = true;
+        registerTabs();
+    }
+
+    /** 标签页是否已经建好（{@link #ensureTabs()} 的幂等标志）。 */
+    private static boolean tabsRegistered;
 
     // 注册物品栏，不向事件总线注册注册器
     public static void registerTabs() {

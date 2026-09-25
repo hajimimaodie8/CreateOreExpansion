@@ -16,6 +16,7 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 拆磨配方 JEI 分类（三级角磨轮专属；动画显示蓝宝石角磨轮）。
@@ -24,7 +25,7 @@ import net.minecraft.network.chat.Component;
 public class DismantlingCategory extends CreateRecipeCategory<DismantlingRecipe> {
 
 	private final AnimatedPowerAngleGrinder grinder = new AnimatedPowerAngleGrinder(
-		AllPartialModels.GRINDING_WHEELS.get(CreateOreExpansion.modLoc("sapphire_grinding_wheel")));
+		AllPartialModels.GRINDING_WHEELS.get(CoeCore.modLoc("sapphire_grinding_wheel")));
 
 	public DismantlingCategory(Info<DismantlingRecipe> info) {
 		super(info);

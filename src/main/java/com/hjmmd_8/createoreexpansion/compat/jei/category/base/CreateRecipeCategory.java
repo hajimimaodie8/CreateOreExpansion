@@ -42,6 +42,7 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.level.ItemLike;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 @ParametersAreNonnullByDefault
 @MethodsReturnNonnullByDefault
@@ -229,7 +230,7 @@ public abstract class CreateRecipeCategory<T extends Recipe<?>> implements IReci
 		}
 
 		public CreateRecipeCategory<T> build(String name, Factory<T> factory) {
-			return build(ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, name), factory);
+			return build(ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, name), factory);
 		}
 
 		public CreateRecipeCategory<T> build(ResourceLocation id, Factory<T> factory) {

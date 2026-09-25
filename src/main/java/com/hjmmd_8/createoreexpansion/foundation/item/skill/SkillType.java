@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillCont
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext;
 
 import java.util.Locale;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 技能类型 —— 决定技能由哪种上下文触发。
@@ -28,7 +29,7 @@ public enum SkillType {
 
     SkillType(Class<?> contextClass) {
         this.contextClass = contextClass;
-        translateKey = "skillType." + CreateOreExpansion.MOD_ID + "." + this.name().toLowerCase(Locale.ROOT);
+        translateKey = "skillType." + CoeCore.REGISTRY_NAMESPACE + "." + this.name().toLowerCase(Locale.ROOT);
         translatable = () -> translateKey;
     }
 

@@ -53,13 +53,13 @@ import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
  */
 public final class TransmutationItems {
 
-    public static final ItemEntry<Item> TRANSMUTE_MECHANISM = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> TRANSMUTE_MECHANISM = TransmutationRegistrate.REGISTRATE
             .item("transmute_mechanism", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> INCOMPLETE_TRANSMUTE_MECHANISM = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> INCOMPLETE_TRANSMUTE_MECHANISM = TransmutationRegistrate.REGISTRATE
             .item("incomplete_transmute_mechanism", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))

@@ -16,6 +16,7 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 砍伐（伐树）策略（新内核版）——斧头连锁砍树的"砍哪些方块"计算。
@@ -37,7 +38,7 @@ public class CoeFellingStrategy implements SkillStrategy<BlockPos, ExcavationSki
 
     /** 注册 id：{@code createoreexpansion:felling}（新策略自己的键，与旧技能 id {@code fell} 不同层） */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "felling");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "felling");
 
     /** 该策略在 {@code skiller:skill_strategy} 注册表中的键（技能用 {@code getStrategy()} 引用它）。 */
     public static final ResourceKey<SkillStrategy<?, ?>> KEY = createKey();

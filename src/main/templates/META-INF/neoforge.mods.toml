@@ -12,29 +12,51 @@ loaderVersion = "${loader_version_range}" #mandatory
 license = "${mod_license}"
 # A URL to refer people to when problems occur with this mod
 #issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
-# A list of mods - how many allowed here is determined by the individual mod loader
-[[mods]] #mandatory
-# The modid of the mod
-modId = "${mod_id}" #mandatory
-# The version number of the mod
-version = "${mod_version}" #mandatory
-# A display name for the mod
-displayName = "${mod_name}" #mandatory
-# A URL to query for updates for this mod. See the JSON update specification https://docs.neoforge.net/docs/misc/updatechecker/
-#updateJSONURL="https://change.me.example.invalid/updates.json" #optional
-# A URL for the "homepage" for this mod, displayed in the mod UI
-#displayURL="https://change.me.to.your.mods.homepage.example.invalid/" #optional
-# A file name (in the root of the mod JAR) containing a logo for display
-#logoFile="more_create_ore.png" #optional
-# A text field displayed in the mod UI
-#credits="" #optional
-# A text field displayed in the mod UI
-authors = "${mod_authors}" #optional
 
+# ── P3b：同一个 jar 里装四个 mod ────────────────────────────────────────────────────────
+# 四个模块同处 createoreexpansion-1.0.0.jar：coe_core（共享地基）/ createoreexpansion（矿物拓展 COE）
+# / cews（能量波阵学）/ transmutation（机械嬗化学）。
+# 它们的**注册命名空间全部是 createoreexpansion**（见 common/CoeCore#REGISTRY_NAMESPACE），
+# 所以拆模块不会改动任何一个注册 id、语言键、配置键或数据包路径。
+
+# ============================ 1/4：coe_core（共享地基） ============================
+[[mods]] #mandatory
+modId = "coe_core"
+version = "${mod_version}" #mandatory
+displayName = "Create Ore Expansion Core"
+authors = "${mod_authors}" #optional
 # The description text for the mod (multi line!) (#mandatory)
 description = '''${mod_description}'''
 
+# ============================ 2/4：createoreexpansion（矿物拓展 COE） ============================
+# mod id 保持原样不变；原来那个唯一的 [[mods]] 块就是它。
+[[mods]] #mandatory
+modId = "createoreexpansion"
+version = "${mod_version}" #mandatory
+displayName = "Create Ore Expansion"
+authors = "${mod_authors}" #optional
+description = '''${mod_description}'''
+
+# ============================ 3/4：cews（能量波阵学） ============================
+[[mods]] #mandatory
+modId = "cews"
+version = "${mod_version}" #mandatory
+displayName = "Create: Energy Wave Studies"
+authors = "${mod_authors}" #optional
+description = '''${mod_description}'''
+
+# ============================ 4/4：transmutation（机械嬗化学） ============================
+[[mods]] #mandatory
+modId = "transmutation"
+version = "${mod_version}" #mandatory
+displayName = "Create: Mechanical Transmutation"
+authors = "${mod_authors}" #optional
+description = '''${mod_description}'''
+
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
+# 只声明一次（TOML 里 [[mixins]] 是**顶层**表数组，没有"挂在某个 mod 下面"这回事）：
+# 混入目标横跨四层（例如 client/、content/、mixin/），所以整个 jar 只登记这一份配置，
+# 由 createoreexpansion 这个模块"代表"声明。
 [[mixins]]
 config = "${mod_id}.mixins.json"
 
@@ -45,26 +67,20 @@ config = "${mod_id}.mixins.json"
 
 # The coremods config file path is not configurable and is always loaded from META-INF/coremods.json
 
-# A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
-[[dependencies."${mod_id}"]] #optional
-# the modid of the dependency
-modId = "neoforge" #mandatory
-# The type of the dependency. Can be one of "required", "optional", "incompatible" or "discouraged" (case insensitive).
-# 'required' requires the mod to exist, 'optional' does not
-# 'incompatible' will prevent the game from loading when the mod exists, and 'discouraged' will show a warning
-type = "required" #mandatory
-# Optional field describing why the dependency is required or why it is incompatible
-# reason="..."
-# The version range of the dependency
-versionRange = "${neo_version_range}" #mandatory
-# An ordering relationship for the dependency.
-# BEFORE - This mod is loaded BEFORE the dependency
-# AFTER - This mod is loaded AFTER the dependency
+# ── 依赖 ────────────────────────────────────────────────────────────────────────────────
+# 四个模块的基础依赖与拆分前完全一致（没有把任何 required 降级）；
+# 模块之间的依赖按 P3b 规格：cews → createoreexpansion 为 optional，transmutation → createoreexpansion 为 required，
+# coe_core 与 createoreexpansion 不依赖其它三个模块。
+
+# coe_core：只依赖基础环境（无模块依赖）
+[[dependencies."coe_core"]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
 ordering = "NONE"
-# Side this dependency is applied on - BOTH, CLIENT, or SERVER
 side = "BOTH"
-# Here's another dependency
-[[dependencies."${mod_id}"]]
+
+[[dependencies."coe_core"]]
 modId = "minecraft"
 type = "required"
 # This version range declares a minimum of the current minecraft version up to but not including the next major version
@@ -72,36 +88,166 @@ versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
 
-[[dependencies."${mod_id}"]]
-modId="create"
-type="required"
-versionRange="[6.0.10,6.1.0)"
-ordering="NONE"
-side="BOTH"
+[[dependencies."coe_core"]]
+modId = "create"
+type = "required"
+versionRange = "[6.0.10,6.1.0)"
+ordering = "NONE"
+side = "BOTH"
 
-[[dependencies."${mod_id}"]]
-modId="jei"
-type="optional"
-versionRange="[19.27.0,)"
-ordering="NONE"
-side="BOTH"
+[[dependencies."coe_core"]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.27.0,)"
+ordering = "NONE"
+side = "BOTH"
 
-[[dependencies."${mod_id}"]]
-modId="curios"
+# createoreexpansion（COE）：基础环境依赖，**无模块依赖**
+[[dependencies."createoreexpansion"]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."createoreexpansion"]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."createoreexpansion"]]
+modId = "create"
+type = "required"
+versionRange = "[6.0.10,6.1.0)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."createoreexpansion"]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.27.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."createoreexpansion"]]
+modId = "curios"
 # Curios 为可选联动：装了 Curios → 凝能佩走饰品支线（饰品槽装备/效果/渲染与旧版一致）；
 # 没装 → 凝能佩按纯物品注册（可合成/可持有，只是没有饰品槽效果），绝不因缺类而崩溃。
-type="optional"
-versionRange="[9.5.1,)"
-ordering="NONE"
-side="BOTH"
+type = "optional"
+versionRange = "[9.5.1,)"
+ordering = "NONE"
+side = "BOTH"
 
-[[dependencies."${mod_id}"]]
-modId="createaddition"
-type="required"
-versionRange="[1.5.11,)"
-ordering="NONE"
-side="BOTH"
+[[dependencies."createoreexpansion"]]
+modId = "createaddition"
+type = "required"
+versionRange = "[1.5.11,)"
+ordering = "NONE"
+side = "BOTH"
 
+# cews：基础环境依赖 + 对 COE **optional**（材料来自矿物拓展；未装 COE 时本模块自身仍可加载）
+[[dependencies."cews"]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."cews"]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."cews"]]
+modId = "create"
+type = "required"
+versionRange = "[6.0.10,6.1.0)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."cews"]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.27.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."cews"]]
+modId = "curios"
+type = "optional"
+versionRange = "[9.5.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."cews"]]
+modId = "createaddition"
+type = "required"
+versionRange = "[1.5.11,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."cews"]]
+modId = "createoreexpansion"
+# 模块依赖：CEWS 单向依赖 COE（材料），但**不是硬依赖** —— 用 optional，
+# 并让 COE 缺席时相关联动降级（AGENTS.md「CEWS 单向依赖 COE」口径）。
+type = "optional"
+versionRange = "[1.0.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+# transmutation：基础环境依赖 + 对 COE **required**（第 4 层强依赖第 2 层的互锁，见四模块方案 §13）
+[[dependencies."transmutation"]]
+modId = "neoforge"
+type = "required"
+versionRange = "${neo_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."transmutation"]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."transmutation"]]
+modId = "create"
+type = "required"
+versionRange = "[6.0.10,6.1.0)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."transmutation"]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.27.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."transmutation"]]
+modId = "curios"
+type = "optional"
+versionRange = "[9.5.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."transmutation"]]
+modId = "createaddition"
+type = "required"
+versionRange = "[1.5.11,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."transmutation"]]
+modId = "createoreexpansion"
+type = "required"
+versionRange = "[1.0.0,)"
+ordering = "AFTER"
+side = "BOTH"
 
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares
 # that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't

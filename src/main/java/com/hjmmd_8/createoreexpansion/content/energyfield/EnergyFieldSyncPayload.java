@@ -16,6 +16,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 服务端 → 客户端：某维度能量场的全量快照（护目镜场域指示用）。
@@ -30,7 +31,7 @@ public record EnergyFieldSyncPayload(ResourceLocation dimension, List<FieldData>
 	implements CustomPacketPayload {
 
 	public static final CustomPacketPayload.Type<EnergyFieldSyncPayload> TYPE =
-		new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "energy_field_sync"));
+		new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "energy_field_sync"));
 
 	public static final StreamCodec<FriendlyByteBuf, EnergyFieldSyncPayload> STREAM_CODEC =
 		StreamCodec.of(EnergyFieldSyncPayload::write, EnergyFieldSyncPayload::read);

@@ -54,7 +54,7 @@ public final class AllStructureProcessors {
 	@SuppressWarnings("unchecked")
 	private static <P extends StructureProcessor> StructureProcessorType<P> register(
 		RegisterEvent event, String name, MapCodec<P> codec) {
-		ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, name);
+		ResourceLocation id = ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, name);
 		StructureProcessorType<P> type = () -> codec;
 		event.register(BuiltInRegistries.STRUCTURE_PROCESSOR.key(), id, () -> type);
 		return (StructureProcessorType<P>) BuiltInRegistries.STRUCTURE_PROCESSOR.get(id);

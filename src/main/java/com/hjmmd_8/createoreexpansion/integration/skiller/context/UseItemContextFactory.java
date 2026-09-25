@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent;
 import org.jetbrains.annotations.Nullable;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * {@link UseItemSkillContext} 的上下文工厂（注册到 {@code skiller:skill_context_factory}）。
@@ -24,7 +25,7 @@ public class UseItemContextFactory implements SkillContextFactory<UseItemSkillCo
 
     /** 注册 id：{@code createoreexpansion:use_item_context} */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "use_item_context");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "use_item_context");
 
     /** 该工厂在 {@code skiller:skill_context_factory} 注册表中的键（注册技能条目时用作 factoryKey）。 */
     public static final ResourceKey<SkillContextFactory<UseItemSkillContext>> KEY = createKey();

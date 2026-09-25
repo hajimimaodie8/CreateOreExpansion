@@ -4,6 +4,7 @@ import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.leaf.skiller.foundation.skill.SkillType;
 import com.leaf.skiller.foundation.skill.SkillTypeFactory;
 import net.minecraft.resources.ResourceLocation;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 模组接入 Skiller 新内核时使用的 {@link SkillType} 常量。
@@ -23,15 +24,15 @@ public final class CoeSkillTypes {
 
     /** 挖掘类（对应旧 {@code SkillType.EXCAVATION_SKILL}） */
     public static final SkillType EXCAVATION =
-            SkillTypeFactory.of(ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "excavation_skill"));
+            SkillTypeFactory.of(ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "excavation_skill"));
 
     /** 攻击命中类（对应旧 {@code SkillType.HIT_SKILL}） */
     public static final SkillType HIT =
-            SkillTypeFactory.of(ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "hit_skill"));
+            SkillTypeFactory.of(ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "hit_skill"));
 
     /** 使用物品类（对应旧 {@code SkillType.USE_SKILL}） */
     public static final SkillType USE =
-            SkillTypeFactory.of(ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "use_skill"));
+            SkillTypeFactory.of(ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "use_skill"));
 
     private CoeSkillTypes() {
         throw new AssertionError("This class should not be instantiated");

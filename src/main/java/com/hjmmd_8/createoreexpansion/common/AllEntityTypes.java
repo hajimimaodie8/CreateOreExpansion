@@ -16,7 +16,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class AllEntityTypes {
 
 	private static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
-		DeferredRegister.create(Registries.ENTITY_TYPE, CreateOreExpansion.MOD_ID);
+		DeferredRegister.create(Registries.ENTITY_TYPE, CoeCore.REGISTRY_NAMESPACE);
 
 	/** 能量波（1~5 级：α/β/γ/ε/ω；翡翠/蓝宝石充能器通用，不渲染模型，视觉靠粒子） */
 	public static final DeferredHolder<EntityType<?>, EntityType<ChargerWaveEntity>> CHARGER_WAVE =

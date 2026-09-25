@@ -17,6 +17,7 @@ import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import net.minecraft.client.gui.GuiGraphics;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 角磨配方 JEI 分类（仿动力锯 SawingCategory；动画显示铁角磨轮）。
@@ -25,7 +26,7 @@ import net.minecraft.client.gui.GuiGraphics;
 public class GrindingCategory extends CreateRecipeCategory<GrindingRecipe> {
 
 	private final AnimatedPowerAngleGrinder grinder = new AnimatedPowerAngleGrinder(
-		AllPartialModels.GRINDING_WHEELS.get(CreateOreExpansion.modLoc("iron_grinding_wheel")));
+		AllPartialModels.GRINDING_WHEELS.get(CoeCore.modLoc("iron_grinding_wheel")));
 
 	public GrindingCategory(Info<GrindingRecipe> info) {
 		super(info);

@@ -51,11 +51,11 @@ public final class SeriesTraits {
 
 	/** 星辉石系列的<b>方块</b>标签（方块物品的归属走它；见类注释）。 */
 	public static final TagKey<Block> STELLARSTONE_BLOCKS = TagKey.create(Registries.BLOCK,
-		ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "stellarstone_blocks"));
+		ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "stellarstone_blocks"));
 
 	/** 雷鸣合金系列的<b>方块</b>标签。 */
 	public static final TagKey<Block> THUNDERITE_BLOCKS = TagKey.create(Registries.BLOCK,
-		ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "thunderite_blocks"));
+		ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "thunderite_blocks"));
 
 	/** 星辉石系列的注册名特征（命名约定兜底用）。 */
 	private static final String STELLARSTONE_TOKEN = "stellarstone";
@@ -94,7 +94,7 @@ public final class SeriesTraits {
 	 *
 	 * <pre>{@code
 	 * public static final ItemEntry<Item> STELLARSTONE_INGOT = addStellarstoneTraits(
-	 *         CreateOreExpansion.REGISTRATE.item("stellarstone_ingot", Item::new)
+	 *         CoeRegistrate.REGISTRATE.item("stellarstone_ingot", Item::new)
 	 *             .properties(...)
 	 *             .model(...))
 	 *     .register();
@@ -142,7 +142,7 @@ public final class SeriesTraits {
 				.is(blockTag))
 			return true;
 		ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-		return key != null && CreateOreExpansion.MOD_ID.equals(key.getNamespace())
+		return key != null && CoeCore.REGISTRY_NAMESPACE.equals(key.getNamespace())
 			&& key.getPath()
 				.contains(nameToken);
 	}

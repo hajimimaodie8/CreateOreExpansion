@@ -46,7 +46,7 @@ public enum AllKeys implements Translatable {
     }
 
     AllKeys(String description, int defaultKey, String translation, boolean conflictSafe) {
-        this.description = CreateOreExpansion.MOD_ID + ".keyinfo." + description;
+        this.description = CoeCore.REGISTRY_NAMESPACE + ".keyinfo." + description;
         this.key = defaultKey;
         this.modifiable = !description.isEmpty();
         this.translation = translation;

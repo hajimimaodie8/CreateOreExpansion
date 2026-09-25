@@ -60,7 +60,7 @@ import java.util.function.Supplier;
  */
 public final class CoeBlocks {
 
-	public static final BlockEntry<Block> JADE_ORE = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> JADE_ORE = CoeRegistrate.REGISTRATE
 		.block("jade_ore", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_ORE)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
@@ -79,7 +79,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> DEEPSLATE_JADE_ORE = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> DEEPSLATE_JADE_ORE = CoeRegistrate.REGISTRATE
 		.block("deepslate_jade_ore", Block::new)
 		.initialProperties(() -> Blocks.DEEPSLATE_DIAMOND_ORE)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
@@ -98,7 +98,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> JADE_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> JADE_BLOCK = CoeRegistrate.REGISTRATE
 		.block("jade_block", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_BLOCK)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN)
@@ -113,7 +113,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> RAW_JADE_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> RAW_JADE_BLOCK = CoeRegistrate.REGISTRATE
 		.block("raw_jade_block", Block::new)
 		.initialProperties(() -> Blocks.RAW_GOLD_BLOCK)
 		.properties(p -> p.mapColor(MapColor.GLOW_LICHEN)
@@ -127,7 +127,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> TOPAZ_ORE = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> TOPAZ_ORE = CoeRegistrate.REGISTRATE
 		.block("topaz_ore", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_ORE)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
@@ -146,7 +146,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> DEEPSLATE_TOPAZ_ORE = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> DEEPSLATE_TOPAZ_ORE = CoeRegistrate.REGISTRATE
 		.block("deepslate_topaz_ore", Block::new)
 		.initialProperties(() -> Blocks.DEEPSLATE_DIAMOND_ORE)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
@@ -165,7 +165,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> TOPAZ_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> TOPAZ_BLOCK = CoeRegistrate.REGISTRATE
 		.block("topaz_block", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_BLOCK)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_ORANGE)
@@ -180,7 +180,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> RAW_TOPAZ_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> RAW_TOPAZ_BLOCK = CoeRegistrate.REGISTRATE
 		.block("raw_topaz_block", Block::new)
 		.initialProperties(() -> Blocks.RAW_GOLD_BLOCK)
 		.properties(p -> p.mapColor(MapColor.GLOW_LICHEN)
@@ -194,7 +194,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> NETHER_SAPPHIRE_ORE = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> NETHER_SAPPHIRE_ORE = CoeRegistrate.REGISTRATE
 		.block("nether_sapphire_ore", Block::new)
 		.initialProperties(() -> Blocks.ANCIENT_DEBRIS)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
@@ -213,7 +213,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> SAPPHIRE_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> SAPPHIRE_BLOCK = CoeRegistrate.REGISTRATE
 		.block("sapphire_block", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_BLOCK)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE)
@@ -228,7 +228,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> RAW_SAPPHIRE_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> RAW_SAPPHIRE_BLOCK = CoeRegistrate.REGISTRATE
 		.block("raw_sapphire_block", Block::new)
 		.initialProperties(() -> Blocks.RAW_GOLD_BLOCK)
 		.properties(p -> p.mapColor(MapColor.GLOW_LICHEN)
@@ -242,7 +242,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> END_STELLARSTONE_ORE = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> END_STELLARSTONE_ORE = CoeRegistrate.REGISTRATE
 		.block("end_stellarstone_ore", Block::new)
 		.initialProperties(() -> Blocks.ANCIENT_DEBRIS)
 		.tag(BlockTags.MINEABLE_WITH_PICKAXE)
@@ -261,7 +261,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> STELLARSTONE_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> STELLARSTONE_BLOCK = CoeRegistrate.REGISTRATE
 		.block("stellarstone_block", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_BLOCK)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE)
@@ -278,7 +278,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> RAW_STELLARSTONE_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> RAW_STELLARSTONE_BLOCK = CoeRegistrate.REGISTRATE
 		.block("raw_stellarstone_block", Block::new)
 		.initialProperties(() -> Blocks.RAW_GOLD_BLOCK)
 		.properties(p -> p.mapColor(MapColor.GLOW_LICHEN)
@@ -292,7 +292,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> THUNDERITE_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> THUNDERITE_BLOCK = CoeRegistrate.REGISTRATE
 		.block("thunderite_block", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_BLOCK)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE)
@@ -309,7 +309,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> RUBY_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> RUBY_BLOCK = CoeRegistrate.REGISTRATE
 		.block("ruby_block", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_BLOCK)
 		.properties(p -> p.mapColor(MapColor.COLOR_RED)
@@ -324,7 +324,7 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<Block> SANCTSTONE_BLOCK = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<Block> SANCTSTONE_BLOCK = CoeRegistrate.REGISTRATE
 		.block("sanctstone_block", Block::new)
 		.initialProperties(() -> Blocks.DIAMOND_BLOCK)
 		.properties(p -> p.mapColor(MapColor.COLOR_LIGHT_GRAY)
@@ -340,7 +340,7 @@ public final class CoeBlocks {
 		.register();
 
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<PowerAngleGrinderBlock> POWER_ANGLE_GRINDER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<PowerAngleGrinderBlock> POWER_ANGLE_GRINDER = CoeRegistrate.REGISTRATE
 		.block("power_angle_grinder", PowerAngleGrinderBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.PODZOL))
@@ -386,7 +386,7 @@ public final class CoeBlocks {
 
 	/** 强化避雷针：继承原版 LightningRodBlock（全部原版行为保留），叠加 γ 级能量波充能；
 	 * 加入原版 lightning_rods tag（三叉戟引雷、铁砧工艺等交互正常作用）。 */
-	public static final BlockEntry<ReinforcedLightningRodBlock> REINFORCED_LIGHTNING_ROD = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<ReinforcedLightningRodBlock> REINFORCED_LIGHTNING_ROD = CoeRegistrate.REGISTRATE
 		.block("reinforced_lightning_rod", ReinforcedLightningRodBlock::new)
 		.initialProperties(SharedProperties::copperMetal)
 		.properties(p -> p.requiresCorrectToolForDrops())
@@ -541,7 +541,7 @@ public final class CoeBlocks {
 	private static BlockEntry<CrystalClusterBlock> crystalBud(String name, int height, int xz,
 			Supplier<Block> nextStage, Supplier<? extends Item> dropItem, int dropCount,
 			Supplier<? extends Item> bonusItem, float stageGrowSeconds) {
-		var builder = CreateOreExpansion.REGISTRATE
+		var builder = CoeRegistrate.REGISTRATE
 				.block(name, p -> new CrystalClusterBlock(height, xz, p, nextStage, stageGrowSeconds))
 				.initialProperties(() -> Blocks.SMALL_AMETHYST_BUD)
 				.properties(p -> p.randomTicks())
@@ -623,7 +623,7 @@ public final class CoeBlocks {
 	 */
 	private static BlockEntry<CrystalBuddingBlock> crystalBudding(String name, Supplier<Block> smallBud,
 			MapColor color, int buddingGrowSeconds, Supplier<? extends Item> rawOre) {
-		return CreateOreExpansion.REGISTRATE
+		return CoeRegistrate.REGISTRATE
 			.block(name, p -> new CrystalBuddingBlock(p, smallBud, buddingGrowSeconds))
 			.initialProperties(() -> Blocks.BUDDING_AMETHYST)
 			.properties(p -> p.mapColor(color))

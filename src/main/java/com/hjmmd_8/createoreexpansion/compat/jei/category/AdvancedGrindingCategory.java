@@ -17,6 +17,7 @@ import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import net.minecraft.client.gui.GuiGraphics;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 高级角磨配方 JEI 分类（≥2 级轮可执行 Create 粉碎轮/石磨配方；动画显示钻石角磨轮）。
@@ -25,7 +26,7 @@ import net.minecraft.client.gui.GuiGraphics;
 public class AdvancedGrindingCategory extends CreateRecipeCategory<AbstractCrushingRecipe> {
 
 	private final AnimatedPowerAngleGrinder grinder = new AnimatedPowerAngleGrinder(
-		AllPartialModels.GRINDING_WHEELS.get(CreateOreExpansion.modLoc("diamond_grinding_wheel")));
+		AllPartialModels.GRINDING_WHEELS.get(CoeCore.modLoc("diamond_grinding_wheel")));
 
 	public AdvancedGrindingCategory(Info<AbstractCrushingRecipe> info) {
 		super(info);

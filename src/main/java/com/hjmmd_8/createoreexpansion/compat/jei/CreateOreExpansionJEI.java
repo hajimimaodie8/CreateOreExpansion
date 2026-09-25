@@ -36,13 +36,14 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeInput;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Blocks;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 @JeiPlugin
 @ParametersAreNonnullByDefault
 public class CreateOreExpansionJEI implements IModPlugin {
 
 	private static final ResourceLocation ID =
-		ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "core_jei");
+		ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "core_jei");
 
 	private final List<CreateRecipeCategory<?>> allCategories = new ArrayList<>();
 
@@ -57,7 +58,7 @@ public class CreateOreExpansionJEI implements IModPlugin {
 			.addTypedRecipes(AllRecipeTypes.TRANSMUTING)
 			.catalystStack(ProcessingViaFanCategory.getFan("fan_transmuting"))
 			.doubleItemIcon(com.simibubi.create.AllBlocks.ENCASED_FAN.get(),
-				BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID,
+				BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE,
 					"transmutation_fluid_bucket")))
 			.emptyBackground(178, 72)
 			.build("fan_transmuting", TransmutingCategory::new);

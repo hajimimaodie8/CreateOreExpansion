@@ -17,7 +17,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class AllModPotions {
 
 	public static final DeferredRegister<Potion> POTIONS =
-		DeferredRegister.create(Registries.POTION, CreateOreExpansion.MOD_ID);
+		DeferredRegister.create(Registries.POTION, CoeCore.REGISTRY_NAMESPACE);
 
 	// 酿造材料暂定，之后替换成正式材料即可
 	public static final Item BREWING_INGREDIENT = Items.AMETHYST_SHARD;

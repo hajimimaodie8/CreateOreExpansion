@@ -13,6 +13,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 技能设置开关的网络包：<b>同一个 record 两个方向</b>
@@ -39,7 +40,7 @@ public record SkillSettingsPayload(boolean consumeInCreative) implements CustomP
 
     public static final CustomPacketPayload.Type<SkillSettingsPayload> TYPE =
             new CustomPacketPayload.Type<>(
-                    ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "skill_settings"));
+                    ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "skill_settings"));
 
     public static final StreamCodec<FriendlyByteBuf, SkillSettingsPayload> STREAM_CODEC =
             StreamCodec.of(

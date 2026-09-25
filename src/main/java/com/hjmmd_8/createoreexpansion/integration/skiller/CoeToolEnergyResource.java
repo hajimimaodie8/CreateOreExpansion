@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 工具能量资源（新内核版）——把模组既有的「主手工具 FE + 凝能佩兜底」接成 Skiller 的 {@link SkillResource}。
@@ -33,7 +34,7 @@ public class CoeToolEnergyResource implements SkillResource {
 
     /** 完整资源 id */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, PATH);
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, PATH);
 
     /** 该资源在 {@code skiller:skill_resource} 注册表中的键 */
     public static final ResourceKey<SkillResource> KEY =
@@ -69,7 +70,7 @@ public class CoeToolEnergyResource implements SkillResource {
         ItemStack stack = player.getMainHandItem();
         if (!ToolEnergy.consume(player, stack, amount)) {
             // 理论上不该发生（canConsume 已通过）：留一条日志，避免"扣费静默失败"难以定位
-            CreateOreExpansion.LOGGER.warn("[Skiller] 工具能量扣减失败：player={}, amount={}（主手={}）",
+            CoeCore.LOGGER.warn("[Skiller] 工具能量扣减失败：player={}, amount={}（主手={}）",
                     player.getName().getString(), amount, stack.getHoverName().getString());
             return;
         }

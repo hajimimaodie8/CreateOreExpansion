@@ -13,7 +13,7 @@ public class AllFanProcessingTypes {
 
 	private static <T extends FanProcessingType> T register(String name, T type) {
 		return Registry.register(CreateBuiltInRegistries.FAN_PROCESSING_TYPE,
-			ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, name), type);
+			ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, name), type);
 	}
 
 	public static void init() {

@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
+
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
@@ -327,7 +329,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 				&& com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields.isInAnyField(level(), position());
 			if (inside != wasInsideField) {
 				wasInsideField = inside;
-				CreateOreExpansion.LOGGER.info("[能量场] 波#{} {}场  pos={}  电荷={}  场内场数={}",
+				CoeCore.LOGGER.info("[能量场] 波#{} {}场  pos={}  电荷={}  场内场数={}",
 					getId(), inside ? "进入" : "离开", position(), charge,
 					com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields.count(level()));
 			}
@@ -338,7 +340,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 					? nominal.dot(corrected) / (oldLen * newLen)
 					: 1.0;
 				dot = net.minecraft.util.Mth.clamp(dot, -1.0, 1.0);
-				CreateOreExpansion.LOGGER.info("[能量场] 波#{} 场内修正  pos={}  速度 {:.2f}→{:.2f} 格/秒  偏角 {:.1f}°",
+				CoeCore.LOGGER.info("[能量场] 波#{} 场内修正  pos={}  速度 {:.2f}→{:.2f} 格/秒  偏角 {:.1f}°",
 					getId(), position(), oldLen, newLen, Math.toDegrees(Math.acos(dot)));
 			}
 		}

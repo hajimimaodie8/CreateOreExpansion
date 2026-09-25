@@ -75,14 +75,14 @@ import java.util.function.Supplier;
  */
 public final class CewsBlocks {
 
-	public static final BlockEntry<CasingBlock> JADE_CASING = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<CasingBlock> JADE_CASING = CewsRegistrate.REGISTRATE
 			.block("jade_casing", CasingBlock::new)
 			.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
 			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.JADE_CASING))
 			.register();
 
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<JadeStressChargerBlock> JADE_STRESS_CHARGER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<JadeStressChargerBlock> JADE_STRESS_CHARGER = CewsRegistrate.REGISTRATE
 		.block("jade_stress_charger", JadeStressChargerBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
@@ -133,7 +133,7 @@ public final class CewsBlocks {
 
 	/** 蓝宝石应力充能器：蓝宝石科技线专属充能器（可蓄至 4/5 级、双模式）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<SapphireStressChargerBlock> SAPPHIRE_STRESS_CHARGER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<SapphireStressChargerBlock> SAPPHIRE_STRESS_CHARGER = CewsRegistrate.REGISTRATE
 		.block("sapphire_stress_charger", SapphireStressChargerBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
@@ -184,7 +184,7 @@ public final class CewsBlocks {
 	/** 星辉石应力充能器：蓝宝石充能器的复制变体——发射等级手动固定（两侧槽：模式 + 手动等级）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
 	public static final BlockEntry<StellarstoneStressChargerBlock> STELLARSTONE_STRESS_CHARGER =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.block("stellarstone_stress_charger", StellarstoneStressChargerBlock::new)
 			.initialProperties(SharedProperties::stone)
 			.properties(p -> p.mapColor(MapColor.COLOR_PURPLE))
@@ -234,7 +234,7 @@ public final class CewsBlocks {
 
 	/** 能量场控制器（Energy Field Controller）：六向应力机器，应力输入 → 场强档位（配对/极性/机壳扩展规则见 BE 注释）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<EnergyFieldControllerBlock> ENERGY_FIELD_CONTROLLER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<EnergyFieldControllerBlock> ENERGY_FIELD_CONTROLLER = CewsRegistrate.REGISTRATE
 		.block("energy_field_controller", EnergyFieldControllerBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
@@ -286,7 +286,7 @@ public final class CewsBlocks {
 	 * （{@code stellarstone_disperser_lamp}）+ 场控底面底座（轴口面 {@code stellarstone_gearbox}）。
 	 * 4 个水平侧面独立开关 → 16 个变体模型 × 6 个 FACING = 96 个 variant。</p> */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<StellarWaveTransmuterBlock> STELLAR_WAVE_TRANSMUTER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<StellarWaveTransmuterBlock> STELLAR_WAVE_TRANSMUTER = CewsRegistrate.REGISTRATE
 		.block("stellar_wave_transmuter", StellarWaveTransmuterBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.COLOR_PURPLE))
@@ -335,7 +335,7 @@ public final class CewsBlocks {
 
 	/** 蓝宝石能量调级器：蓝宝石科技线专属（64 RPM 起调制、最大可把波提升至 5 级 ω）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<SapphireWaveRegulatorBlock> SAPPHIRE_WAVE_REGULATOR = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<SapphireWaveRegulatorBlock> SAPPHIRE_WAVE_REGULATOR = CewsRegistrate.REGISTRATE
 		.block("sapphire_wave_regulator", SapphireWaveRegulatorBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
@@ -384,7 +384,7 @@ public final class CewsBlocks {
 	/** 能量调级器：六向应力机器（齿轮轴沿 FACING），承接翡翠应力充能器能量波调级。
 	 * 与蓝宝石调级器共享 {@code AbstractWaveGateBlock} 基类（机型差异：转速门槛/最大升等级）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<EnergyWaveRegulatorBlock> ENERGY_WAVE_REGULATOR = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<EnergyWaveRegulatorBlock> ENERGY_WAVE_REGULATOR = CewsRegistrate.REGISTRATE
 		.block("energy_wave_regulator", EnergyWaveRegulatorBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
@@ -435,7 +435,7 @@ public final class CewsBlocks {
 	/** 波速调节器：与能量调级器同构（模型/旋转/面板交互一致，仅侧面贴图暂为复制占位），
 	 * 应力速度调制：按转速分档加速/减速（100~256 RPM 分 4 档 ±0.5/1/1.5/2 格/秒），反弹不改速。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<WaveSpeedRegulatorBlock> WAVE_SPEED_REGULATOR = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<WaveSpeedRegulatorBlock> WAVE_SPEED_REGULATOR = CewsRegistrate.REGISTRATE
 		.block("wave_speed_regulator", WaveSpeedRegulatorBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
@@ -482,7 +482,7 @@ public final class CewsBlocks {
 
 	/** 蓝宝石波速调节器：蓝宝石科技线专属（64 RPM 起调制、64~256 RPM 分 6 档 ±0.5~3 格/秒）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<SapphireSpeedRegulatorBlock> SAPPHIRE_SPEED_REGULATOR = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<SapphireSpeedRegulatorBlock> SAPPHIRE_SPEED_REGULATOR = CewsRegistrate.REGISTRATE
 		.block("sapphire_speed_regulator", SapphireSpeedRegulatorBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
@@ -530,7 +530,7 @@ public final class CewsBlocks {
 	/** 星辉石能量调级器：星辉石科技线专属（32 RPM 起调制、单次提升级数随转速 +1/+2、最大升至 5 级 ω）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
 	public static final BlockEntry<StellarstoneWaveRegulatorBlock> STELLARSTONE_WAVE_REGULATOR =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.block("stellarstone_wave_regulator", StellarstoneWaveRegulatorBlock::new)
 			.initialProperties(SharedProperties::stone)
 			.properties(p -> p.mapColor(MapColor.COLOR_PURPLE))
@@ -579,7 +579,7 @@ public final class CewsBlocks {
 	/** 星辉石波速调节器：星辉石科技线专属（32 RPM 起调制、32~256 RPM 分 8 档 ±0.5~4 格/秒）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
 	public static final BlockEntry<StellarstoneSpeedRegulatorBlock> STELLARSTONE_SPEED_REGULATOR =
-		CreateOreExpansion.REGISTRATE
+		CewsRegistrate.REGISTRATE
 			.block("stellarstone_speed_regulator", StellarstoneSpeedRegulatorBlock::new)
 			.initialProperties(SharedProperties::stone)
 			.properties(p -> p.mapColor(MapColor.COLOR_PURPLE))
@@ -627,7 +627,7 @@ public final class CewsBlocks {
 	/** 能量波差器：无应力被动机器，模型上下翡翠机壳、四面能量接收面关闭材质；
 	 * 六向 FACING 旋转（三种朝向与调级器一致），4 侧面开口可独立开关，无需方块实体/渲染器。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<EnergyWaveDisperserBlock> ENERGY_WAVE_DISPERSER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<EnergyWaveDisperserBlock> ENERGY_WAVE_DISPERSER = CewsRegistrate.REGISTRATE
 		.block("energy_wave_disperser", EnergyWaveDisperserBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
@@ -684,7 +684,7 @@ public final class CewsBlocks {
 	/** 六面能量波差器：无朝向固定机器，6 面全部为能量接收面板（wave_receiver close/open）独立开关；
 	 * 5/6 面开口时波分裂为降二级子波（判定见 SixFaceDispersal）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<SixFaceDisperserBlock> SIX_FACE_DISPERSER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<SixFaceDisperserBlock> SIX_FACE_DISPERSER = CewsRegistrate.REGISTRATE
 		.block("six_face_disperser", SixFaceDisperserBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
@@ -735,7 +735,7 @@ public final class CewsBlocks {
 	 * 开口数规则：1=反弹、2=通道、3~4=分裂降 1、5~6=降 2、7~8=降 3。
 	 * 模型/贴图 = octa_energy_wave_differencer（sapphire 系）。 */
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<OctaEnergyWaveDifferencerBlock> OCTA_ENERGY_WAVE_DIFFERENCER = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<OctaEnergyWaveDifferencerBlock> OCTA_ENERGY_WAVE_DIFFERENCER = CewsRegistrate.REGISTRATE
 		.block("octa_energy_wave_differencer", OctaEnergyWaveDifferencerBlock::new)
 		.initialProperties(SharedProperties::stone)
 		.properties(p -> p.mapColor(MapColor.COLOR_BLUE))
@@ -793,13 +793,13 @@ public final class CewsBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<CasingBlock> SAPPHIRE_CASING = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<CasingBlock> SAPPHIRE_CASING = CewsRegistrate.REGISTRATE
 		.block("sapphire_casing", CasingBlock::new)
 			.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE))
 			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.SAPPHIRE_CASING))
 			.register();
 
-	public static final BlockEntry<CasingBlock> STELLARSTONE_CASING = CreateOreExpansion.REGISTRATE
+	public static final BlockEntry<CasingBlock> STELLARSTONE_CASING = CewsRegistrate.REGISTRATE
 		.block("stellarstone_casing", CasingBlock::new)
 			.properties(p -> p.mapColor(MapColor.TERRACOTTA_PINK))
 			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.STELLARSTONE_CASING))

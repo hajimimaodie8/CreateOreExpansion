@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * {@link BowShootSkillContext} 的上下文工厂（注册到 {@code skiller:skill_context_factory}）。
@@ -26,7 +27,7 @@ public class BowContextFactory implements SkillContextFactory<BowShootSkillConte
 
     /** 注册 id：{@code createoreexpansion:bow_context} */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "bow_context");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "bow_context");
 
     /** 该工厂在 {@code skiller:skill_context_factory} 注册表中的键（注册技能条目时用作 factoryKey）。 */
     public static final ResourceKey<SkillContextFactory<BowShootSkillContext>> KEY = createKey();

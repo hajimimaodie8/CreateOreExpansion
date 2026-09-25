@@ -8,6 +8,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.transmutation.Transmutatio
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.LanguageProvider;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * English language file — single source of all English translations.
@@ -17,7 +18,7 @@ import net.neoforged.neoforge.common.data.LanguageProvider;
 public class EnglishLangProvider extends LanguageProvider {
 
     public EnglishLangProvider(PackOutput output) {
-        super(output, CreateOreExpansion.MOD_ID, "en_us");
+        super(output, CoeCore.REGISTRY_NAMESPACE, "en_us");
     }
 
     @Override

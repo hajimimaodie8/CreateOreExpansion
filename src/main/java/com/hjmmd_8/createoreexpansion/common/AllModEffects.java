@@ -12,7 +12,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public final class AllModEffects {
 
 	public static final DeferredRegister<MobEffect> EFFECTS =
-		DeferredRegister.create(Registries.MOB_EFFECT, CreateOreExpansion.MOD_ID);
+		DeferredRegister.create(Registries.MOB_EFFECT, CoeCore.REGISTRY_NAMESPACE);
 
 	public static final DeferredHolder<MobEffect, TransmutationDisorderEffect> TRANSMUTATION_DISORDER =
 		EFFECTS.register("transmutation_disorder", TransmutationDisorderEffect::new);

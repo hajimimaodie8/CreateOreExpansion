@@ -8,13 +8,14 @@ import com.tterrag.registrate.util.entry.FluidEntry;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.common.Tags;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
 
 public class AllFluids {
 
 	public static final FluidEntry<TransmutationFluid.Flowing> TRANSMUTATION_FLUID =
-		CreateOreExpansion.REGISTRATE.fluid("transmutation_fluid",
-				ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "block/transmutation_fluid_still"),
-				ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "block/transmutation_fluid_flowing"),
+		CoeRegistrate.REGISTRATE.fluid("transmutation_fluid",
+				ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "block/transmutation_fluid_still"),
+				ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "block/transmutation_fluid_flowing"),
 				CreateRegistrate::defaultFluidType,
 				TransmutationFluid.Flowing::new)
 			.lang("Transmutation Fluid")

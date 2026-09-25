@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import org.jetbrains.annotations.Nullable;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * {@link HitSkillContext} 的上下文工厂（注册到 {@code skiller:skill_context_factory}）。
@@ -24,7 +25,7 @@ public class HitContextFactory implements SkillContextFactory<HitSkillContext> {
 
     /** 注册 id：{@code createoreexpansion:hit_context} */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "hit_context");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "hit_context");
 
     /** 该工厂在 {@code skiller:skill_context_factory} 注册表中的键（注册技能条目时用作 factoryKey）。 */
     public static final ResourceKey<SkillContextFactory<HitSkillContext>> KEY = createKey();

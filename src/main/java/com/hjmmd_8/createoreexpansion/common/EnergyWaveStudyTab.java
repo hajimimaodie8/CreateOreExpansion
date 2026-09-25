@@ -106,7 +106,7 @@ public final class EnergyWaveStudyTab {
 		}
 		// INFO 而非 DEBUG：这段只在"标签页被构建"时跑一次（每个会话 2 行），
 		// 恰好是进游戏后确认"新页有内容、旧页已剔除"的唯一日志证据，排查时不必开 debug 日志。
-		CreateOreExpansion.LOGGER.info("[CEWS] 能量波阵学标签页内容同步：{} 项（{}）", CONTENTS.size(),
+		CoeCore.LOGGER.info("[CEWS] 能量波阵学标签页内容同步：{} 项（{}）", CONTENTS.size(),
 			intoCews ? "加入新页" : "从基础页剔除");
 	}
 }

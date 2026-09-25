@@ -6,6 +6,7 @@ import java.util.Map;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 
 import net.minecraft.resources.ResourceLocation;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 角磨轮效果注册表：按轮子物品 id 关联特殊效果。
@@ -47,7 +48,7 @@ public final class GrindingWheelEffects {
 
 	/** 注册角磨轮效果（拓展模组用本模组命名空间） */
 	public static void register(String wheelId, GrindingWheelEffect effect) {
-		register(CreateOreExpansion.modLoc(wheelId), effect);
+		register(CoeCore.modLoc(wheelId), effect);
 	}
 
 	/** 注册角磨轮效果（任意命名空间） */

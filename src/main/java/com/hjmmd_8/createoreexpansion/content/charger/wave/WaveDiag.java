@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.charger.wave;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 能量波系统的<b>诊断日志出口</b>——全系统<b>唯一</b>一处日志前缀与开关定义。
@@ -49,7 +50,7 @@ public final class WaveDiag {
 	 */
 	public static void trace(String msg, Object... args) {
 		if (TRACE)
-			CreateOreExpansion.LOGGER.info(TRACE_TAG + msg, args);
+			CoeCore.LOGGER.info(TRACE_TAG + msg, args);
 	}
 
 	/**
@@ -60,6 +61,6 @@ public final class WaveDiag {
 	 */
 	public static void debug(String msg, Object... args) {
 		if (DEBUG)
-			CreateOreExpansion.LOGGER.info(DEBUG_TAG + msg, args);
+			CoeCore.LOGGER.info(DEBUG_TAG + msg, args);
 	}
 }

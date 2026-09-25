@@ -14,6 +14,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import org.jetbrains.annotations.Nullable;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * {@link ExcavationSkillContext} 的上下文工厂（注册到 {@code skiller:skill_context_factory}）。
@@ -39,7 +40,7 @@ public class ExcavationContextFactory implements SkillContextFactory<ExcavationS
 
     /** 注册 id：{@code createoreexpansion:excavation_context} */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "excavation_context");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "excavation_context");
 
     /** 该工厂在 {@code skiller:skill_context_factory} 注册表中的键（W4 注册技能条目时用作 {@code ItemSkillRegistration} 的 factoryKey）。 */
     public static final ResourceKey<SkillContextFactory<ExcavationSkillContext>> KEY = createKey();

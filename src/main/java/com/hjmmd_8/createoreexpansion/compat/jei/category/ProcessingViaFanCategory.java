@@ -24,6 +24,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 @ParametersAreNonnullByDefault
 public abstract class ProcessingViaFanCategory<T extends Recipe<?>> extends CreateRecipeCategory<T> {
@@ -37,7 +38,7 @@ public abstract class ProcessingViaFanCategory<T extends Recipe<?>> extends Crea
 	public static Supplier<ItemStack> getFan(String name) {
 		ItemStack stack = com.simibubi.create.AllBlocks.ENCASED_FAN.asStack();
 		stack.set(DataComponents.CUSTOM_NAME,
-			Component.translatable(CreateOreExpansion.MOD_ID + ".recipe." + name + ".fan")
+			Component.translatable(CoeCore.REGISTRY_NAMESPACE + ".recipe." + name + ".fan")
 				.withStyle(style -> style.withItalic(false)));
 		return () -> stack;
 	}

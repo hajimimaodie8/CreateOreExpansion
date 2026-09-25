@@ -11,6 +11,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
 import java.util.Set;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 实体类策略（新内核版）——标记"这个技能作用于生物"，实际描边由客户端渲染器完成。
@@ -29,14 +30,14 @@ public class CoeEntityStrategy implements SkillStrategy<Entity, HitSkillContext>
 
     /** 注册 id：{@code createoreexpansion:entity_strategy} */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "entity_strategy");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "entity_strategy");
 
     /** 该策略在 {@code skiller:skill_strategy} 注册表中的键。 */
     public static final ResourceKey<SkillStrategy<?, ?>> KEY = createKey();
 
     /** 与方块描边区分开的渲染器 id（客户端注册同名渲染器）。 */
     public static final ResourceLocation RENDERER_ID =
-            ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "entity_outline");
+            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "entity_outline");
 
     @Override
     public void collect(Set<Entity> set, HitSkillContext context, ISkillInstance<HitSkillContext> instance) {

@@ -23,6 +23,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 凝能佩与能量工具的绑定合成：
@@ -31,7 +32,7 @@ import java.util.List;
 public class MedallionBindingRecipe extends CustomRecipe {
 
     private static final DeferredRegister<RecipeSerializer<?>> SERIALIZERS =
-        DeferredRegister.create(Registries.RECIPE_SERIALIZER, CreateOreExpansion.MOD_ID);
+        DeferredRegister.create(Registries.RECIPE_SERIALIZER, CoeCore.REGISTRY_NAMESPACE);
 
     public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<MedallionBindingRecipe>> SERIALIZER =
         SERIALIZERS.register("medallion_binding", () -> new Serializer());

@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.common.machine;
 
+
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 
 import net.minecraft.core.BlockPos;
@@ -39,7 +41,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record MachineRotatePayload(BlockPos pos, Direction face, Vec3 hitLocation) implements CustomPacketPayload {
 
 	public static final CustomPacketPayload.Type<MachineRotatePayload> TYPE =
-		new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID, "machine_rotate"));
+		new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "machine_rotate"));
 
 	public static final StreamCodec<FriendlyByteBuf, MachineRotatePayload> STREAM_CODEC =
 		StreamCodec.of(MachineRotatePayload::write, MachineRotatePayload::read);

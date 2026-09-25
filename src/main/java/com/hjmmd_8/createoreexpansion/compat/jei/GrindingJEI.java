@@ -25,6 +25,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeInput;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 角磨配方 JEI 集成（分类仿照机械动力 CreateJEI 的动力锯分类注册方式）。
@@ -32,7 +33,7 @@ import net.minecraft.world.item.crafting.RecipeInput;
 @JeiPlugin
 public class GrindingJEI implements IModPlugin {
 
-	private static final ResourceLocation ID = CreateOreExpansion.modLoc("grinding_jei");
+	private static final ResourceLocation ID = CoeCore.modLoc("grinding_jei");
 
 	private final List<CreateRecipeCategory<?>> allCategories = new ArrayList<>();
 
@@ -49,7 +50,7 @@ public class GrindingJEI implements IModPlugin {
 			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
 			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), Items.IRON_INGOT)
 			.emptyBackground(177, 70)
-			.build(CreateOreExpansion.modLoc("grinding"), GrindingCategory::new);
+			.build(CoeCore.modLoc("grinding"), GrindingCategory::new);
 
 		CreateRecipeCategory<?> advanced = builder(AbstractCrushingRecipe.class)
 			.addTypedRecipes(com.simibubi.create.AllRecipeTypes.CRUSHING)
@@ -57,14 +58,14 @@ public class GrindingJEI implements IModPlugin {
 			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
 			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), Items.DIAMOND)
 			.emptyBackground(177, 70)
-			.build(CreateOreExpansion.modLoc("advanced_grinding"), AdvancedGrindingCategory::new);
+			.build(CoeCore.modLoc("advanced_grinding"), AdvancedGrindingCategory::new);
 
 		CreateRecipeCategory<?> dismantling = builder(DismantlingRecipe.class)
 			.addTypedRecipes(AllRecipeTypes.DISMANTLING)
 			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
 			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), CoeItems.SAPPHIRE_INGOT.get())
 			.emptyBackground(177, 70)
-			.build(CreateOreExpansion.modLoc("dismantling"), DismantlingCategory::new);
+			.build(CoeCore.modLoc("dismantling"), DismantlingCategory::new);
 
 		allCategories.add(grinding);
 		allCategories.add(advanced);

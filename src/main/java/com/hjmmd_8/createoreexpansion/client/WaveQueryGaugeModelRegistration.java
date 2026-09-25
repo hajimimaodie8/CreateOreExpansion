@@ -10,6 +10,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 波情查询仪的"查询中"item property：使默认模型在冷却期内被 overrides 换成动画模型。
@@ -31,7 +32,7 @@ public class WaveQueryGaugeModelRegistration {
 	 * （{@code "createoreexpansion:scanning"}）——原版 {@code ItemOverride.Deserializer}
 	 * 用 {@code ResourceLocation.parse} 解析谓词键，不带命名空间会落到 {@code minecraft:}。
 	 */
-	public static final ResourceLocation SCANNING = ResourceLocation.fromNamespaceAndPath(CreateOreExpansion.MOD_ID,
+	public static final ResourceLocation SCANNING = ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE,
 		"scanning");
 
 	@SubscribeEvent

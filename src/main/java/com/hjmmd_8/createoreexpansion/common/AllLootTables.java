@@ -34,12 +34,12 @@ public final class AllLootTables {
 
 		/** modifier 完整 id（global_loot_modifiers.json 注册用） */
 		public ResourceLocation modifierId() {
-			return CreateOreExpansion.modLoc(modifier);
+			return CoeCore.modLoc(modifier);
 		}
 
 		/** 子表完整资源 id */
 		public ResourceLocation tableId() {
-			return CreateOreExpansion.modLoc("inject/" + table);
+			return CoeCore.modLoc("inject/" + table);
 		}
 	}
 

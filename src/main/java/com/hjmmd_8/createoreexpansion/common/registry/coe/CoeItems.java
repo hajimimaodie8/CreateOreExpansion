@@ -62,7 +62,7 @@ public final class CoeItems {
 
     // 这个变量名可以随便写，好理解就行，一般是item id的大写
     // 这里调用了MoreCreateOre类的static field(字段？ REGSITRATE？
-    public static final ItemEntry<Item> JADE_INGOT = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> JADE_INGOT = CoeRegistrate.REGISTRATE
             // 调用方式？
             .item("jade_ingot", Item::new)
             .tag(CREATE_INGOTS.tag)
@@ -72,7 +72,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> RAW_JADE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> RAW_JADE = CoeRegistrate.REGISTRATE
             .item("raw_jade", Item::new)
             .tag(Tags.Items.RAW_MATERIALS)
             .tag(AllGemTags.JADE.rawOres)
@@ -80,7 +80,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> JADE_NUGGET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> JADE_NUGGET = CoeRegistrate.REGISTRATE
             .item("jade_nugget", Item::new)
             .tag(Tags.Items.NUGGETS)
             .tag(AllGemTags.JADE.nuggets)
@@ -88,7 +88,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> CRUSHED_JADE_ORE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> CRUSHED_JADE_ORE = CoeRegistrate.REGISTRATE
             .item("crushed_jade_ore", Item::new)
             .tag(CRUSHED_RAW_MATERIALS.tag)
             .tag(AllGemTags.JADE.crushedRawOres)
@@ -96,26 +96,26 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> JADE_SMALL_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> JADE_SMALL_SHARD = CoeRegistrate.REGISTRATE
             .item("jade_small_shard", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> JADE_BIG_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> JADE_BIG_SHARD = CoeRegistrate.REGISTRATE
             .item("jade_big_shard", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> JADE_SHEET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> JADE_SHEET = CoeRegistrate.REGISTRATE
             .item("jade_sheet", Item::new)
             .tag(AllGemTags.JADE.sheets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> JADE_ROD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> JADE_ROD = CoeRegistrate.REGISTRATE
             .item("jade_rod", Item::new)
             .tag(AllGemTags.JADE.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
@@ -124,7 +124,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> JADE_WIRE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> JADE_WIRE = CoeRegistrate.REGISTRATE
             .item("jade_wire", Item::new)
             .tag(AllGemTags.JADE.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
@@ -133,7 +133,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<SwordItem> JADE_SWORD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<SwordItem> JADE_SWORD = CoeRegistrate.REGISTRATE
             .item("jade_sword", p -> new SwordItem(AllTiers.JADE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -155,7 +155,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<PickaxeItem> JADE_PICKAXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<PickaxeItem> JADE_PICKAXE = CoeRegistrate.REGISTRATE
             .item("jade_pickaxe", p -> new PickaxeItem(AllTiers.JADE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -175,7 +175,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<AxeItem> JADE_AXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<AxeItem> JADE_AXE = CoeRegistrate.REGISTRATE
             .item("jade_axe", p -> new AxeItem(AllTiers.JADE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -196,7 +196,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<ShovelItem> JADE_SHOVEL = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<ShovelItem> JADE_SHOVEL = CoeRegistrate.REGISTRATE
             .item("jade_shovel", p -> new ShovelItem(AllTiers.JADE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -216,7 +216,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<HoeItem> JADE_HOE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<HoeItem> JADE_HOE = CoeRegistrate.REGISTRATE
             .item("jade_hoe", p -> new HoeItem(AllTiers.JADE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -240,7 +240,7 @@ public final class CoeItems {
     // 注册期按"Curios 在不在"选两支物品类之一（MedallionCurios.item）：装了 Curios → 饰品支线
     // （compat.curios.CurioMedallionItems，implements ICurioItem）；没装 → 纯物品支线（本包里的基类）。
     // 两支的注册 id / 显示名 / 贴图 / 组件完全相同 —— 玩家侧无感，存档读进来还是同一个物品。
-    public static final ItemEntry<JadeStressMedallionItem> JADE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<JadeStressMedallionItem> JADE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
             .item("jade_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_JADE, JadeStressMedallionItem::new))
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 1000)
@@ -254,7 +254,7 @@ public final class CoeItems {
             .register();
     static { ChargingRecipeTools.register(JADE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
-    public static final ItemEntry<Item> TOPAZ_INGOT = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> TOPAZ_INGOT = CoeRegistrate.REGISTRATE
             .item("topaz_ingot", Item::new)
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
@@ -263,7 +263,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> RAW_TOPAZ = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> RAW_TOPAZ = CoeRegistrate.REGISTRATE
             .item("raw_topaz", Item::new)
             .tag(Tags.Items.RAW_MATERIALS)
             .tag(AllGemTags.TOPAZ.rawOres)
@@ -271,7 +271,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> TOPAZ_NUGGET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> TOPAZ_NUGGET = CoeRegistrate.REGISTRATE
             .item("topaz_nugget", Item::new)
             .tag(Tags.Items.NUGGETS)
             .tag(AllGemTags.TOPAZ.nuggets)
@@ -279,7 +279,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> CRUSHED_TOPAZ_ORE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> CRUSHED_TOPAZ_ORE = CoeRegistrate.REGISTRATE
             .item("crushed_topaz_ore", Item::new)
             .tag(CRUSHED_RAW_MATERIALS.tag)
             .tag(AllGemTags.TOPAZ.crushedRawOres)
@@ -287,26 +287,26 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> TOPAZ_SMALL_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> TOPAZ_SMALL_SHARD = CoeRegistrate.REGISTRATE
             .item("topaz_small_shard", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> TOPAZ_BIG_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> TOPAZ_BIG_SHARD = CoeRegistrate.REGISTRATE
             .item("topaz_big_shard", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> TOPAZ_SHEET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> TOPAZ_SHEET = CoeRegistrate.REGISTRATE
             .item("topaz_sheet", Item::new)
             .tag(AllGemTags.TOPAZ.sheets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> TOPAZ_ROD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> TOPAZ_ROD = CoeRegistrate.REGISTRATE
             .item("topaz_rod", Item::new)
             .tag(AllGemTags.TOPAZ.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
@@ -315,7 +315,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> TOPAZ_WIRE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> TOPAZ_WIRE = CoeRegistrate.REGISTRATE
             .item("topaz_wire", Item::new)
             .tag(AllGemTags.TOPAZ.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
@@ -324,7 +324,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<SwordItem> TOPAZ_SWORD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<SwordItem> TOPAZ_SWORD = CoeRegistrate.REGISTRATE
             .item("topaz_sword", p -> new SwordItem(AllTiers.TOPAZ, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -346,7 +346,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<PickaxeItem> TOPAZ_PICKAXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<PickaxeItem> TOPAZ_PICKAXE = CoeRegistrate.REGISTRATE
             .item("topaz_pickaxe", p -> new PickaxeItem (AllTiers.TOPAZ, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -366,7 +366,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<ShovelItem> TOPAZ_SHOVEL= CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<ShovelItem> TOPAZ_SHOVEL= CoeRegistrate.REGISTRATE
             .item("topaz_shovel", p -> new ShovelItem (AllTiers.TOPAZ, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -386,7 +386,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<AxeItem> TOPAZ_AXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<AxeItem> TOPAZ_AXE = CoeRegistrate.REGISTRATE
             .item("topaz_axe", p -> new AxeItem (AllTiers.TOPAZ, p))
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
@@ -407,7 +407,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<HoeItem> TOPAZ_HOE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<HoeItem> TOPAZ_HOE = CoeRegistrate.REGISTRATE
             .item("topaz_hoe", p -> new HoeItem(AllTiers.TOPAZ, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -427,7 +427,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<TopazStressMedallionItem> TOPAZ_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<TopazStressMedallionItem> TOPAZ_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
             .item("topaz_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_TOPAZ, TopazStressMedallionItem::new))
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 2500)
@@ -441,7 +441,7 @@ public final class CoeItems {
             .register();
     static { ChargingRecipeTools.register(TOPAZ_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
-    public static final ItemEntry<Item> SAPPHIRE_INGOT = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SAPPHIRE_INGOT = CoeRegistrate.REGISTRATE
             .item("sapphire_ingot", Item::new)
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
@@ -450,7 +450,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> RAW_SAPPHIRE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> RAW_SAPPHIRE = CoeRegistrate.REGISTRATE
             .item("raw_sapphire", Item::new)
             .tag(Tags.Items.RAW_MATERIALS)
             .tag(AllGemTags.SAPPHIRE.rawOres)
@@ -458,7 +458,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SAPPHIRE_NUGGET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SAPPHIRE_NUGGET = CoeRegistrate.REGISTRATE
             .item("sapphire_nugget", Item::new)
             .tag(Tags.Items.NUGGETS)
             .tag(AllGemTags.SAPPHIRE.nuggets)
@@ -466,7 +466,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> CRUSHED_SAPPHIRE_ORE = CreateOreExpansion.REGISTRATE    
+    public static final ItemEntry<Item> CRUSHED_SAPPHIRE_ORE = CoeRegistrate.REGISTRATE    
             .item("crushed_sapphire_ore", Item::new)
             .tag(CRUSHED_RAW_MATERIALS.tag)
             .tag(AllGemTags.SAPPHIRE.crushedRawOres)
@@ -474,26 +474,26 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SAPPHIRE_SMALL_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SAPPHIRE_SMALL_SHARD = CoeRegistrate.REGISTRATE
             .item("sapphire_small_shard", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SAPPHIRE_BIG_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SAPPHIRE_BIG_SHARD = CoeRegistrate.REGISTRATE
             .item("sapphire_big_shard", Item::new)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SAPPHIRE_SHEET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SAPPHIRE_SHEET = CoeRegistrate.REGISTRATE
             .item("sapphire_sheet", Item::new)
             .tag(AllGemTags.SAPPHIRE.sheets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SAPPHIRE_ROD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SAPPHIRE_ROD = CoeRegistrate.REGISTRATE
             .item("sapphire_rod", Item::new)
             .tag(AllGemTags.SAPPHIRE.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
@@ -502,7 +502,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SAPPHIRE_WIRE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SAPPHIRE_WIRE = CoeRegistrate.REGISTRATE
             .item("sapphire_wire", Item::new)
             .tag(AllGemTags.SAPPHIRE.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
@@ -511,7 +511,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<SwordItem> SAPPHIRE_SWORD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<SwordItem> SAPPHIRE_SWORD = CoeRegistrate.REGISTRATE
             .item("sapphire_sword", p -> new SwordItem(AllTiers.SAPPHIRE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -533,7 +533,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<PickaxeItem> SAPPHIRE_PICKAXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<PickaxeItem> SAPPHIRE_PICKAXE = CoeRegistrate.REGISTRATE
             .item("sapphire_pickaxe", p -> new PickaxeItem (AllTiers.SAPPHIRE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -553,7 +553,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<ShovelItem> SAPPHIRE_SHOVEL= CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<ShovelItem> SAPPHIRE_SHOVEL= CoeRegistrate.REGISTRATE
             .item("sapphire_shovel", p -> new ShovelItem (AllTiers.SAPPHIRE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -574,7 +574,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<AxeItem> SAPPHIRE_AXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<AxeItem> SAPPHIRE_AXE = CoeRegistrate.REGISTRATE
             .item("sapphire_axe", p -> new AxeItem (AllTiers.SAPPHIRE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -595,7 +595,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<HoeItem> SAPPHIRE_HOE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<HoeItem> SAPPHIRE_HOE = CoeRegistrate.REGISTRATE
             .item("sapphire_hoe", p -> new HoeItem(AllTiers.SAPPHIRE, p))
             .model((ctx, provider) ->
                     provider.handheld(ctx::get))
@@ -615,7 +615,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<SapphireStressMedallionItem> SAPPHIRE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<SapphireStressMedallionItem> SAPPHIRE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
             .item("sapphire_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_SAPPHIRE, SapphireStressMedallionItem::new))
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 5000)
@@ -629,7 +629,7 @@ public final class CoeItems {
             .register();
     static { ChargingRecipeTools.register(SAPPHIRE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
-    public static final ItemEntry<NetheriteStressMedallionItem> NETHERITE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<NetheriteStressMedallionItem> NETHERITE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
             .item("netherite_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_NETHERITE, NetheriteStressMedallionItem::new))
             .properties(p -> p
                     .component(AllDataComponents.ENERGY, 5000)
@@ -643,7 +643,7 @@ public final class CoeItems {
             .register();
     static { ChargingRecipeTools.register(NETHERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
-    public static final ItemEntry<Item> RUBY_INGOT = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> RUBY_INGOT = CoeRegistrate.REGISTRATE
             .item("ruby_ingot", Item::new)
             .tag(CREATE_INGOTS.tag)
             .tag(Tags.Items.INGOTS)
@@ -652,14 +652,14 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> RUBY_SHEET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> RUBY_SHEET = CoeRegistrate.REGISTRATE
             .item("ruby_sheet", Item::new)
             .tag(AllGemTags.RUBY.sheets)
             .model((ctx, provider) ->
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> RUBY_ROD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> RUBY_ROD = CoeRegistrate.REGISTRATE
             .item("ruby_rod", Item::new)
             .tag(AllGemTags.RUBY.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
@@ -668,7 +668,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> RUBY_WIRE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> RUBY_WIRE = CoeRegistrate.REGISTRATE
             .item("ruby_wire", Item::new)
             .tag(AllGemTags.RUBY.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
@@ -677,7 +677,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> STELLARSTONE_INGOT = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> STELLARSTONE_INGOT = CoeRegistrate.REGISTRATE
             .item("stellarstone_ingot", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -688,7 +688,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> RAW_STELLARSTONE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> RAW_STELLARSTONE = CoeRegistrate.REGISTRATE
             .item("raw_stellarstone", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -698,7 +698,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> STELLARSTONE_NUGGET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> STELLARSTONE_NUGGET = CoeRegistrate.REGISTRATE
             .item("stellarstone_nugget", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -708,7 +708,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> CRUSHED_STELLARSTONE_ORE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> CRUSHED_STELLARSTONE_ORE = CoeRegistrate.REGISTRATE
             .item("crushed_stellarstone_ore", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -718,7 +718,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> STELLARSTONE_SMALL_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> STELLARSTONE_SMALL_SHARD = CoeRegistrate.REGISTRATE
             .item("stellarstone_small_shard", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -726,7 +726,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> STELLARSTONE_BIG_SHARD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> STELLARSTONE_BIG_SHARD = CoeRegistrate.REGISTRATE
             .item("stellarstone_big_shard", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -734,7 +734,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> STELLARSTONE_SHEET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> STELLARSTONE_SHEET = CoeRegistrate.REGISTRATE
             .item("stellarstone_sheet", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -743,7 +743,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> STELLARSTONE_ROD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> STELLARSTONE_ROD = CoeRegistrate.REGISTRATE
             .item("stellarstone_rod", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -754,7 +754,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> STELLARSTONE_WIRE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> STELLARSTONE_WIRE = CoeRegistrate.REGISTRATE
             .item("stellarstone_wire", Item::new)
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -765,7 +765,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<SwordItem> STELLARSTONE_SWORD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<SwordItem> STELLARSTONE_SWORD = CoeRegistrate.REGISTRATE
             .item("stellarstone_sword", p -> new SwordItem(AllTiers.STELLARSTONE, p))
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
@@ -789,7 +789,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<PickaxeItem> STELLARSTONE_PICKAXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<PickaxeItem> STELLARSTONE_PICKAXE = CoeRegistrate.REGISTRATE
             .item("stellarstone_pickaxe", p -> new PickaxeItem(AllTiers.STELLARSTONE, p))
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
@@ -811,7 +811,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<ShovelItem> STELLARSTONE_SHOVEL= CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<ShovelItem> STELLARSTONE_SHOVEL= CoeRegistrate.REGISTRATE
             .item("stellarstone_shovel", p -> new ShovelItem(AllTiers.STELLARSTONE, p))
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
@@ -834,7 +834,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<AxeItem> STELLARSTONE_AXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<AxeItem> STELLARSTONE_AXE = CoeRegistrate.REGISTRATE
             .item("stellarstone_axe", p -> new AxeItem(AllTiers.STELLARSTONE, p))
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
@@ -857,7 +857,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<HoeItem> STELLARSTONE_HOE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<HoeItem> STELLARSTONE_HOE = CoeRegistrate.REGISTRATE
             .item("stellarstone_hoe", p -> new HoeItem(AllTiers.STELLARSTONE, p))
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
@@ -879,7 +879,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<StellarstoneStressMedallionItem> STELLARSTONE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<StellarstoneStressMedallionItem> STELLARSTONE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
             .item("stellarstone_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_STELLARSTONE, StellarstoneStressMedallionItem::new))
             .tag(AllModItemTags.STELLARSTONE_ITEMS)
             .properties(p -> p
@@ -894,7 +894,7 @@ public final class CoeItems {
             .register();
     static { ChargingRecipeTools.register(STELLARSTONE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
-    public static final ItemEntry<Item> SANCTSTONE_INGOT = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SANCTSTONE_INGOT = CoeRegistrate.REGISTRATE
             .item("sanctstone_ingot", Item::new)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(CREATE_INGOTS.tag)
@@ -904,7 +904,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SANCTSTONE_SHEET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SANCTSTONE_SHEET = CoeRegistrate.REGISTRATE
             .item("sanctstone_sheet", Item::new)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.SANCTSTONE.sheets)
@@ -912,7 +912,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SANCTSTONE_ROD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SANCTSTONE_ROD = CoeRegistrate.REGISTRATE
             .item("sanctstone_rod", Item::new)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.SANCTSTONE.rods)
@@ -922,7 +922,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> SANCTSTONE_WIRE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> SANCTSTONE_WIRE = CoeRegistrate.REGISTRATE
             .item("sanctstone_wire", Item::new)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
             .tag(AllGemTags.SANCTSTONE.wires)
@@ -932,7 +932,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> THUNDERITE_INGOT = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> THUNDERITE_INGOT = CoeRegistrate.REGISTRATE
             .item("thunderite_ingot", Item::new)
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -943,7 +943,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> THUNDERITE_SCRAP = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> THUNDERITE_SCRAP = CoeRegistrate.REGISTRATE
             .item("thunderite_scrap", Item::new)
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -951,7 +951,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> THUNDERITE_SHEET = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> THUNDERITE_SHEET = CoeRegistrate.REGISTRATE
             .item("thunderite_sheet", Item::new)
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -960,7 +960,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> THUNDERITE_ROD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> THUNDERITE_ROD = CoeRegistrate.REGISTRATE
             .item("thunderite_rod", Item::new)
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -971,7 +971,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<Item> THUNDERITE_WIRE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> THUNDERITE_WIRE = CoeRegistrate.REGISTRATE
             .item("thunderite_wire", Item::new)
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -982,7 +982,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<SwordItem> THUNDERITE_SWORD = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<SwordItem> THUNDERITE_SWORD = CoeRegistrate.REGISTRATE
             .item("thunderite_sword", p -> new SwordItem(AllTiers.THUNDERITE, p))
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
@@ -1007,7 +1007,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<PickaxeItem> THUNDERITE_PICKAXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<PickaxeItem> THUNDERITE_PICKAXE = CoeRegistrate.REGISTRATE
             .item("thunderite_pickaxe", p -> new PickaxeItem(AllTiers.THUNDERITE, p))
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
@@ -1030,7 +1030,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<ShovelItem> THUNDERITE_SHOVEL = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<ShovelItem> THUNDERITE_SHOVEL = CoeRegistrate.REGISTRATE
             .item("thunderite_shovel", p -> new ShovelItem(AllTiers.THUNDERITE, p))
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
@@ -1054,7 +1054,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<AxeItem> THUNDERITE_AXE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<AxeItem> THUNDERITE_AXE = CoeRegistrate.REGISTRATE
             .item("thunderite_axe", p -> new AxeItem(AllTiers.THUNDERITE, p))
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
@@ -1078,7 +1078,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<HoeItem> THUNDERITE_HOE = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<HoeItem> THUNDERITE_HOE = CoeRegistrate.REGISTRATE
             .item("thunderite_hoe", p -> new HoeItem(AllTiers.THUNDERITE, p))
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .model((ctx, provider) ->
@@ -1101,7 +1101,7 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<ThunderiteStressMedallionItem> THUNDERITE_STRESS_MEDALLION = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<ThunderiteStressMedallionItem> THUNDERITE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
             .item("thunderite_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_THUNDERITE, ThunderiteStressMedallionItem::new))
             .tag(AllModItemTags.THUNDERITE_ITEMS)
             .properties(p -> p
@@ -1116,7 +1116,7 @@ public final class CoeItems {
             .register();
     static { ChargingRecipeTools.register(THUNDERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
 
-    public static final ItemEntry<Item> LUCKY_DUST = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<Item> LUCKY_DUST = CoeRegistrate.REGISTRATE
             .item("lucky_dust", Item::new)
             .tag(AllTags.AllItemTags.DUSTS.tag)
             .properties(p -> p.rarity(Rarity.UNCOMMON))
@@ -1124,7 +1124,7 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CreateOreExpansion.REGISTRATE
+    public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CoeRegistrate.REGISTRATE
             .item("jade_topaz_bow", JadeTopazBowItem::new)
             .tag(AllTags.AllItemTags.SKILL_TOOLS.tag)
             .tag(AllTags.AllItemTags.COOLDOWN_TOOLS.tag)
@@ -1150,7 +1150,7 @@ public final class CoeItems {
      * 模型由 datagen 动态生成（parent wheel_base + 方块材质），无需手写轮子模型 JSON。
      */
     private static ItemEntry<GrindingWheelItem> grindingWheel(String name, AllTags.AllItemTags tierTag, Supplier<Block> materialBlock) {
-        return CreateOreExpansion.REGISTRATE
+        return CoeRegistrate.REGISTRATE
             .item(name, GrindingWheelItem::new)
             .tag(AllTags.AllItemTags.GRINDING_WHEELS.tag)
             .tag(tierTag.tag)
