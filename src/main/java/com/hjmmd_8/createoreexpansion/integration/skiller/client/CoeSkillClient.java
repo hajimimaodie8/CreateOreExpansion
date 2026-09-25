@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.client.SkillSettingsScreen;
-import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;

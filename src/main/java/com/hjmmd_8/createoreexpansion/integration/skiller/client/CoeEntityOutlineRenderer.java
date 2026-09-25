@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.client.tool.renderer.EntityOutlineRenderer;
-import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.mixin.renderers.EntityRendererAccessor;
 import com.hjmmd_8.createoreexpansion.mixin.renderers.LivingEntityRendererAccessor;
 import com.leaf.skiller.foundation.renderer.StrategyRenderer;

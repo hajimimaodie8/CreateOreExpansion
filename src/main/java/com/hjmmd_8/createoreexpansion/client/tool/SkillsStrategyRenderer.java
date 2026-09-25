@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
 import com.google.common.collect.Maps;
-import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
 import com.hjmmd_8.createoreexpansion.foundation.FrameParams;
 import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;

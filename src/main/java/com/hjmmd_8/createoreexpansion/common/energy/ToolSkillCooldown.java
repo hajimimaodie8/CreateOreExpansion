@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.energy;
 
-import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 

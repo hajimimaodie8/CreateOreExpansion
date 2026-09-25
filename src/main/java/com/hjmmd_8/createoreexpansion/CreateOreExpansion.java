@@ -2,13 +2,13 @@ package com.hjmmd_8.createoreexpansion;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.common.hub.AllCreativeModeTabs;
-import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllFanProcessingTypes;
 import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
 import com.hjmmd_8.createoreexpansion.common.AllGemTags;
-import com.hjmmd_8.createoreexpansion.common.AllModEffects;
-import com.hjmmd_8.createoreexpansion.common.AllModPotions;
+import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllModPotions;
 import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllStructureProcessors;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllTiers;

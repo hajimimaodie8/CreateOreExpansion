@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
-import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import net.minecraft.world.item.ItemStack;
 
 public class SkillItemStack {

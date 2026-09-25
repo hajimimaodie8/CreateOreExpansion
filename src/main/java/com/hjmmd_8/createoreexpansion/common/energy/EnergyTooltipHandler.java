@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.energy;
 
-import com.hjmmd_8.createoreexpansion.common.AllDataComponents;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.foundation.util.BarTooltipRender;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;

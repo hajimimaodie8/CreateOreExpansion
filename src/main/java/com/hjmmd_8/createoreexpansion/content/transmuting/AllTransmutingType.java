@@ -11,7 +11,7 @@ import org.joml.Vector3f;
 
 import com.simibubi.create.content.kinetics.fan.processing.FanProcessingType;
 import com.simibubi.create.foundation.recipe.RecipeApplier;
-import com.hjmmd_8.createoreexpansion.common.AllModEffects;
+import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
 
 import net.createmod.catnip.theme.Color;
 import net.minecraft.core.BlockPos;

@@ -1,10 +1,16 @@
 # layer-usage.ps1 -- dependency census for the createoreexpansion module split.
 #
-# Answers two questions the P3 file moves need:
+# Answers three questions the P3 file moves need:
 #   1. Which files are referenced from more than one layer?  (candidates for `core`)
-#   2. Which SHARED files reference nothing layer-specific?   (safe to move to `core`)
+#   2. Which SHARED files reference nothing layer-specific?   (layer-clean)
+#   3. P3l: is this file's WHOLE project-class closure already core-resident?
+#      Reported by the `clo=D..T..` column and the `core-closure` section.
+#      Being layer-clean (2) is NOT sufficient: `core` compiles against nothing in
+#      src/main/java, so ONE root-resident class in the closure is enough to fail
+#      :core:compileJava.  P3k learned that the hard way (15 files -> 101 errors).
 #
-# Read-only.  Writes build\patch\layer-usage.txt and build\patch\core-candidates.txt.
+# Read-only.  Writes build\patch\layer-usage.txt, core-candidates.txt,
+# core-candidates-strict.txt, core-packages.txt, package-usage.txt and core-closure.txt.
 #
 # Layer rules are copied verbatim from tools\check-layering.ps1 so the two tools
 # always agree.  P3e added the two COE skill paths (integration/skiller/**, client/tool/**)
@@ -41,6 +47,26 @@ function Get-FileLayer {
 
 $files = Get-ChildItem -Recurse -Path $pkgRoot -Filter *.java | Sort-Object FullName
 
+# ---------------------------------------------------------------------------
+# P3l: the library tree is a SECOND source root, and `core` compiles against
+# nothing in src/main/java.  So a file may only move into core when every
+# project class it reaches -- directly or transitively, and through
+# same-package simple names as well as imports/FQNs -- already lives under
+# core/src/main/java.  "layer-clean" (the PURE mark below) is NOT enough:
+# P3k moved 15 files that were layer-clean and got 101 compile errors, because
+# core could not see common.energy / data.lang / foundation.item.skill / TRANS.
+# The `clo=D..T..` column + core-closure.txt report exactly that closure.
+# ---------------------------------------------------------------------------
+$corePkgRoot = Join-Path $Repo 'core\src\main\java\com\hjmmd_8\createoreexpansion'
+$coreRels = New-Object System.Collections.Generic.List[string]
+if (Test-Path $corePkgRoot) {
+    foreach ($f in (Get-ChildItem -Recurse -Path $corePkgRoot -Filter *.java | Sort-Object FullName)) {
+        $coreRels.Add('core:' + $f.FullName.Substring($corePkgRoot.Length + 1))
+    }
+}
+$coreRelSet = New-Object System.Collections.Generic.HashSet[string]
+foreach ($cr in $coreRels) { [void]$coreRelSet.Add($cr) }
+
 $fqnToRel = @{}
 $rels = New-Object System.Collections.Generic.List[string]
 foreach ($f in $files) {
@@ -49,46 +75,146 @@ foreach ($f in $files) {
     $fqn = $prefix + (($rel -replace '\\', '.') -replace '\.java$', '')
     $fqnToRel[$fqn] = $rel
 }
+# core classes must resolve too, otherwise a root file's dependency set looks
+# empty the moment its target has already been moved into the library.
+foreach ($cr in $coreRels) {
+    $inner = $cr.Substring(5)
+    $fqn = $prefix + (($inner -replace '\\', '.') -replace '\.java$', '')
+    $fqnToRel[$fqn] = $cr
+}
 
-# deps: source rel -> set of target rel (imports + fully-qualified occurrences)
+# every file of both roots; the "core:" prefix marks the library tree
+$allRels = New-Object System.Collections.Generic.List[string]
+foreach ($rel in $rels) { $allRels.Add($rel) }
+foreach ($cr in $coreRels) { $allRels.Add($cr) }
+
+# nested classes / static imports: `import a.b.Foo.Bar;` and `Foo.Bar.BAZ` only
+# name Foo as a class -- trim trailing segments until a known class FQN is hit.
+function Get-DepTargets {
+    param([string]$Fqn)
+    $out = New-Object System.Collections.Generic.List[string]
+    $cur = $Fqn
+    while ($true) {
+        if ($fqnToRel.ContainsKey($cur)) { $out.Add($fqnToRel[$cur]); break }
+        $i = $cur.LastIndexOf('.')
+        if ($i -lt 0) { break }
+        $cur = $cur.Substring(0, $i)
+    }
+    return ,$out
+}
+
+# simple class name -> rel, per package directory (same-package refs need no
+# import and were invisible to every earlier census; one such hidden edge,
+# common/AllModPotions -> common/AllModEffects, is exactly why a "clean" file
+# could not move into core).
+$dirSimple = @{}
+foreach ($rel in $allRels) {
+    $dir = Split-Path -Parent $rel
+    if ([string]::IsNullOrEmpty($dir)) { $dir = '.' }
+    if (-not $dirSimple.ContainsKey($dir)) { $dirSimple[$dir] = @{} }
+    $dirSimple[$dir][[System.IO.Path]::GetFileNameWithoutExtension($rel)] = $rel
+}
+$dirRegex = @{}
+foreach ($dir in $dirSimple.Keys) {
+    $names = @($dirSimple[$dir].Keys | Sort-Object | ForEach-Object { [regex]::Escape($_) })
+    $dirRegex[$dir] = [regex]::new('(?<![\w])(' + ($names -join '|') + ')(?![\w])')
+}
+
+# deps: source rel -> set of target rel
+#   (imports + fully-qualified occurrences + same-package simple names + wildcard imports)
 $deps = @{}
-foreach ($rel in $rels) { $deps[$rel] = New-Object System.Collections.Generic.HashSet[string] }
+foreach ($rel in $allRels) { $deps[$rel] = New-Object System.Collections.Generic.HashSet[string] }
 
-foreach ($rel in $rels) {
-    $path = Join-Path $pkgRoot $rel
+foreach ($rel in $allRels) {
+    if ($rel.StartsWith('core:')) { $path = Join-Path $corePkgRoot $rel.Substring(5) }
+    else                          { $path = Join-Path $pkgRoot $rel }
+    $dir = Split-Path -Parent $rel
+    if ([string]::IsNullOrEmpty($dir)) { $dir = '.' }
+    $own = [System.IO.Path]::GetFileNameWithoutExtension($rel)
     foreach ($line in [System.IO.File]::ReadAllLines($path, [System.Text.Encoding]::UTF8)) {
         $trim = $line.TrimStart()
         if ($trim -match '^(\*|//|/\*)') { continue }
         foreach ($m in [regex]::Matches($line, 'com\.hjmmd_8\.createoreexpansion\.[A-Za-z0-9_.]+')) {
-            $fqn = $m.Value
-            if ($fqnToRel.ContainsKey($fqn)) {
-                $t = $fqnToRel[$fqn]
+            foreach ($t in (Get-DepTargets $m.Value)) {
                 if ($t -ne $rel) { [void]$deps[$rel].Add($t) }
             }
+        }
+        # wildcard import (`import ...common.*;`): depends on EVERY class of that package.
+        # Seven files in this tree use one, and a wildcard used to contribute no edge at
+        # all -- the same class of blind spot as an unresolved same-package simple name.
+        $wm = [regex]::Match($line, '^\s*import\s+(static\s+)?(com\.hjmmd_8\.createoreexpansion\.[A-Za-z0-9_.]+)\.\*;')
+        if ($wm.Success) {
+            $pkgDir = $wm.Groups[2].Value.Substring($prefix.Length) -replace '\.', '\'
+            if ($dirSimple.ContainsKey($pkgDir)) {
+                foreach ($k in $dirSimple[$pkgDir].Keys) {
+                    $t = $dirSimple[$pkgDir][$k]
+                    if ($t -ne $rel) { [void]$deps[$rel].Add($t) }
+                }
+            }
+        }
+        foreach ($m in $dirRegex[$dir].Matches($line)) {
+            $t = $dirSimple[$dir][$m.Value]
+            if ($t -ne $rel) { [void]$deps[$rel].Add($t) }
         }
     }
 }
 
 # reverse map
 $refBy = @{}
-foreach ($rel in $rels) { $refBy[$rel] = New-Object System.Collections.Generic.List[string] }
-foreach ($rel in $rels) {
+foreach ($rel in $allRels) { $refBy[$rel] = New-Object System.Collections.Generic.List[string] }
+foreach ($rel in $allRels) {
     foreach ($t in $deps[$rel]) { $refBy[$t].Add($rel) }
 }
 
-$layerStats = @{ 'COE' = 0; 'CEWS' = 0; 'TRANS' = 0; 'SHARED' = 0 }
+$layerStats = @{ 'COE' = 0; 'CEWS' = 0; 'TRANS' = 0; 'SHARED' = 0; 'CORE' = 0 }
 $layerOf = @{}
 foreach ($rel in $rels) {
     $l = Get-FileLayer $rel
     $layerOf[$rel] = $l
     $layerStats[$l]++
 }
+# files that already live under core/src/main/java are the bottom layer.  They
+# are never a taint source (a root file may depend on core freely), but every
+# edge into them must be recognisable so the reports do not show a blank layer.
+foreach ($cr in $coreRels) { $layerOf[$cr] = 'CORE'; $layerStats['CORE']++ }
+
+# ---- P3l: core-residency closure -------------------------------------------
+# Layer-clean is necessary, not sufficient.  `core` cannot see ONE root class,
+# so the test is: is every project class this file reaches already under
+# core/src/main/java?  D = direct offenders, T = offenders in the whole closure.
+function Get-Reach {
+    param([string]$Start)
+    $seen = New-Object System.Collections.Generic.HashSet[string]
+    $q    = New-Object System.Collections.Generic.Queue[string]
+    if ($deps.ContainsKey($Start)) {
+        foreach ($t in $deps[$Start]) { if ($seen.Add($t)) { $q.Enqueue($t) } }
+    }
+    while ($q.Count -gt 0) {
+        $n = $q.Dequeue()
+        if (-not $deps.ContainsKey($n)) { continue }
+        foreach ($t in $deps[$n]) { if ($seen.Add($t)) { $q.Enqueue($t) } }
+    }
+    return ,$seen
+}
+
+$clo = @{}
+foreach ($rel in $rels) {
+    $reach  = Get-Reach $rel
+    $open   = New-Object System.Collections.Generic.List[string]
+    $direct = New-Object System.Collections.Generic.List[string]
+    foreach ($t in $reach) { if (-not $coreRelSet.Contains($t)) { $open.Add($t) } }
+    foreach ($t in $deps[$rel]) { if (-not $coreRelSet.Contains($t)) { $direct.Add($t) } }
+    $clo[$rel] = [pscustomobject]@{
+        Open   = @($open   | Sort-Object)
+        Direct = @($direct | Sort-Object)
+    }
+}
 
 $report = New-Object System.Collections.Generic.List[string]
 $coreCandidates = New-Object System.Collections.Generic.List[string]
 
 $report.Add('=== files by layer ===')
-foreach ($k in @('COE', 'CEWS', 'TRANS', 'SHARED')) { $report.Add(("  {0,-7} {1}" -f $k, $layerStats[$k])) }
+foreach ($k in @('COE', 'CEWS', 'TRANS', 'SHARED', 'CORE')) { $report.Add(("  {0,-7} {1}" -f $k, $layerStats[$k])) }
 $report.Add('')
 
 # Taint propagation: a SHARED file may only move into `core` if NOTHING it depends on
@@ -111,8 +237,10 @@ while ($queue.Count -gt 0) {
 
 $report.Add('=== SHARED files ===')
 $report.Add('  col1 = referencing layers (outside its own layer, excluding SHARED)')
-$report.Add('  col2 = layers this file references')
-$report.Add('  PURE = moves into `core` with no further work (nothing layer-specific reachable)')
+$report.Add('  col2 = layers this file references (CORE = target already lives in the library)')
+$report.Add('  PURE = layer-clean: nothing layer-specific is reachable (necessary, NOT sufficient)')
+$report.Add('  clo  = direct/transitive project deps that are NOT core-resident (P3l)')
+$report.Add('  CORE-OK = layer-clean AND clo T=0  -> this file can move into core/ today')
 $report.Add('')
 
 $pure = 0
@@ -145,7 +273,12 @@ foreach ($rel in $rels) {
     }
     if ($users.Count -gt 1) { $crossLayer++ }
 
-    $report.Add(("  {0,-12} {1,-12} {2,4}{3}  {4}" -f $u, $o, $refBy[$rel].Count, $mark, $rel))
+    $cloCol  = ('D{0}/T{1}' -f $clo[$rel].Direct.Count, $clo[$rel].Open.Count)
+    $verdict = 'CORE-NO'
+    if ($clo[$rel].Open.Count -eq 0 -and -not $tainted.Contains($rel)) { $verdict = 'CORE-OK' }
+
+    $report.Add(("  {0,-12} {1,-12} {2,4} {3,-5} clo={4,-7} {5,-8} {6}" -f `
+        $u, $o, $refBy[$rel].Count, $mark, $cloCol, $verdict, $rel))
 }
 
 $report.Add('')
@@ -155,11 +288,57 @@ foreach ($rel in $rels) {
     $report.Add(("  {0,-7} {1}" -f $layerOf[$rel], $rel))
 }
 
+# ---------------------------------------------------------------------------
+# P3l: the core-residency closure, per root file, with the offenders named.
+# This is the answer to "can I move this file into core/ right now?".
+# ---------------------------------------------------------------------------
+$cloLines = New-Object System.Collections.Generic.List[string]
+$okCount = 0
+$noCount = 0
+foreach ($rel in $rels) {
+    $d = $clo[$rel].Direct.Count
+    $t = $clo[$rel].Open.Count
+    if ($t -eq 0) { $okCount++ } else { $noCount++ }
+    $verdict = 'NO '
+    if ($t -eq 0) { $verdict = 'YES' }
+    $blocked = ''
+    if ($t -gt 0 -and -not $tainted.Contains($rel)) { $blocked = ' (layer-clean, but reaches non-core SHARED)' }
+    if ($t -gt 0 -and $tainted.Contains($rel))       { $blocked = ' (also reaches a layer)' }
+    $cloLines.Add(("  {0} D={1,-3} T={2,-3} {3}{4}" -f $verdict, $d, $t, $rel, $blocked))
+    if ($t -eq 0) { continue }
+    $shown = 0
+    foreach ($x in $clo[$rel].Direct) {
+        $cloLines.Add(("        == direct      {0}" -f $x))
+        $shown++
+        if ($shown -ge 15) { $cloLines.Add('        == ... more direct offenders (see the file section below)'); break }
+    }
+    $shown = 0
+    foreach ($x in $clo[$rel].Open) {
+        if (@($clo[$rel].Direct) -contains $x) { continue }
+        $cloLines.Add(("        -- transitive  {0}" -f $x))
+        $shown++
+        if ($shown -ge 15) { break }
+    }
+}
+$cloIn = New-Object System.Collections.Generic.List[string]
+$cloIn.Add('=== core-closure (P3l) ===')
+$cloIn.Add('  A root file may move into core/ only when EVERY project class it reaches')
+$cloIn.Add('  (import, fully-qualified reference, same-package simple name -- transitively)')
+$cloIn.Add('  already lives under core/src/main/java.  D = such DIRECT offenders,')
+$cloIn.Add('  T = offenders over the whole closure.  T=0 => CORE-OK.')
+$cloIn.Add('')
+foreach ($l in $cloLines) { $cloIn.Add($l) }
+$report.Add('')
+foreach ($l in $cloIn) { $report.Add($l) }
+
 $outPath = Join-Path $Repo 'build\patch\layer-usage.txt'
 [System.IO.File]::WriteAllLines($outPath, $report)
 
 $candPath = Join-Path $Repo 'build\patch\core-candidates.txt'
 [System.IO.File]::WriteAllLines($candPath, $coreCandidates)
+
+$cloPath = Join-Path $Repo 'build\patch\core-closure.txt'
+[System.IO.File]::WriteAllLines($cloPath, $cloIn)
 
 # `core` is the lowest module: a file there may be used by any layer, but it must not
 # reach one.  Being clean is necessary, not sufficient -- a clean file that only COE
@@ -205,13 +384,18 @@ foreach ($rel in $rels) {
 
 $pkgReport    = New-Object System.Collections.Generic.List[string]
 $corePackages = New-Object System.Collections.Generic.List[string]
+$closedPackages = New-Object System.Collections.Generic.List[string]
 $pkgFileCount = 0
 $pkgPureCount = 0
 $pkgMultiLayer = 0
 
 $pkgReport.Add('=== packages ===')
-$pkgReport.Add('  PURE = every file in the package is transitively clean -> the WHOLE package')
-$pkgReport.Add('         may move into `core` (JPMS forbids splitting a package across modules).')
+$pkgReport.Add('  PURE = every file in the package is transitively clean (layer-clean only).')
+$pkgReport.Add('  clo  = members whose closure reaches a file OUTSIDE core + this package.')
+$pkgReport.Add('  CORE-PKG-OK = PURE and clo=0 -> the WHOLE package can move into core today')
+$pkgReport.Add('         (JPMS forbids splitting one package across modules, so this is the')
+$pkgReport.Add('         real move unit; a package whose members only reach EACH OTHER is')
+$pkgReport.Add('         self-contained and may move as a unit even though no single file is).')
 $pkgReport.Add('  uses = layers (COE/CEWS/TRANS) that reference at least one file of this package.')
 $pkgReport.Add('')
 
@@ -231,6 +415,15 @@ foreach ($p in ($pkgMembers.Keys | Sort-Object)) {
             if ($tl -ne 'SHARED') { [void]$outSet.Add($tl) }
         }
     }
+    # P3l: package-level closure.  A dependency on another member of the same
+    # package is harmless (they travel together); anything else outside core is not.
+    $pkgOpen = New-Object System.Collections.Generic.List[string]
+    foreach ($rel in $members) {
+        foreach ($x in $clo[$rel].Open) {
+            if ($members -contains $x) { continue }
+            $pkgOpen.Add(("{0} -> {1}" -f $rel, $x))
+        }
+    }
     $whole = ($dirty.Count -eq 0)
     $u = (($users  | Sort-Object) -join ',')
     $o = (($outSet | Sort-Object) -join ',')
@@ -243,13 +436,20 @@ foreach ($p in ($pkgMembers.Keys | Sort-Object)) {
         $pkgFileCount += $members.Count
         $corePackages.Add($p)
         if ($users.Count -gt 1) { $pkgMultiLayer++ }
+        if ($pkgOpen.Count -eq 0) {
+            $mark = ' PURE CORE-PKG-OK'
+            $closedPackages.Add($p)
+        }
     }
-    $pkgReport.Add(("  {0,-14} files={1,-3} uses={2,-14} refs={3,-14}{4}  {5}" -f `
-        $p, $members.Count, $u, $o, $mark, $p))
+    $pkgReport.Add(("  {0,-14} files={1,-3} uses={2,-14} refs={3,-14} clo={4,-3}{5}  {6}" -f `
+        $p, $members.Count, $u, $o, $pkgOpen.Count, $mark, $p))
     foreach ($rel in ($members | Sort-Object)) {
         $s = ' ok  '
         if ($tainted.Contains($rel)) { $s = ' DIRTY' }
         $pkgReport.Add(("        {0} {1}" -f $s, $rel))
+    }
+    foreach ($x in ($pkgOpen | Sort-Object -Unique)) {
+        $pkgReport.Add(("        OUTSIDE-CORE {0}" -f $x))
     }
     $pkgReport.Add('')
 }
@@ -259,18 +459,44 @@ foreach ($p in $corePackages) {
     $pkgReport.Add(("  {0,-6} {1}" -f $pkgMembers[$p].Count, $p))
 }
 
+$pkgReport.Add('')
+$pkgReport.Add('=== packages that can move into core TODAY (whole-pure + core-closed) ===')
+foreach ($p in $closedPackages) {
+    $pkgReport.Add(("  {0,-6} {1}" -f $pkgMembers[$p].Count, $p))
+}
+
 $pkgOut = Join-Path $Repo 'build\patch\package-usage.txt'
 [System.IO.File]::WriteAllLines($pkgOut, $pkgReport)
 $pkgListOut = Join-Path $Repo 'build\patch\core-packages.txt'
 [System.IO.File]::WriteAllLines($pkgListOut, $corePackages)
+$pkgClosedOut = Join-Path $Repo 'build\patch\core-packages-closed.txt'
+[System.IO.File]::WriteAllLines($pkgClosedOut, $closedPackages)
 
-Write-Host ('files by layer : COE={0}  CEWS={1}  TRANS={2}  SHARED={3}' -f $layerStats['COE'], $layerStats['CEWS'], $layerStats['TRANS'], $layerStats['SHARED'])
+Write-Host ('files by layer : COE={0}  CEWS={1}  TRANS={2}  SHARED={3}  CORE={4}' -f $layerStats['COE'], $layerStats['CEWS'], $layerStats['TRANS'], $layerStats['SHARED'], $layerStats['CORE'])
 Write-Host ("SHARED safe for `core` (transitively clean): {0}" -f $pure)
 Write-Host ("SHARED reachable-from-a-layer (needs a decision): {0}" -f (($rels | Where-Object { $layerOf[$_] -eq 'SHARED' -and $tainted.Contains($_) } | Measure-Object).Count))
 Write-Host ("SHARED referenced from more than one layer: {0}" -f $crossLayer)
 Write-Host ("whole-pure packages (move as a unit): {0}  covering {1} files" -f $pkgPureCount, $pkgFileCount)
 Write-Host ("  ... of which referenced from more than one layer: {0}" -f $pkgMultiLayer)
+Write-Host ("packages that can move into core TODAY (whole-pure + core-closed): {0}" -f $closedPackages.Count)
 Write-Host "report : $outPath"
 Write-Host "candidates : $candPath"
 Write-Host "package report : $pkgOut"
 Write-Host "core packages  : $pkgListOut"
+Write-Host "core-closed pkgs : $pkgClosedOut"
+
+# ---- P3l: core-closure summary --------------------------------------------
+Write-Host ''
+Write-Host ("core-closure: {0} root files fully core-resident, {1} still reach a non-core file" -f $okCount, $noCount)
+Write-Host "core-closure detail : $cloPath"
+Write-Host ''
+Write-Host 'top-level common/*.java verdicts (P3l move list):'
+foreach ($rel in ($rels | Where-Object { (Split-Path -Parent $_) -eq 'common' })) {
+    $name = [System.IO.Path]::GetFileName($rel)
+    if ($clo[$rel].Open.Count -eq 0) {
+        Write-Host ("  {0,-26} CORE-OK" -f $name)
+    } else {
+        $why = (@($clo[$rel].Direct) | ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_) }) -join ','
+        Write-Host ("  {0,-26} BLOCKED by {1}" -f $name, $why)
+    }
+}

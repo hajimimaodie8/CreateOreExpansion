@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
-import com.hjmmd_8.createoreexpansion.common.AllModEffects;
+import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;

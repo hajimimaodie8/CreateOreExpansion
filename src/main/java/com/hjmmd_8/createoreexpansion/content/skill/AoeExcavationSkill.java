@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
-import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;

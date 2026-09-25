@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
-import com.hjmmd_8.createoreexpansion.common.AllKeys;
+import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
