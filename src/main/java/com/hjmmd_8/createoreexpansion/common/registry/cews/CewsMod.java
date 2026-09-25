@@ -10,14 +10,23 @@ import net.neoforged.fml.common.Mod;
 /**
  * <b>CEWS（Create: Energy Wave Studies，能量波阵学）的 {@code @Mod} 入口</b>（P3b：四模块拆分）。
  *
- * <p>本类只负责"CEWS 这一层"的事，且全部落在一个 jar 里与另外三个 mod 共存：</p>
+ * <p>本类只负责"CEWS 这一层"的事（与 transmutation 同处根工程那个 mod 文件）：</p>
  * <ul>
  *   <li>本层自己的 {@link CewsRegistrate} 事件接线（注册命名空间仍是 {@code createoreexpansion}）；</li>
- *   <li>按层显式触发方块 → 方块实体 → 物品的类初始化（顺序与拆分前逐层一致）；</li>
+ *   <li>按层显式触发方块 → 方块实体 → 物品的类初始化（顺序与拆分前逐层一致）；
+ *       P3w 起还多一条：原先挂在 {@code CreateOreExpansion} 构造器里的
+ *       {@code AllEntityTypes.register(modEventBus)}（实体类型注册表属于 CEWS）；</li>
  *   <li>{@link EnergyWaveStudyTab} 的页签内容构建（{@code onBuildContents}，清单只有一处）；</li>
  *   <li>{@link EnergyFieldSyncPayload} 能量场同步载荷；</li>
  *   <li>可选桥接：<b>Jade 的波实体提示插件</b> 与 <b>Sable 物理结构桥接</b>（判据与日志文案原样搬运）。</li>
  * </ul>
+ *
+ * <p><b>P3w：hub 的注册触发不在这里</b>。{@code CreateOreExpansion} 搬进
+ * Gradle 子模块 {@code :coe} 之后，它原先那 5 处 hub 触发点（创造页登记动作的注入 /
+ * 页注册表接线 / 流体系列 / 效果 / 配方类型）归 {@code common/hub/IntegrationBootstrap}
+ * 管，由 FML 在本构造器跑完后的 {@code FMLConstructModEvent} 上触发。
+ * 本层<b>不</b>引用那个类 —— 那会造成 {@code CEWS -> 根侧 SHARED} 的源码边，
+ * 让 {@code tools/layer-usage.ps1} 的 LAYER-NO 从 0 变 1（见该类的类注释"二"）。</p>
  *
  * <p><b>为什么不把 CEWS 的 Registrate 挂到 COE 的 mod 总线上</b>：NeoForge 的
  * {@code DatagenModLoader} 只为 {@code --mod} 指定的那个 mod 执行生成器，所以三个 Registrate 的
@@ -33,6 +42,14 @@ public class CewsMod {
     public static final String MOD_ID = "cews";
 
     public CewsMod(IEventBus modEventBus, ModContainer modContainer) {
+        // P3w：原先在 CreateOreExpansion 构造器里的 `AllEntityTypes.register(modEventBus)`
+        // 搬到这里 —— 它是 CEWS 层自己的注册表，而 :coe 已经看不到根工程的这个包。
+        // hub 的五个注册触发不在这里：它们住 common/hub/IntegrationBootstrap（SHARED），
+        // 由 FML 在本构造器跑完后的 FMLConstructModEvent 上触发。**本层不许 import 它**
+        // —— 那会造出 CEWS -> 根侧 SHARED 的源码边，让 layer-usage 的 LAYER-NO 从 0 变 1
+        // （见 IntegrationBootstrap 类注释"二"）。
+        AllEntityTypes.register(modEventBus);
+
         CewsRegistrate.REGISTRATE.registerEventListeners(modEventBus);
 
         // 创造标签页：往 CEWS 页放清单、从基础页剔除（清单唯一处 = EnergyWaveStudyTab.CONTENTS）

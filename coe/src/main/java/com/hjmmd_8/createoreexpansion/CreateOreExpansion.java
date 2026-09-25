@@ -1,20 +1,12 @@
 package com.hjmmd_8.createoreexpansion;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
-import com.hjmmd_8.createoreexpansion.common.hub.AllCreativeModeTabs;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
-import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllFanProcessingTypes;
-import com.hjmmd_8.createoreexpansion.common.hub.AllFluids;
 import com.hjmmd_8.createoreexpansion.common.AllGemTags;
-import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
-import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllModPotions;
-import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllStructureProcessors;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllTiers;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
-import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
@@ -26,17 +18,42 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.registries.RegisterEvent;
 
 /**
  * <b>COE（矿物拓展）的 {@code @Mod} 入口</b>。
  *
- * <p><b>P3b 之后这个类的身份变了</b>：它<b>不再</b>代表"整个模组"，只代表
- * <b>矿物拓展（mod id 仍是 {@code createoreexpansion}）这一个模块</b>。
- * 同一份 jar 里现在有三个 {@code @Mod}：本类、{@code cews}（{@code common.registry.cews.CewsMod}）、
- * {@code transmutation}（{@code common.registry.transmutation.TransmutationMod}）；
- * {@code common.CoeCore} <b>不是</b> {@code @Mod}（P3d 起 core 是 JarJar 嵌套的普通库）。</p>
+ * <p><b>P3w 之后这个类住在 Gradle 子模块 {@code :coe} 里</b>（源码位置 {@code coe/src/main/java}），
+ * 并且本模块自己的 {@code coe/src/main/templates/META-INF/neoforge.mods.toml} 声明
+ * {@code createoreexpansion}；根工程的模板<b>不再</b>声明它（两个 mod 文件同声明一个 id 会被
+ * {@code UniqueModListBuilder} 判 {@code duplicate_mod} 硬崩）。</p>
+ *
+ * <p><b>P3w 搬走了什么（本类原先的"集成职责"）</b>：{@code :coe} 只允许编译期依赖
+ * {@code :core} 共享库，<b>看不到根工程</b>（root → :coe 已经是单向边，反向再加一条就是
+ * Gradle 构图期的 {@code Circular dependency between the following tasks}）。所以下列
+ * 跨层 / 跨 hub 的注册触发全部搬出本类：</p>
+ * <ul>
+ *   <li>{@code AllEntityTypes.register} → {@code CewsMod} 构造器（CEWS 层自己的东西）；</li>
+ *   <li>{@code AllModPotions.register} + {@code AllModPotions::registerBrewingRecipes} +
+ *       {@code AllFanProcessingTypes.init()} → {@code TransmutationMod} 构造器与其自己的
+ *       {@code RegisterEvent} 监听器（TRANS 层自己的东西）；</li>
+ *   <li>hub 的五个触发点（{@code LayerCreativeTab.installTabRegistrar} /
+ *       {@code AllCreativeModeTabs.register} / {@code AllFluids.register} /
+ *       {@code AllModEffects.register} / {@code AllRecipeTypes.register}）→
+ *       根侧集成类 {@code common/hub/IntegrationBootstrap}，由 CEWS / TRANS 的
+ *       {@code @Mod} 构造器<b>幂等地</b>调用（hub 是集成层，永远不许进 core，也永远不该进 :coe）。</li>
+ * </ul>
+ * <p>时序上只有 {@code installTabRegistrar} 敏感，而它对"注入之前就来过的请求"会<b>补跑</b>
+ * （见 {@code LayerCreativeTab} 类注释），所以 FML 的构造顺序（COE → TRANS → CEWS）不影响结果；
+ * 其余几处只是往事件总线挂 {@code DeferredRegister}，只要早于 {@code RegisterEvent} 即可。</p>
+ *
+ * <p><b>两处反射桥接为什么留在这里</b>（{@link #bootstrapCurios()} / {@link #bootstrapJade()}）：
+ * 它们只含 {@code Class.forName} 的字符串字面量，<b>不产生任何编译边</b>；而
+ * {@code bootstrapCurios()} 有硬时序要求——{@code MedallionCurios.item(...)} 在 {@code CoeItems}
+ * 的静态块（物品工厂构造期）里<b>立刻</b>读桥接实现，注册桥接必须早于 {@code CoeItems.register()}，
+ * 也就是必须发生在本构造器内部。根侧的 {@code IntegrationBootstrap} 由 CEWS / TRANS 构造器调用，
+ * 那两个构造器都在 COE <b>之后</b>，搬过去就等于静默丢失 Curios 饰品支线。
+ * 运行期 :coe 与根工程同处 GAME 层，自动模块互相可读，{@code Class.forName} 解析得到
+ * （runData 日志里的 {@code [Curios]} / {@code [Jade]} 行即取证）。</p>
  *
  * <p><b>哪些东西<b>不</b>在这里了</b>（它们随各自的模块搬走，但注册命名空间一个字没变）：</p>
  * <ul>
@@ -44,7 +61,7 @@ import net.neoforged.neoforge.registries.RegisterEvent;
  *       而<b>它们原先的注册触发</b>（配置 / 数据组件 / 实体类型 / 风扇加工类型 / 旋转载荷）
  *       在 P3d 反过来<b>搬回到本类构造器</b>——库没有生命周期，那本就是 mod 的职责；</li>
  *   <li>CEWS 的机器、页签内容、能量场载荷、Jade 波插件、Sable 桥接 → {@code CewsMod}；</li>
- *   <li>TRANS 的物品 → {@code TransmutationMod}。</li>
+ *   <li>TRANS 的物品 / 药水 / 风扇加工类型 → {@code TransmutationMod}。</li>
  * </ul>
  *
  * <p><b>Registrate 分家</b>：本层（{@code common/registry/coe/**} + {@code AllFluids} +
@@ -70,15 +87,11 @@ public class CreateOreExpansion {
     public static final String MOD_ID = CoeCore.MOD_ID;
 
     public CreateOreExpansion(IEventBus modEventBus, ModContainer modContainer) {
-        // P3q：「按层顺序登记所有创造页」这件事只有根侧知道全貌（COE 的 base_tab 必须排在
-        // CEWS 的 energy_wave_study 之前），而三个层的 Registrate 都要在设 defaultCreativeTab
-        // 之前拿到自己的页 key。于是层的 Registrate 调 core 的 LayerCreativeTab.ensureRegistered()
-        // 发请求，这里把真正的登记动作（common/hub 的协调入口，hub 只许往下引用层）注入进去。
-        // 形状与 P3e 的 LayerRegistrate.installOwnerChain / P3p 的 MedallionLink 相同。
-        // 注入点放在最前面：installTabRegistrar 对"注入之前就来过的请求"会补跑，
-        // 所以 FML 构造 mod 的顺序（COE 未必第一个）不影响结果；类初始化时机与拆分前一致
-        // ——请求发生在 CoeRegistrate 的静态块里，那时才真正初始化 hub 并 registerTabs()。
-        LayerCreativeTab.installTabRegistrar(() -> AllCreativeModeTabs.registerTabs());
+        // P3w：原先在这里的 `LayerCreativeTab.installTabRegistrar(() -> AllCreativeModeTabs.registerTabs())`
+        // 是 9 处触发点之一（hub 的 AllCreativeModeTabs 住根工程，:coe 看不到），已搬到根侧集成类
+        // common/hub/IntegrationBootstrap，由 CEWS / TRANS 的 @Mod 构造器幂等调用。
+        // 时序安全：installTabRegistrar 对"注入之前就来过的请求"会补跑（LayerCreativeTab 类注释），
+        // 而 CoeRegistrate 的静态块正是在本构造器第 8 步发出请求。
 
         // P3k：MOD 事件总线随「mod 身份」常量一起搬到共享库（库没有生命周期，
         // 也不该反向依赖 @Mod 入口）；本类只负责在构造时把它填上。全仓无消费者。
@@ -91,10 +104,8 @@ public class CreateOreExpansion {
         // 旋转载荷 → 配置），并且整块排在本类其余注册触发<b>之前</b>，
         // 保持它们相对既有注册触发顺序的先后关系不变。
         AllDataComponents.register(modEventBus);
-        AllEntityTypes.register(modEventBus);
-        // 风扇加工类型（Create 的注册表）：沿用拆分前的写法，RegisterEvent 每次触发都调用
-        // （init() 自身幂等），行为与拆分前逐字一致。
-        modEventBus.addListener(CreateOreExpansion::onRegister);
+        // P3w：`AllEntityTypes.register(modEventBus)`（CEWS 层）搬去 CewsMod 构造器；
+        // `AllFanProcessingTypes.init()` 的 RegisterEvent 钩子（TRANS 层）搬去 TransmutationMod。
         // 统一交互规则第 4 条：Ctrl + 扳手右键 = 旋转本模组机器（客户端拦截 → 服务端校验并旋转）
         // P3o：载荷类（common/machine/MachineRotatePayload）已搬进 core 库，**不 import 本 @Mod 入口**，
         // 所以"谁来接 mod bus"这件事必须由根侧显式写死（库没有生命周期）。行为与逐个引用写法逐字一致。
@@ -112,7 +123,9 @@ public class CreateOreExpansion {
         // 见 CoeRegistrate 的类注释（顺序由类初始化保证）。
         CoeRegistrate.REGISTRATE.registerEventListeners(modEventBus);
 
-        AllCreativeModeTabs.register(modEventBus);
+        // P3w：`AllCreativeModeTabs.register(modEventBus)`（hub）已随上面的集成职责一起搬到
+        // 根侧 IntegrationBootstrap。它只往事件总线挂一个 DeferredRegister，
+        // 只要早于 RegisterEvent 即可（TRANS / CEWS 构造器都远早于它）。
 
         // 按层显式触发类初始化（顺序与拆分前逐层一致）。
         // CEWS / TRANS 两层的方块与物品由它们各自的 @Mod 构造器触发（见 CewsMod / TransmutationMod）。
@@ -137,11 +150,12 @@ public class CreateOreExpansion {
 
         CoeItems.register();
         AllGemTags.register();
-        AllFluids.register();
-        AllModEffects.register(modEventBus);
-        AllModPotions.register(modEventBus);
-        NeoForge.EVENT_BUS.addListener(AllModPotions::registerBrewingRecipes);
-        AllRecipeTypes.register(modEventBus);
+        // P3w：底下这五处原先就在这里，全是跨层 / hub 触发点，整块搬去根侧：
+        //   AllFluids.register()          -> IntegrationBootstrap（hub -> TRANS 转发）
+        //   AllModEffects.register(bus)   -> IntegrationBootstrap（hub -> TRANS 转发）
+        //   AllModPotions.register(bus)   -> TransmutationMod 构造器（TRANS 层自己的东西）
+        //   AllModPotions::registerBrewingRecipes -> TransmutationMod 的 game bus 监听
+        //   AllRecipeTypes.register(bus)  -> IntegrationBootstrap（hub 聚合三层的配方类型）
         AllStructureProcessors.register(modEventBus);
         MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
@@ -154,23 +168,19 @@ public class CreateOreExpansion {
         bootstrapJade();
 
         CoeCore.LOGGER.info("[COE] mod 初始化完成（mod id={}，注册命名空间={}）：矿物拓展内容已注册，"
-                + "共享地基（配置/数据组件/实体类型/风扇加工类型/旋转载荷）已由本构造器接线",
+                + "共享地基（配置/数据组件/旋转载荷）已由本构造器接线",
             MOD_ID, CoeCore.REGISTRY_NAMESPACE);
     }
 
     /**
-     * {@code RegisterEvent} 上的风扇加工类型注册钩子。
+     * Curios 可选联动引导：只在 Curios 在场时加载桥接类（未装则凝能佩降级为纯物品，不崩）。
      *
-     * <p>P3d 之前住在 {@code CoeCore#onRegister}（那时 core 还是 {@code @Mod}）；
-     * core 改成普通库后随注册动作一起搬回本 mod，<b>语义与拆分前逐字相同</b>：
-     * 每次 {@code RegisterEvent} 触发都调 {@code AllFanProcessingTypes.init()}（自身幂等），
-     * 由它的类初始化把 {@code transmuting} 注册进 Create 的 {@code FAN_PROCESSING_TYPE}。</p>
+     * <p><b>P3w：为什么它没有跟着别的集成触发点一起去根侧 IntegrationBootstrap</b>——
+     * 它必须在 {@link CoeItems#register()} 的静态块<b>之前</b>跑完：{@code MedallionCurios.item(...)}
+     * 在物品工厂构造期立刻读桥接实现，晚一步就整条 Curios 支线静默降级。
+     * 而根侧的集成触发器由 CEWS / TRANS 构造器调用，那两个构造器都在本构造器<b>之后</b>。
+     * 这个 {@code Class.forName} 只是字符串字面量，不产生编译边，所以 :coe 仍然只依赖 core。</p>
      */
-    private static void onRegister(RegisterEvent event) {
-        AllFanProcessingTypes.init();
-    }
-
-    /** Curios 可选联动引导：只在 Curios 在场时加载桥接类（未装则凝能佩降级为纯物品，不崩）。 */
     private static void bootstrapCurios() {
         if (ModList.get().isLoaded("curios")) {
             try {
@@ -191,6 +201,10 @@ public class CreateOreExpansion {
      * <p><b>归属判定</b>：{@code BasinLiveJadePlugin} 接管的是<b>工作盆</b>的物品行实时化
      * （矿物拓展加工线），所以留在 COE；另一个 Jade 插件 {@code WaveJadePlugin}
      * （能量波/波情显示）随 CEWS 模块走。</p>
+     *
+     * <p><b>P3w</b>：与 {@link #bootstrapCurios()} 同一理由留在本类——它只是一个
+     * {@code Class.forName} 字面量（不产生编译边），而 Jade 插件的发现由 NeoForge 的
+     * {@code @WailaPlugin} 扫描负责，与本构造器的时序无关；搬到根侧只会多绕一次跨 mod 调用。</p>
      */
     private static void bootstrapJade() {
         if (ModList.get().isLoaded("jade")) {

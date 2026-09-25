@@ -1,12 +1,20 @@
-# ${mod_name} — NeoForge 模块元数据模板（P3a 骨架）
+# ${mod_name} — NeoForge 模块元数据模板
+#
+# 本模块 = **createoreexpansion（矿物拓展 COE）自己的 mod 文件**（P3w 起）。
 # 由 buildSrc 的 coe-conventions 插件在 processResources 时展开 TOML 占位符：
 #   模板：<module>/src/main/templates/META-INF/neoforge.mods.toml
 #   展开：<module>/build/generated/sources/modMetadata/META-INF/neoforge.mods.toml
-# 注意：本模块（coe）的 mod_id 必须继续是 createoreexpansion（注册命名空间不变）。
+# mod_id 必须继续是 createoreexpansion（注册命名空间与全部注册 id 一个都不许变）。
+#
+# 根工程的模板（src/main/templates/...）**只声明 cews / transmutation**，不再声明本 id；
+# 同一个 mod id 出现在两个 mod 文件里会被 UniqueModListBuilder 判 duplicate_mod 硬崩。
 modLoader = "javafml"
 loaderVersion = "${loader_version_range}"
 license = "${mod_license}"
 
+# ============================ createoreexpansion（矿物拓展 COE） ============================
+# 本段与根模板原先那段**逐字对齐**：同样的 modId / version / displayName / authors /
+# description 字段顺序，以及同样的 [[dependencies]] 集合（含 createaddition **required**）。
 [[mods]]
 modId = "${mod_id}"
 version = "${mod_version}"
@@ -14,11 +22,17 @@ displayName = "${mod_name}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
 
-# ── P3a 骨架阶段刻意不声明 [[mixins]] ────────────────────────────────────────
-# 本模块还没有自己的 mixin 配置；声明一个不存在的 config 会让加载期直接报错。
-# 搬入代码时（core 的 mixin 插件 / coe 的 createoreexpansion.mixins.json / …）在这里补：
-#   [[mixins]]
-#   config = "${mod_id}.mixins.json"
+# ── [[mixins]] 为什么**不**在这里 ──────────────────────────────────────────────────────
+# 本工程只有一个 mixin 配置文件 createoreexpansion.mixins.json，它是**根工程**的资源
+# （src/main/resources/），由根模板的 [[mixins]] 声明。P3w 之后那 8 个 mixin 类里
+# 有 2 个（mixin/renderers/coe/EntityRendererAccessor、LivingEntityRendererAccessor）
+# 随 COE 住进了本模块，但**不需要**在这里再声明一次：TOML 的 [[mixins]] 是顶层表数组，
+# 声明两次等于把同一个 config 注册两遍。
+# 类解析不受影响：Mixin 服务在 ModLauncher 下 boot 进的是 cpw.mods.cl.ModuleClassLoader
+# （实测 run/logs/debug.log: "MixinService [ModLauncher] was successfully booted in
+# cpw.mods.cl.ModuleClassLoader"），也就是 GAME 层的联合加载器，按包在层内各模块间委派
+# —— 与"一个 mod 文件一个类加载器、彼此看不见"是两回事。
+# 声明一个不存在的 config 才会让加载期直接报错，所以这里刻意留空。
 
 [[dependencies."${mod_id}"]]
 modId = "neoforge"
@@ -42,10 +56,25 @@ versionRange = "[6.0.10,6.1.0)"
 ordering = "NONE"
 side = "BOTH"
 
-# ── 模块间依赖：P3a 只留注释，不产生任何实际依赖（模块之间保持零代码依赖）──────
-# [[dependencies."${mod_id}"]]
-# modId = "coe_core"
-# type = "required"
-# versionRange = "[1.0.0,)"
-# ordering = "NONE"
-# side = "BOTH"
+[[dependencies."${mod_id}"]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.27.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "curios"
+# Curios 为可选联动：装了 Curios → 凝能佩走饰品支线（饰品槽装备/效果/渲染与旧版一致）；
+# 没装 → 凝能佩按纯物品注册（可合成/可持有，只是没有饰品槽效果），绝不因缺类而崩溃。
+type = "optional"
+versionRange = "[9.5.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "createaddition"
+type = "required"
+versionRange = "[1.5.11,)"
+ordering = "NONE"
+side = "BOTH"

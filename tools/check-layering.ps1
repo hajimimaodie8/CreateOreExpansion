@@ -9,11 +9,18 @@
 #   CORE  (the shared library module) must NOT depend on COE / CEWS / TRANS
 # Anything may depend on SHARED; SHARED is never judged as a source.
 #
-# Two source roots are scanned:
-#   src/main/java/com/hjmmd_8/createoreexpansion    -> COE / CEWS / TRANS / SHARED by path
+# Three source roots are scanned:
+#   src/main/java/com/hjmmd_8/createoreexpansion     -> COE / CEWS / TRANS / SHARED by path
 #   core/src/main/java/com/hjmmd_8/createoreexpansion -> CORE (the whole library is shared)
+#   coe/src/main/java/com/hjmmd_8/createoreexpansion  -> COE / CEWS / TRANS / SHARED by path
 # The second root matters: `core` is a JarJar-nested library, and without it every file
 # moved into `core` would silently escape this check.
+# P3w adds the THIRD root for the same reason: the Gradle sub-module `:coe` now holds the
+# 176 COE files plus the @Mod entry, and a tool that still scans only the two old roots
+# would print COE=0 while exiting 0 (the same silent escape P3d-beta hit for core).
+# The root table below is the ONLY place that knows about roots; the layer rules
+# (Get-FileLayer / Get-TargetLayer) are unchanged, and `:coe` is scanned with the same
+# package-relative paths as the root tree.
 #
 # Layer of a FILE is decided purely by its path (see Get-FileLayer).
 # Layer of an IMPORT / fully-qualified reference is decided by its package (see Get-TargetLayer),
@@ -44,9 +51,28 @@ $ErrorActionPreference = 'Stop'
 $repoRoot    = Split-Path -Parent $PSScriptRoot
 $pkgRoot     = Join-Path $repoRoot 'src\main\java\com\hjmmd_8\createoreexpansion'
 $corePkgRoot = Join-Path $repoRoot 'core\src\main\java\com\hjmmd_8\createoreexpansion'
+$coePkgRoot  = Join-Path $repoRoot 'coe\src\main\java\com\hjmmd_8\createoreexpansion'
 $prefix      = 'com.hjmmd_8.createoreexpansion.'
 
-if (-not (Test-Path $pkgRoot)) { throw "package root not found: $pkgRoot" }
+# ---------------------------------------------------------------------------
+# SOURCE ROOTS -- the single table that says which tree contributes what.
+#   Prefix ''      : rel is package-relative, so Get-FileLayer sees the ordinary
+#                    COE / CEWS / TRANS / SHARED package paths.
+#   Prefix 'core\' : the whole tree is the CORE library (it has no layer packages).
+# `:coe` deliberately uses the package-relative form: its tree is the same package
+# layout as the root tree, and the @Mod entry CreateOreExpansion.java sits in the
+# package root, so it is judged SHARED exactly like every other integration file
+# (P3v section 3: "the tool already says SHARED -- believe it").
+# ---------------------------------------------------------------------------
+$roots = @(
+    @{ Path = $pkgRoot;     Prefix = '' },
+    @{ Path = $corePkgRoot; Prefix = 'core\' },
+    @{ Path = $coePkgRoot;  Prefix = '' }
+)
+
+foreach ($root in $roots) {
+    if (-not (Test-Path $root.Path)) { throw "package root not found: $($root.Path)" }
+}
 
 # ---------------------------------------------------------------------------
 # WHITELIST -- accepted, known cross-layer dependencies.
@@ -164,16 +190,13 @@ function Get-CodeOnly {
     return (($lines | Where-Object { $_.TrimStart() -notmatch '^(\*|//|/\*)' -and $_ -notmatch '^\s*import\s' }) -join "`n")
 }
 
-# ---- collect sources from both roots ---------------------------------------
-# Rel uses the platform separator for the root tree and a "core\" prefix for the
-# library tree, so Get-FileLayer can tell them apart before looking at packages.
+# ---- collect sources from every root ---------------------------------------
+# Rel uses the platform separator, plus the root's Prefix when that root owns a whole
+# layer (core), so Get-FileLayer can tell them apart before looking at packages.
 $entries = New-Object System.Collections.ArrayList
-foreach ($f in (Get-ChildItem -Recurse -Path $pkgRoot -Filter *.java | Sort-Object FullName)) {
-    [void]$entries.Add(@{ Path = $f.FullName; Rel = $f.FullName.Substring($pkgRoot.Length + 1) })
-}
-if (Test-Path $corePkgRoot) {
-    foreach ($f in (Get-ChildItem -Recurse -Path $corePkgRoot -Filter *.java | Sort-Object FullName)) {
-        [void]$entries.Add(@{ Path = $f.FullName; Rel = 'core\' + $f.FullName.Substring($corePkgRoot.Length + 1) })
+foreach ($root in $roots) {
+    foreach ($f in (Get-ChildItem -Recurse -Path $root.Path -Filter *.java | Sort-Object FullName)) {
+        [void]$entries.Add(@{ Path = $f.FullName; Rel = $root.Prefix + $f.FullName.Substring($root.Path.Length + 1) })
     }
 }
 
@@ -247,7 +270,7 @@ foreach ($e in $entries) {
     }
 }
 
-Write-Host 'layering check: src/main/java + core/src/main/java'
+Write-Host 'layering check: src/main/java + core/src/main/java + coe/src/main/java'
 Write-Host ('  files by layer : COE={0}  CEWS={1}  TRANS={2}  SHARED={3}  CORE(library)={4}' -f $stats['COE'], $stats['CEWS'], $stats['TRANS'], $stats['SHARED'], $stats['CORE'])
 Write-Host '  forbidden edge directions checked : COE->CEWS, COE->TRANS, TRANS->CEWS, CEWS->TRANS, CORE->COE/CEWS/TRANS'
 if ($NoFqn) { Write-Host '  (fully-qualified-reference pass disabled by -NoFqn)' }

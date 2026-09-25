@@ -13,30 +13,23 @@ license = "${mod_license}"
 # A URL to refer people to when problems occur with this mod
 #issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
 
-# ── P3d：同一个 jar 里装三个 mod + 一个 JarJar 嵌套的库 ──────────────────────────────────
-# 三个 mod 同处 createoreexpansion-1.0.0.jar：
-#   createoreexpansion（矿物拓展 COE）/ cews（能量波阵学）/ transmutation（机械嬗化学）。
-# 它们的**注册命名空间全部是 createoreexpansion**（见 common/CoeCore#REGISTRY_NAMESPACE），
-# 所以拆模块不会改动任何一个注册 id、语言键、配置键或数据包路径。
+# ── P3w：根 jar 里装两个 mod + 两个 JarJar 嵌套的东西 ────────────────────────────────────
+# **本文件（根工程）只声明 cews / transmutation 两个 mod。**
+# 第三个 mod —— **createoreexpansion（矿物拓展 COE）—— 不在本文件里**：P3w 起它的代码
+# （176 个 COE 文件）与 [[mods]] 声明都搬进了 Gradle 子模块 :coe，见
+# coe/src/main/templates/META-INF/neoforge.mods.toml，由根 build.gradle 的
+# jarJar(compileOnly(project(':coe'))) 嵌进 META-INF/jarjar/。
+# ⛔ **同一个 mod id 绝不能出现在两个 mod 文件里**：UniqueModListBuilder 会判
+#    fml.modloadingissue.duplicate_mod 直接硬崩（不是"选最新"那条温和路径）。
+# 两个 JarJar 嵌套：
+#   · core（共享库，**不是** mod：coe_library=true，没有也不该有 mods.toml）；
+#   · coe（**是** mod：自带 mods.toml 并声明 createoreexpansion）。
+# 另有技能内核 skiller（**是** mod，mod id = skiller）同样由 JarJar 嵌套，声明在下面。
 #
-# 第四个模块 core **不在这里**：P3d 起它是「普通库」而不是 mod
-# （coe_library=true，见 core/gradle.properties 与 buildSrc/coe-conventions）。
-# 它没有自己的 [[mods]]、没有 neoforge.mods.toml，由根 build.gradle 的
-# jarJar(implementation(project(':core'))) 原样嵌进 META-INF/jarjar/，
-# 运行期作为 unnamed module 上的普通 classpath 条目加载（不参与 JPMS 模块解析，
-# 所以它的包可以与 createoreexpansion 重叠 —— 这正是 core 不做 mod 的原因）。
-# 同样由 JarJar 嵌套的还有 skiller（技能内核，**是**一个真 mod，mod id = skiller）。
+# 四个模块的**注册命名空间全部是 createoreexpansion**（见 common/CoeCore#REGISTRY_NAMESPACE），
+# 所以拆模块不会改动任何一个注册 id、语言键、配置键或数据包路径；mod id 才分家。
 
-# ============================ 1/3：createoreexpansion（矿物拓展 COE） ============================
-# mod id 保持原样不变；原来那个唯一的 [[mods]] 块就是它。
-[[mods]] #mandatory
-modId = "createoreexpansion"
-version = "${mod_version}" #mandatory
-displayName = "Create Ore Expansion"
-authors = "${mod_authors}" #optional
-description = '''${mod_description}'''
-
-# ============================ 2/3：cews（能量波阵学） ============================
+# ============================ 1/2：cews（能量波阵学） ============================
 [[mods]] #mandatory
 modId = "cews"
 version = "${mod_version}" #mandatory
@@ -44,7 +37,7 @@ displayName = "Create: Energy Wave Studies"
 authors = "${mod_authors}" #optional
 description = '''${mod_description}'''
 
-# ============================ 3/3：transmutation（机械嬗化学） ============================
+# ============================ 2/2：transmutation（机械嬗化学） ============================
 [[mods]] #mandatory
 modId = "transmutation"
 version = "${mod_version}" #mandatory
@@ -69,55 +62,17 @@ config = "${mod_id}.mixins.json"
 # The coremods config file path is not configurable and is always loaded from META-INF/coremods.json
 
 # ── 依赖 ────────────────────────────────────────────────────────────────────────────────
-# 三个 mod 的基础依赖与拆分前完全一致（没有把任何 required 降级）；
+# 两个 mod 的基础依赖与拆分前完全一致（没有把任何 required 降级）；
 # 模块之间的依赖按既有规格：cews → createoreexpansion 为 optional，transmutation → createoreexpansion 为 required。
-# （原来的 coe_core 依赖块随 P3d 一并删除：core 已经不是 mod，它作为 JarJar 嵌套库随根 jar 一起分发，
-#   不存在"模块依赖"这回事，也不该在 mod 图上出现。）
+# （createoreexpansion 自己的 [[dependencies]] 段落随它的 [[mods]] 一起搬到了 :coe 的模板，
+#   段落内容与该模板**逐字对齐**；coe_core 的依赖块早在 P3d 就删了：core 不是 mod。）
+#
+# ⚠ 跨文件的依赖是允许的：createoreexpansion 由 :coe 那个嵌套 mod 文件声明，
+#   这里的 ordering = AFTER/BEFORE 照样生效（FML 的依赖图按 mod id 建，不按文件）。
 
-# createoreexpansion（COE）：基础环境依赖，**无模块依赖**
-[[dependencies."createoreexpansion"]]
-modId = "neoforge"
-type = "required"
-versionRange = "${neo_version_range}"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."createoreexpansion"]]
-modId = "minecraft"
-type = "required"
-versionRange = "${minecraft_version_range}"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."createoreexpansion"]]
-modId = "create"
-type = "required"
-versionRange = "[6.0.10,6.1.0)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."createoreexpansion"]]
-modId = "jei"
-type = "optional"
-versionRange = "[19.27.0,)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."createoreexpansion"]]
-modId = "curios"
-# Curios 为可选联动：装了 Curios → 凝能佩走饰品支线（饰品槽装备/效果/渲染与旧版一致）；
-# 没装 → 凝能佩按纯物品注册（可合成/可持有，只是没有饰品槽效果），绝不因缺类而崩溃。
-type = "optional"
-versionRange = "[9.5.1,)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."createoreexpansion"]]
-modId = "createaddition"
-type = "required"
-versionRange = "[1.5.11,)"
-ordering = "NONE"
-side = "BOTH"
+# createoreexpansion（COE）的依赖段落**不在这里** —— 它随 [[mods]] 一起搬到了
+# coe/src/main/templates/META-INF/neoforge.mods.toml，内容与本文件原先那段逐字对齐
+# （neoforge / minecraft / create required，jei / curios optional，createaddition required）。
 
 # cews：基础环境依赖 + 对 COE **optional**（材料来自矿物拓展；未装 COE 时本模块自身仍可加载）
 [[dependencies."cews"]]

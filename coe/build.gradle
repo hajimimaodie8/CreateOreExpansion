@@ -1,11 +1,51 @@
-// ── coe：矿物扩展（P3a 骨架）───────────────────────────────────────────────────
-// mod id 必须继续是 createoreexpansion（注册命名空间与 id 一个都不许变）。
-// P3d 才把 154 个文件搬进 coe/src/main/java/**（包名一字不改）+ JarJar 内嵌 skiller。
+// ── coe：矿物扩展（P3a 骨架 → P3w 落地）────────────────────────────────────────
+// mod id 继续是 createoreexpansion（注册命名空间与注册 id 一个都不许变）。
+// P3w 起 176 个 COE 文件 + @Mod 入口 CreateOreExpansion 都住在本模块，本模块自己的
+// src/main/templates/META-INF/neoforge.mods.toml 声明 createoreexpansion；
+// 根工程的模板**不再**声明它 —— 两个 mod 文件同声明一个 id 会被
+// UniqueModListBuilder 判 duplicate_mod 硬崩（P3v §4b 实测）。
 plugins {
     id 'net.neoforged.moddev' // 版本由根 build.gradle 的 plugins 块提供
     id 'coe-conventions'
 }
 
-// P3a 刻意不声明任何跨模块依赖。P3d 起按下面的行接上：
-//   implementation project(':core')
-//   jarJar(implementation("com.leaf:skiller:1.0.0"))
+// ── 依赖 ───────────────────────────────────────────────────────────────────────
+// 仓库列表由 coe-conventions 注册（与根 build.gradle 逐条一致），此处不重复。
+//
+// ① core 共享库：**compileOnly**。
+//    · 根工程保留自己的 jarJar(implementation(project(':core')))，core 在**根 jar** 的
+//      META-INF/jarjar/ 里处于深度 1 —— 这是唯一有效的深度（MDG 的 jarJar 配置
+//      setTransitive(false)，且 FML 的 dependency locator 只扫一遍，深度 2 的 jar 永不生效，
+//      见 build/patch/p3v-EVIDENCE.txt §4c）。
+//    · 所以本模块**不**再嵌一份 core：那只会给发布 jar 多加约 118 KB 的惰性副本。
+//    · dev：core 的 classes/resources 由根工程 mods{} 的 "cews" 条目合并进根 mod 文件；
+//      本模块是 GAME 层的另一个自动模块，按 JPMS 规则读得到同层模块的包。
+//
+// ② 外部编译面必须**自己重抄**：core 的 create / registrate / ponder / flywheel / jei
+//    全是 compileOnly，而 compileOnly **不传递**（P3v §4e 实测）。
+//
+// ③ skiller：只 compileOnly。它是独立 mod，必须留在**根 jar** 的 META-INF/jarjar/ 深度 1；
+//    在本模块再嵌一层会落到深度 2 → 惰性（同 §4c）。
+//
+// ④ 不需要 jade / curios / optical / vintageimprovements / aeronautics / sable：
+//    那些包（compat/**）仍然住在根工程。
+dependencies {
+    compileOnly(project(':core'))
+
+    implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+    implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
+    implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+
+    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
+    runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
+
+    // 编译期用 JEI API、运行期用完整 JEI jar（与根工程同配方；compat/jei/coe/** 属于 COE）
+    compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
+    runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+
+    // CC&A：compat/createaddition/** 属于 COE（锭→板/杆/线整条线跑在它的轧机上）
+    compileOnly("curse.maven:createaddition-439890:8083378")
+    runtimeOnly("curse.maven:createaddition-439890:8083378")
+
+    compileOnly("com.leaf:skiller:1.0.0")
+}

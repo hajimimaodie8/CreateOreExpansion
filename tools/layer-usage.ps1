@@ -16,6 +16,11 @@
 # always agree.  P3e added the two COE skill paths (integration/skiller/**, client/tool/**)
 # to BOTH tools; without that, COE skill files would be counted as SHARED-PURE and land
 # in core-candidates.txt, which is actively wrong.
+# P3w adds the THIRD source root (`coe/src/main/java/...`, the Gradle sub-module that now
+# holds the COE files) to BOTH tools as well, with package-relative paths -- so the
+# Get-FileLayer bodies of the two scripts stay byte-identical and no rule is touched.
+# Without it the report would read COE=0 while still exiting 0 (silent escape, same
+# failure P3d-beta hit for core).
 # Deliberately pure ASCII: PowerShell 5.1 reads a BOM-less .ps1 as
 # ANSI and can swallow quotes mid-script.
 
@@ -25,42 +30,66 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$pkgRoot = Join-Path $Repo 'src\main\java\com\hjmmd_8\createoreexpansion'
-$prefix  = 'com.hjmmd_8.createoreexpansion.'
+$pkgRoot    = Join-Path $Repo 'src\main\java\com\hjmmd_8\createoreexpansion'
+$coePkgRoot = Join-Path $Repo 'coe\src\main\java\com\hjmmd_8\createoreexpansion'
+$prefix     = 'com.hjmmd_8.createoreexpansion.'
 if (-not (Test-Path $pkgRoot)) { throw "package root not found: $pkgRoot" }
 
 function Get-FileLayer {
     param([string]$rel)
     $r = $rel -replace '\\', '/'
+    # everything under core/ is the shared library, regardless of package name
+    if ($r -match '^core/') { return 'CORE' }
+    # explicit module paths -- must be tested BEFORE the generic "common/" SHARED rule
     if ($r -match '^common/registry/coe/')            { return 'COE' }
     if ($r -match '^common/registry/cews/')           { return 'CEWS' }
     if ($r -match '^common/registry/transmutation/')  { return 'TRANS' }
     if ($r -match '^content/(charger|wave|machine|energyfield)/') { return 'CEWS' }
     if ($r -match '^content/(transmuting|transmutation)/')        { return 'TRANS' }
-    # the skill system belongs to COE -- kept in sync with tools\check-layering.ps1 (P3e)
-    # P3r: the old skill framework moved out of foundation/** into the top-level `skill`
-    # package (COE-owned), and the COE/CEWS renderer + JEI + mixin subtrees were split out.
+    # P3r: the old skill framework is COE, not SHARED.  It used to live under
+    # foundation/item/skill/** and foundation/{IParams,ParamsPool,FrameParams,util/*},
+    # which made every layer's closure reach a SHARED path; the whole tree now lives
+    # in the top-level `skill` package (a COE-owned package).  The two P3e paths stay.
+    # NOTE: only these sub-paths are COE -- the rest of client/ (MachineRotateClient,
+    # WaveQueryGaugeModelRegistration, client/AllRenderTypes, client/renderer/{Grinder,Empty})
+    # stays SHARED for the time being.
     if ($r -match '^skill/')               { return 'COE' }
     if ($r -match '^integration/skiller/') { return 'COE' }
     if ($r -match '^client/tool/')         { return 'COE' }
-    if ($r -match '^client/renderer/GrinderRenderer')     { return 'COE' }
-    if ($r -match '^client/renderer/EmptyEntityRenderer') { return 'COE' }
-    if ($r -match '^compat/jei/coe/')      { return 'COE' }
-    if ($r -match '^compat/createaddition/') { return 'COE' }
-    if ($r -match '^mixin/renderers/coe/') { return 'COE' }
-    if ($r -match '^client/renderer/cews/') { return 'CEWS' }
-    if ($r -match '^compat/jei/cews/')      { return 'CEWS' }
+    # P3r: COE-owned renderer + JEI/mixin subtrees that live under SHARED-looking parents.
+    if ($r -match '^client/renderer/GrinderRenderer')          { return 'COE' }
+    if ($r -match '^client/renderer/EmptyEntityRenderer')      { return 'COE' }
+    if ($r -match '^compat/jei/coe/')                          { return 'COE' }
+    # P3r: the CC&A bridge that BOTH the lightning line (COE) and the wave line (CEWS)
+    # use had to be split -- CreateAdditionCompat lives here (COE), the transmuter-side
+    # helper stays in compat/jei/cews/createaddition (CEWS).
+    if ($r -match '^compat/createaddition/')                   { return 'COE' }
+    if ($r -match '^mixin/renderers/coe/')                     { return 'COE' }
+    # P3r: CEWS-owned renderer + compat subtrees.
+    if ($r -match '^client/renderer/cews/')                    { return 'CEWS' }
+    if ($r -match '^compat/jei/cews/')                         { return 'CEWS' }
     # P3t: the THIRD sibling of the two rules above.  P3r added the COE and CEWS JEI
     # subtrees but forgot TRANS, so compat/jei/transmutation/TransmutingCategory was
     # judged SHARED while TransmutationJeiCategories (TRANS) imported it.  Same shape,
     # same reason: that package holds TRANS's JEI category renderer and nothing else.
-    if ($r -match '^compat/jei/transmutation/') { return 'TRANS' }
-    if ($r -notmatch '/') { return 'SHARED' }
+    if ($r -match '^compat/jei/transmutation/')                { return 'TRANS' }
+    # SHARED: infrastructure, never judged as a source layer
+    if ($r -notmatch '/') { return 'SHARED' }                       # mod root package
     if ($r -match '^(common|util|foundation|compat|client|data|mixin|integration)/') { return 'SHARED' }
+    # everything else under content/ is the mineral line
     return 'COE'
 }
 
-$files = Get-ChildItem -Recurse -Path $pkgRoot -Filter *.java | Sort-Object FullName
+# P3w: the module tree is a THIRD source root.  Package-relative paths, exactly like the
+# root tree, so Get-FileLayer needs no new rule (and stays verbatim identical to the one
+# in tools\check-layering.ps1).
+$roots = @(
+    @{ Path = $pkgRoot;    Prefix = '' },
+    @{ Path = $coePkgRoot; Prefix = '' }
+)
+foreach ($root in $roots) {
+    if (-not (Test-Path $root.Path)) { throw "package root not found: $($root.Path)" }
+}
 
 # ---------------------------------------------------------------------------
 # P3l: the library tree is a SECOND source root, and `core` compiles against
@@ -84,11 +113,17 @@ foreach ($cr in $coreRels) { [void]$coreRelSet.Add($cr) }
 
 $fqnToRel = @{}
 $rels = New-Object System.Collections.Generic.List[string]
-foreach ($f in $files) {
-    $rel = $f.FullName.Substring($pkgRoot.Length + 1)
-    $rels.Add($rel)
-    $fqn = $prefix + (($rel -replace '\\', '.') -replace '\.java$', '')
-    $fqnToRel[$fqn] = $rel
+# rel -> full path, so every later read knows which root a file came from.
+$relToPath = @{}
+foreach ($root in $roots) {
+    foreach ($f in (Get-ChildItem -Recurse -Path $root.Path -Filter *.java | Sort-Object FullName)) {
+        $rel = $root.Prefix + $f.FullName.Substring($root.Path.Length + 1)
+        if ($relToPath.ContainsKey($rel)) { throw "same relative path in two source roots: $rel" }
+        $relToPath[$rel] = $f.FullName
+        $rels.Add($rel)
+        $fqn = $prefix + (($rel -replace '\\', '.') -replace '\.java$', '')
+        $fqnToRel[$fqn] = $rel
+    }
 }
 # core classes must resolve too, otherwise a root file's dependency set looks
 # empty the moment its target has already been moved into the library.
@@ -98,7 +133,7 @@ foreach ($cr in $coreRels) {
     $fqnToRel[$fqn] = $cr
 }
 
-# every file of both roots; the "core:" prefix marks the library tree
+# every file of all roots; the "core:" prefix marks the library tree
 $allRels = New-Object System.Collections.Generic.List[string]
 foreach ($rel in $rels) { $allRels.Add($rel) }
 foreach ($cr in $coreRels) { $allRels.Add($cr) }
@@ -142,7 +177,7 @@ foreach ($rel in $allRels) { $deps[$rel] = New-Object System.Collections.Generic
 
 foreach ($rel in $allRels) {
     if ($rel.StartsWith('core:')) { $path = Join-Path $corePkgRoot $rel.Substring(5) }
-    else                          { $path = Join-Path $pkgRoot $rel }
+    else                          { $path = $relToPath[$rel] }
     $dir = Split-Path -Parent $rel
     if ([string]::IsNullOrEmpty($dir)) { $dir = '.' }
     $own = [System.IO.Path]::GetFileNameWithoutExtension($rel)
