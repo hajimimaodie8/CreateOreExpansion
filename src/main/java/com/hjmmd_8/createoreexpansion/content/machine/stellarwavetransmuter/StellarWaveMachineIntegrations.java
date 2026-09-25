@@ -3,11 +3,11 @@ package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport;
-import com.hjmmd_8.createoreexpansion.compat.optical.OpticalMachineIntegration;
-import com.hjmmd_8.createoreexpansion.compat.vintageimprovements.VintageImprovementsMachineIntegration;
-import com.hjmmd_8.createoreexpansion.compat.vintageimprovements.VintageRecipeEnergy;
-import com.hjmmd_8.createoreexpansion.compat.vintageimprovements.VintageRecipeSpeed;
+import com.hjmmd_8.createoreexpansion.compat.jei.cews.createaddition.CreateAdditionTransmuterSupport;
+import com.hjmmd_8.createoreexpansion.compat.jei.cews.optical.OpticalMachineIntegration;
+import com.hjmmd_8.createoreexpansion.compat.jei.cews.vintageimprovements.VintageImprovementsMachineIntegration;
+import com.hjmmd_8.createoreexpansion.compat.jei.cews.vintageimprovements.VintageRecipeEnergy;
+import com.hjmmd_8.createoreexpansion.compat.jei.cews.vintageimprovements.VintageRecipeSpeed;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 import net.minecraft.core.BlockPos;
@@ -123,7 +123,7 @@ public final class StellarWaveMachineIntegrations {
 	public static List<IRecipeTypeInfo> energyExtraRecipeTypes(boolean payloadHasEnergy) {
 		List<IRecipeTypeInfo> out = new ArrayList<>();
 		try {
-			out.addAll(CreateAdditionTransmuterSupport.extraEnergyRecipeTypes(payloadHasEnergy));
+			out.addAll(com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionCompat.extraEnergyRecipeTypes(payloadHasEnergy));
 		} catch (Throwable ignored) {
 			// CC&amp;A 缺失：不追加任何类型
 		}

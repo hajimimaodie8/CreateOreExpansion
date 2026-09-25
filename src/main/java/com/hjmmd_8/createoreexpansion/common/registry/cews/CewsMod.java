@@ -66,7 +66,7 @@ public class CewsMod {
     private static void bootstrapJade() {
         if (ModList.get().isLoaded("jade")) {
             try {
-                Class.forName("com.hjmmd_8.createoreexpansion.compat.jade.WaveJadePlugin");
+                Class.forName("com.hjmmd_8.createoreexpansion.compat.jei.cews.WaveJadePlugin");
                 CoeCore.LOGGER.info("[Jade] 能量波信息显示插件已加载（CEWS）");
             } catch (Throwable t) {
                 CoeCore.LOGGER.warn("[Jade] 能量波信息显示插件加载失败（不影响游戏运行）", t);

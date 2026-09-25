@@ -1,16 +1,16 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
+import com.hjmmd_8.createoreexpansion.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
-import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
-import com.hjmmd_8.createoreexpansion.foundation.IParams;
-import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
+import com.hjmmd_8.createoreexpansion.skill.ConfigSkill;
+import com.hjmmd_8.createoreexpansion.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.skill.config.SkillConfig;
+import com.hjmmd_8.createoreexpansion.skill.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.skill.strategy.SkillStrategy;
+import com.hjmmd_8.createoreexpansion.skill.util.BlockBreaker;
+import com.hjmmd_8.createoreexpansion.skill.IParams;
+import com.hjmmd_8.createoreexpansion.skill.ParamsPool;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;

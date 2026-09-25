@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.compat.jei.category.StellarWaveTransmuterCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.cews.StellarWaveTransmuterCategory;
 
 /**
  * <b>CEWS（能量波阵学）自己的 JEI 内容</b>（P3c：从 {@code compat/jei/CreateOreExpansionJEI} 拆出）。

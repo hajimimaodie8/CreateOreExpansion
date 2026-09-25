@@ -3,10 +3,10 @@ package com.hjmmd_8.createoreexpansion.client.tool;
 import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.skill.AbstractStrategySkill;
-import com.hjmmd_8.createoreexpansion.foundation.FrameParams;
-import com.hjmmd_8.createoreexpansion.foundation.ParamsPool;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
+import com.hjmmd_8.createoreexpansion.skill.FrameParams;
+import com.hjmmd_8.createoreexpansion.skill.ParamsPool;
+import com.hjmmd_8.createoreexpansion.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.skill.SkillItemStack;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.createmod.catnip.render.SuperRenderTypeBuffer;
 import net.minecraft.client.Camera;
@@ -84,7 +84,7 @@ public class SkillsStrategyRenderer {
             // 已迁移到新内核（Skiller）的技能：预览由新渲染器负责（CoeBlockOutlineRenderer），
             // 这里必须跳过，否则同一次预览会被新旧两条路径各画一遍（双层再翻倍，亮度翻倍）。
             // 与释放侧共用同一个迁移闸门，口径只有一处。
-            if (com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate.isMigrated(data.skill)) {
+            if (com.hjmmd_8.createoreexpansion.skill.SkillMigrationGate.isMigrated(data.skill)) {
                 continue;
             }
 

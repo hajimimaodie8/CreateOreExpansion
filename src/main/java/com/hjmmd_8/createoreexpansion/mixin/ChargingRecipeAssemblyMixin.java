@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
-import com.hjmmd_8.createoreexpansion.compat.jei.subcategory.TeslaCoilAssemblySubCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.coe.TeslaCoilAssemblySubCategory;
 import com.mrh0.createaddition.index.CABlocks;
 import com.mrh0.createaddition.recipe.charging.ChargingRecipe;
 import com.simibubi.create.compat.jei.category.sequencedAssembly.SequencedAssemblySubCategory;

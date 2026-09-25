@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfig;
-import com.hjmmd_8.createoreexpansion.foundation.util.FarmlandHelper;
+import com.hjmmd_8.createoreexpansion.skill.util.FarmlandHelper;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemSkillContext;
 import com.leaf.skiller.foundation.Consumable;
 import com.leaf.skiller.foundation.skill.ISkillInstance;

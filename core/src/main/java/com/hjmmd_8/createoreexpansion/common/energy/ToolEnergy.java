@@ -17,7 +17,7 @@ import net.minecraft.world.item.ItemStack;
  *
  * <p><b>P3p</b>：本类已搬进共享库（core）。旧技能框架（{@code ItemSkill}/{@code DataSkill}）
  * 专用的「按技能实例算消耗并扣能」那一支搬去了层里的
- * {@code com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend}，
+ * {@code skill.SkillEnergySpend}（P3r 后旧技能框架住 skill 包），
  * 这里只留与技能类型无关的部分；凝能佩联动改走 {@link MedallionLink} 注入契约
  * （层里的 {@code IMedallion} 不能被库 import）。</p>
  *

@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.AutoSkillConfig;
-import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
+import com.hjmmd_8.createoreexpansion.skill.config.AutoSkillConfig;
+import com.hjmmd_8.createoreexpansion.skill.util.DualDirection;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;

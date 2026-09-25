@@ -9,7 +9,7 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
  * 模组接入 Skiller 新内核时使用的 {@link SkillType} 常量。
  *
  * <p>三个 id 必须与旧枚举
- * {@link com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType} 的
+ * {@link com.hjmmd_8.createoreexpansion.skill.SkillType} 的
  * {@code name().toLowerCase(Locale.ROOT)} <b>逐字一致</b>
  * （{@code excavation_skill} / {@code hit_skill} / {@code use_skill}）：
  * Skiller 的 tooltip 用 {@code "skillType." + id.getNamespace() + "." + id.getPath()} 拼翻译键，
@@ -43,7 +43,7 @@ public final class CoeSkillTypes {
      * @param legacy 旧枚举常量（可为 null）
      * @return 对应的 Skiller 类型；入参为 null 时返回 null
      */
-    public static SkillType of(com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType legacy) {
+    public static SkillType of(com.hjmmd_8.createoreexpansion.skill.SkillType legacy) {
         if (legacy == null) {
             return null;
         }

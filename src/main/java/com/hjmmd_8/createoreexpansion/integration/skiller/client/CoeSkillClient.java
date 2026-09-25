@@ -1,10 +1,10 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.client.SkillSettingsScreen;
+import com.hjmmd_8.createoreexpansion.integration.skiller.client.SkillSettingsScreen;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.skill.SkillItemStack;
+import com.hjmmd_8.createoreexpansion.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeEntityStrategy;
 import com.leaf.skiller.client.ClientSkillCache;

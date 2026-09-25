@@ -348,7 +348,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 随机极性电荷（放电闪光 + 1 秒冷却；CC&A 未安装时静默跳过）。每 tick 探测，防高速波漏检。
 		if (charge == null && level() instanceof net.minecraft.server.level.ServerLevel) {
 			try {
-				com.hjmmd_8.createoreexpansion.compat.createaddition.TeslaCoilWaveCharger.chargeNearbyCoil(this);
+				com.hjmmd_8.createoreexpansion.compat.jei.cews.createaddition.TeslaCoilWaveCharger.chargeNearbyCoil(this);
 			} catch (Throwable ignored) {
 				// 联动异常：波照常飞行
 			}

@@ -17,8 +17,8 @@
     "requireAnnotations": true
   },
   "client": [
-    "renderers.EntityRendererAccessor",
-    "renderers.LivingEntityRendererAccessor",
+    "renderers.coe.EntityRendererAccessor",
+    "renderers.coe.LivingEntityRendererAccessor",
     "renderers.MinecraftMixin"
   ]
 }

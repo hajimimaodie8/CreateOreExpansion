@@ -3,13 +3,13 @@ package com.hjmmd_8.createoreexpansion.content.skill;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
+import com.hjmmd_8.createoreexpansion.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.context.BowShootContext;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.AbstractSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.skill.AbstractSkill;
+import com.hjmmd_8.createoreexpansion.skill.ConfigSkill;
+import com.hjmmd_8.createoreexpansion.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.skill.SkillType;
 
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;

@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedModifiableAttribute;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.ModifiableAttributeType;
+import com.hjmmd_8.createoreexpansion.skill.attribute.ModifiableAttributeType;
 
 /**
  * 可修改属性的注册表 —— 目前仅用于挖掘速度。

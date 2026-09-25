@@ -8,7 +8,7 @@ import net.minecraft.world.item.ItemStack;
  * <p><b>P3p</b>：本类已搬进共享库（core）。原来那两个按旧技能框架类型算的重载
  * （{@code effectiveLevel(ItemStack, DataSkill)} / {@code compute(ItemStack, ItemSkill)}）
  * 要读技能注册表与 {@code SKILLS} 组件，属于层内类型，已整体搬到层里的
- * {@code com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend}，
+ * {@code skill.SkillEnergySpend}（P3r 后旧技能框架住 skill 包），
  * 方法体逐字未改。这里只剩这两个只吃 {@code int} 的重载——新内核（Skiller）走的就是它们。</p>
  *
  * <p>{@code 消耗 = 一级消耗(技能注册值) × 当前技能等级}，再乘上减耗附魔的折扣

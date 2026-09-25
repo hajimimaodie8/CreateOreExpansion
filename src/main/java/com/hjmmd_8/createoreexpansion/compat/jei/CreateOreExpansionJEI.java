@@ -11,8 +11,8 @@ import org.jetbrains.annotations.NotNull;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsJeiCategories;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeJeiCategories;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationJeiCategories;
-import com.hjmmd_8.createoreexpansion.compat.jei.category.StellarWaveTransmuterCategory;
-import com.hjmmd_8.createoreexpansion.compat.jei.category.base.CreateRecipeCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.cews.StellarWaveTransmuterCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.coe.base.CreateRecipeCategory;
 
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;

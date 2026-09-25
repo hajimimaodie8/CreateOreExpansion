@@ -142,7 +142,7 @@ public final class LightningStrikeProcessor {
         // 候选配方：本模组 lightning 配方 + 其它模组顺带适用的充电配方（经 compat 门面，核心层无硬编码）
         List<RecipeHolder<? extends Recipe<?>>> allRecipes = new ArrayList<>(
             level.getRecipeManager().getAllRecipesFor(CoeRecipeTypes.LIGHTNING.getType()));
-        com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport
+        com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionCompat
             .addChargingRecipes(level, allRecipes);
 
         while (true) {
@@ -181,7 +181,7 @@ public final class LightningStrikeProcessor {
                 }
             } else {
                 // 其余（充电类）配方：产物推导交给 compat 门面（非该类返回空表）
-                for (ItemStack result : com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport
+                for (ItemStack result : com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionCompat
                     .rollChargingResults(best, level.random)) {
                     mergeIntoList(outputs, result);
                 }
@@ -241,7 +241,7 @@ public final class LightningStrikeProcessor {
             if (!stack.isEmpty())
                 pool.add(stack.copy());
         }
-        return com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionTransmuterSupport
+        return com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionCompat
             .matchesChargingRecipe(recipe, pool);
     }
 

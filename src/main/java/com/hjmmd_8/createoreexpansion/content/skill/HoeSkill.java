@@ -1,15 +1,15 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
+import com.hjmmd_8.createoreexpansion.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.context.UseOnBlockContext;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.HoeStrategy;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext;
-import com.hjmmd_8.createoreexpansion.foundation.util.FarmlandHelper;
+import com.hjmmd_8.createoreexpansion.skill.ConfigSkill;
+import com.hjmmd_8.createoreexpansion.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.skill.context.UseItemContext;
+import com.hjmmd_8.createoreexpansion.skill.util.FarmlandHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;

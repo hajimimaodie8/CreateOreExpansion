@@ -5,7 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
 import com.hjmmd_8.createoreexpansion.common.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
+import com.hjmmd_8.createoreexpansion.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.leaf.skiller.foundation.Consumable;
 import com.leaf.skiller.foundation.context.SkillContext;

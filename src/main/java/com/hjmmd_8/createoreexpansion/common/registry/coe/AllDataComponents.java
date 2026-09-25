@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.common.energy.ToolDataComponents;
 import com.hjmmd_8.createoreexpansion.common.registry.DataComponentRegistrar;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.skill.SkillsComponent;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;

@@ -8,7 +8,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRecipeTypes;
-import com.hjmmd_8.createoreexpansion.compat.jei.subcategory.ChargingAssemblySubCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.cews.ChargingAssemblySubCategory;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.compat.jei.category.sequencedAssembly.SequencedAssemblySubCategory;

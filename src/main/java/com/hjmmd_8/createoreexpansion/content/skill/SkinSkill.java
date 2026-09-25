@@ -1,9 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.*;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
+import com.hjmmd_8.createoreexpansion.skill.*;
+import com.hjmmd_8.createoreexpansion.skill.context.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.skill.strategy.EntityStrategy;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;

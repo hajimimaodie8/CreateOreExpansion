@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.AutoSkillConfig;
+import com.hjmmd_8.createoreexpansion.skill.config.AutoSkillConfig;
 
 import java.util.List;
 

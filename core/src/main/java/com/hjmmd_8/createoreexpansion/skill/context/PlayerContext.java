@@ -1,0 +1,16 @@
+package com.hjmmd_8.createoreexpansion.skill.context;
+
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+
+public interface PlayerContext {
+    Player player();
+
+    default ItemStack getMainHand() {
+        return player().getMainHandItem();
+    }
+
+    default ItemStack getOffHand() {
+        return player().getOffhandItem();
+    }
+}

@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
-import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
+import com.hjmmd_8.createoreexpansion.skill.util.BlockBreaker;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeFellingStrategy;
 import com.leaf.skiller.foundation.Consumable;

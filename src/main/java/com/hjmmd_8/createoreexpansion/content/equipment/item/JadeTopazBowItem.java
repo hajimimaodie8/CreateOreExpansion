@@ -12,10 +12,10 @@ import com.hjmmd_8.createoreexpansion.common.energy.EnergyGradientTool;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.common.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.context.BowShootContext;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.skill.SkillItemStack;
+import com.hjmmd_8.createoreexpansion.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.skill.SkillsComponent;
 
 import java.util.List;
 import javax.annotation.Nullable;

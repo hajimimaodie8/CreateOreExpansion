@@ -72,12 +72,28 @@ function Get-FileLayer {
     if ($r -match '^common/registry/transmutation/')  { return 'TRANS' }
     if ($r -match '^content/(charger|wave|machine|energyfield)/') { return 'CEWS' }
     if ($r -match '^content/(transmuting|transmutation)/')        { return 'TRANS' }
-    # the skill system belongs to COE (skill entries are registered in COE, the tools are COE);
-    # these two paths must be tested BEFORE the generic SHARED rule for client/ and integration/.
+    # P3r: the old skill framework is COE, not SHARED.  It used to live under
+    # foundation/item/skill/** and foundation/{IParams,ParamsPool,FrameParams,util/*},
+    # which made every layer's closure reach a SHARED path; the whole tree now lives
+    # in the top-level `skill` package (a COE-owned package).  The two P3e paths stay.
     # NOTE: only these sub-paths are COE -- the rest of client/ (MachineRotateClient,
-    # WaveQueryGaugeModelRegistration, client/renderer/**) stays SHARED.
+    # WaveQueryGaugeModelRegistration, client/AllRenderTypes, client/renderer/{Grinder,Empty})
+    # stays SHARED for the time being.
+    if ($r -match '^skill/')               { return 'COE' }
     if ($r -match '^integration/skiller/') { return 'COE' }
     if ($r -match '^client/tool/')         { return 'COE' }
+    # P3r: COE-owned renderer + JEI/mixin subtrees that live under SHARED-looking parents.
+    if ($r -match '^client/renderer/GrinderRenderer')          { return 'COE' }
+    if ($r -match '^client/renderer/EmptyEntityRenderer')      { return 'COE' }
+    if ($r -match '^compat/jei/coe/')                          { return 'COE' }
+    # P3r: the CC&A bridge that BOTH the lightning line (COE) and the wave line (CEWS)
+    # use had to be split -- CreateAdditionCompat lives here (COE), the transmuter-side
+    # helper stays in compat/jei/cews/createaddition (CEWS).
+    if ($r -match '^compat/createaddition/')                   { return 'COE' }
+    if ($r -match '^mixin/renderers/coe/')                     { return 'COE' }
+    # P3r: CEWS-owned renderer + compat subtrees.
+    if ($r -match '^client/renderer/cews/')                    { return 'CEWS' }
+    if ($r -match '^compat/jei/cews/')                         { return 'CEWS' }
     # SHARED: infrastructure, never judged as a source layer
     if ($r -notmatch '/') { return 'SHARED' }                       # mod root package
     if ($r -match '^(common|util|foundation|compat|client|data|mixin|integration)/') { return 'SHARED' }
@@ -97,8 +113,18 @@ function Get-TargetLayer {
     if ($rest -match '^content\.(charger|wave|machine|energyfield)\.') { return 'CEWS' }
     if ($rest -match '^content\.(transmuting|transmutation)\.')        { return 'TRANS' }
     # skill system == COE (see Get-FileLayer); only the tool/renderer sub-packages, not all of client.
+    # P3r: the old skill framework moved to the top-level `skill` package (COE-owned).
+    if ($rest -match '^skill(\.|$)')            { return 'COE' }
     if ($rest -match '^integration\.skiller\.') { return 'COE' }
     if ($rest -match '^client\.tool\.')         { return 'COE' }
+    # P3r: package-level COE / CEWS ownership (see Get-FileLayer).
+    if ($rest -match '^client\.renderer\.GrinderRenderer(\.|$)')     { return 'COE' }
+    if ($rest -match '^client\.renderer\.EmptyEntityRenderer(\.|$)') { return 'COE' }
+    if ($rest -match '^compat\.jei\.coe(\.|$)')                      { return 'COE' }
+    if ($rest -match '^compat\.createaddition(\.|$)')                { return 'COE' }
+    if ($rest -match '^mixin\.renderers\.coe(\.|$)')                 { return 'COE' }
+    if ($rest -match '^client\.renderer\.cews(\.|$)')                { return 'CEWS' }
+    if ($rest -match '^compat\.jei\.cews(\.|$)')                     { return 'CEWS' }
     # P3f: tolerate the BARE package name as well as a class inside it.  A file's own
     # `package com.hjmmd_8.createoreexpansion.util;` line is scanned by pass 2 like any
     # other fully-qualified occurrence, and without the (\.|$) alternative the string

@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.context;
 
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.UseItemContext;
+import com.hjmmd_8.createoreexpansion.skill.context.UseItemContext;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.Event;

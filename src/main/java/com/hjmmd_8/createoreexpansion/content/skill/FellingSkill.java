@@ -5,9 +5,9 @@ import com.hjmmd_8.createoreexpansion.content.skill.attribute.BreakBlockSpeedMod
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.util.BlockSearch;
+import com.hjmmd_8.createoreexpansion.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.skill.util.BlockSearch;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.Level;

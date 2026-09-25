@@ -2,9 +2,9 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningBlockCategory;
-import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningCategory;
-import com.hjmmd_8.createoreexpansion.compat.jei.category.base.CreateRecipeCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.coe.LightningBlockCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.coe.LightningCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.coe.base.CreateRecipeCategory;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
 

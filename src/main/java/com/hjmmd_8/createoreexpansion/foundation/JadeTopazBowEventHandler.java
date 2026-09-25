@@ -8,8 +8,8 @@ import com.hjmmd_8.createoreexpansion.content.skill.BowDisarmSkill;
 import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
+import com.hjmmd_8.createoreexpansion.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.skill.config.SkillConfig;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;

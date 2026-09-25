@@ -38,8 +38,18 @@ function Get-FileLayer {
     if ($r -match '^content/(charger|wave|machine|energyfield)/') { return 'CEWS' }
     if ($r -match '^content/(transmuting|transmutation)/')        { return 'TRANS' }
     # the skill system belongs to COE -- kept in sync with tools\check-layering.ps1 (P3e)
+    # P3r: the old skill framework moved out of foundation/** into the top-level `skill`
+    # package (COE-owned), and the COE/CEWS renderer + JEI + mixin subtrees were split out.
+    if ($r -match '^skill/')               { return 'COE' }
     if ($r -match '^integration/skiller/') { return 'COE' }
     if ($r -match '^client/tool/')         { return 'COE' }
+    if ($r -match '^client/renderer/GrinderRenderer')     { return 'COE' }
+    if ($r -match '^client/renderer/EmptyEntityRenderer') { return 'COE' }
+    if ($r -match '^compat/jei/coe/')      { return 'COE' }
+    if ($r -match '^compat/createaddition/') { return 'COE' }
+    if ($r -match '^mixin/renderers/coe/') { return 'COE' }
+    if ($r -match '^client/renderer/cews/') { return 'CEWS' }
+    if ($r -match '^compat/jei/cews/')      { return 'CEWS' }
     if ($r -notmatch '/') { return 'SHARED' }
     if ($r -match '^(common|util|foundation|compat|client|data|mixin|integration)/') { return 'SHARED' }
     return 'COE'
