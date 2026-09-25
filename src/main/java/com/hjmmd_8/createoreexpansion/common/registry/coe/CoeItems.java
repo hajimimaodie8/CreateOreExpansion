@@ -55,7 +55,7 @@ import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
  * 玉黄弓与角磨轮；并保留物品侧共用的构建器（{@code grindingWheel} / {@code skillItem} /
  * {@code SkillItemBuilder} / {@code EnergyItemBuilder}）。<br>
  * 归属清单权威出处：{@code markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md} §3.2。
- * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，旧类 {@code AllItems} 保留同类型别名。
+ * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，P2a 已删除 {@code AllItems} 外观类，引用直接指向本层。
  */
 public final class CoeItems {
 
@@ -1193,7 +1193,7 @@ public final class CoeItems {
     public static final ItemEntry<GrindingWheelItem> JADE_GRINDING_WHEEL = grindingWheel(
             "jade_grinding_wheel",
             AllTags.AllItemTags.GRINDING_WHEELS_TIER_2,
-            AllBlocks.JADE_BLOCK);
+            CoeBlocks.JADE_BLOCK);
 
     public static final ItemEntry<GrindingWheelItem> DIAMOND_GRINDING_WHEEL = grindingWheel(
             "diamond_grinding_wheel",
@@ -1203,17 +1203,17 @@ public final class CoeItems {
     public static final ItemEntry<GrindingWheelItem> TOPAZ_GRINDING_WHEEL = grindingWheel(
             "topaz_grinding_wheel",
             AllTags.AllItemTags.GRINDING_WHEELS_TIER_2,
-            AllBlocks.TOPAZ_BLOCK);
+            CoeBlocks.TOPAZ_BLOCK);
 
     public static final ItemEntry<GrindingWheelItem> SAPPHIRE_GRINDING_WHEEL = grindingWheel(
             "sapphire_grinding_wheel",
             AllTags.AllItemTags.GRINDING_WHEELS_TIER_3,
-            AllBlocks.SAPPHIRE_BLOCK);
+            CoeBlocks.SAPPHIRE_BLOCK);
 
     public static final ItemEntry<GrindingWheelItem> STELLARSTONE_GRINDING_WHEEL = grindingWheel(
             "stellarstone_grinding_wheel",
             AllTags.AllItemTags.GRINDING_WHEELS_TIER_3,
-            AllBlocks.STELLARSTONE_BLOCK);
+            CoeBlocks.STELLARSTONE_BLOCK);
 
     public static final ItemEntry<GrindingWheelItem> NETHERITE_GRINDING_WHEEL = grindingWheel(
             "netherite_grinding_wheel",
@@ -1395,6 +1395,10 @@ public final class CoeItems {
             }
         }
     }
+
+/** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
+	public static void register() {
+	}
 
 	private CoeItems() {
 	}

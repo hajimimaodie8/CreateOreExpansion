@@ -4,7 +4,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  * 夺取（剑类夺取装备 + 吸血）技能 —— 统一配置类（装备夺取概率 / 吸血 / 吸收 / 能量 / 冷却 集中修改点）。
  *
  * 所有使用 {@code PlunderSkill} 的夺取技能（剑）的数值都在本文件统一定义，
- * {@code AllSkills} / {@code AllItems} 只负责引用，不改数值。
+ * {@code AllSkills} / {@code CoeItems} 只负责引用，不改数值。
  *
  * 等级说明（冷却首项 4 公差 2；吸血首项 3 公差 1；吸收时长首项 3 公差 2）：
  * <ul>

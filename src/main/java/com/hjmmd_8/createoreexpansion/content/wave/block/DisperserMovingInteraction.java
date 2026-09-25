@@ -192,7 +192,7 @@ public class DisperserMovingInteraction extends SimpleBlockMovingInteraction {
 		return new Hit(face, origin.add(dir.scale(tmin)));
 	}
 
-	/** 注册到 Create 的 contraption 交互注册表（供 AllBlocks onRegister 调用）。 */
+	/** 注册到 Create 的 contraption 交互注册表（供 CewsBlocks onRegister 调用）。 */
 	public static MovingInteractionBehaviour instance() {
 		return new DisperserMovingInteraction();
 	}

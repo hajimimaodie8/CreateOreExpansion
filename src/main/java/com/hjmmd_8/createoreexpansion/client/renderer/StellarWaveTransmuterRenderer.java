@@ -20,7 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
  *
  * <p><b>本渲染器只画"轴"这一件东西</b>，且没有任何按模式/开口状态提前返回的分支
  * （唯一 return 是"方块不是 DirectionalKineticBlock"这一恒假分支）。灯盘面、4 盏 2×2 指示灯、
- * 接收面、轴口底座全部在 16 个 blockstate 变体模型里（见 {@code AllBlocks} datagen）。</p>
+ * 接收面、轴口底座全部在 16 个 blockstate 变体模型里（见 {@code CewsBlocks} datagen）。</p>
  */
 public class StellarWaveTransmuterRenderer extends KineticBlockEntityRenderer<StellarWaveTransmuterBlockEntity> {
 

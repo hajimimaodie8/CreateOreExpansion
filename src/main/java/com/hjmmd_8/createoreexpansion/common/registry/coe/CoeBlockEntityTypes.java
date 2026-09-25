@@ -31,13 +31,13 @@ import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 /**
  * <b>COE（矿物拓展）</b>方块实体注册：动力角磨床、强化避雷针、水晶芽床（四种宝石共用）。<br>
- * 注册顺序（方块 → 方块实体 → 物品）见 {@code AllBlockEntityTypes} 的说明；本次拆分是<b>纯搬运</b>。
+ * 注册触发顺序（方块 → 方块实体 → 物品）由 {@code CreateOreExpansion} 按层显式调用；本次拆分是<b>纯搬运</b>。
  */
 public final class CoeBlockEntityTypes {
 
 	public static final BlockEntityEntry<PowerAngleGrinderBlockEntity> POWER_ANGLE_GRINDER = CreateOreExpansion.REGISTRATE
 		.blockEntity("power_angle_grinder", PowerAngleGrinderBlockEntity::new)
-		.validBlocks(AllBlocks.POWER_ANGLE_GRINDER)
+		.validBlocks(CoeBlocks.POWER_ANGLE_GRINDER)
 		.renderer(() -> GrinderRenderer::new)
 		.register();
 
@@ -46,15 +46,19 @@ public final class CoeBlockEntityTypes {
 	/** 强化避雷针方块实体（γ 充能状态；渲染用原版避雷针模型，无需自定义渲染器） */
 	public static final BlockEntityEntry<ReinforcedLightningRodBlockEntity> REINFORCED_LIGHTNING_ROD = CreateOreExpansion.REGISTRATE
 		.blockEntity("reinforced_lightning_rod", ReinforcedLightningRodBlockEntity::new)
-		.validBlocks(AllBlocks.REINFORCED_LIGHTNING_ROD)
+		.validBlocks(CoeBlocks.REINFORCED_LIGHTNING_ROD)
 		.register();
 
 	/** 水晶芽床生长进度方块实体（四种宝石芽床共用） */
 	public static final BlockEntityEntry<CrystalBuddingBlockEntity> CRYSTAL_BUDDING = CreateOreExpansion.REGISTRATE
 		.blockEntity("crystal_budding", CrystalBuddingBlockEntity::new)
-		.validBlocks(AllBlocks.JADE_BUDDING_BLOCK, AllBlocks.TOPAZ_BUDDING_BLOCK,
-			AllBlocks.SAPPHIRE_BUDDING_BLOCK, AllBlocks.STELLARSTONE_BUDDING_BLOCK)
+		.validBlocks(CoeBlocks.JADE_BUDDING_BLOCK, CoeBlocks.TOPAZ_BUDDING_BLOCK,
+			CoeBlocks.SAPPHIRE_BUDDING_BLOCK, CoeBlocks.STELLARSTONE_BUDDING_BLOCK)
 		.register();
+
+/** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
+	public static void register() {
+	}
 
 	private CoeBlockEntityTypes() {
 	}

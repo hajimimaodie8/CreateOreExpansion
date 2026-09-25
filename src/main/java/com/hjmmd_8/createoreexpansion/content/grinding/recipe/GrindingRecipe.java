@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.subcategory.GrindingAssemblySubCategory;
 import com.simibubi.create.compat.jei.category.sequencedAssembly.SequencedAssemblySubCategory;
@@ -65,7 +65,7 @@ public class GrindingRecipe extends StandardProcessingRecipe<RecipeWrapper> impl
 
 	@Override
 	public void addRequiredMachines(Set<ItemLike> list) {
-		list.add(AllBlocks.POWER_ANGLE_GRINDER.get());
+		list.add(CoeBlocks.POWER_ANGLE_GRINDER.get());
 	}
 
 	@Override

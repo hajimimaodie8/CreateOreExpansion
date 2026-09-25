@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
@@ -35,6 +35,6 @@ public class SapphireWaveRegulatorBlock extends AbstractWaveGateBlock<SapphireWa
 
 	@Override
 	public BlockEntityType<? extends SapphireWaveRegulatorBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.SAPPHIRE_WAVE_REGULATOR.get();
+		return CewsBlockEntityTypes.SAPPHIRE_WAVE_REGULATOR.get();
 	}
 }

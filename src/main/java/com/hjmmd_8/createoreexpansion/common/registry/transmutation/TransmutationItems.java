@@ -51,7 +51,7 @@ import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
 /**
  * <b>TRANS（机械嬗化学）</b>物品注册：嬗化构件 / 未完成的嬗化构件（{@code transmute_mechanism}）。
  * 嬗化相关的配方类型、效果与流体不在本类（见 {@code AllTransmutingRecipe} / {@code AllModEffects} / {@code AllFluids}）。<br>
- * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，旧类 {@code AllItems} 保留同类型别名。
+ * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，P2a 已删除 {@code AllItems} 外观类，引用直接指向本层。
  */
 public final class TransmutationItems {
 
@@ -67,6 +67,10 @@ public final class TransmutationItems {
                     provider.basicItem(ctx.get()))
             .removeTab(AllCreativeModeTabs.BASE_TAB.key())
             .register();
+
+/** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
+	public static void register() {
+	}
 
 	private TransmutationItems() {
 	}

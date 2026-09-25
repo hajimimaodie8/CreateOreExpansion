@@ -2,6 +2,8 @@ package com.hjmmd_8.createoreexpansion.common;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -22,7 +24,7 @@ public enum AllCreativeModeTabs {
     // 也就是"本体的矿物线在前，能量波阵学（CEWS）作为独立板块紧跟其后"。
     @SuppressWarnings("Convert2MethodRef")
     BASE_TAB("base_tab", "itemGroup.createoreexpansion",
-            tabKey(EnergyWaveStudyTab.TAB_ID), () -> AllItems.JADE_INGOT.asStack()),
+            tabKey(EnergyWaveStudyTab.TAB_ID), () -> CoeItems.JADE_INGOT.asStack()),
 
     /**
      * <b>机械动力：能量波阵学</b>（Create: Energy Wave Studies，简称 <b>CEWS</b>）。
@@ -37,7 +39,7 @@ public enum AllCreativeModeTabs {
      */
     ENERGY_WAVE_STUDY(EnergyWaveStudyTab.TAB_ID,
             com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(),
-            () -> AllBlocks.JADE_STRESS_CHARGER.asStack());
+            () -> CewsBlocks.JADE_STRESS_CHARGER.asStack());
 
     /** 由 id 构造标签页的 {@link ResourceKey}：<b>不依赖 holder</b>（枚举构造期 holder 还没有）。 */
     private static ResourceKey<CreativeModeTab> tabKey(String id) {

@@ -4,8 +4,8 @@ package com.hjmmd_8.createoreexpansion.foundation.util;
  * 技能发光轮廓颜色 —— 全模组统一的颜色常量与自定义工厂。
  *
  * <p><b>双端纯数据类</b>：仅含浮点颜色常量与 record，不含任何客户端 API，
- * 服务端加载安全。渲染端颜色从技能 NBT 的 OutlineColor 读取（AllItems 注册时写入），
- * 此处提供预定义颜色常量与自定义工厂，供 {@code AllItems.skillColor(...)} 使用。</p>
+ * 服务端加载安全。渲染端颜色从技能 NBT 的 OutlineColor 读取（CoeItems 注册时写入），
+ * 此处提供预定义颜色常量与自定义工厂，供 {@code CoeItems.skillColor(...)} 使用。</p>
  */
 public final class SkillOutlineColors {
 

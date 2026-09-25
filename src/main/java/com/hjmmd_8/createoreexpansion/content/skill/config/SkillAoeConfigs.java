@@ -10,7 +10,7 @@ import net.minecraft.world.level.block.Block;
  *
  * 所有使用 {@code AreaAoeSkill} 的范围挖掘技能（开岩、引渠、平场等）
  * 的长宽高、能量消耗、朝向规则都在本文件统一定义，{@code AllSkills} /
- * {@code AllItems} 只负责引用，不改数值。
+ * {@code CoeItems} 只负责引用，不改数值。
  *
  * 用户叫法为「横向×纵向」（宽×高），如 {@code 5×3 = 横向5格 × 纵向3格}，
  * {@code 5×5×2 = 横向5 × 纵向5 × 深2}。与 {@link AreaUtil} 的

@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
@@ -79,7 +79,7 @@ public class EnergyWaveDisperserBlock extends Block implements com.hjmmd_8.creat
 
 	@Override
 	public BlockEntityType<? extends EnergyWaveDisperserBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.ENERGY_WAVE_DISPERSER.get();
+		return CewsBlockEntityTypes.ENERGY_WAVE_DISPERSER.get();
 	}
 
 	@Override

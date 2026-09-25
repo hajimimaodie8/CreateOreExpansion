@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
@@ -36,7 +36,7 @@ public class WaveQueryGaugeModelRegistration {
 
 	@SubscribeEvent
 	public static void onClientSetup(FMLClientSetupEvent event) {
-		event.enqueueWork(() -> ItemProperties.register(AllItems.WAVE_QUERY_GAUGE.get(), SCANNING,
+		event.enqueueWork(() -> ItemProperties.register(CewsItems.WAVE_QUERY_GAUGE.get(), SCANNING,
 			(stack, level, entity, seed) -> entity instanceof Player player
 				&& player.getCooldowns()
 					.isOnCooldown(stack.getItem()) ? 1.0F : 0.0F));

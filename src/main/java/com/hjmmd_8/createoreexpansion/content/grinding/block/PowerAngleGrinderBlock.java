@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.grinding.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
@@ -85,7 +85,7 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 
 	@Override
 	public BlockEntityType<? extends PowerAngleGrinderBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.POWER_ANGLE_GRINDER.get();
+		return CoeBlockEntityTypes.POWER_ANGLE_GRINDER.get();
 	}
 
 	// ========== 扳手开盖/关盖 ==========

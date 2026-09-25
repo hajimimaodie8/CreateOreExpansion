@@ -4,7 +4,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  * 锄头（耕作）技能 —— 统一配置类（作用范围 / 催熟概率 / 收割额外掉落概率 / 能量 集中修改点）。
  *
  * 所有使用 {@code HoeSkill} 的耕作技能（锄）的范围、催熟概率、收割额外掉落概率
- * 都在本文件统一定义，{@code AllSkills} / {@code AllItems} 只负责引用，不改数值。
+ * 都在本文件统一定义，{@code AllSkills} / {@code CoeItems} 只负责引用，不改数值。
  *
  * 等级说明（范围逐级扩大，收割后额外掉落概率逐级递增）：
  * <ul>

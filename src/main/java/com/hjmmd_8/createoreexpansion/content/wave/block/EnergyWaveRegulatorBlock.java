@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
@@ -39,6 +39,6 @@ public class EnergyWaveRegulatorBlock extends AbstractWaveGateBlock<EnergyWaveRe
 
 	@Override
 	public BlockEntityType<? extends EnergyWaveRegulatorBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.ENERGY_WAVE_REGULATOR.get();
+		return CewsBlockEntityTypes.ENERGY_WAVE_REGULATOR.get();
 	}
 }

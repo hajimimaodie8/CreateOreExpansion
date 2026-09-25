@@ -71,7 +71,7 @@ import java.util.function.Supplier;
  * 能量调级器 ×3、波速调节器 ×3、波差器家族 ×3（四面 / 六面 / 八面）与机壳 ×3
  * （翡翠 / 蓝宝石 / 星辉石；后者是 P1 复核发现的<b>第三个</b>机壳方块，方案文档 §3.2 当时只记了两种）。<br>
  * 归属清单权威出处：{@code markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md} §3.2。
- * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，旧类 {@code AllBlocks} 保留同类型别名。
+ * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，P2a 已删除 {@code AllBlocks} 外观类，引用直接指向本层。
  */
 public final class CewsBlocks {
 
@@ -808,6 +808,10 @@ public final class CewsBlocks {
 			// （运行时判定三支都认：物品标签 ∪ 方块标签 ∪ 注册名约定，见 SeriesTraits#isStellarstone）。
 			.transform(SeriesTraits.addStellarstoneTraits())
 			.register();
+
+/** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
+	public static void register() {
+	}
 
 	private CewsBlocks() {
 	}

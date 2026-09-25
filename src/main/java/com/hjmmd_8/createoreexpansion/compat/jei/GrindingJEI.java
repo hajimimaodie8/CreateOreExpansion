@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
-import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.AdvancedGrindingCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.DismantlingCategory;
@@ -46,23 +46,23 @@ public class GrindingJEI implements IModPlugin {
 
 		CreateRecipeCategory<?> grinding = builder(GrindingRecipe.class)
 			.addTypedRecipes(AllRecipeTypes.GRINDING)
-			.catalyst(AllBlocks.POWER_ANGLE_GRINDER::get)
-			.doubleItemIcon(AllBlocks.POWER_ANGLE_GRINDER.get(), Items.IRON_INGOT)
+			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
+			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), Items.IRON_INGOT)
 			.emptyBackground(177, 70)
 			.build(CreateOreExpansion.modLoc("grinding"), GrindingCategory::new);
 
 		CreateRecipeCategory<?> advanced = builder(AbstractCrushingRecipe.class)
 			.addTypedRecipes(com.simibubi.create.AllRecipeTypes.CRUSHING)
 			.addTypedRecipes(com.simibubi.create.AllRecipeTypes.MILLING)
-			.catalyst(AllBlocks.POWER_ANGLE_GRINDER::get)
-			.doubleItemIcon(AllBlocks.POWER_ANGLE_GRINDER.get(), Items.DIAMOND)
+			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
+			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), Items.DIAMOND)
 			.emptyBackground(177, 70)
 			.build(CreateOreExpansion.modLoc("advanced_grinding"), AdvancedGrindingCategory::new);
 
 		CreateRecipeCategory<?> dismantling = builder(DismantlingRecipe.class)
 			.addTypedRecipes(AllRecipeTypes.DISMANTLING)
-			.catalyst(AllBlocks.POWER_ANGLE_GRINDER::get)
-			.doubleItemIcon(AllBlocks.POWER_ANGLE_GRINDER.get(), AllItems.SAPPHIRE_INGOT.get())
+			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
+			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), CoeItems.SAPPHIRE_INGOT.get())
 			.emptyBackground(177, 70)
 			.build(CreateOreExpansion.modLoc("dismantling"), DismantlingCategory::new);
 

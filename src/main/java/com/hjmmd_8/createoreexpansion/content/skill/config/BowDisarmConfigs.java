@@ -4,7 +4,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  * 缴械风暴（弓技能二）—— 统一配置类（能量 / 冷却 / 范围 / 进包概率 / 扒防具 集中修改点）。
  *
  * <p>所有使用 {@code BowDisarmSkill} 的缴械风暴技能的效果数值都在本文件统一定义，
- * {@code AllSkills} / {@code AllItems} 只负责引用，不改数值。</p>
+ * {@code AllSkills} / {@code CoeItems} 只负责引用，不改数值。</p>
  *
  * <p>等级说明（等级越高范围越大、进包概率越高）：</p>
  * <ul>

@@ -1,4 +1,5 @@
 package com.hjmmd_8.createoreexpansion.common;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
@@ -11,7 +12,7 @@ import java.util.function.Supplier;
 /**
  * 所有工具Tier的枚举类。
  *
- * @see AllItems
+ * @see com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems
  * @see net.minecraft.world.item.Tiers
  * @see net.minecraft.world.item.Tier
  * @author Leaf
@@ -21,15 +22,15 @@ public enum AllTiers implements Tier {
     //     ↓耐久基数        速度                伤害                附魔值
     JADE(1600, 8.5F, 3.5F, 15,
     //                不可挖掘方块                                   修复材料
-            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllItems.JADE_INGOT.get())),
+            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(CoeItems.JADE_INGOT.get())),
     TOPAZ(1828, 9.5F, 4.0F, 14,
-            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(AllItems.TOPAZ_INGOT.get())),
+            BlockTags.INCORRECT_FOR_DIAMOND_TOOL, () -> Ingredient.of(CoeItems.TOPAZ_INGOT.get())),
     SAPPHIRE(2048, 10.0F, 4.5F, 16,
-            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(AllItems.SAPPHIRE_INGOT.get())),
+            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(CoeItems.SAPPHIRE_INGOT.get())),
     STELLARSTONE(2400, 11.0F, 5.0F, 17,
-            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(AllItems.STELLARSTONE_INGOT.get())),
+            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(CoeItems.STELLARSTONE_INGOT.get())),
     THUNDERITE(2400, 11.0F, 5.0F, 16,
-            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(AllItems.THUNDERITE_INGOT.get()));
+            BlockTags.INCORRECT_FOR_NETHERITE_TOOL, () -> Ingredient.of(CoeItems.THUNDERITE_INGOT.get()));
 
     private final int uses;
     private final float speed;

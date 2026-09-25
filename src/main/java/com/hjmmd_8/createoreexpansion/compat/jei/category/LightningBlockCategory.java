@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.compat.jei.category;
 
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.simibubi.create.compat.jei.category.animations.AnimatedKinetics;
@@ -77,7 +78,7 @@ public class LightningBlockCategory extends ProcessingViaFanCategory.MultiOutput
 
 	@Override
 	protected void renderAttachedBlock(GuiGraphics graphics) {
-		GuiGameElement.of(com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.getDefaultState())
+		GuiGameElement.of(com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks.REINFORCED_LIGHTNING_ROD.getDefaultState())
 			.scale(SCALE)
 			.atLocal(0, 0, 2)
 			.lighting(AnimatedKinetics.DEFAULT_LIGHTING)

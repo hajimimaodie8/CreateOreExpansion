@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
@@ -56,30 +58,30 @@ public final class EnergyWaveStudyTab {
 	 */
 	public static final List<Supplier<ItemStack>> CONTENTS = List.of(
 		// —— 应力充能器：三条矿物线各一台（翡翠 1~3 级 / 蓝宝石 1~5 级 / 星辉石 1~5 级手动档）——
-		AllBlocks.JADE_STRESS_CHARGER::asStack,
-		AllBlocks.SAPPHIRE_STRESS_CHARGER::asStack,
-		AllBlocks.STELLARSTONE_STRESS_CHARGER::asStack,
+		CewsBlocks.JADE_STRESS_CHARGER::asStack,
+		CewsBlocks.SAPPHIRE_STRESS_CHARGER::asStack,
+		CewsBlocks.STELLARSTONE_STRESS_CHARGER::asStack,
 		// —— 能量场控制器：能量场（加速/偏转/赋能）的场源 ——
-		AllBlocks.ENERGY_FIELD_CONTROLLER::asStack,
+		CewsBlocks.ENERGY_FIELD_CONTROLLER::asStack,
 		// —— 星辉波变器：把普通波转成全能波（加工波变态）/ 点燃成攻击波（攻击波变态）——
-		AllBlocks.STELLAR_WAVE_TRANSMUTER::asStack,
+		CewsBlocks.STELLAR_WAVE_TRANSMUTER::asStack,
 		// —— 能量调级器：穿过即按顺/逆基准升一级或降一级（三种材质）——
-		AllBlocks.ENERGY_WAVE_REGULATOR::asStack,
-		AllBlocks.SAPPHIRE_WAVE_REGULATOR::asStack,
-		AllBlocks.STELLARSTONE_WAVE_REGULATOR::asStack,
+		CewsBlocks.ENERGY_WAVE_REGULATOR::asStack,
+		CewsBlocks.SAPPHIRE_WAVE_REGULATOR::asStack,
+		CewsBlocks.STELLARSTONE_WAVE_REGULATOR::asStack,
 		// —— 波速调节器：穿过即加减波速（三种材质）——
-		AllBlocks.WAVE_SPEED_REGULATOR::asStack,
-		AllBlocks.SAPPHIRE_SPEED_REGULATOR::asStack,
-		AllBlocks.STELLARSTONE_SPEED_REGULATOR::asStack,
+		CewsBlocks.WAVE_SPEED_REGULATOR::asStack,
+		CewsBlocks.SAPPHIRE_SPEED_REGULATOR::asStack,
+		CewsBlocks.STELLARSTONE_SPEED_REGULATOR::asStack,
 		// —— 波差器家族：把波按开口分配/转向/降级/分裂（四面 / 六面 / 八面）——
-		AllBlocks.ENERGY_WAVE_DISPERSER::asStack,
-		AllBlocks.SIX_FACE_DISPERSER::asStack,
-		AllBlocks.OCTA_ENERGY_WAVE_DIFFERENCER::asStack,
+		CewsBlocks.ENERGY_WAVE_DISPERSER::asStack,
+		CewsBlocks.SIX_FACE_DISPERSER::asStack,
+		CewsBlocks.OCTA_ENERGY_WAVE_DIFFERENCER::asStack,
 		// —— 机壳：本模块机器的外壳建材（也是 Create 机壳标签成员，可用来包轴/齿轮）——
-		AllBlocks.JADE_CASING::asStack,
-		AllBlocks.SAPPHIRE_CASING::asStack,
+		CewsBlocks.JADE_CASING::asStack,
+		CewsBlocks.SAPPHIRE_CASING::asStack,
 		// —— 波情查询仪：右键报最近一只波的五要素（波速/波级/波载荷/波型/剩余寿命）——
-		AllItems.WAVE_QUERY_GAUGE::asStack);
+		CewsItems.WAVE_QUERY_GAUGE::asStack);
 
 	/**
 	 * 标签页内容构建（MOD 总线上由 {@code CreateOreExpansion} 构造器注册）：

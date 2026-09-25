@@ -1,4 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -153,7 +155,7 @@ public final class StellarWaveMachineCatalog {
 	 */
 	private static void registerOwnMachines() {
 		StellarWaveMachineRegistry.register(
-			com.hjmmd_8.createoreexpansion.common.AllBlocks.POWER_ANGLE_GRINDER.get())
+			com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks.POWER_ANGLE_GRINDER.get())
 			.addTypes(com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.GRINDING,
 				com.simibubi.create.AllRecipeTypes.CRUSHING, com.simibubi.create.AllRecipeTypes.MILLING,
 				com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.DISMANTLING)
@@ -163,13 +165,13 @@ public final class StellarWaveMachineCatalog {
 		// （充电配方同样是 ProcessingRecipe 族，会进全库池；类型门打开后必须有机器提供该类型，
 		//  否则"变体波给工具充能"这类老玩法会因没有携带者而被挡掉）
 		registerMachine(
-			com.hjmmd_8.createoreexpansion.common.AllBlocks.JADE_STRESS_CHARGER.get(),
+			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.JADE_STRESS_CHARGER.get(),
 			com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.CHARGING);
 		registerMachine(
-			com.hjmmd_8.createoreexpansion.common.AllBlocks.SAPPHIRE_STRESS_CHARGER.get(),
+			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.SAPPHIRE_STRESS_CHARGER.get(),
 			com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.CHARGING);
 		registerMachine(
-			com.hjmmd_8.createoreexpansion.common.AllBlocks.STELLARSTONE_STRESS_CHARGER.get(),
+			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.STELLARSTONE_STRESS_CHARGER.get(),
 			com.hjmmd_8.createoreexpansion.common.AllRecipeTypes.CHARGING);
 	}
 

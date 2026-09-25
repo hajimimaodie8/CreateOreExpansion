@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
@@ -71,7 +71,7 @@ public class SixFaceDisperserBlock extends Block implements com.hjmmd_8.createor
 
 	@Override
 	public BlockEntityType<? extends SixFaceDisperserBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.SIX_FACE_DISPERSER.get();
+		return CewsBlockEntityTypes.SIX_FACE_DISPERSER.get();
 	}
 
 	@Override

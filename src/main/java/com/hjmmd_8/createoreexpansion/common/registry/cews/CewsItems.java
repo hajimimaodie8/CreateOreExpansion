@@ -51,7 +51,7 @@ import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
 /**
  * <b>CEWS（能量波阵学）</b>物品注册：能量构件 / 未完成的能量构件（{@code energy_mechanism}，
  * 按方案文档 §3.2 建议①归本层）与波情查询仪。<br>
- * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，旧类 {@code AllItems} 保留同类型别名。
+ * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，P2a 已删除 {@code AllItems} 外观类，引用直接指向本层。
  */
 public final class CewsItems {
 
@@ -77,6 +77,10 @@ public final class CewsItems {
             // 避免 datagen 另生成一份同名模型（做法与 jade_topaz_bow 一致）
             .model((ctx, provider) -> {})
             .register();
+
+/** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
+	public static void register() {
+	}
 
 	private CewsItems() {
 	}

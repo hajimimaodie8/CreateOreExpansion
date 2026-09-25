@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.common.AllFluids;
-import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.AllModEffects;
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
@@ -46,7 +46,7 @@ public final class MedallionEffectHandler {
     public static void onFall(LivingFallEvent event) {
         if (event.getEntity() instanceof Player player
             && Math.random() < 0.5
-            && IMedallion.isWearing(player, AllItems.TOPAZ_STRESS_MEDALLION.get())) {
+            && IMedallion.isWearing(player, CoeItems.TOPAZ_STRESS_MEDALLION.get())) {
             event.setCanceled(true);
         }
     }
@@ -57,7 +57,7 @@ public final class MedallionEffectHandler {
         if (event.getEntity() instanceof Player player
             && event.getEffectInstance() != null
             && event.getEffectInstance().getEffect() == AllModEffects.TRANSMUTATION_DISORDER.get()
-            && IMedallion.isWearing(player, AllItems.STELLARSTONE_STRESS_MEDALLION.get())) {
+            && IMedallion.isWearing(player, CoeItems.STELLARSTONE_STRESS_MEDALLION.get())) {
             event.setResult(MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
         }
     }
@@ -153,7 +153,7 @@ public final class MedallionEffectHandler {
             return;
         boolean absorbed = false;
         // 佩戴雷鸣佩：豁免销毁并把佩补满（未装 Curios 时 findEquipped 恒空 → 本分支不进）
-        ItemStack worn = IMedallion.findEquipped(player, AllItems.THUNDERITE_STRESS_MEDALLION.get());
+        ItemStack worn = IMedallion.findEquipped(player, CoeItems.THUNDERITE_STRESS_MEDALLION.get());
         if (!worn.isEmpty()) {
             ToolEnergy.setEnergy(worn, ToolEnergy.getMaxEnergy(worn));
             absorbed = true;

@@ -5,7 +5,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  *
  * 所有使用 {@code FellingSkill} 的砍树技能（斧）的搜索范围、方块数量上限、
  * 砍伐对象、能量消耗、速度衰减都在本文件统一定义，{@code AllSkills} /
- * {@code AllItems} 只负责引用，不改数值。
+ * {@code CoeItems} 只负责引用，不改数值。
  *
  * 等级说明：
  * <ul>

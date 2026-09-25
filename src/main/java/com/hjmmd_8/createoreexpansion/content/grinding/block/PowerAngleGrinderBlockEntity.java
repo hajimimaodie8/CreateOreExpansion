@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.grinding.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.GrinderInventory;
@@ -88,7 +88,7 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	public static void registerCapabilities(RegisterCapabilitiesEvent event) {
 		event.registerBlockEntity(
 			Capabilities.ItemHandler.BLOCK,
-			AllBlockEntityTypes.POWER_ANGLE_GRINDER.get(),
+			CoeBlockEntityTypes.POWER_ANGLE_GRINDER.get(),
 			(be, context) -> {
 				// 无方向访问（管道等）：全允许
 				if (context == null)

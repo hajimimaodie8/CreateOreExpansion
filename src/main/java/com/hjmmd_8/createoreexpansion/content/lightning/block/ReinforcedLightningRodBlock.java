@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.lightning.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.simibubi.create.foundation.block.IBE;
 
 import net.minecraft.core.BlockPos;
@@ -47,7 +47,7 @@ public class ReinforcedLightningRodBlock extends LightningRodBlock implements IB
 
 	@Override
 	public BlockEntityType<? extends ReinforcedLightningRodBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.REINFORCED_LIGHTNING_ROD.get();
+		return CoeBlockEntityTypes.REINFORCED_LIGHTNING_ROD.get();
 	}
 
 	/** 方块实体 ticker：冷却递减 + 有充能时金色电光粒子 */

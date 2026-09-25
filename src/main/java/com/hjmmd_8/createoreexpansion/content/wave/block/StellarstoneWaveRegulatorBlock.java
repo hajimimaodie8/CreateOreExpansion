@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
@@ -36,6 +36,6 @@ public class StellarstoneWaveRegulatorBlock extends AbstractWaveGateBlock<Stella
 
 	@Override
 	public BlockEntityType<? extends StellarstoneWaveRegulatorBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.STELLARSTONE_WAVE_REGULATOR.get();
+		return CewsBlockEntityTypes.STELLARSTONE_WAVE_REGULATOR.get();
 	}
 }

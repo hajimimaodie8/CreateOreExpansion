@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.ChargingCategory;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
@@ -45,9 +45,9 @@ public class ChargingJEI implements IModPlugin {
 		// 全部充能等级共用一个分类：配方按卡片内等级徽章区分
 		allCategories.add(builder(ChargingRecipe.class)
 			.addAllRecipesIf(recipe -> recipe.value() instanceof ChargingRecipe)
-			.catalyst(AllBlocks.JADE_STRESS_CHARGER::get)
-			.catalyst(AllBlocks.SAPPHIRE_STRESS_CHARGER::get)
-			.itemIcon(AllBlocks.JADE_STRESS_CHARGER.get())
+			.catalyst(CewsBlocks.JADE_STRESS_CHARGER::get)
+			.catalyst(CewsBlocks.SAPPHIRE_STRESS_CHARGER::get)
+			.itemIcon(CewsBlocks.JADE_STRESS_CHARGER.get())
 			.emptyBackground(177, 70)
 			.build(CreateOreExpansion.modLoc("charging"), ChargingCategory::new));
 	}

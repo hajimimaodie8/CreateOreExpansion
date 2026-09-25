@@ -32,8 +32,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * <p><b>⚠ 本 mixin 禁止引用本 mod 的任何类（2026-09 启动崩溃修复）</b>：{@code PoiTypes} 在
  * {@code BuiltInRegistries.<clinit>}（bootstrap 极早期）就会被加载，Mixin 在<b>类转换阶段</b>
  * 必须解析本类方法体里的每一处静态引用；此时 mod 类加载器尚未就绪——原先写
- * {@code state.is(AllBlocks.REINFORCED_LIGHTNING_ROD.get())} 会触发
- * {@code ClassNotFoundException: ...common.AllBlocks} → {@code MixinPreProcessorException}
+ * {@code state.is(CoeBlocks.REINFORCED_LIGHTNING_ROD.get())} 会触发
+ * {@code ClassNotFoundException}（当时指向 {@code common.AllBlocks}，P2a 后该类已删除） → {@code MixinPreProcessorException}
  * → 启动直接崩溃。故此处改为<b>注册 id 字符串 + 懒解析</b>：类转换期只需 MC 自带类型
  * （{@link ResourceLocation} 常量），方块引用推迟到方法真正执行时（那时 BLOCK 注册表已就绪）
  * 才从 {@link BuiltInRegistries#BLOCK} 查得。</p>

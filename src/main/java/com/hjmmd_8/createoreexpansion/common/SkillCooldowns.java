@@ -9,9 +9,9 @@ import java.util.Map;
 /**
  * 技能冷却时长注册表 —— 全模组统一的冷却时间管理系统。
  *
- * <p>自由度高：任何武器想自定义技能冷却，只需在 {@code AllItems} 中注册一次：</p>
+ * <p>自由度高：任何武器想自定义技能冷却，只需在 {@code CoeItems} 中注册一次：</p>
  * <pre>
- * SkillCooldowns.register(AllItems.JADE_SWORD.get(), 20); // 1 秒
+ * SkillCooldowns.register(CoeItems.JADE_SWORD.get(), 20); // 1 秒
  * </pre>
  *
  * <p>触发端（如 {@code HurtLivingEntityHandler}）统一从注册表读取冷却时长。</p>

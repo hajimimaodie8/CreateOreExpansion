@@ -235,7 +235,7 @@ public final class AllSkills {
         /**
          * 注册「等级 → 配置」映射（一技能多等级）。
          *
-         * <p>{@code AllItems.addSkills(技能, 等级)} 时，等级参数会同时决定
+         * <p>{@code CoeItems} 注册链上的 {@code addSkills(技能, 等级)} 时，等级参数会同时决定
          * 显示等级与实际数值等级（从映射取对应配置）。未设置映射时等级仅用于显示。</p>
          *
          * @param configsByLevel 输入等级（1 起）返回该等级的实际配置

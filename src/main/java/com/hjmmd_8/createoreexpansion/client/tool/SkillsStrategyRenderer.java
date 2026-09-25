@@ -94,7 +94,7 @@ public class SkillsStrategyRenderer {
             boolean selected = (slot == 0 && key1) || (slot == 1 && key2) || (slot == 2 && key3);
             if (!selected) continue;
 
-            // 颜色来源：从技能 NBT 的 OutlineColor 读取（AllItems 注册时写入）
+            // 颜色来源：从技能 NBT 的 OutlineColor 读取（CoeItems 注册时写入）
             SkillRendererConfig config = SkillRendererConfig.defaultConfig(data);
 
             if (data.nbt != null && data.nbt.contains("OutlineColor")) {

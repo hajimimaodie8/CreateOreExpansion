@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.client;
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
 import com.hjmmd_8.createoreexpansion.client.renderer.EmptyEntityRenderer;
 import com.hjmmd_8.createoreexpansion.common.AllEntityTypes;
-import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 
 import net.minecraft.client.renderer.entity.EntityRenderers;
@@ -28,7 +28,7 @@ public class JadeTopazBowModelRegistration {
         EntityRenderers.register(AllEntityTypes.STELLAR_WAVE.get(), EmptyEntityRenderer::new);
 
         event.enqueueWork(() -> {
-            ItemProperties.register(AllItems.JADE_TOPAZ_BOW.get(),
+            ItemProperties.register(CoeItems.JADE_TOPAZ_BOW.get(),
                 ResourceLocation.withDefaultNamespace("pull"),
                 (stack, level, entity, seed) -> {
                     if (entity == null)
@@ -37,7 +37,7 @@ public class JadeTopazBowModelRegistration {
                         : (float) (stack.getUseDuration(entity) - entity.getUseItemRemainingTicks()) / 25.0F;
                 });
 
-            ItemProperties.register(AllItems.JADE_TOPAZ_BOW.get(),
+            ItemProperties.register(CoeItems.JADE_TOPAZ_BOW.get(),
                 ResourceLocation.withDefaultNamespace("pulling"),
                 (stack, level, entity, seed) ->
                     entity != null && entity.isUsingItem() && entity.getUseItem() == stack ? 1.0F : 0.0F);

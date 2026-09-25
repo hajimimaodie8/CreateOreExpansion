@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllStructureProcessors;
 import com.mojang.serialization.MapCodec;
 
@@ -89,7 +89,7 @@ public class BastionTreasureSapphireProcessor extends StructureProcessor {
 			StructureBlockInfo info = processedBlocks.get(i);
 			if (!info.pos().equals(target))
 				continue;
-			BlockState sapphire = AllBlocks.SAPPHIRE_BLOCK.getDefaultState();
+			BlockState sapphire = CoeBlocks.SAPPHIRE_BLOCK.getDefaultState();
 			processedBlocks.set(i, new StructureBlockInfo(info.pos(), sapphire, info.nbt()));
 			break;
 		}

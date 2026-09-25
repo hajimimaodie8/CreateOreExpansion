@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.wave.block.EnergyWaveDisperserBlock;
 import com.hjmmd_8.createoreexpansion.content.wave.block.MachineFaceQuadrants;
 import com.simibubi.create.AllSoundEvents;
@@ -173,7 +173,7 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 
 	@Override
 	public BlockEntityType<? extends StellarWaveTransmuterBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.STELLAR_WAVE_TRANSMUTER.get();
+		return CewsBlockEntityTypes.STELLAR_WAVE_TRANSMUTER.get();
 	}
 
 	// ========== 开口属性 ↔ 世界方向 ==========
@@ -267,11 +267,11 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	 * {@code NORTH=8 / EAST=4 / SOUTH=2 / WEST=1}（{@link #portMask} 是它的逆运算；两端一一对应、
 	 * 必须同步改，见下）。</p>
 	 *
-	 * <p><b>2026-09 注释修正（只改注释，实现不动）</b>：原文写"掩码位序与 {@code AllBlocks} datagen
+	 * <p><b>2026-09 注释修正（只改注释，实现不动）</b>：原文写"掩码位序与 {@code CewsBlocks} datagen
 	 * 的变体号一致：NORTH=8 / EAST=4 / SOUTH=2 / WEST=1"——后半句的位序描述本身没错（它就是本类掩码），
-	 * 但"与 datagen 变体号一致"这半句是错的。实测 {@code AllBlocks} 生成变体时用的是
+	 * 但"与 datagen 变体号一致"这半句是错的。实测 {@code CewsBlocks} 生成变体时用的是
 	 * <b>{@code NORTH=8 / SOUTH=4 / WEST=2 / EAST=1}</b>（north-only→变体 8、south-only→4、
-	 * west-only→2、east-only→1），生成的 blockstates 亦然：<b>这一份才是与 AllBlocks datagen
+	 * west-only→2、east-only→1），生成的 blockstates 亦然：<b>这一份才是与 CewsBlocks datagen
 	 * 变体位同序的顺序</b>。也就是说本类掩码把 EAST 放在位 4、SOUTH 放在位 2，与 datagen 变体位序
 	 * 在 E/S、W/E 两处互换，<b>两者不同序</b>，切勿按变体号反推掩码位。掩码只要求本类读写两端自洽
 	 * （功能正常，改动其一必须同步另一端），故实现保持原样。</p>
@@ -300,7 +300,7 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 
 	/**
 	 * <b>读当前 4 个波口为一个 4 位掩码</b>（位序 {@code NORTH=8 / EAST=4 / SOUTH=2 / WEST=1}，
-	 * 见 {@link #withPortMask} 的说明；<b>注意与 {@code AllBlocks} datagen 的变体位序
+	 * 见 {@link #withPortMask} 的说明；<b>注意与 {@code CewsBlocks} datagen 的变体位序
 	 * {@code NORTH=8 / SOUTH=4 / WEST=2 / EAST=1} 不同序</b>，不要混用）。
 	 *
 	 * <p>用途：攻击波变态会在进入的那一刻把四口强制全开并锁死（规格 1/2），玩家自己设的口位被覆盖，
@@ -309,7 +309,7 @@ public class StellarWaveTransmuterBlock extends DirectionalKineticBlock
 	 */
 	public static int portMask(BlockState state) {
 		// 与 withPortMask 严格互逆：NORTH=8 / EAST=4 / SOUTH=2 / WEST=1。
-		// （这不是 AllBlocks datagen 的变体位序——变体位序是 N=8 / S=4 / W=2 / E=1。）
+		// （这不是 CewsBlocks datagen 的变体位序——变体位序是 N=8 / S=4 / W=2 / E=1。）
 		return (state.getValue(NORTH) ? 8 : 0) | (state.getValue(EAST) ? 4 : 0)
 			| (state.getValue(SOUTH) ? 2 : 0) | (state.getValue(WEST) ? 1 : 0);
 	}

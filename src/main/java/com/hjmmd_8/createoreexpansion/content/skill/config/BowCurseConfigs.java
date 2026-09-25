@@ -4,7 +4,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  * 凋零诅咒（弓技能一）—— 统一配置类（能量 / 冷却 / 效果持续 / 升级概率 / 药水云 集中修改点）。
  *
  * <p>所有使用 {@code BowCurseSkill} 的凋零诅咒技能的效果数值都在本文件统一定义，
- * {@code AllSkills} / {@code AllItems} 只负责引用，不改数值。</p>
+ * {@code AllSkills} / {@code CoeItems} 只负责引用，不改数值。</p>
  *
  * <p>等级说明（等级越高效果越强）：</p>
  * <ul>

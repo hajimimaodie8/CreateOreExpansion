@@ -1,4 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.AllSoundEvents;
@@ -55,7 +56,7 @@ public class OctaEnergyWaveDifferencerBlock extends Block implements com.hjmmd_8
 
 	@Override
 	public BlockEntityType<? extends OctaEnergyWaveDifferencerBlockEntity> getBlockEntityType() {
-		return com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes.OCTA_ENERGY_WAVE_DIFFERENCER.get();
+		return com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes.OCTA_ENERGY_WAVE_DIFFERENCER.get();
 	}
 
 	/** 北面开口（正交，模型侧面中心 6×16） */

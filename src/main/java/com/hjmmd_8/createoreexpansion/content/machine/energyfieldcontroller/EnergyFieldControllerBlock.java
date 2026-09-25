@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldType;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
@@ -168,7 +168,7 @@ public class EnergyFieldControllerBlock extends DirectionalKineticBlock
 
 	@Override
 	public BlockEntityType<? extends EnergyFieldControllerBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.ENERGY_FIELD_CONTROLLER.get();
+		return CewsBlockEntityTypes.ENERGY_FIELD_CONTROLLER.get();
 	}
 
 	// ========== 光照规则（仿 Create 机器，同充能器） ==========

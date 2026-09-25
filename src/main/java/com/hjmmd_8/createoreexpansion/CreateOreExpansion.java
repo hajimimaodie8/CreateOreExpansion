@@ -2,6 +2,13 @@ package com.hjmmd_8.createoreexpansion;
 
 import com.hjmmd_8.createoreexpansion.client.ChargerKineticTooltip;
 import com.hjmmd_8.createoreexpansion.common.*;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionBindingRecipe;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.simibubi.create.foundation.item.ItemDescription;
@@ -60,15 +67,19 @@ public class CreateOreExpansion {
 
         AllDataComponents.register(modEventBus);
         AllEntityTypes.register(modEventBus);
-        AllBlocks.register();
-        AllBlockEntityTypes.register();
+        // P2a：原来的 AllBlocks / AllBlockEntityTypes 外观类已删除，这里按层显式触发类初始化。
+        // 顺序必须保持"方块层 → 方块实体层"、且每层内部先 COE 再 CEWS（与拆分前逐层一致）。
+        CoeBlocks.register();
+        CewsBlocks.register();
+        CoeBlockEntityTypes.register();
+        CewsBlockEntityTypes.register();
         AllTiers.register();
 
         // Curios 可选联动（凝能佩/凝能之佩）：Curios 已从 required 降为 optional，因此
         // ① mods.toml 里 type=optional；② 所有 Curios API 调用只存在于 compat.curios 下的
         //    CurioMedallionBridge / CurioMedallionItems；③ 仅当 Curios 已安装时才 Class.forName
         //    触发桥接（未装时绝不触碰 Curios 类 → 不会 NoClassDefFoundError）。
-        // 必须在 AllItems.register() 之前：凝能佩的物品工厂按"桥接在不在"选饰品支线/纯物品支线两支类
+        // 必须在 CoeItems.register() 之前：凝能佩的物品工厂按"桥接在不在"选饰品支线/纯物品支线两支类
         // （注册 id 与显示名两支一致，玩家侧无感）。
         if (net.neoforged.fml.ModList.get().isLoaded("curios")) {
             try {
@@ -81,7 +92,10 @@ public class CreateOreExpansion {
             LOGGER.info("[Curios] 未安装 Curios：凝能佩按纯物品注册（可合成/可持有/可绑定，无饰品槽效果）");
         }
 
-        AllItems.register();
+        // P2a：按层显式触发物品注册类初始化（COE → CEWS → TRANS，与拆分前一致）
+        CoeItems.register();
+        CewsItems.register();
+        TransmutationItems.register();
         AllGemTags.register();
         AllFluids.register();
         AllModEffects.register(modEventBus);

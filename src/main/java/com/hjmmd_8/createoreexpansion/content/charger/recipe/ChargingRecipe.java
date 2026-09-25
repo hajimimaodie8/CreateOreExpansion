@@ -6,7 +6,7 @@ import java.util.function.Supplier;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.subcategory.ChargingAssemblySubCategory;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
@@ -177,9 +177,9 @@ public class ChargingRecipe extends ProcessingRecipe<RecipeWrapper, ChargingReci
 		// 按配方等级分流所需机器（JEI/装配显示）：
 		// 1~3 级（α/β/γ）由翡翠充能器产出；4/5 级（ε/ω）只有蓝宝石充能器能产出
 		if (getLevel() <= WaveLevels.JADE_MAX)
-			list.add(AllBlocks.JADE_STRESS_CHARGER.get());
+			list.add(CewsBlocks.JADE_STRESS_CHARGER.get());
 		else
-			list.add(AllBlocks.SAPPHIRE_STRESS_CHARGER.get());
+			list.add(CewsBlocks.SAPPHIRE_STRESS_CHARGER.get());
 	}
 
 	@Override

@@ -4,7 +4,7 @@ package com.hjmmd_8.createoreexpansion.content.crystal;
  * 可生长水晶 —— 统一生长参数配置（模组内唯一修改点，改数值即改生长速度，无需配置文件）。
  *
  * <p>4 种宝石（翡翠/黄玉/蓝宝石/星辉石）的生长速度都在本文件统一定义，
- * {@code AllBlocks} 只负责引用，不改数值。</p>
+ * {@code CoeBlocks} 只负责引用，不改数值。</p>
  *
  * <p>参数说明：</p>
  * <ul>

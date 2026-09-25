@@ -72,7 +72,7 @@ import java.util.function.Supplier;
  * 与 {@code CewsBlocks}、{@code CewsBlockEntityTypes} 的分区见
  * {@code markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md} §3.2。
  * <p>本次拆分是<b>纯搬运</b>：注册 id / 贴图路径 / 数值 / 链式调用一字未改，
- * 旧类 {@code AllBlocks} 保留同名同类型的别名，仓库内 435 处引用点无需改动。</p>
+ * P2a 已删除 {@code AllBlocks} 外观类，全仓引用点直接指向本层，注册 id 与行为零变化。</p>
  */
 public final class CoeBlocks {
 
@@ -87,7 +87,7 @@ public final class CoeBlocks {
 				.lookupOrThrow(Registries.ENCHANTMENT);
 			lt.add(block, lt.createSilkTouchDispatchTable(block,
 				lt.applyExplosionDecay(block,
-					LootItem.lootTableItem(AllItems.RAW_JADE.get())
+					LootItem.lootTableItem(CoeItems.RAW_JADE.get())
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
@@ -106,7 +106,7 @@ public final class CoeBlocks {
 				.lookupOrThrow(Registries.ENCHANTMENT);
 			lt.add(block, lt.createSilkTouchDispatchTable(block,
 				lt.applyExplosionDecay(block,
-					LootItem.lootTableItem(AllItems.RAW_JADE.get())
+					LootItem.lootTableItem(CoeItems.RAW_JADE.get())
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
@@ -154,7 +154,7 @@ public final class CoeBlocks {
 				.lookupOrThrow(Registries.ENCHANTMENT);
 			lt.add(block, lt.createSilkTouchDispatchTable(block,
 				lt.applyExplosionDecay(block,
-					LootItem.lootTableItem(AllItems.RAW_TOPAZ.get())
+					LootItem.lootTableItem(CoeItems.RAW_TOPAZ.get())
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
@@ -173,7 +173,7 @@ public final class CoeBlocks {
 				.lookupOrThrow(Registries.ENCHANTMENT);
 			lt.add(block, lt.createSilkTouchDispatchTable(block,
 				lt.applyExplosionDecay(block,
-					LootItem.lootTableItem(AllItems.RAW_TOPAZ.get())
+					LootItem.lootTableItem(CoeItems.RAW_TOPAZ.get())
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
@@ -221,7 +221,7 @@ public final class CoeBlocks {
 				.lookupOrThrow(Registries.ENCHANTMENT);
 			lt.add(block, lt.createSilkTouchDispatchTable(block,
 				lt.applyExplosionDecay(block,
-					LootItem.lootTableItem(AllItems.RAW_SAPPHIRE.get())
+					LootItem.lootTableItem(CoeItems.RAW_SAPPHIRE.get())
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
@@ -269,7 +269,7 @@ public final class CoeBlocks {
 				.lookupOrThrow(Registries.ENCHANTMENT);
 			lt.add(block, lt.createSilkTouchDispatchTable(block,
 				lt.applyExplosionDecay(block,
-					LootItem.lootTableItem(AllItems.RAW_STELLARSTONE.get())
+					LootItem.lootTableItem(CoeItems.RAW_STELLARSTONE.get())
 						.apply(ApplyBonusCount.addOreBonusCount(ench.getOrThrow(Enchantments.FORTUNE))))));
 		})
 		.item()
@@ -449,87 +449,87 @@ public final class CoeBlocks {
 
 	/** 翡翠水晶小芽（仿原版小紫水晶芽尺寸） */
 	public static final BlockEntry<CrystalClusterBlock> JADE_SMALL_BUD = crystalBud("jade_small_bud", 3, 4,
-		() -> AllBlocks.JADE_MEDIUM_BUD.get(), null, 0, null, CrystalGrowthConfigs.JADE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.JADE_MEDIUM_BUD.get(), null, 0, null, CrystalGrowthConfigs.JADE_BUD_STAGE_SECONDS);
 
 	/** 翡翠水晶中芽（挖掘掉落小块翡翠 ×1，时运额外小块有概率） */
 	public static final BlockEntry<CrystalClusterBlock> JADE_MEDIUM_BUD = crystalBud("jade_medium_bud", 4, 3,
-		() -> AllBlocks.JADE_LARGE_BUD.get(), () -> AllItems.JADE_SMALL_SHARD.get(), 1, null, CrystalGrowthConfigs.JADE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.JADE_LARGE_BUD.get(), () -> CoeItems.JADE_SMALL_SHARD.get(), 1, null, CrystalGrowthConfigs.JADE_BUD_STAGE_SECONDS);
 
 	/** 翡翠水晶大芽（挖掘掉落小块翡翠 ×2，时运额外小块有概率） */
 	public static final BlockEntry<CrystalClusterBlock> JADE_LARGE_BUD = crystalBud("jade_large_bud", 5, 2,
-		() -> AllBlocks.JADE_CLUSTER.get(), () -> AllItems.JADE_SMALL_SHARD.get(), 2, null, CrystalGrowthConfigs.JADE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.JADE_CLUSTER.get(), () -> CoeItems.JADE_SMALL_SHARD.get(), 2, null, CrystalGrowthConfigs.JADE_BUD_STAGE_SECONDS);
 
 	/** 翡翠水晶簇（成熟，挖掘掉落大块翡翠 ×1，时运额外只能是小块翡翠） */
 	public static final BlockEntry<CrystalClusterBlock> JADE_CLUSTER = crystalBud("jade_cluster", 7, 3,
-		null, () -> AllItems.JADE_BIG_SHARD.get(), 1, () -> AllItems.JADE_SMALL_SHARD.get(), CrystalGrowthConfigs.JADE_BUD_STAGE_SECONDS);
+		null, () -> CoeItems.JADE_BIG_SHARD.get(), 1, () -> CoeItems.JADE_SMALL_SHARD.get(), CrystalGrowthConfigs.JADE_BUD_STAGE_SECONDS);
 
 	/** 翡翠水晶芽床（母岩，挖掉只掉粗翡翠，不可搬迁） */
 	public static final BlockEntry<CrystalBuddingBlock> JADE_BUDDING_BLOCK = crystalBudding("jade_budding_block",
-		() -> AllBlocks.JADE_SMALL_BUD.get(), MapColor.TERRACOTTA_GREEN, CrystalGrowthConfigs.JADE_BUDDING_SECONDS,
-		() -> AllItems.RAW_JADE.get());
+		() -> CoeBlocks.JADE_SMALL_BUD.get(), MapColor.TERRACOTTA_GREEN, CrystalGrowthConfigs.JADE_BUDDING_SECONDS,
+		() -> CoeItems.RAW_JADE.get());
 
 	/** 黄玉水晶小芽 */
 	public static final BlockEntry<CrystalClusterBlock> TOPAZ_SMALL_BUD = crystalBud("topaz_small_bud", 3, 4,
-		() -> AllBlocks.TOPAZ_MEDIUM_BUD.get(), null, 0, null, CrystalGrowthConfigs.TOPAZ_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.TOPAZ_MEDIUM_BUD.get(), null, 0, null, CrystalGrowthConfigs.TOPAZ_BUD_STAGE_SECONDS);
 
 	/** 黄玉水晶中芽（挖掘掉落小块黄玉 ×1，时运额外小块有概率） */
 	public static final BlockEntry<CrystalClusterBlock> TOPAZ_MEDIUM_BUD = crystalBud("topaz_medium_bud", 4, 3,
-		() -> AllBlocks.TOPAZ_LARGE_BUD.get(), () -> AllItems.TOPAZ_SMALL_SHARD.get(), 1, null, CrystalGrowthConfigs.TOPAZ_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.TOPAZ_LARGE_BUD.get(), () -> CoeItems.TOPAZ_SMALL_SHARD.get(), 1, null, CrystalGrowthConfigs.TOPAZ_BUD_STAGE_SECONDS);
 
 	/** 黄玉水晶大芽（挖掘掉落小块黄玉 ×2，时运额外小块有概率） */
 	public static final BlockEntry<CrystalClusterBlock> TOPAZ_LARGE_BUD = crystalBud("topaz_large_bud", 5, 2,
-		() -> AllBlocks.TOPAZ_CLUSTER.get(), () -> AllItems.TOPAZ_SMALL_SHARD.get(), 2, null, CrystalGrowthConfigs.TOPAZ_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.TOPAZ_CLUSTER.get(), () -> CoeItems.TOPAZ_SMALL_SHARD.get(), 2, null, CrystalGrowthConfigs.TOPAZ_BUD_STAGE_SECONDS);
 
 	/** 黄玉水晶簇（成熟，挖掘掉落大块黄玉 ×1，时运额外只能是小块黄玉） */
 	public static final BlockEntry<CrystalClusterBlock> TOPAZ_CLUSTER = crystalBud("topaz_cluster", 7, 3,
-		null, () -> AllItems.TOPAZ_BIG_SHARD.get(), 1, () -> AllItems.TOPAZ_SMALL_SHARD.get(), CrystalGrowthConfigs.TOPAZ_BUD_STAGE_SECONDS);
+		null, () -> CoeItems.TOPAZ_BIG_SHARD.get(), 1, () -> CoeItems.TOPAZ_SMALL_SHARD.get(), CrystalGrowthConfigs.TOPAZ_BUD_STAGE_SECONDS);
 
 	/** 黄玉水晶芽床（母岩，挖掉只掉粗黄玉，不可搬迁） */
 	public static final BlockEntry<CrystalBuddingBlock> TOPAZ_BUDDING_BLOCK = crystalBudding("topaz_budding_block",
-		() -> AllBlocks.TOPAZ_SMALL_BUD.get(), MapColor.TERRACOTTA_ORANGE, CrystalGrowthConfigs.TOPAZ_BUDDING_SECONDS,
-		() -> AllItems.RAW_TOPAZ.get());
+		() -> CoeBlocks.TOPAZ_SMALL_BUD.get(), MapColor.TERRACOTTA_ORANGE, CrystalGrowthConfigs.TOPAZ_BUDDING_SECONDS,
+		() -> CoeItems.RAW_TOPAZ.get());
 
 	/** 蓝宝石水晶小芽 */
 	public static final BlockEntry<CrystalClusterBlock> SAPPHIRE_SMALL_BUD = crystalBud("sapphire_small_bud", 3, 4,
-		() -> AllBlocks.SAPPHIRE_MEDIUM_BUD.get(), null, 0, null, CrystalGrowthConfigs.SAPPHIRE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.SAPPHIRE_MEDIUM_BUD.get(), null, 0, null, CrystalGrowthConfigs.SAPPHIRE_BUD_STAGE_SECONDS);
 
 	/** 蓝宝石水晶中芽（挖掘掉落小块蓝宝石 ×1，时运额外小块有概率） */
 	public static final BlockEntry<CrystalClusterBlock> SAPPHIRE_MEDIUM_BUD = crystalBud("sapphire_medium_bud", 4, 3,
-		() -> AllBlocks.SAPPHIRE_LARGE_BUD.get(), () -> AllItems.SAPPHIRE_SMALL_SHARD.get(), 1, null, CrystalGrowthConfigs.SAPPHIRE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.SAPPHIRE_LARGE_BUD.get(), () -> CoeItems.SAPPHIRE_SMALL_SHARD.get(), 1, null, CrystalGrowthConfigs.SAPPHIRE_BUD_STAGE_SECONDS);
 
 	/** 蓝宝石水晶大芽（挖掘掉落小块蓝宝石 ×2，时运额外小块有概率） */
 	public static final BlockEntry<CrystalClusterBlock> SAPPHIRE_LARGE_BUD = crystalBud("sapphire_large_bud", 5, 2,
-		() -> AllBlocks.SAPPHIRE_CLUSTER.get(), () -> AllItems.SAPPHIRE_SMALL_SHARD.get(), 2, null, CrystalGrowthConfigs.SAPPHIRE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.SAPPHIRE_CLUSTER.get(), () -> CoeItems.SAPPHIRE_SMALL_SHARD.get(), 2, null, CrystalGrowthConfigs.SAPPHIRE_BUD_STAGE_SECONDS);
 
 	/** 蓝宝石水晶簇（成熟，挖掘掉落大块蓝宝石 ×1，时运额外只能是小块蓝宝石） */
 	public static final BlockEntry<CrystalClusterBlock> SAPPHIRE_CLUSTER = crystalBud("sapphire_cluster", 7, 3,
-		null, () -> AllItems.SAPPHIRE_BIG_SHARD.get(), 1, () -> AllItems.SAPPHIRE_SMALL_SHARD.get(), CrystalGrowthConfigs.SAPPHIRE_BUD_STAGE_SECONDS);
+		null, () -> CoeItems.SAPPHIRE_BIG_SHARD.get(), 1, () -> CoeItems.SAPPHIRE_SMALL_SHARD.get(), CrystalGrowthConfigs.SAPPHIRE_BUD_STAGE_SECONDS);
 
 	/** 蓝宝石水晶芽床（母岩，挖掉只掉粗蓝宝石，不可搬迁） */
 	public static final BlockEntry<CrystalBuddingBlock> SAPPHIRE_BUDDING_BLOCK = crystalBudding("sapphire_budding_block",
-		() -> AllBlocks.SAPPHIRE_SMALL_BUD.get(), MapColor.TERRACOTTA_BLUE, CrystalGrowthConfigs.SAPPHIRE_BUDDING_SECONDS,
-		() -> AllItems.RAW_SAPPHIRE.get());
+		() -> CoeBlocks.SAPPHIRE_SMALL_BUD.get(), MapColor.TERRACOTTA_BLUE, CrystalGrowthConfigs.SAPPHIRE_BUDDING_SECONDS,
+		() -> CoeItems.RAW_SAPPHIRE.get());
 
 	/** 星辉石水晶小芽 */
 	public static final BlockEntry<CrystalClusterBlock> STELLARSTONE_SMALL_BUD = crystalBud("stellarstone_small_bud", 3, 4,
-		() -> AllBlocks.STELLARSTONE_MEDIUM_BUD.get(), null, 0, null, CrystalGrowthConfigs.STELLARSTONE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.STELLARSTONE_MEDIUM_BUD.get(), null, 0, null, CrystalGrowthConfigs.STELLARSTONE_BUD_STAGE_SECONDS);
 
 	/** 星辉石水晶中芽（挖掘掉落小块星辉石 ×1，时运额外小块有概率） */
 	public static final BlockEntry<CrystalClusterBlock> STELLARSTONE_MEDIUM_BUD = crystalBud("stellarstone_medium_bud", 4, 3,
-		() -> AllBlocks.STELLARSTONE_LARGE_BUD.get(), () -> AllItems.STELLARSTONE_SMALL_SHARD.get(), 1, null, CrystalGrowthConfigs.STELLARSTONE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.STELLARSTONE_LARGE_BUD.get(), () -> CoeItems.STELLARSTONE_SMALL_SHARD.get(), 1, null, CrystalGrowthConfigs.STELLARSTONE_BUD_STAGE_SECONDS);
 
 	/** 星辉石水晶大芽（挖掘掉落小块星辉石 ×2，时运额外小块有概率） */
 	public static final BlockEntry<CrystalClusterBlock> STELLARSTONE_LARGE_BUD = crystalBud("stellarstone_large_bud", 5, 2,
-		() -> AllBlocks.STELLARSTONE_CLUSTER.get(), () -> AllItems.STELLARSTONE_SMALL_SHARD.get(), 2, null, CrystalGrowthConfigs.STELLARSTONE_BUD_STAGE_SECONDS);
+		() -> CoeBlocks.STELLARSTONE_CLUSTER.get(), () -> CoeItems.STELLARSTONE_SMALL_SHARD.get(), 2, null, CrystalGrowthConfigs.STELLARSTONE_BUD_STAGE_SECONDS);
 
 	/** 星辉石水晶簇（成熟，挖掘掉落大块星辉石 ×1，时运额外只能是小块星辉石） */
 	public static final BlockEntry<CrystalClusterBlock> STELLARSTONE_CLUSTER = crystalBud("stellarstone_cluster", 7, 3,
-		null, () -> AllItems.STELLARSTONE_BIG_SHARD.get(), 1, () -> AllItems.STELLARSTONE_SMALL_SHARD.get(), CrystalGrowthConfigs.STELLARSTONE_BUD_STAGE_SECONDS);
+		null, () -> CoeItems.STELLARSTONE_BIG_SHARD.get(), 1, () -> CoeItems.STELLARSTONE_SMALL_SHARD.get(), CrystalGrowthConfigs.STELLARSTONE_BUD_STAGE_SECONDS);
 
 	/** 星辉石水晶芽床（母岩，挖掉只掉粗星辉石，不可搬迁） */
 	public static final BlockEntry<CrystalBuddingBlock> STELLARSTONE_BUDDING_BLOCK = crystalBudding("stellarstone_budding_block",
-		() -> AllBlocks.STELLARSTONE_SMALL_BUD.get(), MapColor.COLOR_PURPLE, CrystalGrowthConfigs.STELLARSTONE_BUDDING_SECONDS,
-		() -> AllItems.RAW_STELLARSTONE.get());
+		() -> CoeBlocks.STELLARSTONE_SMALL_BUD.get(), MapColor.COLOR_PURPLE, CrystalGrowthConfigs.STELLARSTONE_BUDDING_SECONDS,
+		() -> CoeItems.RAW_STELLARSTONE.get());
 
 	/**
 	 * 注册水晶芽/簇方块（小/中/大芽可生长到下一阶段；簇由 nextStage=null 标记）。
@@ -649,6 +649,10 @@ public final class CoeBlocks {
 			.item()
 			.build()
 			.register();
+	}
+
+/** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
+	public static void register() {
 	}
 
 	private CoeBlocks() {

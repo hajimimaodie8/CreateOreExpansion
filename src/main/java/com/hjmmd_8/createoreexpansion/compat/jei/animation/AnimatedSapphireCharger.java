@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.compat.jei.animation;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlock;
 
@@ -18,7 +18,7 @@ public class AnimatedSapphireCharger extends AnimatedJadeCharger {
 
 	@Override
 	protected BlockState machineState() {
-		return AllBlocks.SAPPHIRE_STRESS_CHARGER.getDefaultState()
+		return CewsBlocks.SAPPHIRE_STRESS_CHARGER.getDefaultState()
 			.setValue(SapphireStressChargerBlock.FACING, Direction.DOWN)
 			.setValue(SapphireStressChargerBlock.MODE, mode);
 	}

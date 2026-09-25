@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.wave.block;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
@@ -28,6 +28,6 @@ public class WaveSpeedRegulatorBlock extends AbstractWaveGateBlock<WaveSpeedRegu
 
 	@Override
 	public BlockEntityType<? extends WaveSpeedRegulatorBlockEntity> getBlockEntityType() {
-		return AllBlockEntityTypes.WAVE_SPEED_REGULATOR.get();
+		return CewsBlockEntityTypes.WAVE_SPEED_REGULATOR.get();
 	}
 }

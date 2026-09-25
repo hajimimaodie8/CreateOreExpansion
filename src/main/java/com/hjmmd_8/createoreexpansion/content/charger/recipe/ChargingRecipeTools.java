@@ -8,7 +8,7 @@ import net.minecraft.world.level.ItemLike;
 /**
  * 工具充能配方物品注册器：可被翡翠应力充能器充能的物品（能量工具 + 凝能佩）。
  *
- * <p>在 {@code AllItems} 注册物品处挂接（能量工具经 {@code SkillItemBuilder} 自动注册，
+ * <p>在 {@code CoeItems} 注册物品处挂接（能量工具经 {@code SkillItemBuilder} 自动注册，
  * 凝能佩在注册后显式注册一行），工具充能配方生成器统一从这里收集物品——
  * 单一数据源，新增可充能物品只需在注册处声明，无需改配方生成器。</p>
  */

@@ -4,7 +4,7 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  * 剥取（剑类额外掉落）技能 —— 统一配置类（掉落概率 / 掉落数量分布 / 能量 / 冷却 集中修改点）。
  *
  * 所有使用 {@code SkinSkill} 的剥取技能（剑）的掉落概率、掉落数量分布、
- * 能量消耗、冷却时间都在本文件统一定义，{@code AllSkills} / {@code AllItems}
+ * 能量消耗、冷却时间都在本文件统一定义，{@code AllSkills} / {@code CoeItems}
  * 只负责引用，不改数值。
  *
  * 等级说明：

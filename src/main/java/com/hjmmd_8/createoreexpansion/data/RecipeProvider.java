@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.data;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
@@ -49,16 +49,16 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
                 Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS);
 
         // ========== 本模组工具拆磨（5 组 × 5 工具） ==========
-        dismantleTools(output, AllItems.JADE_INGOT.get(), "jade",
-                AllItems.JADE_SWORD.get(), AllItems.JADE_PICKAXE.get(), AllItems.JADE_AXE.get(), AllItems.JADE_SHOVEL.get(), AllItems.JADE_HOE.get());
-        dismantleTools(output, AllItems.TOPAZ_INGOT.get(), "topaz",
-                AllItems.TOPAZ_SWORD.get(), AllItems.TOPAZ_PICKAXE.get(), AllItems.TOPAZ_AXE.get(), AllItems.TOPAZ_SHOVEL.get(), AllItems.TOPAZ_HOE.get());
-        dismantleTools(output, AllItems.SAPPHIRE_INGOT.get(), "sapphire",
-                AllItems.SAPPHIRE_SWORD.get(), AllItems.SAPPHIRE_PICKAXE.get(), AllItems.SAPPHIRE_AXE.get(), AllItems.SAPPHIRE_SHOVEL.get(), AllItems.SAPPHIRE_HOE.get());
-        dismantleTools(output, AllItems.STELLARSTONE_INGOT.get(), "stellarstone",
-                AllItems.STELLARSTONE_SWORD.get(), AllItems.STELLARSTONE_PICKAXE.get(), AllItems.STELLARSTONE_AXE.get(), AllItems.STELLARSTONE_SHOVEL.get(), AllItems.STELLARSTONE_HOE.get());
-        dismantleTools(output, AllItems.THUNDERITE_INGOT.get(), "thunderite",
-                AllItems.THUNDERITE_SWORD.get(), AllItems.THUNDERITE_PICKAXE.get(), AllItems.THUNDERITE_AXE.get(), AllItems.THUNDERITE_SHOVEL.get(), AllItems.THUNDERITE_HOE.get());
+        dismantleTools(output, CoeItems.JADE_INGOT.get(), "jade",
+                CoeItems.JADE_SWORD.get(), CoeItems.JADE_PICKAXE.get(), CoeItems.JADE_AXE.get(), CoeItems.JADE_SHOVEL.get(), CoeItems.JADE_HOE.get());
+        dismantleTools(output, CoeItems.TOPAZ_INGOT.get(), "topaz",
+                CoeItems.TOPAZ_SWORD.get(), CoeItems.TOPAZ_PICKAXE.get(), CoeItems.TOPAZ_AXE.get(), CoeItems.TOPAZ_SHOVEL.get(), CoeItems.TOPAZ_HOE.get());
+        dismantleTools(output, CoeItems.SAPPHIRE_INGOT.get(), "sapphire",
+                CoeItems.SAPPHIRE_SWORD.get(), CoeItems.SAPPHIRE_PICKAXE.get(), CoeItems.SAPPHIRE_AXE.get(), CoeItems.SAPPHIRE_SHOVEL.get(), CoeItems.SAPPHIRE_HOE.get());
+        dismantleTools(output, CoeItems.STELLARSTONE_INGOT.get(), "stellarstone",
+                CoeItems.STELLARSTONE_SWORD.get(), CoeItems.STELLARSTONE_PICKAXE.get(), CoeItems.STELLARSTONE_AXE.get(), CoeItems.STELLARSTONE_SHOVEL.get(), CoeItems.STELLARSTONE_HOE.get());
+        dismantleTools(output, CoeItems.THUNDERITE_INGOT.get(), "thunderite",
+                CoeItems.THUNDERITE_SWORD.get(), CoeItems.THUNDERITE_PICKAXE.get(), CoeItems.THUNDERITE_AXE.get(), CoeItems.THUNDERITE_SHOVEL.get(), CoeItems.THUNDERITE_HOE.get());
 
         // ========== 工具充能配方：翡翠应力充能器能量波给能量工具/凝能佩充能 ==========
         toolCharging(output);
@@ -99,14 +99,14 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
      * 手写在 resources/data（不走生成器），此处不再生成 */
 
     /** 工具充能配方：翡翠/蓝宝石应力充能器能量波给能量工具/凝能佩充能。
-     * <p>物品来源为 {@link ChargingRecipeTools}（在 AllItems 注册处统一挂接，单一数据源）。
+     * <p>物品来源为 {@link ChargingRecipeTools}（在 CoeItems 注册处统一挂接，单一数据源）。
      * 每个物品 × <b>5 个充能等级</b>各一条配方（α/β/γ/ε/ω = level 1~5），
      * 等级由配方 JSON 的 {@code level} 字段区分，统一放在 {@code tool_charge/} 下，
      * 文件名后缀 _low/_high/_gamma/_epsilon/_omega 仅保证 id 唯一。</p> */
     private void toolCharging(RecipeOutput output) {
-        // 触发 AllItems 类加载（能量工具/凝能佩经其静态初始化注册进 ChargingRecipeTools），
+        // 触发 CoeItems 类加载（能量工具/凝能佩经其静态初始化注册进 ChargingRecipeTools），
         // 避免 data gen 时注册器为空导致配方生成 0 条
-        AllItems.register();
+        CoeItems.register();
         for (ItemLike item : ChargingRecipeTools.getTools()) {
             String name = BuiltInRegistries.ITEM.getKey(item.asItem())
                 .getPath();

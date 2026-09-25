@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllStructureProcessors;
 import com.mojang.serialization.MapCodec;
 
@@ -81,7 +81,7 @@ public class EndShipStellarstoneProcessor extends StructureProcessor {
 			if (!info.pos().equals(target))
 				continue;
 			processedBlocks.set(i, new StructureBlockInfo(info.pos(),
-				AllBlocks.STELLARSTONE_BLOCK.getDefaultState(), info.nbt()));
+				CoeBlocks.STELLARSTONE_BLOCK.getDefaultState(), info.nbt()));
 			break;
 		}
 		return processedBlocks;

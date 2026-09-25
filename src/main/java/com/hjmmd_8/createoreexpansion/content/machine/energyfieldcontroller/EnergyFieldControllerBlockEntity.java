@@ -4,7 +4,7 @@ import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.Ener
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyField;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldType;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields;
@@ -360,7 +360,7 @@ public class EnergyFieldControllerBlockEntity extends KineticBlockEntity {
 		int scanHi = Math.max(axSelf, axPartner);
 		int w = CASING_RADIUS * 2 + 1;
 		int half = CASING_RADIUS;
-		Block sapphire = AllBlocks.SAPPHIRE_CASING.get();
+		Block sapphire = CewsBlocks.SAPPHIRE_CASING.get();
 
 		// 每端在横向窗口上的机壳覆盖（任意扫描层出现即算）
 		boolean[][] covA = new boolean[w][w];

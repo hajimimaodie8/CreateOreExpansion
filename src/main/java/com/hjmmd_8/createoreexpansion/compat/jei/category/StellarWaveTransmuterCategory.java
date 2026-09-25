@@ -8,7 +8,7 @@ import javax.annotation.ParametersAreNonnullByDefault;
 import org.jetbrains.annotations.NotNull;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.simibubi.create.compat.jei.EmptyBackground;
 import com.simibubi.create.compat.jei.ItemIcon;
 import com.simibubi.create.foundation.gui.AllGuiTextures;
@@ -50,7 +50,7 @@ public class StellarWaveTransmuterCategory implements IRecipeCategory<StellarWav
 	}
 
 	private static final IDrawable BACKGROUND = new EmptyBackground(177, 118);
-	private static final IDrawable ICON = new ItemIcon(() -> new ItemStack(AllBlocks.STELLAR_WAVE_TRANSMUTER.get()));
+	private static final IDrawable ICON = new ItemIcon(() -> new ItemStack(CewsBlocks.STELLAR_WAVE_TRANSMUTER.get()));
 
 	public StellarWaveTransmuterCategory() {
 	}
@@ -92,7 +92,7 @@ public class StellarWaveTransmuterCategory implements IRecipeCategory<StellarWav
 		graphics.fill(22, 14, 40, 32, 0xFFF0C800);
 		// 变器方块图标（JEI 槽内静态渲染物品图标，无需逐机器动画）
 		AllGuiTextures.JEI_SLOT.render(graphics, 58, 10);
-		graphics.renderItem(new ItemStack(AllBlocks.STELLAR_WAVE_TRANSMUTER.get()), 60, 12);
+		graphics.renderItem(new ItemStack(CewsBlocks.STELLAR_WAVE_TRANSMUTER.get()), 60, 12);
 		// 变体波色块（玫红粉，象征变体波——实际颜色随原波等级，此处仅示意）
 		graphics.fill(104, 14, 122, 32, 0xFFFF4073);
 		// 箭头（→）
@@ -149,7 +149,7 @@ public class StellarWaveTransmuterCategory implements IRecipeCategory<StellarWav
 	}
 
 	public void registerCatalysts(IRecipeCatalystRegistration registration) {
-		registration.addRecipeCatalyst(new ItemStack(AllBlocks.STELLAR_WAVE_TRANSMUTER.get()), TYPE);
+		registration.addRecipeCatalyst(new ItemStack(CewsBlocks.STELLAR_WAVE_TRANSMUTER.get()), TYPE);
 	}
 
 	/** 供其它代码静态引用（如需）。 */

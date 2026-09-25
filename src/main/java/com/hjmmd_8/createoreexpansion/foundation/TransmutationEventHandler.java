@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.CreateOreExpansion;
-import com.hjmmd_8.createoreexpansion.common.AllItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.AllModEffects;
 import com.hjmmd_8.createoreexpansion.common.AllFluids;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
@@ -35,7 +35,7 @@ public final class TransmutationEventHandler {
 
 		if (player.getFluidTypeHeight(AllFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D) {
 			// 佩戴星辉石凝能佩时免疫嬗乱（双保险：这里直接拦截 + MobEffectEvent.Applicable 兜底）
-			if (IMedallion.isWearing(player, AllItems.STELLARSTONE_STRESS_MEDALLION.get()))
+			if (IMedallion.isWearing(player, CoeItems.STELLARSTONE_STRESS_MEDALLION.get()))
 				return;
 			int contactTicks = FLUID_CONTACT_TICKS.merge(player.getUUID(), 1, Integer::sum);
 			int level = 1 + contactTicks / (15 * 20);

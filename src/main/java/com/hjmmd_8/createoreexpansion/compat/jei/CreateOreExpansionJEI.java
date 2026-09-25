@@ -20,6 +20,7 @@ import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.ProcessingViaFanCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.StellarWaveTransmuterCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.TransmutingCategory;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
@@ -64,16 +65,16 @@ public class CreateOreExpansionJEI implements IModPlugin {
 		builder(LightningRecipe.class)
 			.addTypedRecipes(AllRecipeTypes.LIGHTNING)
 			.catalyst(() -> net.minecraft.world.level.block.Blocks.LIGHTNING_ROD)
-			.catalyst(() -> com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.get())
-			.itemIcon(com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.get())
+			.catalyst(() -> com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
+			.itemIcon(com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
 			.emptyBackground(178, 72)
 			.build("lightning", LightningCategory::new);
 
 		builder(LightningBlockRecipe.class)
 			.addTypedRecipes(AllRecipeTypes.LIGHTNING_BLOCK)
 			.catalyst(() -> net.minecraft.world.level.block.Blocks.LIGHTNING_ROD)
-			.catalyst(() -> com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.get())
-			.itemIcon(com.hjmmd_8.createoreexpansion.common.AllBlocks.REINFORCED_LIGHTNING_ROD.get())
+			.catalyst(() -> com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
+			.itemIcon(com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
 			.emptyBackground(178, 72)
 			.build("lightning_block", LightningBlockCategory::new);
 

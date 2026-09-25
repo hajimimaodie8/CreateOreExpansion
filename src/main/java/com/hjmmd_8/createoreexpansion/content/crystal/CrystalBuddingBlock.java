@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.crystal;
 
-import com.hjmmd_8.createoreexpansion.common.AllBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -70,7 +70,7 @@ public class CrystalBuddingBlock extends BuddingAmethystBlock implements EntityB
 
 	@Override
 	public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-		return new CrystalBuddingBlockEntity(AllBlockEntityTypes.CRYSTAL_BUDDING.get(), pos, state);
+		return new CrystalBuddingBlockEntity(CoeBlockEntityTypes.CRYSTAL_BUDDING.get(), pos, state);
 	}
 
 	@Override
