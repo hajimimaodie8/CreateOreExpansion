@@ -21,6 +21,12 @@
 # Get-FileLayer bodies of the two scripts stay byte-identical and no rule is touched.
 # Without it the report would read COE=0 while still exiting 0 (silent escape, same
 # failure P3d-beta hit for core).
+# P3y adds the FOURTH source root (`transmutation/src/main/java/...`, the Gradle sub-module
+# that now holds the 16 TRANS files + the @Mod entry TransmutationMod) to BOTH tools, again
+# with package-relative paths and again without touching Get-FileLayer: all 16 files sit on
+# TRANS package paths (`common/registry/transmutation/**`, `compat/jei/transmutation/**`,
+# `content/transmuting/**`), so the counts stay TRANS=16. Without it the report would read
+# TRANS=0 while still exiting 0 -- the same silent escape, a third time.
 # Deliberately pure ASCII: PowerShell 5.1 reads a BOM-less .ps1 as
 # ANSI and can swallow quotes mid-script.
 
@@ -32,6 +38,7 @@ $ErrorActionPreference = 'Stop'
 
 $pkgRoot    = Join-Path $Repo 'src\main\java\com\hjmmd_8\createoreexpansion'
 $coePkgRoot = Join-Path $Repo 'coe\src\main\java\com\hjmmd_8\createoreexpansion'
+$transPkgRoot = Join-Path $Repo 'transmutation\src\main\java\com\hjmmd_8\createoreexpansion'
 $prefix     = 'com.hjmmd_8.createoreexpansion.'
 if (-not (Test-Path $pkgRoot)) { throw "package root not found: $pkgRoot" }
 
@@ -83,9 +90,11 @@ function Get-FileLayer {
 # P3w: the module tree is a THIRD source root.  Package-relative paths, exactly like the
 # root tree, so Get-FileLayer needs no new rule (and stays verbatim identical to the one
 # in tools\check-layering.ps1).
+# P3y: :transmutation is the FOURTH, same shape again (all 16 files land in TRANS).
 $roots = @(
-    @{ Path = $pkgRoot;    Prefix = '' },
-    @{ Path = $coePkgRoot; Prefix = '' }
+    @{ Path = $pkgRoot;      Prefix = '' },
+    @{ Path = $coePkgRoot;   Prefix = '' },
+    @{ Path = $transPkgRoot; Prefix = '' }
 )
 foreach ($root in $roots) {
     if (-not (Test-Path $root.Path)) { throw "package root not found: $($root.Path)" }

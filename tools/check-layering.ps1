@@ -9,18 +9,23 @@
 #   CORE  (the shared library module) must NOT depend on COE / CEWS / TRANS
 # Anything may depend on SHARED; SHARED is never judged as a source.
 #
-# Three source roots are scanned:
-#   src/main/java/com/hjmmd_8/createoreexpansion     -> COE / CEWS / TRANS / SHARED by path
-#   core/src/main/java/com/hjmmd_8/createoreexpansion -> CORE (the whole library is shared)
-#   coe/src/main/java/com/hjmmd_8/createoreexpansion  -> COE / CEWS / TRANS / SHARED by path
+# Four source roots are scanned:
+#   src/main/java/com/hjmmd_8/createoreexpansion             -> COE / CEWS / TRANS / SHARED by path
+#   core/src/main/java/com/hjmmd_8/createoreexpansion        -> CORE (the whole library is shared)
+#   coe/src/main/java/com/hjmmd_8/createoreexpansion         -> COE / CEWS / TRANS / SHARED by path
+#   transmutation/src/main/java/com/hjmmd_8/createoreexpansion -> COE / CEWS / TRANS / SHARED by path
 # The second root matters: `core` is a JarJar-nested library, and without it every file
 # moved into `core` would silently escape this check.
 # P3w adds the THIRD root for the same reason: the Gradle sub-module `:coe` now holds the
 # 176 COE files plus the @Mod entry, and a tool that still scans only the two old roots
 # would print COE=0 while exiting 0 (the same silent escape P3d-beta hit for core).
+# P3y adds the FOURTH root for exactly the same reason: the Gradle sub-module
+# `:transmutation` now holds the 16 TRANS files (plus the @Mod entry TransmutationMod),
+# and a tool that still scans only the three old roots would print TRANS=0 while exiting 0.
 # The root table below is the ONLY place that knows about roots; the layer rules
-# (Get-FileLayer / Get-TargetLayer) are unchanged, and `:coe` is scanned with the same
-# package-relative paths as the root tree.
+# (Get-FileLayer / Get-TargetLayer) are unchanged, and both module trees are scanned with
+# the same package-relative paths as the root tree (so `content/transmuting/**` still lands
+# in TRANS and `common/registry/transmutation/**` still lands in TRANS, by the old rules).
 #
 # Layer of a FILE is decided purely by its path (see Get-FileLayer).
 # Layer of an IMPORT / fully-qualified reference is decided by its package (see Get-TargetLayer),
@@ -52,6 +57,7 @@ $repoRoot    = Split-Path -Parent $PSScriptRoot
 $pkgRoot     = Join-Path $repoRoot 'src\main\java\com\hjmmd_8\createoreexpansion'
 $corePkgRoot = Join-Path $repoRoot 'core\src\main\java\com\hjmmd_8\createoreexpansion'
 $coePkgRoot  = Join-Path $repoRoot 'coe\src\main\java\com\hjmmd_8\createoreexpansion'
+$transPkgRoot = Join-Path $repoRoot 'transmutation\src\main\java\com\hjmmd_8\createoreexpansion'
 $prefix      = 'com.hjmmd_8.createoreexpansion.'
 
 # ---------------------------------------------------------------------------
@@ -63,11 +69,14 @@ $prefix      = 'com.hjmmd_8.createoreexpansion.'
 # layout as the root tree, and the @Mod entry CreateOreExpansion.java sits in the
 # package root, so it is judged SHARED exactly like every other integration file
 # (P3v section 3: "the tool already says SHARED -- believe it").
+# `:transmutation` (P3y) uses it for the same reason; its 16 files all sit on
+# TRANS package paths, so TRANS stays 16 and no rule had to be added.
 # ---------------------------------------------------------------------------
 $roots = @(
-    @{ Path = $pkgRoot;     Prefix = '' },
-    @{ Path = $corePkgRoot; Prefix = 'core\' },
-    @{ Path = $coePkgRoot;  Prefix = '' }
+    @{ Path = $pkgRoot;      Prefix = '' },
+    @{ Path = $corePkgRoot;  Prefix = 'core\' },
+    @{ Path = $coePkgRoot;   Prefix = '' },
+    @{ Path = $transPkgRoot; Prefix = '' }
 )
 
 foreach ($root in $roots) {
@@ -270,7 +279,7 @@ foreach ($e in $entries) {
     }
 }
 
-Write-Host 'layering check: src/main/java + core/src/main/java + coe/src/main/java'
+Write-Host 'layering check: src/main/java + core/src/main/java + coe/src/main/java + transmutation/src/main/java'
 Write-Host ('  files by layer : COE={0}  CEWS={1}  TRANS={2}  SHARED={3}  CORE(library)={4}' -f $stats['COE'], $stats['CEWS'], $stats['TRANS'], $stats['SHARED'], $stats['CORE'])
 Write-Host '  forbidden edge directions checked : COE->CEWS, COE->TRANS, TRANS->CEWS, CEWS->TRANS, CORE->COE/CEWS/TRANS'
 if ($NoFqn) { Write-Host '  (fully-qualified-reference pass disabled by -NoFqn)' }

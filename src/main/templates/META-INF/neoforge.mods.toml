@@ -13,23 +13,27 @@ license = "${mod_license}"
 # A URL to refer people to when problems occur with this mod
 #issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
 
-# ── P3w：根 jar 里装两个 mod + 两个 JarJar 嵌套的东西 ────────────────────────────────────
-# **本文件（根工程）只声明 cews / transmutation 两个 mod。**
-# 第三个 mod —— **createoreexpansion（矿物拓展 COE）—— 不在本文件里**：P3w 起它的代码
-# （176 个 COE 文件）与 [[mods]] 声明都搬进了 Gradle 子模块 :coe，见
-# coe/src/main/templates/META-INF/neoforge.mods.toml，由根 build.gradle 的
-# jarJar(compileOnly(project(':coe'))) 嵌进 META-INF/jarjar/。
+# ── P3y：根 jar 里装一个 mod + 三个 JarJar 嵌套的东西 ────────────────────────────────────
+# **本文件（根工程）只声明 cews 一个 mod。**
+# 另两个本模组 mod —— 它们的代码与 [[mods]] 声明都不在本文件里：
+#   · **createoreexpansion（矿物拓展 COE）**：P3w 起搬进 Gradle 子模块 :coe，
+#     见 coe/src/main/templates/META-INF/neoforge.mods.toml，
+#     由根 build.gradle 的 jarJar(compileOnly(project(':coe'))) 嵌进 META-INF/jarjar/。
+#   · **transmutation（机械嬗化学 TRANS）**：P3y 起搬进 Gradle 子模块 :transmutation，
+#     见 transmutation/src/main/templates/META-INF/neoforge.mods.toml，
+#     由根 build.gradle 的 jarJar(compileOnly(project(':transmutation'))) 嵌进 META-INF/jarjar/。
 # ⛔ **同一个 mod id 绝不能出现在两个 mod 文件里**：UniqueModListBuilder 会判
 #    fml.modloadingissue.duplicate_mod 直接硬崩（不是"选最新"那条温和路径）。
-# 两个 JarJar 嵌套：
+# 三个 JarJar 嵌套（都在本 jar 的 META-INF/jarjar/ 第 1 层）：
 #   · core（共享库，**不是** mod：coe_library=true，没有也不该有 mods.toml）；
-#   · coe（**是** mod：自带 mods.toml 并声明 createoreexpansion）。
+#   · coe（**是** mod：自带 mods.toml 并声明 createoreexpansion）；
+#   · transmutation（**是** mod：自带 mods.toml 并声明 transmutation）。
 # 另有技能内核 skiller（**是** mod，mod id = skiller）同样由 JarJar 嵌套，声明在下面。
 #
 # 四个模块的**注册命名空间全部是 createoreexpansion**（见 common/CoeCore#REGISTRY_NAMESPACE），
 # 所以拆模块不会改动任何一个注册 id、语言键、配置键或数据包路径；mod id 才分家。
 
-# ============================ 1/2：cews（能量波阵学） ============================
+# ============================ 1/1：cews（能量波阵学） ============================
 [[mods]] #mandatory
 modId = "cews"
 version = "${mod_version}" #mandatory
@@ -37,18 +41,14 @@ displayName = "Create: Energy Wave Studies"
 authors = "${mod_authors}" #optional
 description = '''${mod_description}'''
 
-# ============================ 2/2：transmutation（机械嬗化学） ============================
-[[mods]] #mandatory
-modId = "transmutation"
-version = "${mod_version}" #mandatory
-displayName = "Create: Mechanical Transmutation"
-authors = "${mod_authors}" #optional
-description = '''${mod_description}'''
-
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
 # 只声明一次（TOML 里 [[mixins]] 是**顶层**表数组，没有"挂在某个 mod 下面"这回事）：
-# 混入目标横跨各层（例如 client/、content/、mixin/），所以整个 jar 只登记这一份配置，
-# 由 createoreexpansion 这个模块"代表"声明。
+# 混入目标横跨各层（例如 client/、content/、mixin/），所以整个 jar 只登记这一份配置。
+# 它的 config 名走 ${mod_id}（= createoreexpansion，**注册命名空间/资源前缀，不是 mod id**），
+# 而这份配置文件的**资源**住在根工程（src/main/resources/createoreexpansion.mixins.json），
+# P3y 起由根文件唯一的 mod cews 声明（P3w 起就与 createoreexpansion 这个 mod 文件无关了）。
+# 混入类本身可以住在别的 mod 文件里（:coe 的两个 accessor 就是）：Mixin 服务在 ModLauncher 下
+# boot 进 GAME 层的联合类加载器，按包在层内各模块间委派。
 # （core 不做 mod，所以它将来带的 mixin 插件要另行处理：库没有 mod 文件，
 #   不能靠 [[mixins]] 声明，得由拥有它的那个 mod 的配置带进去。）
 [[mixins]]
@@ -62,17 +62,17 @@ config = "${mod_id}.mixins.json"
 # The coremods config file path is not configurable and is always loaded from META-INF/coremods.json
 
 # ── 依赖 ────────────────────────────────────────────────────────────────────────────────
-# 两个 mod 的基础依赖与拆分前完全一致（没有把任何 required 降级）；
-# 模块之间的依赖按既有规格：cews → createoreexpansion 为 optional，transmutation → createoreexpansion 为 required。
-# （createoreexpansion 自己的 [[dependencies]] 段落随它的 [[mods]] 一起搬到了 :coe 的模板，
-#   段落内容与该模板**逐字对齐**；coe_core 的依赖块早在 P3d 就删了：core 不是 mod。）
-#
-# ⚠ 跨文件的依赖是允许的：createoreexpansion 由 :coe 那个嵌套 mod 文件声明，
-#   这里的 ordering = AFTER/BEFORE 照样生效（FML 的依赖图按 mod id 建，不按文件）。
+# cews 的基础依赖与拆分前完全一致（没有把任何 required 降级）；
+# 模块之间的依赖按既有规格：cews → createoreexpansion 为 optional（TRANS 侧是 required，
+# 见 transmutation 的模板）。
+# ⚠ 跨文件的依赖是允许的：createoreexpansion 由 :coe 那个嵌套 mod 文件声明、transmutation 由
+#   :transmutation 那个嵌套 mod 文件声明，这里的 ordering = AFTER/BEFORE 照样生效
+#   （FML 的依赖图按 mod id 建，不按文件）。
 
-# createoreexpansion（COE）的依赖段落**不在这里** —— 它随 [[mods]] 一起搬到了
-# coe/src/main/templates/META-INF/neoforge.mods.toml，内容与本文件原先那段逐字对齐
-# （neoforge / minecraft / create required，jei / curios optional，createaddition required）。
+# createoreexpansion（COE）与 transmutation（TRANS）的依赖段落**都不在这里** —— 它们随各自的
+# [[mods]] 一起搬到了自己的模板：
+#   · coe/src/main/templates/META-INF/neoforge.mods.toml（P3w，内容与本文件原先那段逐字对齐）
+#   · transmutation/src/main/templates/META-INF/neoforge.mods.toml（P3y，同上）
 
 # cews：基础环境依赖 + 对 COE **optional**（材料来自矿物拓展；未装 COE 时本模块自身仍可加载）
 [[dependencies."cews"]]
@@ -126,55 +126,9 @@ versionRange = "[1.0.0,)"
 ordering = "AFTER"
 side = "BOTH"
 
-# transmutation：基础环境依赖 + 对 COE **required**（第 4 层强依赖第 2 层的互锁，见四模块方案 §13）
-[[dependencies."transmutation"]]
-modId = "neoforge"
-type = "required"
-versionRange = "${neo_version_range}"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."transmutation"]]
-modId = "minecraft"
-type = "required"
-versionRange = "${minecraft_version_range}"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."transmutation"]]
-modId = "create"
-type = "required"
-versionRange = "[6.0.10,6.1.0)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."transmutation"]]
-modId = "jei"
-type = "optional"
-versionRange = "[19.27.0,)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."transmutation"]]
-modId = "curios"
-type = "optional"
-versionRange = "[9.5.1,)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."transmutation"]]
-modId = "createaddition"
-type = "required"
-versionRange = "[1.5.11,)"
-ordering = "NONE"
-side = "BOTH"
-
-[[dependencies."transmutation"]]
-modId = "createoreexpansion"
-type = "required"
-versionRange = "[1.0.0,)"
-ordering = "AFTER"
-side = "BOTH"
+# transmutation：基础环境依赖 + 对 COE **required**（第 4 层强依赖第 2 层，见四模块方案 §13）
+# 这整段（含 [[mods]]）P3y 起搬到了 transmutation/src/main/templates/META-INF/neoforge.mods.toml，
+# 内容与本文件原先那段**逐字对齐**（同样的 7 条依赖、同样的 versionRange 与 ordering）。
 
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares
 # that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't

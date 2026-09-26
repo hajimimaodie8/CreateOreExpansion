@@ -1,11 +1,58 @@
-// ── transmutation：机械嬗化学（P3a 骨架）───────────────────────────────────────
-// P3c 才把 7 个文件（content/transmuting + foundation/TransmutationEventHandler
-// + registry/transmutation）搬进 transmutation/src/main/java/**（包名一字不改）。
+// ── transmutation：机械嬗化学（P3a 骨架 → P3y 落地）────────────────────────────
+// mod id 继续是 transmutation（注册命名空间仍是 createoreexpansion：
+// common/CoeCore#REGISTRY_NAMESPACE，注册 id / 语言键 / 数据包路径一个都不许变）。
+// P3y 起 16 个 TRANS 文件 + @Mod 入口 TransmutationMod 都住在本模块，本模块自己的
+// src/main/templates/META-INF/neoforge.mods.toml 声明 transmutation；
+// 根工程的模板**不再**声明它 —— 两个 mod 文件同声明一个 id 会被
+// UniqueModListBuilder 判 duplicate_mod 硬崩（P3v §4b 实测）。
 plugins {
     id 'net.neoforged.moddev' // 版本由根 build.gradle 的 plugins 块提供
     id 'coe-conventions'
 }
 
-// P3a 刻意不声明任何跨模块依赖。P3c 起按下面的行接上：
-//   implementation project(':core')
-//   implementation project(':coe')   // 第 4 层强依赖第 2 层（互锁），见四模块方案 §13
+// ── 依赖 ───────────────────────────────────────────────────────────────────────
+// 仓库列表由 coe-conventions 注册（与根 build.gradle 逐条一致），此处不重复。
+dependencies {
+    // ① core 共享库：**compileOnly**。
+    //    · 根工程保留自己的 jarJar(implementation(project(':core')))，core 在**根 jar** 的
+    //      META-INF/jarjar/ 里处于深度 1 —— 这是唯一有效的深度（MDG 的 jarJar 配置
+    //      setTransitive(false)，FML 的 dependency locator 只扫一遍，深度 2 的 jar 永不生效，
+    //      见 p3v-EVIDENCE §4c）。
+    //    · 所以本模块**不**再嵌一份 core。
+    compileOnly(project(':core'))
+
+    // ② COE（矿物拓展，第 2 层）：**compileOnly**，**不 jarJar**。
+    //    · TRANS → COE 是允许方向（第 4 层强依赖第 2 层，见四模块方案 §13）：本层读
+    //      CoeItems.STELLARSTONE_STRESS_MEDALLION / CoeRegistrate / CoeCreativeTabs。
+    //    · ⛔ 不能写 implementation(project(':coe'))：COE 是**独立发布的 mod**
+    //      （自带 mods.toml 声明 createoreexpansion），不是要嵌进来的库；implementation 会把
+    //      :coe 的 jar 放进 runtimeClasspath（dev 的 duplicate_mod 风险，P3v §4b 实测），
+    //      而 jarJar 嵌套一份则会让发布 jar 里出现第二个 createoreexpansion mod 文件
+    //      （同一 mod id 两份 → 生产 duplicate_mod 硬崩），且深度 2 永不生效。
+    //      本模块只在自己的 mods.toml 里声明它 **required**。
+    compileOnly(project(':coe'))
+
+    // ③ 外部编译面必须**自己重抄**：core 与 :coe 的 create / registrate / ponder / jei
+    //    全是 compileOnly，而 compileOnly **不传递**（P3v §4e 实测）。
+    implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+    implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
+    implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+
+    // compat/jei/transmutation/** 属于 TRANS（JEI 分类渲染器）；基类住在 core 的
+    // compat/jei/base/**，其父类链上有 JEI 类型 ⇒ 编译期必须有 JEI API。
+    compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
+    runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+
+    // Flywheel：**实测必须**，而且是本模块唯一一条"代码里看不到 import 也必须要"的依赖 ——
+    // TransmutingCategory（extends core 的 ProcessingViaFanCategory）的父类签名里出现
+    // dev.engine_room.flywheel.lib.model.baked.PartialModel，javac 必须能加载它才能解析继承链。
+    // 少了这一行，:transmutation:compileJava 报且只报一行：
+    //   TransmutingCategory.java:33: 错误: 无法访问PartialModel
+    // （P3y 实测：先只声明 core/coe/create/ponder/registrate/jei 时正是这个错。）
+    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
+    runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
+
+    // ④ 不需要 createaddition / skiller / jade / curios / optical / vintageimprovements /
+    //    aeronautics / sable：16 个 TRANS 文件（含它们触及的 core / :coe 类的签名）都没有
+    //    引用那些包的类 —— 这是实测结论，不是推断（见上面 Flywheel 那条的反例）。
+}

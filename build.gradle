@@ -69,6 +69,9 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 evaluationDependsOn(':core')
 // P3w：同上，:coe 的 sourceSets 也要跨项目读（它是 createoreexpansion 那个 mod 文件）。
 evaluationDependsOn(':coe')
+// P3y：同上，:transmutation 的 sourceSets 也要跨项目读（它是 transmutation 那个 mod 文件）。
+// 跨项目依赖链是单向的 root → :coe / :transmutation → :core，没有环（P3y 探针实测）。
+evaluationDependsOn(':transmutation')
 
 neoForge {
     // Specify the version of NeoForge to use.
@@ -161,6 +164,13 @@ neoForge {
             // SecureJar，模棱两可（P3u 实测：多条 sourceSet 进同一组只出一个文件）。
             sourceSet(project(':coe').sourceSets.main)
         }
+        "transmutation" {
+            // P3y：:transmutation 是 **transmutation** 自己的 mod 文件（它的
+            // src/main/templates/META-INF/neoforge.mods.toml 声明该 id），同理必须
+            // **单开一个条目**（P3u 实测：多条 sourceSet 进同一组只出一个文件）。
+            // 三个条目 = dev 里三个本模组 mod 文件。
+            sourceSet(project(':transmutation').sourceSets.main)
+        }
     }
 }
 
@@ -224,6 +234,15 @@ dependencies {
     //   compileOnly + jarJar(compileOnly(...)) 同时保住「编译期可见」与「发布时嵌进
     //   META-INF/jarjar/」，而那个 jar 从 runtimeClasspath 上消失（P3v 探针 E 实测：125 项，无 coe jar）。
     jarJar(compileOnly(project(':coe')))
+    // ── transmutation 模块（P3y：机械嬗化学自己的 mod 文件，源码在 transmutation/，由根 jar 用 JarJar 嵌套）──
+    // 与上面 :coe 那条**同款、同理由**：必须是 compileOnly（不能是 implementation，那会让
+    // transmutation/build/libs/transmutation-1.0.0.jar 进 runtimeClasspath → FML 把它当第二个
+    // transmutation mod 文件 → fml.modloadingissue.duplicate_mod 硬崩，P3v §4b 实测的同一形状）；
+    // 外层 jarJar(...) 让那个 jar 嵌进本 jar 的 META-INF/jarjar/（深度 1，唯一有效深度）。
+    // 同时它也是根工程的**编译面**：根侧 SHARED 文件（common/hub/AllFluids、AllModEffects、
+    // AllRecipeTypes、data/CreateOreExpansionDatagen、data/lang/*、compat/jei/CreateOreExpansionJEI）
+    // 直接 import TRANS 的类。
+    jarJar(compileOnly(project(':transmutation')))
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
