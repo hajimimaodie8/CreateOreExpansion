@@ -48,6 +48,12 @@
 #         (AutomaticEventSubscriber.inject filters by mod.getModId()); a mismatch is
 #         completely silent -- no warning, no error, the subscriber just never fires.
 #         A class that omits modid is fine: FML falls back to the file's own id.
+#      B7 (P7c) the SHARED data pack set -- core/src/main/resources/data/** -- is present in
+#         this jar and byte-identical (SHA-256) to the core source.  Those are the hand-written
+#         data files whose referenced ids are all vanilla/external or belong to two or more
+#         layers, so no single module may own them; without them a single-module install
+#         silently loses the enchantment tags, the loot-modifier injections and the curios
+#         player slots.  A shared set of 0 files fails: the shared home must exist.
 #   C. the core jar ([[mods]] empty by design: FMLModType GAMELIBRARY, no ModContainer) must
 #      contain NO class carrying @EventBusSubscriber.  Such a subscriber can never be
 #      injected in production -- P7a's AllConfig defect, where the entire common config
@@ -77,6 +83,14 @@
 #      of these names does not count as a call site.  The strip is deliberately naive (it
 #      also cuts at "//" inside a string literal); that can only hide a violation sitting
 #      after such a literal on the same line, which none of these patterns can be.
+#   E. hand-written data/** home assertions (P7c):
+#      E1 every file under <module>/src/main/resources/data/** is packaged in that module's own
+#         jar, byte-identical.  This is what makes the per-layer half of the P7c move real.
+#      E2 src/main/resources/data/** holds no file at all.  The root project (coe_integration)
+#         is the integration layer and is NOT shipped, so a data file left there reaches no
+#         module jar; every one of them belongs in core (shared) or in its owning module.
+#         This is the assertion that was red before P7c (27 stranded files) and is the durable
+#         form of that hole -- it cannot come back by someone re-adding a file to the root tree.
 #
 # KNOWN GAP (do not mistake this script for proof of runtime behaviour)
 #   Everything here is static jar/source inspection.  It cannot prove that Mixin really
@@ -183,6 +197,27 @@ function Get-JarEntryText {
     $file = Join-Path $dir ($Entry -replace '/', '\')
     if (-not (Test-Path -LiteralPath $file)) { return $null }
     return (Get-Content -LiteralPath $file -Raw -Encoding UTF8)
+}
+
+# SHA-256 of one jar entry's BYTES (not its decoded text: B7/E1 compare data files byte for
+# byte, and a CR/LF drift is exactly the kind of silent difference worth catching).
+function Get-JarEntryHash {
+    param([string]$JarPath, [string]$Entry)
+    $dir = Join-Path $tempRoot ([guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    Push-Location $dir
+    try { [void](& $jarExe xf $JarPath $Entry 2>&1) } finally { Pop-Location }
+    $file = Join-Path $dir ($Entry -replace '/', '\')
+    if (-not (Test-Path -LiteralPath $file)) { return $null }
+    return (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
+}
+
+# <repo>\<root>\...\data\<rest>.json  ->  the jar entry name "data/<rest>.json"
+function Get-DataJarEntry {
+    param([string]$FullName)
+    $i = $FullName.IndexOf('\data\')
+    if ($i -lt 0) { return $null }
+    return (($FullName.Substring($i + 1)) -replace '\\', '/')
 }
 
 # One javap -v pass per jar; returns a hashtable classfile-path -> record.
@@ -438,6 +473,36 @@ foreach ($name in $modules.Keys) {
     Write-Check ($ebsMismatch.Count -eq 0) ($name + ' B6 every @EventBusSubscriber modid == this jar modId') `
         ("withModid=" + $ebsClasses.Count + " withoutModid=" + $ebsNoModid + " mismatches=" + $ebsMismatch.Count + $(if ($ebsMismatch.Count -gt 0) { ' [' + ($ebsMismatch -join '; ') + ']' } else { '' }))
 
+    # B7 -- shared data pack set, carried byte for byte (P7c).
+    # core/src/main/resources/data/** is the home of the hand-written data files whose ids are
+    # either all vanilla/external or spread over two or more layers (P7c task 1 verdict), so no
+    # single module may own them: every module must physically carry a copy.  A module jar
+    # without them still builds and still boots -- the enchantment tags, the loot modifier
+    # injections and the curios player slots just silently do not exist for that install.
+    # The copy is compared byte for byte (SHA-256) so it can never drift into "a second,
+    # edited data file", the same way B4 pins the language copy.
+    $sharedDataRootRel = 'core\src\main\resources\data'
+    $sharedDataRoot = Join-Path $repoRoot $sharedDataRootRel
+    $sharedFiles = @()
+    if (Test-Path -LiteralPath $sharedDataRoot) {
+        $sharedFiles = @(Get-ChildItem -LiteralPath $sharedDataRoot -Recurse -File -Filter '*.json')
+    }
+    $sharedMissing = @()
+    $sharedMismatch = @()
+    foreach ($sf in $sharedFiles) {
+        $entry = Get-DataJarEntry $sf.FullName
+        if (-not $entry) { continue }
+        if (-not ($entries -contains $entry)) { $sharedMissing = $sharedMissing + $entry; continue }
+        if ((Get-JarEntryHash $jarPath $entry) -ne (Get-FileHash -LiteralPath $sf.FullName -Algorithm SHA256).Hash) {
+            $sharedMismatch = $sharedMismatch + $entry
+        }
+    }
+    $sharedOk = ($sharedFiles.Count -gt 0) -and ($sharedMissing.Count -eq 0) -and ($sharedMismatch.Count -eq 0)
+    Write-Check $sharedOk ($name + ' B7 carries every shared data/** file byte-identical') `
+        ("sharedHome=" + $sharedDataRootRel + " sharedFiles=" + $sharedFiles.Count + " missing=" + $sharedMissing.Count + " hashMismatch=" + $sharedMismatch.Count + `
+         $(if ($sharedMissing.Count -gt 0) { ' missing=[' + ($sharedMissing -join ', ') + ']' } else { '' }) + `
+         $(if ($sharedMissing.Count -eq 0 -and $sharedMismatch.Count -eq 0 -and $sharedFiles.Count -gt 0) { ' [' + (($sharedFiles | ForEach-Object { Get-DataJarEntry $_.FullName }) -join ', ') + ']' } else { '' }))
+
     Write-Host ''
 }
 
@@ -538,6 +603,51 @@ foreach ($name in $modules.Keys) {
     Write-Host ("        info  D5 module-owned DeferredRegister-style .register( sites: " + $deferredRegisterSites.Count + `
         $(if ($deferredRegisterSites.Count -gt 0) { ' [' + ($deferredRegisterSites -join '; ') + ']' } else { '' }))
 }
+Write-Host ''
+
+# ---------------------------------------------------------------------------
+# E. hand-written data/** home assertions (P7c)
+#    The root project (mod id coe_integration) is the integration layer and is not the shipped
+#    artifact: the three module jars are.  Before P7c all 27 hand-written data files lived in
+#    src/main/resources/data, so a player installing coe.jar (or cews.jar / transmutation.jar)
+#    got NONE of them -- silently.  These two assertions pin the fixed shape: a module's own
+#    data files travel in that module's jar, and nothing is left behind in the root tree.
+# ---------------------------------------------------------------------------
+Write-Host '[E] hand-written data/** home assertions'
+foreach ($name in $modules.Keys) {
+    $jarPath = Join-Path $repoRoot $modules[$name].jar
+    $entries = @(Get-JarEntries $jarPath)
+    $ownDataRel = $name + '\src\main\resources\data'
+    $ownDataRoot = Join-Path $repoRoot $ownDataRel
+    $ownFiles = @()
+    if (Test-Path -LiteralPath $ownDataRoot) {
+        $ownFiles = @(Get-ChildItem -LiteralPath $ownDataRoot -Recurse -File -Filter '*.json')
+    }
+    $ownMissing = @()
+    $ownMismatch = @()
+    foreach ($of in $ownFiles) {
+        $entry = Get-DataJarEntry $of.FullName
+        if (-not $entry) { continue }
+        if (-not ($entries -contains $entry)) { $ownMissing = $ownMissing + $entry; continue }
+        if ((Get-JarEntryHash $jarPath $entry) -ne (Get-FileHash -LiteralPath $of.FullName -Algorithm SHA256).Hash) {
+            $ownMismatch = $ownMismatch + $entry
+        }
+    }
+    Write-Check (($ownMissing.Count -eq 0) -and ($ownMismatch.Count -eq 0)) `
+        ($name + ' E1 every hand-written data/** file of this module is packaged in its own jar') `
+        ("ownHome=" + $ownDataRel + " ownFiles=" + $ownFiles.Count + " missing=" + $ownMissing.Count + " hashMismatch=" + $ownMismatch.Count + `
+         $(if ($ownMissing.Count -gt 0) { ' missing=[' + (($ownMissing | Select-Object -First 8) -join ', ') + $(if ($ownMissing.Count -gt 8) { ', ...' } else { '' }) + ']' } else { '' }))
+}
+
+$rootDataRel = 'src\main\resources\data'
+$rootData = Join-Path $repoRoot $rootDataRel
+$stranded = @()
+if (Test-Path -LiteralPath $rootData) {
+    $stranded = @(Get-ChildItem -LiteralPath $rootData -Recurse -File)
+}
+Write-Check ($stranded.Count -eq 0) 'E2 no hand-written data/** file is stranded in the root integration layer' `
+    ("rootHome=" + $rootDataRel + " files=" + $stranded.Count + `
+     $(if ($stranded.Count -gt 0) { ' -> move each one to core/src/main/resources/data (vanilla/external or cross-layer ids) or to the module that owns its ids: [' + (($stranded | ForEach-Object { $_.FullName.Substring($rootData.Length + 1) }) -join ', ') + ']' } else { ' (root does not publish, so a file left here reaches no shipped jar)' }))
 Write-Host ''
 
 # ---------------------------------------------------------------------------

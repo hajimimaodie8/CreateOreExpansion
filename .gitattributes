@@ -3,3 +3,10 @@
 # are changed when only line endings change.
 src/generated/**/.cache/* text eol=lf
 src/generated/**/*.json text eol=lf
+# P7c: those two patterns carry "/" so they are anchored at the repository root and never
+# match coe|cews|transmutation/src/generated/**. The module-side datagen output is written
+# with LF as well (same providers, same DataProvider.saveStable), so repeat the rule per
+# module; without it git warns "LF will be replaced by CRLF" once per file on every add.
+coe/src/generated/**/*.json text eol=lf
+cews/src/generated/**/*.json text eol=lf
+transmutation/src/generated/**/*.json text eol=lf

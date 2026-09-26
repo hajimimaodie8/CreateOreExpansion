@@ -31,6 +31,16 @@ sourceSets.main.resources {
     exclude("**/.cache/**")
 }
 
+// ── P7c：共享数据包资源（core/src/main/resources/data/**）也是根 jar 的资源 ────────────────
+// P7c 把 27 个根侧手写 data/** 里「引用全是原版/外部命名空间、或横跨两层」的 5 个共享文件
+// git mv 到 core/src/main/resources/data/**（见 buildSrc/coe-conventions.gradle 的 P7c 段，
+// 三个模块 jar 用同一行把该目录登记成自己的资源目录）。
+// 根工程这里补同一条：dev 期根 mod 文件本来就已经通过 neoForge.mods{} 的
+// `sourceSet(project(':core').sourceSets.main)` 合并拿到 core 的 resources 输出，但**根 jar
+// 自己的顶层**不会因为那一条而带上它们（那一条只写 -Dfml.modFolders）。照 AGENTS 的构建流程
+// 交付的是根 jar，所以这里显式登记，让"根 jar 顶层 / 模块 jar 顶层"两种形态一致。
+sourceSets.main.resources.srcDir project(':core').file('src/main/resources')
+
 repositories {
     // 内置内核 Skiller 的本地 maven 仓库（libs-maven/，随仓库提交）。
     // 用 maven 布局而不是 files(...) 的原因：JarJar 需要 group/artifact/version 元数据，

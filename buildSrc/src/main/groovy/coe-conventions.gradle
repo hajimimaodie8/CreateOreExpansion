@@ -166,6 +166,27 @@ if (!isLibrary) {
     sourceSets.main.resources.srcDir 'src/generated/resources'
     sourceSets.main.resources.exclude '.cache/**'
     sourceSets.main.resources.exclude '**/.cache/**'
+
+    // ── P7c：共享数据包资源也住 core，本模块 jar 物理携带一份 ──────────────────────
+    // 背景：根工程（coe_integration）是集成层、**不发布**；发布的只有三个模块 jar。而根侧
+    // src/main/resources/data 下曾长期躺着 27 个手写数据包文件（附魔标签 / loot_modifiers /
+    // curios 玩家槽位 / 序列装配配方 / bastion 模板池 / global_loot_modifiers …），单装任一
+    // 模块 jar 时它们**一个都不在**，且没有任何机制覆盖（lang 有"另落一份拷贝"，data 没有）。
+    // P7c 按「引用的 id → 层」判定把它们一分为二：只引用某一层的 git mv 到该模块；引用全是
+    // 原版/外部命名空间、或横跨两层的**共享**文件（5 个）住 core/src/main/resources/data/**。
+    //
+    // 为什么是"登记成本模块的资源目录"而不是"再落一份生成拷贝"：
+    //   · git 里只有**一份真源**（core），不会像 lang 那样出现"生成拷贝 + 手写原件"两份真相；
+    //   · core 本来就是「被两层以上用」的共用物之家（AGENTS 红线）；
+    //   · 这条只读本模块之外的**一个目录路径**，不引入任何 `project(':')` 引用
+    //     （`:coe:compileJava` 通过 == 零根引用 的机器证明原样保住；core 是子工程不是根）。
+    // 效果：processResources 把 core/src/main/resources/data/** 复制进本模块的
+    // build/resources/main ⇒ 它以**本模块 jar 的顶层条目**形式出现（不是嵌套 jar 里那份），
+    // dev 里也因此在**本模块自己的 mod 文件**根上（-Dfml.modFolders 用的是 sourceSet output）。
+    // 路径用 project(':core').file(...)（= core 的 projectDir）解析，不读 core 的 sourceSets，
+    // 所以不需要 evaluationDependsOn(':core')。
+    // 注意本块在 `if (!isLibrary)` 里：core 自己（coe_library=true）走 else 分支，不自我引用。
+    sourceSets.main.resources.srcDir project(':core').file('src/main/resources')
 }
 
 // ── 4) ModDevGradle 配置 ────────────────────────────────────────────────────
