@@ -138,7 +138,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **P4a/P4b：assets 与 data 已按模块分家**（161 手写 + 56 生成 `git mv`，命名空间/路径未改）。机制 = **改写落盘路径**而非改 `--output`（`LayerDataProvider#run` 包一层 `CachedOutput`）；`build.gradle` 两处**承重**：`--existing <module>/src/main/resources/` 与系统属性 `coe.datagen.layerAssetRoots`（缺了=静默不生效）。
 - **P4c：lang 已按层落地**（2026-09-26 重做；见 `markdown_output/P4c-交接-生成物按层分家.md`）：新增集成层 `data/lang/LayerLangSplitter`，排两份 `LanguageProvider` **之后**注册；**归属靠注册对象的 `getDescriptionId()`、必须换资源命名空间、根文件一个字节都不许动**。实测归属 155/155（COE 133 / CEWS 20 / TRANS 2），249 条裸字符串键留根。
 - **⚠ 拆 lang 时不要把根文件改小**：`HashCache` 看不到「别的提供器后写了这个文件」，下一轮的重写会被哈希命中跳过 ⇒ 根文件停在拆分后的形态，模块侧生成目录一删那些键**再也补不回来**；同轮对同一路径的第二次写也不可靠（en_us 落地、zh_cn 没落地）。
-- **221 生成配方 + 108 生成标签仍由集成层提供**（出处≠声明）：`CreateOreExpansionDatagen` 直挂 `RecipeProvider`；标签是单一 union 提供器。硬搬会被下次 `runData` 的 stale 清理吃掉。要拆只能**按 tag 文件逐文件路由**（单层归模块、跨层 3 留根）。
+- **221 生成配方 + 108 生成标签仍由集成层提供**（出处≠声明）：`CreateOreExpansionDatagen` 直挂 `RecipeProvider`；标签仍是单一 union 提供器，但**落盘时按注入的 `id→层` 表逐文件改道**（单层归模块、跨层按层各写一份，靠**合并**语义还原），并豁免 `purgeStale` 的 `/tags/`。
 - **`runData` 第二次跑 `written: 0` 不再是健康判据**：`HashCache` 存越界路径不能往返，被改写的 238 资产 + 56 data 每次都会重写。判据是 `git status` 与内容。
 - **待查**：`runData` 偶发 `Found unused register callbacks`（现在约 7 次 2 次），日志里 sable 的 mixin 仍被装载 ⇒ `build.gradle` 对 runData 的 sable/aeronautics 排除**没有真正生效**。
 - **「全模组共用的东西」必须住 SHARED/`core`**：被两层以上用的契约/登记表若住在某一层，就会让另一层反向 import（禁止方向）。

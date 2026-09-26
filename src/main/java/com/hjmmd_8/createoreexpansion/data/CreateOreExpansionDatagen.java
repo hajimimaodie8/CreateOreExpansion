@@ -2,11 +2,14 @@ package com.hjmmd_8.createoreexpansion.data;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.registry.LayerDataProvider;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
@@ -14,8 +17,16 @@ import com.hjmmd_8.createoreexpansion.common.registry.transmutation.Transmutatio
 import com.hjmmd_8.createoreexpansion.data.lang.ChineseLangProvider;
 import com.hjmmd_8.createoreexpansion.data.lang.EnglishLangProvider;
 import com.hjmmd_8.createoreexpansion.data.lang.LayerLangSplitter;
+import com.tterrag.registrate.AbstractRegistrate;
+import com.tterrag.registrate.util.entry.RegistryEntry;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.data.ExistingFileHelper;
@@ -48,6 +59,12 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * 只在主层那个提供器里按 COE → CEWS → TRANS 的顺序跑三层并集——
  * 与前缀、路径、条目顺序都与拆分前的"单 Registrate"逐字节一致
  * （见 {@code LayerRegistrate#genData}）。</p>
+ *
+ * <p><b>P5：标签的"落点"分家</b>。并集照旧在<b>一个</b>提供器里组装完，但写盘时按
+ * {@code values} 的逐元素归属改道：单层标签整份搬到该模块，跨层标签<b>按层各写一份</b>
+ * （每份只含该层元素）。跨层能拆的前提是实测确认了 vanilla {@code TagLoader} 对同一数据包路径
+ * 的多资源包是<b>累加合并</b>（{@code listMatchingResourceStacks} + 无 {@code "replace"}），
+ * 不是"后者覆盖"——详见 {@code LayerDataProvider} 类注释"四"。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class CreateOreExpansionDatagen {
@@ -66,14 +83,27 @@ public class CreateOreExpansionDatagen {
         // 层顺序 COE → CEWS → TRANS 与拆分前的注册触发顺序一致，保证条目顺序逐字节不变。
         //
         // P4a：第四个参数是本层模块的 src/generated/resources。本层的 blockstates/** 与
-        // models/** 会被改写到那里（`assets/<ns>/lang/**` 与 `data/**` 仍留在根工程，
-        // 理由见 LayerDataProvider 类注释"二"——LANG 是三层并集、且与根工程
-        // LanguageProvider 共写同一个 en_us.json）。路径由根 build.gradle 的 data run
-        // 通过系统属性 coe.datagen.layerAssetRoots 传来：`coe=<abs>;cews=<abs>;transmutation=<abs>`。
+        // models/** 会被改写到那里；`data/**` 里的**标签**从 P5 起也按逐文件归属改道
+        // （见下面 installTagRouter），非标签的 data 与 `assets/<ns>/lang/**` 仍留在根工程
+        // （LANG 是三层并集、且与根工程 LanguageProvider 共写同一个 en_us.json）。
+        // 路径由根 build.gradle 的 data run 通过系统属性 coe.datagen.layerAssetRoots 传来：
+        // `coe=<abs>;cews=<abs>;transmutation=<abs>`。
         // 取不到时返回 null ⇒ 不改写（退化成 P4a 之前的行为，不会写错地方）。
-        LayerRegistrate.attachDataGenerator(CoeRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, null, event, layerAssetRoot("coe"));
-        LayerRegistrate.attachDataGenerator(CewsRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, "cews", event, layerAssetRoot("cews"));
-        LayerRegistrate.attachDataGenerator(TransmutationRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, "transmutation", event, layerAssetRoot("transmutation"));
+        Path coeRoot = layerAssetRoot("coe");
+        Path cewsRoot = layerAssetRoot("cews");
+        Path transmutationRoot = layerAssetRoot("transmutation");
+
+        LayerRegistrate.attachDataGenerator(CoeRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, null, event, coeRoot);
+        LayerRegistrate.attachDataGenerator(CewsRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, "cews", event, cewsRoot);
+        LayerRegistrate.attachDataGenerator(TransmutationRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, "transmutation", event, transmutationRoot);
+
+        // —— P5：标签按「逐文件归属」路由到各模块（见 LayerDataProvider 类注释"四"）——
+        // 表用三层各自的 getAll(BLOCK / ITEM) 建，零手工维护（与 LayerLangSplitter 同一手法）。
+        // 传的是**惰性查询**：真正的表在提供器运行时才构建（那时注册已完成，见 tagElementLayer）。
+        // 与路由成对的另一处修改在 core 的 LayerDataProvider#purgeStale（跳过 /tags/），
+        // 不跳的话非主层提供器的 stale 清理会把主层刚路由进来的标签删掉。
+        LayerDataProvider.installTagRouter(CreateOreExpansionDatagen::tagElementLayer,
+            tagLayerRoots(coeRoot, cewsRoot, transmutationRoot));
 
         // —— 三层并集顺序 + 主层（P3e 从 LayerRegistrate 挪到这里）——
         // LayerRegistrate 住 SHARED、将来要原样搬进 core 库，不许 import 任何层专属类；
@@ -93,8 +123,7 @@ public class CreateOreExpansionDatagen {
             // 它只读根文件、只写模块侧（assets/<模块>/lang/**），从不写根路径，理由见类注释"二"。
             // 顺序是承重的：DataGenerator 按注册顺序串行跑提供器，而 saveStable 在 run 内同步落盘，
             // 所以轮到这里时根文件已经是本轮最终内容（值逐条复制）。
-            generator.addProvider(true, new LayerLangSplitter(output,
-                layerAssetRoot("coe"), layerAssetRoot("cews"), layerAssetRoot("transmutation")));
+            generator.addProvider(true, new LayerLangSplitter(output, coeRoot, cewsRoot, transmutationRoot));
         }
         if (event.includeServer()) {
             generator.addProvider(true, new RecipeProvider(output, event.getLookupProvider()));
@@ -125,5 +154,82 @@ public class CreateOreExpansionDatagen {
             }
         }
         return null;
+    }
+
+    /** "层名 → 该模块的 {@code src/generated/resources}"；取不到的层不进表（那层的标签于是留根）。 */
+    private static Map<String, Path> tagLayerRoots(@Nullable Path coeRoot, @Nullable Path cewsRoot,
+                                                   @Nullable Path transmutationRoot) {
+        Map<String, Path> roots = new LinkedHashMap<>();
+        if (coeRoot != null) {
+            roots.put("coe", coeRoot);
+        }
+        if (cewsRoot != null) {
+            roots.put("cews", cewsRoot);
+        }
+        if (transmutationRoot != null) {
+            roots.put("transmutation", transmutationRoot);
+        }
+        return roots;
+    }
+
+    /**
+     * P5 标签路由用的「注册 id → 层」表。惰性建：{@code LayerDataProvider} 在提供器运行时
+     * 才第一次调用它，那时三层注册已经完成（{@link LayerLangSplitter} 用的是同一个时机）。
+     *
+     * <p>为什么是"查表函数"而不是"一张现成的表"：{@code LayerDataProvider} 住 {@code core}，
+     * <b>不许出现任何层引用</b>（{@code tools/check-layering.ps1} 会抓），所以"有哪三层、
+     * 每层的注册对象从哪来"只能是集成层的知识——本方法就是注入给它的那一半。</p>
+     */
+    @Nullable
+    private static volatile Map<ResourceLocation, String> tagElementLayers;
+
+    /** 见 {@link #tagElementLayers}。返回 {@code null} = 该 id 不归属任何层 → 整份标签留根。 */
+    @Nullable
+    private static String tagElementLayer(ResourceLocation id) {
+        Map<ResourceLocation, String> table = tagElementLayers;
+        if (table == null) {
+            // 双检锁：提供器的写盘发生在 DataProvider.saveStable 的后台线程上（实测并发 14 个 worker
+            // 同时进来），不锁的话表会被重复构建十几次——结果一样（纯函数），但日志会很吵。
+            synchronized (CreateOreExpansionDatagen.class) {
+                table = tagElementLayers;
+                if (table == null) {
+                    table = buildTagElementLayers();
+                    tagElementLayers = table;
+                }
+            }
+        }
+        return table.get(id);
+    }
+
+    private static Map<ResourceLocation, String> buildTagElementLayers() {
+        Map<ResourceLocation, String> layers = new LinkedHashMap<>();
+        collectTagLayers(layers, "coe", CoeRegistrate.REGISTRATE);
+        collectTagLayers(layers, "cews", CewsRegistrate.REGISTRATE);
+        collectTagLayers(layers, "transmutation", TransmutationRegistrate.REGISTRATE);
+        CoeCore.LOGGER.info("[Layer Tag Router] element table built: {} ids", layers.size());
+        return layers;
+    }
+
+    /**
+     * 一层的方块与物品注册 id 入表。撞 id 只记日志、先到先得（层顺序 COE → CEWS → TRANS）；
+     * 实测三层 id 集合两两不交（标签引用的 139 个 id 里 0 歧义）。
+     */
+    private static void collectTagLayers(Map<ResourceLocation, String> layers, String layerId,
+                                         AbstractRegistrate<?> registrate) {
+        collectTagLayers(layers, layerId, registrate, Registries.BLOCK);
+        collectTagLayers(layers, layerId, registrate, Registries.ITEM);
+    }
+
+    private static <R> void collectTagLayers(Map<ResourceLocation, String> layers, String layerId,
+                                             AbstractRegistrate<?> registrate,
+                                             ResourceKey<? extends Registry<R>> registry) {
+        for (RegistryEntry<R, ?> entry : registrate.getAll(registry)) {
+            ResourceLocation id = entry.getId();
+            String previous = layers.putIfAbsent(id, layerId);
+            if (previous != null && !previous.equals(layerId)) {
+                CoeCore.LOGGER.warn("[Layer Tag Router] id '{}' claimed by both '{}' and '{}'; keeping '{}'",
+                    id, previous, layerId, previous);
+            }
+        }
     }
 }
