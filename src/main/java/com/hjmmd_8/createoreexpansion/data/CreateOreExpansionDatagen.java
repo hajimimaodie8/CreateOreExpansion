@@ -13,6 +13,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRegistrate;
 import com.hjmmd_8.createoreexpansion.data.lang.ChineseLangProvider;
 import com.hjmmd_8.createoreexpansion.data.lang.EnglishLangProvider;
+import com.hjmmd_8.createoreexpansion.data.lang.LayerLangSplitter;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -87,6 +88,13 @@ public class CreateOreExpansionDatagen {
             System.out.println("========== CreateOreExpansion ChineseLangProvider START ==========");
             generator.addProvider(true, new EnglishLangProvider(output));
             System.out.println("========== CreateOreExpansion EnglishLangProvider START ==========");
+
+            // —— P4c：三层各自的 lang 子集，必须排在上面两份 LanguageProvider **之后** ——
+            // 它只读根文件、只写模块侧（assets/<模块>/lang/**），从不写根路径，理由见类注释"二"。
+            // 顺序是承重的：DataGenerator 按注册顺序串行跑提供器，而 saveStable 在 run 内同步落盘，
+            // 所以轮到这里时根文件已经是本轮最终内容（值逐条复制）。
+            generator.addProvider(true, new LayerLangSplitter(output,
+                layerAssetRoot("coe"), layerAssetRoot("cews"), layerAssetRoot("transmutation")));
         }
         if (event.includeServer()) {
             generator.addProvider(true, new RecipeProvider(output, event.getLookupProvider()));
