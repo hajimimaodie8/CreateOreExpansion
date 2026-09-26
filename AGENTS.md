@@ -1,13 +1,25 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
-> 本文件是「记忆索引」，只放跨会话必须知道的事实与挂起事项；长文档都在 `markdown_output/`。
-> 最后更新：2026-09-14（能量波系统收尾 + 工程坑补记 + 注液/储存档位/波型日志三修）。
+> 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
+> 最后更新：2026-09-25（瘦身重排 + CEWS 现状更正；原 68,930 B 的长叙述已迁入 `markdown_output/`，现约 34.3 KB）。
+> **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
+
+## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
+
+- **技能换核**（15 条已定事实、技能系统现状速记、W5/W6 收尾清单）→ `markdown_output/技能内核换核执行方案.md`，找标题 **`## 从 AGENTS.md 迁入（2026-09-25）`** 的两节（`### A.` 已定事实 1–15、`### B.` 技能系统现状速记）；旧分析 `markdown_output/技能内核对比与迁移分析.md` 只作参考。
+- **模块拆分 P1–P3w**（时间线、决策表、逐条原文、P3h–P3v 取证索引）→ `markdown_output/模块拆分进度与决策链.md`，找标题 **`## 0. 一页时间线（TL;DR）`** 与 **`## 1. 从 AGENTS.md 迁入（2026-09-25）：原文逐条`**。
+- **变器应力闸门 / 转速分档 / 护目镜读数口径**（2026-09-24/25 定稿全部细则）→ `markdown_output/能量波三态与变器双模式（需求与进度）.md`，找标题 **`## 从 AGENTS.md 迁入（2026-09-25）：变器应力闸门 · 转速分档 · 护目镜读数口径`**。
+- **四模块自由组合方案 / 各层依赖矩阵 / 发布策略** → `markdown_output/四模块自由组合（方案评判·风险·工作量）.md`，找 **`## 13. 各层依赖矩阵`**、**`## 15. P3 模块布局定稿`**。
+- **CEWS 拆分方案**（耦合点 12 条、模块边界判据、待定项、风险与验收）→ `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`（读全文）。
+- **变器配方判定与执行逻辑**（含「给桶注液不是配方」的完整取证）→ `markdown_output/变器配方判定与执行逻辑.md`，找 **`§0.2`**。
+- **技能现状地图 / Skiller API 契约 / 各类取证脚本与日志** → `build/patch/coe_skill_map.md`、`build/patch/skiller_api_foundation.md`、`build/patch/p3?-EVIDENCE.txt`（`build/` 被 git 忽略，重生成即可）。
 
 ## 工程速览
 
 - 模组：`createoreexpansion`（Create 6.0.10 附属，NeoForge / Minecraft 1.21.1）
 - 根目录：`E:\mc\mcmod\createoreexpansion`，包根 `com.hjmmd_8.createoreexpansion`
 - 当前分支：`leaf-dev`
+- **工程结构（2026-09-25，P3w 后）**：`settings.gradle` 里 include 了 `core`（JarJar 嵌套的共享库，57 个 java 文件，**不是 mod**）、`coe`（矿物拓展，177 个 java 文件，**携带 mod id `createoreexpansion`**）、`cews` / `transmutation` / `all-neoforge`（仍是 P3a 空骨架，0 个 java 文件）。**CEWS / TRANS 的源码此刻还在根工程 `src/main/java`**，根同时持有集成层。
 - 构建与验证流程（本工程一贯用法）：
   1. `.\gradlew.bat compileJava`
   2. 改动语言/资源时：`.\gradlew.bat runData`（同时兼作 Bootstrap / mixin 冒烟测试）
@@ -16,7 +28,7 @@
 - 崩溃排查：`run/crash-reports/*.txt`、`run/logs/latest.log`
 - 可选依赖（Jade / JEI / CC&A / Create Optical / Vintage Improvements / Aeronautics / Sable）一律通过 `compat/*` 层的 `ModList.isLoaded` + 反射隔离，**绝不在 `content` 包直接 import 可选模组类**。
 
-## 🧯 工程坑与自检（2026-09-14 补记，动手前后都用得上）
+## 🧯 工程坑与自检（动手前后都用得上）
 
 **1）`.gitignore` 的目录模式必须锚定根目录**
 裸写 `data/`、`net` 这类模式会匹配**任意层级**同名目录：曾因此让 `src/main/resources/data/`、`src/generated/resources/data/` 整片被忽略，而 `git add <dir>` 对忽略文件是**静默跳过**（不报错、连 `git status` 都看不见），结果 **81 个数据文件**（64 个 ε/ω 充能配方 + 12 个机器掉落表 + 5 个方块标签）从没进过版本库。现已全部锚定（`/data/`、`/net/`、`/libs/`、`/repo/`、`/_create_src`、`/markdown_output`、`/.run/`）。
@@ -37,19 +49,29 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - 必须 `cmd /c` 直连：PowerShell 的 `*>` 会把 javadoc 的 stderr 包成 NativeCommandError 记录并按宽度折行，把绝对路径切成碎片、毁掉诊断行。
 - 现状（2026-09-14）：13 死链 + 6 处 HTML + 13 处非法 `@param` 已清，**仅剩 3 处错误且全在 `content/skill/*`**（按挂起事项未动）。
 
-**3）PowerShell 与全库盘点**
+**3）PowerShell 与全库盘点（含会误判事实的编码坑）**
 - 全库文字盘点用 `Select-String`：**本仓 `grep` 会漏文件**（实测只扫出 71 行，实际更多）。
 - PS 5.1 读**无 BOM 的 UTF-8 `.ps1`** 会按 ANSI 解码：脚本里的中文注释可能吞掉引号 → ParserError。**一次性脚本一律写纯 ASCII**（中文用 `[regex]::Unescape('\uXXXX')`）。
 - 临时文件写 `%TEMP%` 或 `build/`（已忽略），别落进仓库——`git add -A` 会把它带进去。
+- **`.\gradlew ... 2>&1 | Select-Object` 会把 javac 的 GBK 中文诊断解成乱码**（`����: �� Color`）；要 `cmd /c "... > file 2>&1"` + `Get-Content -Encoding Default`；**`Select-String` 匹配中文也必须显式 `-Encoding Default`**（有一次因此把「@Mod 构造器已跑」误判成「没跑」）。
+- **改 Java / 文档一律只用 write/edit 工具**：用 `Get-Content | -replace | Set-Content` 改文件时 PS 5.1 按 ANSI 重写，曾把 `SkillerIntegration.java` 改到语法崩掉（48 个编译错误），只能 `git checkout --` 重做。
 
 **4）构造期陷阱（2026-09-14 真实崩溃）**
 父类构造器会调用**可覆写**方法。`Entity` 的构造器就会调 `setPos(0,0,0)`（另有 `defineSynchedData` / `getBoundingBox` / `getFireImmuneTicks` / `getMaxAirSupply` / `getTeam` / `level()`），而覆写体在**字段初始化器之前**执行 → 碰任何对象字段都是 NPE。波实体曾在 `setPos` 里调 `wavePath.markLiveBreak()`，导致**开炮即服务端崩溃**（`run/crash-reports/crash-2026-09-14_09.47.56-server.txt`）。
 **规则：构造期可被调用的覆写体只能使用参数、静态成员与原始类型字段。** 已审计全仓（`Entity` 侧只有 `AbstractChargerWaveEntity` 覆写这两个方法；`BlockEntity` 构造器调的 `getType`/`isValidBlockState`/`validateBlockState`/`getNameForReporting` 在本仓无覆写），现在都合规。
 
-**5）静态关卡覆盖不到什么**
-`compileJava` / `runData` / javadoc **都不构造实体、不跑 tick**。改动涉及实体生命周期或玩家交互时，这三关全绿也不代表不崩——必须明确告知用户"这一步只能进游戏实测"。
+**5）静态关卡覆盖不到什么（三关全绿 ≠ 不会崩 —— 动手前必读）**
+`compileJava` / `runData` / javadoc **都不构造实体、不跑 tick、不跑渲染、不装配界面**。以下类别**没有任何静态关卡覆盖**，改到时必须明确告知用户「这一步只能进游戏实测」：
 
-**5.5）数据包标签目录是<b>单数</b>：`tags/item/`、`tags/block/`，写错就静默失效**
+- **实体 / tick / 玩家交互**：实体生命周期（生成、存档、开炮、命中）、tick 逻辑——2026-09-14 的「开炮即崩」就是在这三关全绿的情况下发生的。
+- **客户端渲染**：技能预览框、波口指示灯、护目镜档位提示、Jade/查询仪读数——只有进游戏才看得见（技能 W5 渲染器移植的验收条件就是「进游戏看预览是否还在」）。
+- **JEI**：`@JeiPlugin` 的类别装配与侧栏顺序在运行期才发生；UID 重复、类别漏装配只有加载时暴露。
+- **配置**：`runData` 时**根本不加载配置**；配置键名/容器名写错要到进游戏才暴露，**容器名一变（如 `coe_core-common.toml`）= 老玩家设置静默丢失**。
+- **创造页内容同步**：`AllCreativeModeTabs` 层类各持一份手写 `TABS` 列表，**新增页忘了加进列表 = 静默不注册**（无编译错误，无警告）；标签页内容清单 `EnergyWaveStudyTab#CONTENTS` 同理。
+- **包重叠（JPMS）**：`runData`/`runClient` 覆盖不到——dev 里根与 core 是同一个 mod 文件，只有**真发布 jar 进游戏**才能验。
+- **可选依赖「没装也能加载」**：唯一取证方式是**把该模组从 dev 运行时依赖里临时去掉跑一次 `runData`**，日志里该类名 0 命中才算通过。
+
+**5.5）数据包标签目录是单数：`tags/item/`、`tags/block/`，写错就静默失效**
 写成 `tags/items/`（复数）= 一个"名叫 items 的注册表标签目录"，游戏不认识，**整个文件被忽略且不报错**。
 实例：`transmutation_protected.json` 曾在 `tags/items/` 里 → `stack.is(TRANSMUTATION_PROTECTED)` 恒为假
 （龙蛋/下界之星/信标其实从没被保护）。2026-09-15 已挪回单数目录。
@@ -57,114 +79,19 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 另：手写数据文件与 datagen 产出**同名就会让 `processResources` 报 duplicate 而构建失败**
 （本仓造过一次：手写的系列标签 vs 新加的 `.tag(...)` 注册）——两者只能留一个。
 
-**6）三条"别再查一遍"的既有结论（2026-09-14 实测/反编译取证，长文见 `markdown_output/`）**
-- **"给桶注液"不是配方**：Create 的 19 条内置 `create:filling` 配方里**没有一条以空桶为原料**；真机的流体喷口走 `GenericItemFilling` 特判（借物品自身的 `Capabilities.FluidHandler.ITEM`）。所以"波拿不到注液配方"不是类型门/流体门槛的缺陷，而是**口径缺失**——已补货载旁路 `content/charger/craft/WaveItemFluidFilling`（用量与成品一律委托 Create，只认载荷流体，不耗链数）。详见 `变器配方判定与执行逻辑.md` §0.2。
-- **储存模式释放档位**：口径只有一处 `AbstractCreateChargerBlockEntity#resolveReleaseLevel(int)`——有应力取**当前档位**（与普通模式一致），停转才回落"最后一次有效档位"（否则停转后囤的层数一发都放不出）。蓝宝石用 `storedLevel` 做回落值；星辉石等级是持久手动设置，直接用 `getManualLevel()`。
-- **波系统日志唯一出口**：`content/charger/wave/WaveDiag`（`[变体波轨迹]` = 事件流，默认开；`[变体波加工]` = 逐条淘汰，默认关）。实体侧 `craftTrace` / `craftDebug` 只是它的委托包装——**新代码要写波相关日志一律走 WaveDiag**，别再自建前缀。
-- **变器"哪些面算波口"是机器本地概念**：`StellarWaveTransmuterBlock#isOpenable(BlockState, Direction)` 按"该世界方向能否映射到本机模型的一个侧面"判定（口径唯一处 `propertyForWorld`）。**别再写成"世界水平方向"**——本机六向放置，躺倒时自己的 4 个侧面里有 2 个朝上下，旧写法会让那 2 个口"显示开着却点不掉"。
-- **波波碰撞与波级/波型无关**（用户明确、长期口径）：任意两波相交即 `triggerBoom(爆炸等级 = min)` + 相互湮灭，范围伤害/范围充能加工、不破坏地形；几何上不可能"高速对穿而不触发"（相对步长 ≤1.2 格/tick < 判定窗口 2×0.6）。改碰撞效果前先看 `handleWaveCollision`，那里的日志会打印等级对与实际粒子数。
-- **变器"应力闸门"是"要不要给波赋属性"的唯一判据**（用户 2026-09-24 规格 + 当面确认）：**未接入应力时变器对波的波形/属性零改变**——加工波变态不转换（两口皆开时波原样飞过）、攻击态的攻击场连实体查询都不做。判据唯一处 = `StellarWaveTransmuterBlockEntity#isWavePowered()` = `hasNetwork() && getSpeed() != 0 && isSpeedRequirementFulfilled()`。生效点两处：`StellarWaveTransmuterPass#tryConvert`（新 `Result.PASSED` → `WaveOutcome.TRANSPARENT`）与 `TransmuterMode.ATTACK#applyField` 首行。**闸门只掐"赋属性"，不碰"让不让波过"**：波口开关 / 入口撞墙 / 对面遣返是机壳几何，仍照旧（闸门刻意排在两个口位判定之后）。
-- **转速门槛由模式自报**：`TransmuterMode#minimumRpm()` —— 加工态 **0**（"只要在转"，由 `getSpeed() != 0` 承担；**别写 1**，Create 转速是浮点，慢速网络 0.5 RPM 会被误判成转速不足）、攻击态 **128 RPM**（`ATTACK_MINIMUM_RPM`，用户 2026-09-24："限制这个攻击，转速 128 RPM 以上才能开启"）。按**绝对值**判定（反转的轴算接通）。它只限制**攻击效果**，模式切换 / 四口强制全开 / 口位锁定一条都不受影响。`ATTACK_MINIMUM_RPM` 与 BE 里那个同为 128 的 `FIELD_SPEED_THRESHOLD`（能量场半径分档）**概念不同、禁止互改**。
-- **攻击场三档 = 转速线性分档**（用户 2026-09-25 规格，分界已当面确认为**区间三等分**）：`TransmuterMode#attackTier(float speed)` 是唯一实现（`t = clamp((|speed| − 128) / (256 − 128), 0, 1)`，档 = `clamp(floor(t × 3), 0, 2)` → **128–170.67 档一 / 170.67–213.33 档二 / ≥213.33（含 256 以上）档三**）；`attackFieldRadius(speed)` 是它的别名（档位序号就是半径：0/1/2）。三个常量 `ATTACK_MINIMUM_RPM=128` / `ATTACK_MAXIMUM_RPM=256` / `ATTACK_TIER_COUNT=3` 在 `TransmuterMode` 里各只有一份，**显示层一个新数字都不写**（区间两端由 `minimumRpm()` + `attackTierCeilingRpm()` 自报）。档一 = **场盒就是机器本体**（波必须真的穿过这台机器），档二 = 半径 1 的立方体，档三 = 半径 2。**攻击场半径因此不再取能量场 `scanRadius`**；`applyField` 签名已改为 `(Level, BlockPos, float speed)`，BE 只递 `getSpeed()`。
-- **转速分档一律走 `util/SpeedBands`（唯一实现，别再写内联三元 + 魔法数字）**（用户 2026-09-25 原则："转速的相关调整区间代码…不要使用硬编码…不能直接套用之前别人写过的其他机器的代码"）：一张表同时回答"第几档 / 该档下限·上限 RPM / 该档对应的值"，**判定与显示共用同一个对象**。工厂 `linear(min,max,count,baseValue)`（等分）与 `of(lowers,values[,topRpm])`（散阈值）；查询 `indexAt`（内部取 `Math.abs`，两端夹紧）、`valueAt`、`valueOfIndex`、`lowerRpm/upperRpm`、`topRpm`、`count`；`SpeedBands.formatRpm` 是全模组转速文案的唯一格式化（`%.1f` 去掉多余 `.0`，`Locale.ROOT`）。非法表构造即抛 `IllegalArgumentException`（刻意不静默纠正）。两处消费者：`TransmuterMode.ATTACK_TIERS = linear(128,256,3,0)`（档值 = 场盒半径；`attackTierCeilingRpm()` = `topRpm()`、`MIN_FIELD_RADIUS` = `valueOfIndex(0)`，都是派生而非再抄一份）与 `StellarWaveTransmuterBlockEntity.FIELD_RADIUS_BANDS = of({0,128},{2,3})`（取代原先那句抄自蓝宝石场控的 `speed >= 0 ? (speed >= 128 ? 3 : 2) : 2`；`fieldControllerSpeed` 成功时**本就返回 `Math.abs(...)`**，所以 `speed < 0` 只是"解析失败哨兵 −1"，改成读表后**行为零变化**，方法里保留了显式分支+注释，别再误读成转向语义——本会话我已误读过一次）。
-- **RPM 一律整数，且量化只能"向上取整"**（用户 2026-09-25："把那个转速调成整数RPM，不要用小数了"）：`SpeedBands` 的档位下限全部量化成整数——`linear(...)` 用 `Math.ceil`、充能器专用的 `equalSteps(min,max,count,base)`（= 把 `[min,max)` 等分 `count−1` 段再追加一档 `≥max`，末档无上界）也是 ceil；闭区间上界由 `upperInclusiveRpm(i)`（= 下一档下限 − 1）给出，显示因此是 `128~170 / 171~213 / ≥214` 这种整数闭区间。**必须 ceil 而不是 round/floor**：对整数转速 `s` 与实数边界 `b` 有 `s ≥ ceil(b) ⟺ s ≥ b`，ceil 是唯一能保证"**每个整数转速的归档与量化前逐点相同**"的取整；`round` 会把 `213.33 → 213`，让 213 RPM 从第二档挪进第三档（攻击场半径 1→2，直接改玩法）——本会话代理先用 round，靠 `build/patch/ChargerBandCheck.java`（对 `max∈{64,128,256,512,1024}` 逐整数转速比对，含边界 ±2 与正负号）查出这一处，改 ceil 后输出 `identical everywhere (integer rpm)`。**改动分档公式后请重跑该取证程序**（用 `javac -sourcepath src/main/java` 编译，直接验生产源文件）。非整数转速（齿轮比带小数才有）在边界附近 <1 RPM 的一小段仍会换档，这是整数口径的必然结果。
-- **充能器的转速档位也走 `SpeedBands`（第二个消费者）**：`AbstractCreateChargerBlockEntity#createSpeedTierBands(int max)` 是每台机器档位表的唯一来源（基线 = 翡翠三档 `equalSteps(1,max,3,1)`；蓝宝石覆写为 `equalSteps(1,max,5,1)`；**星辉石返回 `null`** = 档位与转速无关，护目镜退回"单行 `getStateName` + `getGoggleColor`"老路，行为文案一字未动）。表按 `max` 缓存、配置改了重建。判定 `getModeForSpeed()` 与显示区间读的是**同一张表**——蓝宝石原先"`getModeForSpeed` 一个 floor 公式 + 私有 `tierLo/tierHi` 又一个"的重复已删除（那是同一套边界写两遍，`max=65/255/257` 时旧**显示**与旧**判定**差一格，新实现顺手对齐了显示、判定未变）。`max` 取自 Create 配置 `AllConfigs.server().kinetics.maxRotationSpeed`（默认 256）。
-- **攻击态档位提示：一档一行，当前档用亮色**（用户 2026-09-25 规格，两轮叠加）：`TransmuterGoggles#appendAttackReadout` 输出 ① 攻击转速 + 需求区间 ② **档位行 × N（一档一行，"第 N 档（下限 ~ 上限 RPM，场盒…）"）**，当前所处那档 `WHITE`、其余 `DARK_GRAY`（**颜色是"我在哪档"的唯一标记**，三行文案同构）③ 场作用说明。**别再合并成一条长对照行**——第一版把三档挤在一行，用户原话："你这个消息显示太长了，你全写在一行"；也不要另开一条"当前档"行（与高亮重复，已删 `..._attack_tier` / `..._attack_tier_table` 两键）。未达门槛时本块**照常列出 N 档（全灰）**，让玩家看得到下一档要多少转速；"显然没有达到"那个状态不自己写文案，由 Create 的两行承担（用户："一个是显然没有达到，这个就不用解释了"）。**显示层零档数/阈值/半径常量**，循环上界 = `attackTierCount()`：改 256→320 或 3 档改 4 档只改 `ATTACK_TIERS` 那一句工厂调用。档一（半径 0）显示成「场盒就是机器本体」，不写"半径 0 格"。
-- **充能器的档位提示：同一套"一档一行"，但高亮用该档的"光芒色"**（用户 2026-09-25："你把这套应用方案也应用到翡翠应力充能器和蓝宝石应力充能器里…高亮显示时，显示的应该是对应光芒的颜色，而不是单纯的白色"）：`AbstractCreateChargerBlockEntity#addToGoggleTooltip` 行序 = 机器名 → （`MODE == 0` 时）灰「未接入应力」行 → **每档一行**（翡翠 3 行 α/β/γ、蓝宝石 5 行 α/β/γ/ε/ω，内容直接复用既有的每档词条 `getStateName(level, max)`，**充能器零新增翻译键**）→ 能量条（蓝宝石的模式/层数行仍在其后）。**当前档**用 `getWaveColor(level)`（= `WaveLevels#indicatorColor` 的 ARGB 指示灯色）去 alpha 后 `TextColor.fromRgb` 上色（α 0xFFFF55 / β 0x55FF55 / γ 0x5555FF / ε 0xFF66E0 / ω 0xFF4073），其余档 `DARK_GRAY`；未接入时 N 行照列但全灰。**变器那条仍用白色**——它三档对应同一个攻击波，没有"每档一种光芒"可取。
-- **场节拍固定 2 tick、不随档位变化**：最小档降到"机器本体"后 `MIN_FIELD_RADIUS` 由 1 改为 **0**（公式于是只得 1 tick），但正确性早已由波自己的 `WavePath` 折线（跨度 `MAX_OBSERVATION_GAP_TICKS` = 4 tick）保证——**观测间隔 ≤ 折线跨度就不漏判**，压到 1 tick 只是把每 tick 一次实体查询换回来，故用 `FIELD_INTERVAL_FLOOR_TICKS = 2` 托底。别再引用"半径 1 是最坏情形"那句旧口径。
-- **两态读数不混，且由模式自报**（用户 2026-09-25 规格："攻击态按住 Shift 不该显示加工态的内容"）：`TransmuterMode#appendReadout(tooltip, readout)` —— 加工态委托 `TransmuterGoggles#append`（扫描半径/加热/载荷/配方类型/最近一波那套），攻击态走 `TransmuterGoggles#appendAttackReadout`（行数以档位表为准 = 转速行 + **每档一行** + 说明行，逐行内容见下一条"档位提示"；档位/半径直读 `attackTier` 那一个映射，档位序号只在这里 +1）。调用方（BE）零 `if (mode == ATTACK)`。新增键：`..._attack_rpm` / `..._attack_tier` / `..._attack_field_hint`（加在 `data/lang/{Chinese,English}LangProvider`，`runData` 生成，**别只手改 generated**）。
-- **行序（用户 2026-09-25 追加规格："星辉波变器"这个机器名称放最前面）**：名称行 → 模式行（`TransmuterGoggles#appendModeLine`，全类唯一输出点，已从 `append` 剥离且 `Readout` 去掉 mode 字段 → 不会两行）→ 状态/读数行（转速 0 → 既有 `goggles.stellar_wave_transmuter_idle`「未接入应力」；在转未达门槛 → 我方零文案，由 Create 打"转速不足"；否则 `mode.appendReadout`）→ **末尾**才是 `super.addToGoggleTooltip`（Create 的"动能统计/应力影响"，原先在最前，为用户这条规格整体下移）。
-  `GoggleOverlayRenderer` 用**同一个 List** 先后调 `addToGoggleTooltip` 与 `addToTooltip`（中间插 `CommonComponents.EMPTY`、结尾 `remove(size-1)`），所以 BE 在 `addToTooltip` 里用 `tooltip.isEmpty()` 去重是正确判据（那里同样先补名称行、再补模式行）；**无护目镜时前者根本不调**（条件是 `isWearingGoggles && instanceof IHaveGoggleInformation`），此时头两行由 `addToTooltip` 补出，且它的返回值必须 `|| added` 兜住，否则 Create 侧返回 false 会让整块提示被丢弃。**`addToGoggleTooltip` 里三处早退已改成 if/else 链**——不能保留 `return true`，否则末尾的 `super` 会被跳过、Create 的动能行整块消失。
-- **"转速不足"不要自己写文案**：覆写 BE 的 `isSpeedRequirementFulfilled()`（门槛取模式自报值）即可让 Create 的 `KineticBlockEntity#addToTooltip` 自己打出搅拌器同款两行——金色 `create.tooltip.speedRequirement`（"需求转速："）+ `create.gui.contraptions.not_fast_enough`（"显然 <机器名> _没有_达到_足够_的_转速_。"，`%1$s` 是机器名，中英双语现成），**零新增翻译键**。注意 `IRotate.SpeedLevel.FAST` 取的是配置 `kinetics.fastSpeed`（**默认 100**，不是 128），所以门槛**不绑** SpeedLevel。
-- **可选依赖不再有"隐藏的 required"**（2026-09-25 实测修复）：`neoforge.mods.toml` 模板里 `curios` 曾是 **required**，而 Curios 只在凝能佩那条线上用到——后果是**没装 Curios 的玩家在加载阶段直接崩**，不是"少个功能"。现已改为 `optional`，做法是把"引用 Curios 类的代码"整体隔离：`content/equipment/medallion/bridge/MedallionCuriosBridge`（接口，零 Curios 类型）+ `MedallionCurios`（注册表 + 选择器）+ `compat/curios/{CurioMedallionBridge（唯一 API 调用点）, CurioMedallionItems（6 个饰品支线子类 + NoAutoEquip）}`；`CoeItems` 的 6 个凝能佩注册改用 `MedallionCurios.item(kind, fallback)`，`CreateOreExpansion` 在 **物品注册（`CoeItems.register()` 等）之前**按 `ModList.get().isLoaded("curios")` 条件 `Class.forName` 触发桥接（失败只 WARN + 降级，不崩）。**装了 Curios 行为与改前逐字一致**（子类只叠加 `ICurioItem` 契约，逻辑类一行未改）；没装则凝能佩按**纯物品**注册（同 id/名/贴图/组件/tooltip，可合成可绑定可切模式，佩戴类效果静默失效、工具供能退回自身 FE）。**`content/` 包仍不得 import 任何可选模组类**（Curios 只允许出现在 `compat/curios`）。取证方式（以后新增可选联动照做）：**把该模组从 dev 运行时依赖里临时去掉跑一次 `runData`**，日志里该模组的类名出现 0 次即证明"没装也能加载"，随后逐字节恢复并用 `git diff` + SHA256 证明恢复干净。**CA（`createaddition`）是唯一的例外：第 2、3 层对它是 required**（第 2 层的锭→板/杆/线整条线跑在它的轧机上：8 条 `createaddition:rolling` + 2 条 `sequenced_assembly`；第 3 层用它做电量载荷源与 `charging` 配方类型），第 4 层 optional。
-- **变器波口指示灯几何**（用户 2026-09-14 定稿，改动在 16 个 `stellarstone_wave_transmuter_<i>.json` 里逐变体编码）：灯片 **2×2 px**，**开口时离方块边缘 1 px、关闭时 2 px**（沿顶面往机器内侧挪，非高度方向）；尺寸/y/UV/贴图选择都不随状态变。变体 index 的状态位是 `NORTH=8 / SOUTH=4 / WEST=2 / EAST=1`（`CewsBlocks` datagen）。差波器家族走另一条路——独立 overlay 模型、只在开口时绘制、恒 1 px 内缩。
-- **注册器已按三层分家（旧类名已不存在，别再引用）**：`AllBlocks` / `AllItems` / `AllBlockEntityTypes` **已删除**（提交 `ccaf8a21`），注册声明现在住在 `common/registry/{coe,cews,transmutation}/`——COE 39 方块/92 物品/3 方块实体、CEWS 17/3/14、TRANS –/2/–。**注册触发顺序必须在 `CreateOreExpansion` 里显式写死**（拆掉旧外观后没有任何兜底）：`CoeBlocks → CewsBlocks → CoeBlockEntityTypes → CewsBlockEntityTypes → AllTiers →（Curios 可选桥接）→ CoeItems → CewsItems → TransmutationItems`；每个层类里的空 `register()` 只是类初始化触发器（口径同 `AllTiers`/`AllGemTags`/`AllFluids`）。**别和 Create 自己的 `com.simibubi.create.AllBlocks` / `AllItems` 搞混**（同名不同物，本仓多处引用其 BRASS_BLOCK/ZINC_BLOCK/DEPOT；批量改名脚本必须做"裸名解析"判定，否则误伤）。
-- **分层方向断言必须跑（`tools/check-layering.ps1`）**：按文件路径把代码分成 COE / CEWS / TRANS / SHARED，检查**禁止方向** `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`（允许 `CEWS→COE`、`TRANS→COE`）；违规逐条打印并非零退出。本机**没有 `pwsh`**，要用 `powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1` 跑。**改动分层/注册代码后必须跑到 0 违规**（白名单应保持为空）。它同时是"搬运是否干净"的体检工具：拿它跑改动前的 `git archive HEAD` 树做对比，就能证明某次搬运"零新增违规"。
-- **"全模组共用的东西"必须住 SHARED 层**：任何被**两层以上**用的契约/登记表，如果住在某一层里，就会让另一层反向 import 它（禁止方向）。P2 体检抓到的两条真耦合正是这种情形（机器交互契约被 COE 的角磨床实现、充能物品登记表被 COE 物品写入），处理方式：**挪到 `common/**`（SHARED）**，并在 P3 拆 jar 时再决定"按层各留一份副本"还是"提成独立小库"。
-- **一个 jar 里现在有四个 mod（P3b，提交 `ec6c48de`）**：`coe_core`（`common/CoeCore`）/ `createoreexpansion`（`CreateOreExpansion`，类名与 MOD_ID 一字未改）/ `cews`（`common/registry/cews/CewsMod`）/ `transmutation`（`common/registry/transmutation/TransmutationMod`）。P3b **不搬文件、不改包名**，只在代码层分家，所以产物逐条目与拆分前一致。**⚠ 本节已被 P3d-β 部分取代：`coe_core` 不再是 mod，改成 JarJar 嵌套的共享库，详见下面那条。**
-  - **注册命名空间恒为 `createoreexpansion`，mod id 才分家**（存档红线）：命名空间类引用一律指 `CoeCore.REGISTRY_NAMESPACE`，`modLoc` 一律 `CoeCore.modLoc`，日志一律 `CoeCore.LOGGER`（前缀 `[createoreexpansion/]` 不变）；`@Mod` 与 `@EventBusSubscriber` 上的 `MOD_ID`（17 处）**不许**换成命名空间。**配置注册动作在 core，但目标容器仍是 `createoreexpansion`**——否则文件名变 `coe_core-common.toml`，老玩家设置静默丢失。
-  - **`CreateRegistrate.create("createoreexpansion")` 不能调三次**：Create 的 `provideRegistrate` 按 mod id 去重，第二次抛 `IllegalArgumentException`。用 `common/registry/LayerRegistrate.create(ns, primary)` 自行 `new`，只让 COE 登记回调表（该 API 在本仓和 Create 内都无消费者，已 grep 证实）。
-  - **三层都必须 `RegistrateTooltips.install(...)`**（`common/registry/RegistrateTooltips`）：`setTooltipModifierFactory` 是实例状态，漏装即该层物品整体丢描述行/动能行 = 行为变化。`ChargerKineticTooltip` 只挂 CEWS（它的 `create()` 只认两台充能器，都是 `CewsBlocks` 的）。
-  - **datagen 四条硬规则**：① 三个提供器同名 → `DataGenerator.addProvider` 抛 `Duplicate provider`（CEWS/TRANS 加 `[layer …]` 前缀，COE 的与拆分前逐字相同）；② `TagsProvider` 路径不含 modid → 各层互相整文件覆盖；③ `HashCache` 只比自身旧缓存，后跑的语言提供器命中就跳过写、留半份文件 → **标签与语言只在主层提供器里跑 COE→CEWS→TRANS 并集**；④ 战利品表**不**合并（`RegistrateBlockLootTables#getKnownBlocks()` 取 `parent.getAll(BLOCKS)`，跨层实测抛 `Created block loot tables for non-blocks`）→ 各层各写。
-  - `[[mixins]]` 在 TOML 里是**顶层表数组**，无法嵌进 `[[mods]]`，故全文件只声明一次。
-- **枢纽文件已按层拆开（P3c，提交 `6230f7e1`）**：`AllRecipeTypes` / `AllCreativeModeTabs` / `data/RecipeProvider` / `compat/jei/CreateOreExpansionJEI` 各自只保留「**同名协调入口**」，三层的声明搬进 `common/registry/<layer>/`（新增 12 个类）。**四个入口的类名、FQN、全部调用点一字未改。**
-  - `AllRecipeTypes` 与 `AllCreativeModeTabs` **从 enum 变成 final class**：常量必须与「顺序」分离，才能做到「声明住各层、顺序住入口」。`AllRecipeTypes` 的六个静态常量按**拆分前枚举顺序逐字排列**（TRANSMUTING→LIGHTNING→LIGHTNING_BLOCK→GRINDING→DISMANTLING→CHARGING），Java 静态字段按文本顺序初始化 ⇒ 三层类同序初始化、条目同序进注册表（NeoForge `DeferredRegister` 内部是 `LinkedHashMap`）。**要翻转顺序只需调换那几行的先后。** 代价：将来写 `switch(AllRecipeTypes.X)` 或 `.values()` 会编译失败（视作编译期提醒）。
-  - **两处顺序刻意不按「COE → CEWS → TRANS」**：拆分前的真实顺序是 **TRANS → COE → CEWS**（`AllRecipeTypes` 与 JEI 类别都是），本轮硬指标是「与拆分前逐字相同」，所以保留原顺序。配方类型/序列化器不进存档也不同步，翻转无游戏内可观测差异；**JEI 侧栏顺序是可观测的，更不能动**。
-  - **JEI 仍只有一个 `@JeiPlugin`**（UID `createoreexpansion:core_jei` 未改），三层各自收集自己的类别（`{Coe,Cews,Transmutation}JeiCategories`），`loadCategories()` 按原顺序装配。要拆成三个插件只需把那三行换成三个插件类（**UID 不能重复**）。
-  - **已知退化**：`AllCreativeModeTabs` 从 enum 变 class 后，层类各持一份手写 `TABS` 列表，**新增页忘了加进列表会静默不注册**（无编译错误）。
-  - 遗留：`registry/<layer>/*JeiCategories` 住在层包，将来整包搬迁时每层会各带一份 JEI 门面（它们只 import `compat/jei/**`，**没有**直接 import `mezz.jei`，红线未踩）。
-- **依赖普查工具 `tools/layer-usage.ps1`**（纯 ASCII、只读，与 `check-layering.ps1` 共用同一套分层口径）：算出每个文件被哪几层引用、以及哪些 SHARED 文件**传递地**不碰任何层专属代码（= 可原样搬进 `core` 模块）。跑法 `powershell -NoProfile -ExecutionPolicy Bypass -File tools\layer-usage.ps1`，产物落在 `build/patch/layer-usage.txt`、`core-candidates.txt`、`core-candidates-strict.txt`。**「干净」是必要而非充分条件**——只被 COE 用的干净文件应当进 COE 而不是 core，所以 strict 名单只是参考。P3c 之后实测：COE=95 CEWS=113 TRANS=10 SHARED=179，其中 **56 个传递纯净**、121 个被层可达（需逐个决定归属）。
-- **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文漏了 **17 条**（雷鸣合金整条材料线 11 条 + 能量场控制器 + 蓝宝石充能器/两个调节器 + 嬗变液方块与流体），英文客户端在这些条目上显示原始键名——已在 `d869e2d2` 补齐，英文名沿用「与 Stellarstone 同构」的规律。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
-  ```powershell
-  $en = Get-Content src\generated\resources\assets\createoreexpansion\lang\en_us.json -Raw -Encoding UTF8 | ConvertFrom-Json
-  $zh = Get-Content src\generated\resources\assets\createoreexpansion\lang\zh_cn.json -Raw -Encoding UTF8 | ConvertFrom-Json
-  Compare-Object @($en.PSObject.Properties.Name) @($zh.PSObject.Properties.Name)
-  ```
-  顺带：`block…jade_stress_charger` 的英文曾误写为 "Jade Create Charger"，已与护目镜条目统一为 "Jade Stress Charger"。
-- **`core` 是「JarJar 嵌套的共享库」，不是第四个 mod（P3d-β，提交 `1ec773a4`）**：`core/gradle.properties` 里的 `coe_library=true` 是唯一开关，约定插件据此跳过 `mods{}` / `generateModMetadata` / `ideSyncTask`（其余仓库/toolchain/group/version 照旧）。根 `build.gradle` 的接线见下一条（**已被 P3m 修正，别照 P3d-β 的旧配方抄**）。
-  - **⛔ 曾经的错误配方（P3d-β 写的，P3m 已推翻并修正）：`additionalRuntimeClasspath project(':core')`**。当时以为它是 dev 可见性的必需品，**它其实正是「core 的类看不见 Minecraft/NeoForge」这个缺陷的根源**——BootstrapLauncher 会把 legacy classpath 上的每个 jar/目录变成 **BOOT 层的自动模块**，而那个模块的加载器是 `new ModuleClassLoader("MC-BOOTSTRAP", cfg, List.of(ModuleLayer.boot()), null)`，**只以 JDK boot 层为父**；MC/NeoForge/Create 全在 **GAME 层**（`TRANSFORMER/...`）⇒ 永远看不见。现象：把一个碰 MC 的类搬进 core 后 `runData` 崩 `NoClassDefFoundError: ModConfigSpec$Builder at AllConfig.<clinit>`，`Caused by: ClassNotFoundException ... BuiltinClassLoader`。
-    **正确配方（P3m 实测，dev-only，发布产物 delta 0 B）**：`evaluationDependsOn(':core')` + 把 core 的 source set 绑进**根 mod 的 `mods{}` 条目**：
-    ```groovy
-    neoForge { mods { "createoreexpansion" { sourceSet(sourceSets.main); sourceSet(project(':core').sourceSets.main) } } }
-    ```
-    MDG 于是把 core 写进 `-Dfml.modFolders`，FML 按 mod 名成组 addPath ⇒ 根与 core 合并成**同一个 GAME 层 mod 文件**，core 的类就看得见 MC/Create。
-    **`evaluationDependsOn(':core')` 是硬性必需**（否则 `project(':core').sourceSets` 静默落回根工程自己的扩展）。`jarJar(implementation(project(':core')))` 照旧保留（编译可见 + 发布嵌套）。
-    **加过的两条错路，别再走**：① `additionalRuntimeClasspath files(project(':core').sourceSets.main.output)`（目录形态）——**照样**是 BOOT 层自动模块（模块名 `main`）；② 只留 `implementation` 删掉 ARC——core 类整个不可见、`runData` 直接失败。
-    **取证工具**：`-Dbsl.debug=true`（注意是 `jvmArgument` 不是 `jvmArgs`）能直接打印 BSL 把哪些路径并进了哪个模块，是查这类问题最省的手段。
-    **一条通用判据**：**core 里的方法只要描述符里出现 MC 类型就不可用**（哪怕方法体 MC-free）——`NoClassDefFoundError` 抛在调用点那一帧。所以「core 能不能放这个类」必须用**真调用一次**来验证，`compileJava`/`runData` 全绿证明不了。
-  - **⚠ 该形态带来的纪律风险**：dev 里根与 core 现在是**同一个 mod 文件**，所以 **dev 再也无法复现 P3d-α 的 `ResolutionException`（包重叠）**——「一个包要么全在 core、要么全在根」变成**只能靠人工纪律维持**，脚本也测不出来。生产拓扑（嵌套 LIBRARY → PLUGIN 层）依旧只有**真 jar 进游戏**才能验证，没有任何 dev 关卡覆盖。
-  - **别再试的路**：把 core 当回真 mod（补 mods.toml + `@Mod("coe_core")` + `mods{coe_core{...}}`）**也能让 dev 看见 MC**，但代价三条：① 日志出现 `Found 2 mods for first modid coe_core, selecting most recent` （java.class.path 上那个 jar 也被当 mod 文件，FML 静默去重、版本并列时选谁无保证）；② core 资源里的 mods.toml 会跟着进 `META-INF/jarjar/` ⇒ **生产里 core 也变成 mod**（等于撤销 P3d-β）；③ P3d-α 的包重叠纪律回归。
+## 🚩 红线（不许越，逐条都是踩过的坑）
 
-  - `CoeCore` **已不是 `@Mod`**：`@Mod` / `MOD_ID` / `MOD_BUS` / 构造器 / `onRegister` 全删，`REGISTRY_NAMESPACE` / `LOGGER` / `modLoc` **原地不动**（500+ 处引用零改动）；它原先那 5 个注册动作（数据组件 / 实体类型 / 风扇加工类型 / 旋转载荷 / 配置）搬进 `CreateOreExpansion` 构造器**最前面**，顺序不变。**配置容器仍是 `createoreexpansion`**，`createoreexpansion-common.toml` 文件名一字未变。
-  - **dev 的 mod 列表由 MDG 的 `neoForge.mods{}` 决定，不是模板里的 `[[mods]]`**：所以 `cews` / `transmutation` 在 dev 里**从 P3b 起就没出现过**，别把「dev 只有 createoreexpansion + skiller」误判成回归；发布 jar 里的三个 mod 由模板决定。
-- **搬迁粒度是「包」，不是「文件」（JPMS 硬约束，P3d-α 实测）**：同一个 Java 包**不能同时属于两个 mod 文件**，否则启动期直接抛 `java.lang.module.ResolutionException: Modules X and Y export package … to module Z`（当时 1.21.1 的 ModLauncher 把每个 mod 文件当 JPMS 命名模块放进同一层）。dev 里 core 走 legacy classpath（unnamed module 语义）看似可以重叠，**但生产里 JarJar 嵌套的库是 PLUGIN 层的真 JPMS 自动模块**（FML 4.0.42 `NestedLibraryModReader` → `IModFile.Type.LIBRARY`，由 `ModValidator.getPluginResources()` 归到 PLUGIN 层）——**所以纪律不变：一个包要么全在 core、要么全在根；搬走后根侧同名包必须为空。** 这条**只能用真实发布 jar 进游戏验证**，`runData`/`runClient` 覆盖不到。
-- **跨项目读 source set 之前先确认求值顺序**：根工程先求值，此时 `project(':core').sourceSets` 会**落回根工程自己的扩展**——实测 `:core` 的 `java.srcDirs` / `classesDirs` 都报成根工程的路径，而 `projectDir` / `buildDirectory` 却是对的，极易误判。一行 `evaluationDependsOn(':core')` 即可修正。本仓现在（core 是库）不需要它，但以后给别的子模块接线一定会踩到。
-- **`tools/check-layering.ps1` 现在扫两个根**（`src/main/java` + `core/src/main/java`），多出一个 **`CORE`** 层，禁止方向增加 `CORE→COE/CEWS/TRANS`。**不扫 core 的话，搬进去的文件会静默脱离体检**——P3d-β 时 SHARED 计数 179→178 就是那个信号。
-- **分层口径已收紧（P3e）：`integration/skiller/**` 与 `client/tool/**` 算 COE**（技能系统本来就是 COE 的；`client/` 下非技能的 `MachineRotateClient` / `WaveQueryGaugeModelRegistration` 等**不算**）。收紧后立刻暴露 **7 条真实的 COE→CEWS** 边，全部靠「把 `content/wave/bridge/` 整包搬到 `common/structure/`」消掉——**不是加白名单**。
-  - **`common/structure/` 的由来**：`SableBridges` / `SubLevelBridge` 讲的是 Aeronautics/Sable 的物理结构坐标学（世界↔本地、位姿矩阵、方向变换），**与「波」无关**，只是碰巧放在 `content/wave/` 下；它们**零可选模组类型**（只依赖 MC 与自身）却被 CEWS 内容与 COE 技能无条件 import，所以进 `common/structure` 而**不是** `compat/sable`——后者的契约是「引用 Sable 类型 + `Class.forName` 条件加载」（`SableSubLevelBridge` / `SablePose` / `SableSubLevelAccess` 仍在那儿）。**别把常加载类型塞进 `compat/sable`**，那会让「content 包不得 import 可选模组类」这条红线无法机械核验。
-  - **`LayerRegistrate` 已是零层引用**（P3e）：三个层 import 换成注入 API `installOwnerChain(List<CreateRegistrate>, primary)`，调用点在 `data/CreateOreExpansionDatagen`（它本来就 import 三层）。共享路径三层并集逻辑一字未改，未注入时不写共享路径、不 NPE。
-  - **`tools/layer-usage.ps1` 的分层规则必须与 `check-layering.ps1` 逐字一致**（脚本头自己写了这条）——改一处就要两处同改，否则 core 候选名单会按旧口径算错。
-  - 口径收紧后的层计数：COE=134 CEWS=111 TRANS=10 SHARED=141 CORE=1；传递纯净 54 / 被层可达 87；**strict core 集合 11 个**（`client/AllRenderTypes`、`common/CoeCore`、`common/machine/MachineInteraction`、`common/registry/{LayerCreativeTab,LayerRecipeType,LayerRegistrate}`、`common/structure/{SableBridges,SubLevelBridge}`、`foundation/util/{BarTooltipRender,SkillOutlineColors}`、`util/GoggleUtil`）。
-  - **仍挂着的**：全仓还有 **61 个 SHARED 文件反向引用层专属代码**。最要紧的一个是 `foundation/item/skill/SkillsComponent` → `content/equipment/tool/energy/{ToolEnergy,ToolEnchantments,SkillEnergyCost}`，而它被**三层**共用 = 「全模组共用契约反向依赖 COE」，core 库化前必须把「工具能量契约」挪进 SHARED。`foundation/item/skill/**` 是**旧技能框架**，按新口径本该整包判 COE，等 W5/W6 删旧框架时一起归位。`client/**`、`compat/**` 仍未被方向检查覆盖。
-- **P3f：core 已接收 5 个整包 / 20 个文件（提交 `44506382`）**——`common/structure`(2)、`compat/sable`(3)、`foundation/item/skill/attribute`(5)、`foundation/item/skill/context`(5)、`util`(5)。全部 `(100%)` rename，`package` 声明一行未改，根侧 5 个目录已消失。分层计数：COE=134 CEWS=111 TRANS=10 SHARED=121 **CORE=21**。
-  - **搬迁名单要按「整包」生成，不能按文件**：`tools/layer-usage.ps1` 现在额外产出 `build/patch/core-packages.txt`（整包纯净）与 `package-usage.txt`（全量逐包报告，含包内 DIRTY 文件）。上一轮那份「strict core 11 个文件」**不可直接执行**——`common/CoeCore.java` 住在包 `common` 里，同包的 `AllRecipeTypes` 引用三层、绝不能进 core。**改分层/搬运前先跑这两个脚本出名单。**
-  - **差一个文件就整包不合格的包**（下一步的攻坚点）：`common/registry`(RegistrateTooltips)、`common/machine`(MachineRotatePayload)、`compat/jade`(WaveJadePlugin)、`compat/vintageimprovements`(VintageImprovementsMachineIntegration)、`foundation/util`(FarmlandHelper)、`foundation/item/skill{,/config,/strategy}`、`data/lang`、`client/renderer`(只有 EmptyEntityRenderer 纯净)。
-  - **`check-layering.ps1` 修过一个真 bug**：pass 2 会把文件**自己的** `package com.hjmmd_8.createoreexpansion.util;` 当成一次 FQN 引用，而 `Get-TargetLayer` 的 SHARED 规则写的是 `^(common|util|…)\.`（**要求带点**），裸包名 `util` 匹配不上就落到默认 `return 'COE'` → `core/util/*` 报 5 条假 `CORE→COE`。修法：SHARED 规则改 `(\.|$)` + pass 2 跳过 `package` 声明行（**改在工具里，没加白名单**；新脚本跑 HEAD 树与旧脚本逐字同结果）。
-  - **`compat/sable` 需要 `core/build.gradle` 的编译期依赖**：两行 `compileOnly`（`files(rootProject.file('libs/sable-companion-common-1.21.1-1.6.0.jar'))` + `("maven.modrinth:sable:2.0.3+mc1.21.1")`）。`libs/` 被 gitignore，所以路径必须相对**根工程**取。
-- **⚠ jar 字节数只在同一个工作树内可比（提交 `ba68a59c` 修掉的真 bug）**：`sourceSets.main.resources` 里的 `exclude("src/generated/**/.cache")` **从来没匹配过**——资源条目名是相对资源根的 `.cache/<hash>`，那个前缀永远不出现。后果：**发布 jar 一直带着 `.cache/` 目录与 6 个 datagen 缓存文件**（约 21 KB 压缩 / 67 KB 原始），而 `.cache` 被 `.gitignore` 忽略、在干净检出里根本看不见——**在临时 worktree 里重建 HEAD 得 2,011,817 B，比工作树基线少 21 KB，差点被误判成回归**。现已改成 `exclude(".cache/**")` + `exclude("**/.cache/**")`，jar 2,028,841 → **2,007,517 B**。datagen 的 HashCache 走文件系统、不经过 resources，**排除它不影响增量生成**（`src/generated` 零 diff 依旧成立）。
-- **⛔ P3g 失败结论：当前状态下把任何一层拆成真子模块都不可能（2026-09-25，别再试一遍）**——root ↔ 子模块是**真实源码级环**，不是接线技巧问题：
-  - 最小环证据（纯源码，一眼可验）：`common/AllRecipeTypes.java:60` → `TransmutationRecipeTypes.TRANSMUTING`（root→TRANS），而 `content/transmuting/AllTransmutingRecipe.java:14` → `AllRecipeTypes.TRANSMUTING`（TRANS→root）。
-  - 补 `implementation project(':')` 后 Gradle 在**构图期**直接拒绝：`Circular dependency between the following tasks: :compileJava \--- :transmutation:compileJava \--- :compileJava (*)`。用 `compileOnly` 也绕不过（最小探针验证过：**一个文件都不搬**、只改两个 build.gradle，环照报）。
-  - **`implementation project(':core')` 救不了**：搬迁后的 TRANS 对 core 里那 21 个类**一个都没引用**；它真正要的是**还留在根工程的 SHARED 层**（`CoeCore` / `AllTags` / `AllModEffects` / `AllModItemTags` / `SeriesTraits` / `LayerRegistrate` / `RegistrateTooltips` / `LayerRecipeType` / `compat/jei/category/**` / `AllCreativeModeTabs`）。
-  - **拆模块前的自检**：先跑 `gradlew :<mod>:compileJava`。**若子模块要 import 根工程里的 SHARED 类、而根工程又引用该子模块 ⇒ 环，必须先搬 SHARED，别去调依赖配置。**
-  - 两条死路（别再试）：① 把 root 源码加进子模块 srcDir → 类编两份、两个 mod 文件导出同包 = P3d-α 的 `ResolutionException`；② 只靠 `neoForge.mods{}` 绑定 → 只影响 run 配置，**不进 compileClasspath**。
-- **✅ P3g 的结论已被 P3w 推翻（2026-09-25）：`:coe` 已经是真子模块，别再引用上面那条「不可能」。** 拐点是承认「**`@Mod` 入口是集成文件**」：`P3v` 证明 176/177 个 COE 文件本来就能干净拆出，唯一动不了的是 `CreateOreExpansion`——它的 9 处接线（hub 5 / CEWS 1 / TRANS 3）是集成职责。
-  - **落地形态（提交 `6b971dc1`）**：`:coe` 携带 mod id **`createoreexpansion`**（红线不变），177 个文件；根保留 cews/transmutation + 集成层。`coe/build.gradle` 只声明 `compileOnly(project(':core'))`、**没有** `project(':')` ⇒ **`:coe:compileJava` 通过本身就是「零根引用」的机器证明**。
-  - **9 处触发点的去处**：`AllEntityTypes`→`CewsMod` 构造器；`AllModPotions`/`AllFanProcessingTypes`→`TransmutationMod`；hub 那 5 处 → 根侧新类 `common/hub/IntegrationBootstrap`（内部顺序与拆分前逐字相同）。
-  - **根 → `:coe` 的接线必须是 `compileOnly(project(':coe'))` + `jarJar(compileOnly(project(':coe')))`**。**⛔ 用 `implementation` 会让 dev 硬崩**：`:coe` 带 mods.toml 后那个 jar 进 runtimeClasspath，FML 把它当**第二个 `createoreexpansion` mod 文件** → `UniqueModListBuilder` 抛 `duplicate_mod`（硬失败，不是"择新"）。
-  - **根必须保留自己的 `jarJar(implementation(project(':core')))`**：MDG 的 jarJar 是 `setTransitive(false)`，且 **FML 的 dependency locator 只跑一遍**——嵌在嵌套 jar 里的 jar 永远不会被扫到，core 必须在根 jar 的第 1 层。
-- **⛔ `@EventBusSubscriber` 的作用域是「每个 mod 文件」，不是全局**（P3w 实测，差点造成静默失灵）：`FMLModContainer.constructMod()` 调 `AutomaticEventSubscriber.inject(this, scanResults, layer)` 时**只喂本文件的扫描结果**、并按 `mod.getModId()==modid` 过滤。**根模板一旦不再声明 `createoreexpansion`，所有「住在根文件里、却标 `modid = createoreexpansion`」的类就不再被注入，且没有任何警告。** 当时有 9 个：`data/CreateOreExpansionDatagen`（会让 runData 直接失效）、`core/common/AllConfig`（配置缓存恒为 0）、`client/MachineRotateClient`（Ctrl+扳手）、`client/JadeTopazBowModelRegistration`、`client/WaveQueryGaugeModelRegistration`、`content/energyfield/EnergyFieldCommandRegistration`、`content/energyfield/EnergyFieldGoggleOutlineRenderer`、`content/transmuting/event/TransmutationEventHandler`、`foundation/JadeTopazBowEventHandler`。修法在 `IntegrationBootstrap`：走根文件的 scan data、**不加载类**就按 Dist 过滤、再用 `AutomaticEventSubscriber` 的同款路由补挂（自维护、无名单）。
-  - **拆任何其它层之前都要先做这项分析**：列出「住在 A 文件里、却标 B 的 modid」的 `@EventBusSubscriber`，否则它们会静默死掉。
-- **集成触发器不能用「CEWS/TRANS 的 `@Mod` 构造器直接 import」**：那会造出本仓**第一条 `CEWS→root SHARED` / `TRANS→root SHARED` 源边**（实测让两层的 `LAYER-NO` 从 0 变 1）。正解是 `IntegrationBootstrap` 标 `@EventBusSubscriber(modid="cews")` + 订阅 `FMLConstructModEvent`——仍早于 `RegisterEvent`（`CommonModLoader.begin`：gatherAndInitializeMods → Registry 初始化 → 且 **datagen 时根本不加载配置**）。
-- **一条仍然存在的静默逃逸（已知，未修）**：`:coe` 的 `CreateOreExpansion` 里那两处 `Class.forName("…compat.curios.CurioMedallionBridge")` / `"…compat.jade.BasinLiveJadePlugin"` 字面量**留在了 `:coe`**。它们是字符串（零编译边，隔离编译已证），而 `bootstrapCurios()` 是**硬时序**：`MedallionCurios.item()` 被 `CoeItems` 静态块调用并立刻读 `MedallionCurios.instance`，为 null 时返回 fallback——移到 `IntegrationBootstrap`（跑在 cews 的 `FMLConstructModEvent`，即 COE 构造器**之后**）会**静默把 6 个凝能佩降级成普通物品**。要收口得把 `MedallionCurios.item` 改惰性 + 两个 bootstrap 一起搬 + 把整个 `coe/` 树映射成 COE 层（COE 变 177、SHARED 变 27），代价是一处 COE 行为语义变化。**此外入口文件按路径判 SHARED，两把工具都不判它，那两个字面量对 FQN 检查不可见。**
-- **dev 的 Mod List 是「每个 mod 文件一行」**（`ModDiscoverer.logReport` 取 `getModInfos().getFirst()`），**不是每个 mod 一行**：`neoForge.mods{}` 里把多个 sourceSet 塞进**同一个条目**只会得到一个 mod 文件、一行；要 N 行必须 N 个独立条目。
-
-- **破环的设计规则（下一步按它走）**：**层只引用自己层的常量，绝不引用 SHARED 里的聚合入口**；聚合入口（`AllRecipeTypes` / `AllCreativeModeTabs` / `AllFluids` / `EnergyWaveStudyTab`）单向 import 层。再叠加包粒度约束 ⇒ 需要一次**重新分包**：把 `common` 顶层包里的聚合入口挪出去，让剩下的 `common` 包变成同质、可整包搬进 core 的包，然后层才开始只依赖 core。
-- **本轮纠正的两条旧认知**：
-  - `TransmutationItems.register()` **早在 `ec6c48de`（P3b）就已搬进 `TransmutationMod` 构造器**（`CewsMod` 同理），**不在** `CreateOreExpansion` 里——别再去那儿找。实测跨 mod 构造顺序**不敏感**（`TransmutationRegistrate` 静态块只调幂等的 `AllCreativeModeTabs.ensureTabs()` 与 `RegistrateTooltips.install`，字段初始化只读 `BASE_TAB.key()`）。
-  - dev 的 mod **身份**只有 `createoreexpansion` 一个（MDG `neoForge.mods{}` 决定），**但三个 @Mod 构造器都在跑**（同一份 root source set 里的三个 @Mod 类都被 FML 实例化），实测顺序 **COE → TRANS → CEWS**，均正常收尾。准确说法是「mod 身份 1 个、三层代码全在场且都在初始化」。
-- **PowerShell 编码坑（会误判事实）**：`.\gradlew ... 2>&1 | Select-Object` 会把 javac 的 GBK 中文诊断解成乱码（`����: �� Color`）；要 `cmd /c "... > file 2>&1"` + `Get-Content -Encoding Default`；**`Select-String` 匹配中文也必须显式 `-Encoding Default`**（有一次因此把「@Mod 构造器已跑」误判成「没跑」）。
-- **波情"五要素"的唯一取值点**（用户 2026-09-14 定稿）：波速 → 波级 → 波载荷 → 波型 → **剩余寿命**。  显示只有**两处**——Jade 波实体提示（`compat/jade/WaveJadePlugin`，要素块之后才是可加工清单/电荷）与
-  波情查询仪的动作栏读数（`content/wave/gauge/WaveReadout#line()` 的词条 `wave_gauge.readout`）。
-  寿命口径 = `AbstractChargerWaveEntity#getRemainingLifetime()`（200 tick 上限 − 已存活）÷ 20，
-  **两处共用这一处取值**；它是时间寿命，飞满 64 格的距离上限不折算进来。
-  查询仪是**动态**的（扫描动画 32 tick 内 `inventoryTick` 每 tick 刷新，见 §28.3），
-  Jade 每帧重建。要加/改要素就改这两处 `...show/hide`，别再新开第三条显示路径。
-- **系列特性登记口径**（用户 2026-09-15 定稿）：common/SeriesTraits 是唯一入口——方块 .transform(SeriesTraits.addStellarstoneTraits()/addThunderiteTraits())、物品链上 .tag(AllModItemTags.STELLARSTONE_ITEMS/THUNDERITE_ITEMS)（Java 没有扩展方法，物品侧写不出 .addXxx()）；判定 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定（限定本模组命名空间）。**四个系列标签由 datagen 生成，手写文件禁止同名**（同名会让 processResources 报 duplicate 直接失败）。两个系列（含方块物品）免疫嬗乱销毁，该判定在 TransmutationDisorderEffect#canTransmutationDestroy 里调 SeriesTraits——方块物品进不了物品标签，故不能用标签覆盖。
-- **机器交互四条统一规则**（用户 2026-09-15 定稿）：① 空手右键某个面 = 开/关该面开口；② 空手右键指示灯 = 只切那盏灯对应的开口；③ 扳手右键 = 有特殊模式的机器只切模式、没模式的机器照旧切开口；④ 旋转必须 **Ctrl + 扳手右键**。
-  实现三件套：契约 **`common/machine/MachineInteraction`**（原 `content/machine/CewsMachine`，P2 改名并从 CEWS 挪到共享层——见下一条；`hasModeSwitch()`；`onWrenched` 默认"吞掉但不旋转"，防 Create 默认旋转在没按 Ctrl 时生效；`rotateAsCreate()` 直接复用 `IWrenchable` 默认旋转、不复制逻辑；`onEmptyHandPortToggle`）、载荷 **`common/machine/MachineRotatePayload`**（服务端校验：本模组机器 + 无模式 + 手持扳手 + 距离）、客户端 `client/MachineRotateClient`（Ctrl 判定后取消本地交互并发包）。
-  **为什么 Ctrl 必须在客户端判定**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
-  副作用修复：`StellarWaveTransmuterBlock` 以前**没实现 `IWrenchable`**（`onWrenched` 没有 `@Override`）→ Create 的扳手从来没分发到它，变器切模式其实一直不生效；现已随契约修好。
+- **注册命名空间恒 `createoreexpansion`**（存档红线）：命名空间类引用一律指 `CoeCore.REGISTRY_NAMESPACE`，`modLoc` 一律 `CoeCore.modLoc`，日志一律 `CoeCore.LOGGER`（前缀 `[createoreexpansion/]`）；`@Mod` / `@EventBusSubscriber` 上的 `MOD_ID`（17 处）**不许**换成命名空间。**配置注册动作在 core，但目标容器仍是 `createoreexpansion`**——否则文件名变 `coe_core-common.toml`，老玩家设置静默丢失。CEWS/TRANS 拆包同理：**命名空间、配置键、语言键、数据包路径一律不许改**（mod id 可以分家）。
+- **包粒度（JPMS 硬约束）**：同一个 Java 包**不能同时属于两个 mod 文件**，否则启动期抛 `java.lang.module.ResolutionException`。**一个包要么全在 core/子模块、要么全在根；搬走后根侧同名包必须为空。** 生产里 JarJar 嵌套的库是 PLUGIN 层的真 JPMS 自动模块，所以这条**只有真发布 jar 进游戏能验**。详见 `markdown_output/模块拆分进度与决策链.md` §1.9。
+- **依赖接线（照抄，别自创）**：
+  - **`evaluationDependsOn` 必需**：跨项目读 `project(':core').sourceSets` / `project(':coe').sourceSets` 之前必须 `evaluationDependsOn(':core')` / `evaluationDependsOn(':coe')`，否则静默落回根工程自己的扩展（路径全错但 `projectDir` 是对的，极易误判）。两行现在都在根 `build.gradle`。
+  - **`additionalRuntimeClasspath` 禁止**：它把 core 钉成 **BOOT 层**自动模块（父层只有 JDK boot）⇒ core 看不见 MC/NeoForge/Create，`runData` 崩 `NoClassDefFoundError: ModConfigSpec$Builder`。正确配方 = `evaluationDependsOn(':core')` + 把 core 的 sourceSet 绑进**根 mod 的 `mods{}` 条目**（`neoForge { mods { "createoreexpansion" { sourceSet(sourceSets.main); sourceSet(project(':core').sourceSets.main) } } }`）；`additionalRuntimeClasspath files(...)` 目录形态同样是错的。
+  - **根 → `:coe` 必须 `compileOnly(project(':coe'))` + `jarJar(compileOnly(project(':coe')))`**；**用 `implementation` 会让 dev 硬崩**（那个 jar 进 runtimeClasspath 后被 FML 当成第二个 `createoreexpansion` mod 文件 → `duplicate_mod`）。
+  - **根必须保留 `jarJar(implementation(project(':core')))`**：MDG 的 jarJar 是 `setTransitive(false)`，嵌在嵌套 jar 里的 jar 永远不会被扫到，core 必须在根 jar 的第 1 层。
+- **`@EventBusSubscriber` 的作用域是「每个 mod 文件」，不是全局**：`AutomaticEventSubscriber.inject` 只喂本文件的扫描结果并按 `mod.getModId()==modid` 过滤 —— **「住在 A 文件里、却标 B 的 modid」的类会静默不注入，且没有任何警告**。拆任何层之前先做这项分析；现修法在 `common/hub/IntegrationBootstrap`（走 scan data、不加载类、自维护无名单）。
+- **jar 字节数只在同一个工作树里可比**：`.cache/` 曾被整片塞进发布 jar（`exclude("src/generated/**/.cache")` 从来没匹配过），在临时 worktree 里重建 HEAD 会少 21 KB，**差点被误判成回归**。现已 `exclude(".cache/**")` + `exclude("**/.cache/**")`。
+- **`content/` 包不得 import 任何可选模组类**（Curios 只允许出现在 `compat/curios`；条件加载走 `Class.forName` + `ModList.isLoaded`）。可选依赖在 `neoforge.mods.toml` 里**必须 optional**（`curios` 曾是 required，导致没装的玩家在加载阶段直接崩）。**CA（`createaddition`）是唯一例外：第 2、3 层对它是 required，第 4 层 optional。**
+- **改动分层 / 注册 / 搬运代码后必须跑分层断言并到 0 违规**（白名单保持为空）。工具见下一节。
 
 ## 🎨 美术资源的红线（用户 2026-09-14 明确要求，必须遵守）
 
@@ -179,56 +106,74 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
   逐像素列出亮块坐标；`build/patch/rasterize_top_face.ps1` 把顶面每像素最终采到的贴图像素画成字符图
   ——"某盏灯只亮一半"这类问题靠它一眼定位（实测：东灯 UV `[12,7,14,9]` 采到透明列，应为 `[13,7,15,9]`）。
 
+## 🔧 工具（一行一个；细节都写在脚本头注释里）
+
+- `tools/check-layering.ps1` —— 分层方向断言（扫 `src/main/java` + `core/src/main/java`，层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运代码后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树做对比）。
+- `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则必须逐字一致**（改一处要两处同改）。
+- `build/patch/*` 取证脚本（被 git 忽略，按需重生成）：`ChargerBandCheck.java` / `BandCheck.java`（转速分档逐整数比对）、`dump_light_squares.ps1` / `rasterize_top_face.ps1`（贴图取证）、`p3?-EVIDENCE.txt`（拆模块各阶段取证）。
+
+## 🌊 波系统与变器：现行口径（要点；细则见「长文档索引」）
+
+- **"给桶注液"不是配方**：Create 的 19 条内置 `create:filling` 配方里**没有一条以空桶为原料**；真机的流体喷口走 `GenericItemFilling` 特判（借物品自身的 `Capabilities.FluidHandler.ITEM`）。所以"波拿不到注液配方"不是类型门/流体门槛的缺陷，而是**口径缺失**——已补货载旁路 `content/charger/craft/WaveItemFluidFilling`（用量与成品一律委托 Create，只认载荷流体，不耗链数）。详见 `变器配方判定与执行逻辑.md` §0.2。
+- **储存模式释放档位**：口径只有一处 `AbstractCreateChargerBlockEntity#resolveReleaseLevel(int)`——有应力取**当前档位**（与普通模式一致），停转才回落"最后一次有效档位"（否则停转后囤的层数一发都放不出）。蓝宝石用 `storedLevel` 做回落值；星辉石等级是持久手动设置，直接用 `getManualLevel()`。
+- **波系统日志唯一出口**：`content/charger/wave/WaveDiag`（`[变体波轨迹]` = 事件流，默认开；`[变体波加工]` = 逐条淘汰，默认关）。实体侧 `craftTrace` / `craftDebug` 只是它的委托包装——**新代码要写波相关日志一律走 WaveDiag**，别再自建前缀。
+- **变器"哪些面算波口"是机器本地概念**：`StellarWaveTransmuterBlock#isOpenable(BlockState, Direction)` 按"该世界方向能否映射到本机模型的一个侧面"判定（口径唯一处 `propertyForWorld`）。**别再写成"世界水平方向"**——本机六向放置，躺倒时自己的 4 个侧面里有 2 个朝上下，旧写法会让那 2 个口"显示开着却点不掉"。
+- **波波碰撞与波级/波型无关**（用户明确、长期口径）：任意两波相交即 `triggerBoom(爆炸等级 = min)` + 相互湮灭，范围伤害/范围充能加工、不破坏地形；几何上不可能"高速对穿而不触发"（相对步长 ≤1.2 格/tick < 判定窗口 2×0.6）。改碰撞效果前先看 `handleWaveCollision`，那里的日志会打印等级对与实际粒子数。
+- **波情"五要素"的唯一取值点**（用户 2026-09-14 定稿）：波速 → 波级 → 波载荷 → 波型 → **剩余寿命**。显示只有**两处**——Jade 波实体提示（`compat/jade/WaveJadePlugin`，要素块之后才是可加工清单/电荷）与波情查询仪的动作栏读数（`content/wave/gauge/WaveReadout#line()` 的词条 `wave_gauge.readout`）。寿命口径 = `AbstractChargerWaveEntity#getRemainingLifetime()`（200 tick 上限 − 已存活）÷ 20，**两处共用这一处取值**；它是时间寿命，飞满 64 格的距离上限不折算进来。查询仪是**动态**的（扫描动画 32 tick 内 `inventoryTick` 每 tick 刷新，见 §28.3），Jade 每帧重建。要加/改要素就改这两处 `...show/hide`，别再新开第三条显示路径。
+- **变器波口指示灯几何**（用户 2026-09-14 定稿，改动在 16 个 `stellarstone_wave_transmuter_<i>.json` 里逐变体编码）：灯片 **2×2 px**，**开口时离方块边缘 1 px、关闭时 2 px**（沿顶面往机器内侧挪，非高度方向）；尺寸/y/UV/贴图选择都不随状态变。变体 index 的状态位是 `NORTH=8 / SOUTH=4 / WEST=2 / EAST=1`（`CewsBlocks` datagen）。差波器家族走另一条路——独立 overlay 模型、只在开口时绘制、恒 1 px 内缩。
+- **变器应力闸门 · 转速门槛 · 转速分档 · 护目镜读数（2026-09-24/25 全部定稿）** —— 细则**已整体迁到** `markdown_output/能量波三态与变器双模式（需求与进度）.md` 的标题 **`## 从 AGENTS.md 迁入（2026-09-25）：变器应力闸门 · 转速分档 · 护目镜读数口径`**（含 A 应力闸门与转速门槛 / B `util/SpeedBands` 唯一实现 / C 护目镜档位提示 / D 过期计数更正）。**只留 5 条最容易写歪的**：
+  1. **应力闸门唯一判据** = `StellarWaveTransmuterBlockEntity#isWavePowered()`；**未接入应力时变器对波的属性零改变**，闸门只掐「赋属性」、不碰「让不让波过」。
+  2. **转速门槛由模式自报** `TransmuterMode#minimumRpm()`：加工态 **0**（**别写 1**）、攻击态 **128**；按**绝对值**判定。
+  3. **转速分档唯一实现 = `util/SpeedBands`**（禁内联三元 + 魔法数字；判定与显示共用同一张表）；**档位下限量化必须 `ceil`，不许 `round`/`floor`**（`round` 会把 213 RPM 挪档、直接改玩法）——改公式后重跑 `build/patch/ChargerBandCheck.java`。
+  4. **显示层零档数/阈值/半径常量**：攻击态一档一行、当前档亮白；充能器一档一行、当前档用**该档光芒色**；行序以机器名开头；**别再合并成一条长对照行**。
+  5. **"转速不足"不自己写文案**：覆写 BE 的 `isSpeedRequirementFulfilled()` 让 Create 自己打两行（零新增翻译键）；场节拍固定 **2 tick**（`FIELD_INTERVAL_FLOOR_TICKS`）。
+
+## 🧱 模块拆分：结论与踩坑（P1–P3w；全过程见 `markdown_output/模块拆分进度与决策链.md`）
+
+- **现状**：`:coe` 是真子模块（177 文件，mod id 仍是 `createoreexpansion`，提交 `6b971dc1` + `88627fff` 的根接线）；`core` 是 JarJar 嵌套的共享库（57 文件，不是 mod）；`cews`/`transmutation`/`all-neoforge` 仍是 0 文件的 P3a 骨架。
+- **⛔ P3g 那句「拆任何一层都不可能」已被 P3w 推翻**（别再引用）：拐点是承认「**`@Mod` 入口是集成文件**」。`coe/build.gradle` 只有 `compileOnly(project(':core'))`、**没有** `project(':')` ⇒ **`:coe:compileJava` 通过本身就是「零根引用」的机器证明**。
+- **注册器已按三层分家**：`AllBlocks` / `AllItems` / `AllBlockEntityTypes` **已删除**（`ccaf8a21`），声明住在 `common/registry/{coe,cews,transmutation}/`；**注册触发顺序必须在 `CreateOreExpansion` / `IntegrationBootstrap` 里显式写死**（没有兜底），每个层类的空 `register()` 只是类初始化触发器。**别和 Create 自己的 `com.simibubi.create.AllBlocks` / `AllItems` 搞混**（批量改名要做「裸名解析」判定）。
+- **「全模组共用的东西」必须住 SHARED/`core`**：被两层以上用的契约/登记表若住在某一层，就会让另一层反向 import（禁止方向）。
+- **搬迁名单按「整包」生成**，不能按文件（`common/CoeCore.java` 与引用三层的 `AllRecipeTypes` 同包，整包判定才有意义）；**差一个文件就整包不合格**。工具见「工具」一节。
+- **已知静默逃逸（未修）**：`:coe` 的 `CreateOreExpansion` 里两处 `Class.forName("…compat.curios.CurioMedallionBridge")` / `"…compat.jade.BasinLiveJadePlugin"` 字面量留在 `:coe`（字符串 = 零编译边）；挪走会静默把 6 个凝能佩降级成普通物品（硬时序），收口代价见 `模块拆分进度与决策链.md` §1.17。
+- **一条通用判据**：**core 里的方法只要描述符里出现 MC 类型就不可用**（哪怕方法体 MC-free）——`NoClassDefFoundError` 抛在调用点那一帧；「core 能不能放这个类」只能用**真调用一次**验证。
+- 历史细节（P3b/P3c/P3d-α/β/P3e/P3f/P3g/P3m/P3w 的逐条原文与提交号、P3h–P3v 取证索引）全部在 `markdown_output/模块拆分进度与决策链.md`。
+
+## 📐 其它现行口径（系列特性 / 机器交互 / 语言键）
+
+- **系列特性登记口径**（用户 2026-09-15 定稿）：common/SeriesTraits 是唯一入口——方块 .transform(SeriesTraits.addStellarstoneTraits()/addThunderiteTraits())、物品链上 .tag(AllModItemTags.STELLARSTONE_ITEMS/THUNDERITE_ITEMS)（Java 没有扩展方法，物品侧写不出 .addXxx()）；判定 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定（限定本模组命名空间）。**四个系列标签由 datagen 生成，手写文件禁止同名**（同名会让 processResources 报 duplicate 直接失败）。两个系列（含方块物品）免疫嬗乱销毁，该判定在 TransmutationDisorderEffect#canTransmutationDestroy 里调 SeriesTraits——方块物品进不了物品标签，故不能用标签覆盖。
+- **机器交互四条统一规则**（用户 2026-09-15 定稿）：① 空手右键某个面 = 开/关该面开口；② 空手右键指示灯 = 只切那盏灯对应的开口；③ 扳手右键 = 有特殊模式的机器只切模式、没模式的机器照旧切开口；④ 旋转必须 **Ctrl + 扳手右键**。
+  实现三件套：契约 **`common/machine/MachineInteraction`**（原 `content/machine/CewsMachine`，P2 改名并从 CEWS 挪到共享层；`hasModeSwitch()`；`onWrenched` 默认"吞掉但不旋转"，防 Create 默认旋转在没按 Ctrl 时生效；`rotateAsCreate()` 直接复用 `IWrenchable` 默认旋转、不复制逻辑；`onEmptyHandPortToggle`）、载荷 **`common/machine/MachineRotatePayload`**（服务端校验：本模组机器 + 无模式 + 手持扳手 + 距离）、客户端 `client/MachineRotateClient`（Ctrl 判定后取消本地交互并发包）。
+  **为什么 Ctrl 必须在客户端判定**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
+  副作用修复：`StellarWaveTransmuterBlock` 以前**没实现 `IWrenchable`**（`onWrenched` 没有 `@Override`）→ Create 的扳手从来没分发到它，变器切模式其实一直不生效；现已随契约修好。
+- **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文漏了 **17 条**（雷鸣合金整条材料线 11 条 + 能量场控制器 + 蓝宝石充能器/两个调节器 + 嬗变液方块与流体），英文客户端在这些条目上显示原始键名——已在 `d869e2d2` 补齐，英文名沿用「与 Stellarstone 同构」的规律。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
+  ```powershell
+  $en = Get-Content src\generated\resources\assets\createoreexpansion\lang\en_us.json -Raw -Encoding UTF8 | ConvertFrom-Json
+  $zh = Get-Content src\generated\resources\assets\createoreexpansion\lang\zh_cn.json -Raw -Encoding UTF8 | ConvertFrom-Json
+  Compare-Object @($en.PSObject.Properties.Name) @($zh.PSObject.Properties.Name)
+  ```
+  顺带：`block…jade_stress_charger` 的英文曾误写为 "Jade Create Charger"，已与护目镜条目统一为 "Jade Stress Charger"。
+
 ## ⏸ 挂起事项（重要，动手前必读）
 
-**CEWS 模块（能量波阵学，进行中）**：能量波系统要从矿物拓展里独立成一个板块
-**CEWS = Create: Energy Wave Studies（机械动力：能量波阵学）**，最终形态是**独立的内置 jar**（JarJar 嵌套模块）。
-
-- **阶段 0 已完成**：创造标签页 `createoreexpansion:energy_wave_study`（顺序 **矿物拓展 → 能量波阵学 → Create 调色板**）；
-  **"什么属于 CEWS"的唯一清单** = `common/EnergyWaveStudyTab#CONTENTS`（17 项：机器 + 机壳×2 + 查询仪；**强化避雷针按用户裁定留在矿物页**；图标 = 翡翠应力充能器）；内容同步走
-  `BuildCreativeModeTabContentsEvent`（往新页放 + 从基础页剔除，注册代码未动）——**加/减机器只改这份清单**。
-- **阶段 1/2 未做**（用户明确"工程量大，现在先只做标签页"）：包级隔离 → 独立 Gradle 子模块 + `jarJar`。
-  全部耦合点（12 条）、模块边界判定、3 个待定项、风险清单与验收标准见
-  `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`——**动手前先读那份**。
-- **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可以是 `cews`），
-  否则所有方块/物品/配方/标签 id 全变、老存档报废；配置键、语言键、数据包路径同理不许改。
-- **英文名建议用复数**：`Create: Energy Wave Studies`（学科名英文习惯用 Studies；缩写 CEWS 不变）。
-  id 一律用 `energy_wave_study`，与英文名解耦。
-
-**第二个模块：矿物拓展（长期计划，仅登记，不要动手）**：将来把现有本体（矿物/宝石/水晶芽/工具/技能/
-嬗变液/雷鸣合金）也收成独立模块（暂称 COE）。**CEWS 单向依赖 COE**（材料），反向禁止。
-**不能与技能换核并行**（两者都要动注册与 `foundation/item/skill`）。
-
 **技能内核移植（2026-09-19 已开工，进行中）**：用 Leaf 的独立内核 **Skiller**（<https://github.com/lizhanyu-leaf/Skiller>，本地副本 `E:\mc\mcmod\_ref\Skiller`，MIT）替换本模组自研的技能框架。
-**执行方案与全部决策见 `markdown_output/技能内核换核执行方案.md`**（旧分析文档 `技能内核对比与迁移分析.md` 只作参考）；现状地图见 `build/patch/coe_skill_map.md`，Skiller API 契约见 `build/patch/skiller_api_foundation.md`（两者都在被 git 忽略的 `build/` 下，重生成即可）。
+**现状一句话**：9/9 技能已迁移进内核，**旧框架一个没删**（回退路径 + 客户端预览仍靠旧渲染器）；**剩余 W5/W6** = 把 `client/tool/**` 的渲染器适配成 Skiller 的 `StrategyRenderer` 并注册进 `StrategyRenderers`（顺带必须修上游 `schedule()` 判错对象那个 bug），然后才删旧框架 + 跑一次专用服务端验证。
+**全部决策、15 条已定事实、技能系统现状速记见 `markdown_output/技能内核换核执行方案.md` 的标题 `## 从 AGENTS.md 迁入（2026-09-25）`**（旧分析 `技能内核对比与迁移分析.md` 只作参考）；现状地图 `build/patch/coe_skill_map.md`、API 契约 `build/patch/skiller_api_foundation.md`。
+**必须记住的几条**（细则同上）：
+- **id 与翻译键零改动**：技能 id 一律 `createoreexpansion:xxx`，三个 `SkillType` 沿用 `excavation_skill`/`hit_skill`/`use_skill`，12 条中英 lang 键一条不改；旧数据组件 `createoreexpansion:skills` 与 NBT 格式原样保留（老存档天然兼容，不需要 DataFixer）。
+- **不要 Skiller 的「按 R 启用技能」总开关**：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手 `refresh(player)`，并 `setToggleKeysEnabled(false)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`。
+- **内置的是我方 fork 版**（`_ref/Skiller` 的 `coe-embed` 分支，补丁 `build/patch/skiller-coe-embed.patch`，**未 push**）——升级 Skiller 必须重放补丁。
+- **扣能时机易写歪**：`consumeResource` 必须先过 `CoeSkillSupport.willDoWork(...)`；**冷却类技能要在 `consumeResource` 与 `release` 两处同判**。
+- **拆任何层之前先做 `@EventBusSubscriber` 的「文件/modid 错配」分析**（见红线）。
 
-已定事实（别再重新论证）：
+**CEWS 模块（能量波阵学，进行中）**：能量波系统要从矿物拓展里独立成一个板块 **CEWS = Create: Energy Wave Studies（机械动力：能量波阵学）**，最终形态是**独立的内置 jar**（JarJar 嵌套模块）。
+- **阶段 0 已完成**：创造标签页 `createoreexpansion:energy_wave_study`（顺序 **矿物拓展 → 能量波阵学 → Create 调色板**）；**"什么属于 CEWS"的唯一清单** = `common/registry/cews/EnergyWaveStudyTab#CONTENTS`（**17 项**：3 台应力充能器 + 能量场控制器 + 星辉波变器 + 3 台能量调级器 + 3 台波速调节器 + 3 台波差器 + 2 种机壳 + 波情查询仪；**强化避雷针按用户裁定留在矿物页**）；内容同步走 `BuildCreativeModeTabContentsEvent`（往新页放 + 从基础页剔除，注册代码未动）——**加/减机器只改这份清单**。
+- **阶段 1 现状（2026-09-25 更正，原文写「阶段 1/2 未做」已过期）**：`cews/` 子模块**骨架已经在 `settings.gradle` 里 include**（P3a，`fbf33cdf`），但**此刻是 0 个 java 文件的空壳**，CEWS 源码仍全部住在根工程 `src/main/java`（`content/{charger,wave,machine,energyfield}` + `registry/cews`）；`jarJar` 嵌套与拆包**都还没做**，`cews/build.gradle` 里把两条依赖行（`implementation project(':core')` / `compileOnly project(':coe')`）注释着等接上。**范式已经跑通**：`:coe` 就是先例（P3w），照它的形态搬即可 —— 顺序、坑与红线见 `markdown_output/模块拆分进度与决策链.md`。
+- **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可以是 `cews`），否则所有方块/物品/配方/标签 id 全变、老存档报废；配置键、语言键、数据包路径同理不许改。
+- **英文名建议用复数**：`Create: Energy Wave Studies`（学科名英文习惯用 Studies；缩写 CEWS 不变）。id 一律用 `energy_wave_study`，与英文名解耦。
+- 全部耦合点（12 条）、模块边界判定、3 个待定项、风险清单与验收标准见 `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`——**动手前先读那份**。
 
-1. **引入方式 = JarJar 嵌套**：jar 在 `libs-maven/com/leaf/skiller/1.0.0/`（本地 maven 布局、**随仓库提交**），`build.gradle` 里 `jarJar(implementation("com.leaf:skiller:1.0.0"))` + 仓库 `maven { url = uri("libs-maven") }`。dev 运行时它作为独立 mod（mod id `skiller`）加载，mixin 生效（已用 `runData` 验证）。
-2. **上游 HEAD `abe5688` 的硬阻塞一条都没修**（`SkillData` 往返丢 `factoryId`、`factoryId` 恒 null、两个 `releaseSkills` 重载读错表必 CCE、`AllKeys` 缺 `Dist.CLIENT` 专用服务器崩、`StrategyRenderers` 无注册且 `schedule` 对 null 无防护、`ServerSkillCache` 空组件裸抛 NPE、jar 缺 `Automatic-Module-Name`）。**我方在 `_ref/Skiller` 的分支 `coe-embed` 上全修好了**（补丁 `build/patch/skiller-coe-embed.patch`，**未 push**）→ 内置的是「我方 fork 版」，升级 Skiller 要重放补丁。
-3. **id 与翻译键零改动**：技能条目 id 一律 `createoreexpansion:xxx`，三个 `SkillType` 沿用 `excavation_skill`/`hit_skill`/`use_skill` → 12 条中英 lang 键一条不改。
-4. **老存档天然兼容**：旧数据组件 `createoreexpansion:skills` 与 NBT 格式（`Level`/`Config`/`OutlineColor`）**原样保留**，换的只是「谁解释这些数据」→ 不需要 DataFixer，也不会静默丢技能。
-5. **增量并行迁移**：技能注册进 `SkillerBuiltInRegistries.SKILLS` 就是新内核接管；没注册的由旧框架照旧处理（`CoeSkillProvider` 会跳过未注册的 id）→ 不会双重生效。
-6. **不要 Skiller 的「按 R 启用技能」总开关**（保持本模组随时可用的既有玩法）：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手物品调 `ClientSkillCache.refresh(player)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`，**不读** `ServerSkillCache`/`SkillReleaser`。
-7. **键位已定**：用本模组既有的 Shift/R/G —— 内核加了 `ClientSkillCache.setKeySource(...)` 注入点（消费方决定键位），`CoeSkillClient` 注入自己的键位并 `setToggleKeysEnabled(false)` 关掉内核的开关键闸（默认 R 会撞槽位 2）。
-8. **迁移进度（2026-09-19 晚）**：**9/9 全部迁移完成** —— `shatter`/`channel`/`grade`（`AreaAoeItemSkill` + `CoeAreaAoeStrategy`）、`fell`（`FellingItemSkill` + `CoeFellingStrategy`）、`skin`/`plunder`（`SkinItemSkill`/`PlunderItemSkill`）、`hoe`（`HoeItemSkill` + `UseItemSkillContext`）、`bow_curse`/`bow_disarm`（`BowShootItemSkill` + `BowShootSkillContext`）。runData 自检：`[Skiller] registry event: skill -> entries=9`、`skill_context_factory -> entries=4`、`skill_resource -> entries=2`。
-   **旧东西一个没删**：`foundation/item/skill/**`、`content/skill/**`、`AllSkills`、`client/tool/**` 都还在——① 它们是回退路径；② **客户端预览仍由旧渲染器提供**（旧类还在，所以预览没退化）；③ 弓的「箭命中」第二段仍走旧的 `JadeTopazBowEventHandler` + 旧 `applyTo`（标记里写的 id 没变，旧注册表条目还在）。
-   **剩余收尾（W5/W6）**：把 `client/tool/**` 的渲染器适配成 Skiller 的 `StrategyRenderer` 并注册进 `StrategyRenderers`（**顺带必须修上游一个 bug**：`StrategyRenderers.schedule()` 判的是 `instance.skill()`（注册条目）而不是技能本体 `instance.skill().getSkill()` → 策略渲染**永远不会被调度**）；然后才能删旧框架、跑一次专用服务端启动验证。
-9. **上游基点（2026-09-19 直接向服务器核对）**：`https://github.com/lizhanyu-leaf/Skiller.git` 只有 `master` 一条分支，HEAD = `abe5688`，**无任何 issue**。完整历史 4 个提交：`04cd4a8` init → `2ab25ba` 简单实现 EntityStrategy → `4cb1d4f` 写一些 TODO → `abe5688` 修改 SkillSet 的实现。
-   **教训**：本地克隆默认是**浅克隆**（`git rev-parse --is-shallow-repository` 为 true），`git log` 只能看到 `abe5688`/`4cb1d4f` 两条，别据此断言"上游只有 2 个提交"——要么 `git fetch --unshallow origin`，要么直接问服务器（`git ls-remote` / GitHub API）。
-   **另一个重要事实**：这条策略渲染链路**上游从来没有被真正跑过**——`StrategyRenderers.register` 全仓零调用点、`schedule()` 判错对象（我方已修）、连它自带的 `EntityStrategy` 都只是"简单实现"（`calculate` 恒返回空集合）。我们是这条路径的第一个消费者，所以它的问题只能靠我们自己趟出来。我方补丁分支 `coe-embed` 基于 `abe5688`，**从未 push**。
-10. **扣能时机口径（易写歪，务必照做）**：旧实现是「策略算出**非空**集合之后才扣能」，而新内核顺序是 `consumeResource`（全部累加）→ `canConsume` → 落账 → 才 `release`。因此每个技能的 `consumeResource` 都必须先过 `CoeSkillSupport.willDoWork(...)`（有方块/实体版与通用版），否则"砍一块孤零零的原木""挖到空气"这类空结果场景会白掉一份能量。
-11. **冷却类技能要两处同判**：`consumeResource` 与 `release` 都判冷却（冷却中 `consumeResource` 直接不累加、`release` 直接返回），只有真正执行过才 `ToolSkillCooldown.start*`。只在 `release` 判 = 冷却期间每次触发都白扣能量。
-12. **需要"同一次释放内传递结果"时用上下文 scratch**：新内核会给每个技能实例各建一个上下文对象（`SkillBundle.releaseSkills` 里 `contexts.put(instance, factory.create(env, instance))`），所以 `HitSkillContext`/`UseItemSkillContext` 上的 `putScratch/getScratch` 天然是"本次释放"作用域。`skin`（随机判定只滚一次）与 `hoe`（优先级只解析一次）都靠它。
-13. **改 Java 文件一律只用 write/edit 工具**：本轮我用 PowerShell `Get-Content | -replace | Set-Content` 改 `SkillerIntegration.java` 的 import，PS 5.1 按 ANSI 重写导致整个文件语法崩掉（48 个编译错误），只能 `git checkout --` 恢复重做。
-14. **物理结构（Aeronautics/Sable sub-level）上的技能预览**（2026-09-22 打通，坑很密）：
-    - **判据必须看「类在不在」，不能看 modId**：我们真正依赖的 `dev.ryanhcode.sable.companion.math.Pose3dc` 属于 modId=**`sablecompanion`** 的 jar，而 `aeronautics` jar 只是声明依赖 `sable`。原来写 `ModList.isLoaded("sable")` → 实机为假 → **整套结构兼容代码从未激活**，前面改的内部逻辑等于全白做。现在主判据 `Class.forName(Pose3dc, false, loader)`（依次试上下文/本模组/`Level.class`/系统四种类加载器——生产环境本模组加载器未必看得见别人），兜底才是三个 modId，并把命中的判据打进日志。
-    - **`player.pick` 在结构上返回的是结构局部(plot)坐标，不是世界坐标**：Sable 覆写了 `BlockGetter#clip`（射线逆变换进 plot 空间求交、从不投影回世界），站在结构上的玩家自身也在局部系。把局部点当世界点用 → 框被画到十几万格外 → 现象是"结构上完全没有框"。渲染前必须 `mulPose(结构位姿矩阵)`，且**在局部空间**做 AABB 合并/去内部边（先转世界再合并，旋转后不再轴对齐、框会碎）。
-    - **位姿矩阵**：`t = toWorld(hit, Vec3.ZERO, partialTick)`，三个基向量 = `toWorld(hit, e_i, partialTick) − t`（列向量），平移 = t；用带 `partialTick` 的重载（按 `lastPose→logicalPose` 插值），否则结构高速旋转时框会落后。
-    - **相机位移不能忘**：旧调度器 `SkillsStrategyRenderer` 统一做过 `pushPose → translate(-camPos) → 画 → popPose`；迁到新内核时漏掉它 → 框"又远又小"。
-    - **AOE 矩形朝向要本地化**：结构场景把玩家视线与所击方块面先用 `bridge.toLocalDir` 转进局部系再交给 `DualDirection`（新增 `fromLocal`，旧签名一字未改），矩形才会随结构倾斜；玩家自身已在局部系时**不要**再转一次（会反向旋转两遍）。
-    - **已知未做项**：服务端释放路径的 `ExcavationSkillContext` 仍由 4 参构造器建立（`subLevelHit` 恒 null）→ **结构上真正挖哪些方块仍按世界坐标算**，预览与实效在结构上不一致。
-15. **调试"看不到效果"的问题，先确证路径有没有被激活**：这轮我在结构兼容代码从未激活的前提下，连改相机位移、发光钩子、矩形朝向、局部坐标识别四轮而毫无效果。正确顺序是：**先让现场数据可见 → 确认入口成立 → 再改内部逻辑**。用户在生产整合包里测试时日志路径与 dev 的 `run/logs` 不同，**优先用动作栏显示诊断**（`displayClientMessage(..., true)` + 节流），成本最低。
+**第二个模块：矿物拓展（长期计划，仅登记，不要动手）**：将来把现有本体（矿物/宝石/水晶芽/工具/技能/嬗变液/雷鸣合金）也收成独立模块（暂称 COE）。**CEWS 单向依赖 COE**（材料），反向禁止。**不能与技能换核并行**（两者都要动注册与 `foundation/item/skill`）。
 
 ## 🧠 记忆写入规则（用户明确要求，务必遵守）
 
@@ -253,12 +198,5 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 ## 已知环境限制
 
-- **Hindsight 记忆已可用**（2026-09-10 起配置）：`C:\Users\Lenovo\.hindsight\coding-agent.json`，`serverMode: cloud`，本仓库 bank 为 `coding-agent::createoreexpansion`。**但已按用户要求关闭全部自动导入**，写入规则见下面「记忆写入规则」一节。
+- **Hindsight 记忆已可用**（2026-09-10 起配置）：`C:\Users\Lenovo\.hindsight\coding-agent.json`，`serverMode: cloud`，本仓库 bank 为 `coding-agent::createoreexpansion`。**但已按用户要求关闭全部自动导入**，写入规则见上面「记忆写入规则」一节。
 - **`maven.neoforged.net` 现在可达**（2026-09-19 实测 HTTP 200；早先的「连接被重置」是暂时的）。因此 **Skiller 参考工程已能在本机构建**：`cd E:\mc\mcmod\_ref\Skiller && .\gradlew.bat jar`（第一次会下载 neoform-runtime 2.0.24 等，需几分钟）。首次构建偶发 `Connection reset`，重跑一次即可。内置用的 jar 由这条命令产出。
-
-## 本工程的技能系统（现状速记）
-
-- 框架层 `foundation/item/skill/`（24 文件）+ 实现层 `content/skill/`（37 文件）+ 客户端 `client/tool/`（8 文件）+ 能量 `content/equipment/tool/energy/`。
-- 9 个技能：`fell` / `shatter` / `channel` / `grade` / `skin` / `plunder` / `hoe` / `bow_curse` / `bow_disarm`，统一注册在 `common/AllSkills.java`（`SkillBuilder` DSL + 三个静态 Map），每个技能都带 `.config()` + `.configsByLevel()` 分级数值表（数值表在 `content/skill/config/*Configs.java`）。
-- 框架层对模组侧存在 **11 处反向依赖**（静态注册表、`ToolEnergy`/`SkillEnergyCost`/`ToolEnchantments`、`client.tool.*` 渲染器、`MOD_ID` 拼接翻译键），是将来换核的主要障碍。逐条清单见分析文档 §3。
-- 技能键位 (`common/AllKeys.java`) 是纯客户端对象，而触发入口 `mixin/ServerPlayerGameModeMixin.java` 注入的是服务端类；本工程**没有任何按键同步包** → 专用服务器上技能键不会触发。这是一个独立于换核的既有缺陷，用户尚未决定何时修。
