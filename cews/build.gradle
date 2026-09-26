@@ -13,13 +13,15 @@ plugins {
 // ── 依赖 ───────────────────────────────────────────────────────────────────────
 // 仓库列表由 coe-conventions 注册（与根 build.gradle 逐条一致），此处不重复。
 dependencies {
-    // ① core 共享库：**compileOnly**。
+    // ① core 共享库：**jarJar(implementation(project(':core')))**（P4d：本模块 jar 要能单独拿出去跑）。
     //    · 根工程保留自己的 jarJar(implementation(project(':core')))，core 在**根 jar** 的
     //      META-INF/jarjar/ 里处于深度 1 —— 这是唯一有效的深度（MDG 的 jarJar 配置
     //      setTransitive(false)，FML 的 dependency locator 只扫一遍，深度 2 的 jar 永不生效，
     //      见 p3v-EVIDENCE §4c）。
-    //    · 所以本模块**不**再嵌一份 core。
-    compileOnly(project(':core'))
+    //    · 所以本模块**自己也嵌一份 core**（P4d）：只有放进**本模块 jar 的第 1 层**，本 jar 单独进 mods/ 时才找得到 core 的类；代价＝根 jar 里多一份约 118 KB 的惰性副本（不被扫描、不报错）。
+    //    形态与根逐字同款：implementation(...) 已给编译可见性，原 compileOnly(project(':core')) 已删
+    //    （两行并存＝同一依赖声明两遍）；core 不是 mod（无 mods.toml），它落到 runtimeClasspath 上不会造成 duplicate_mod。
+    jarJar(implementation(project(':core')))
 
     // ② COE（矿物拓展，第 2 层）：**compileOnly**，**不 jarJar**。
     //    · CEWS → COE 是允许方向（四模块方案 §13）：本层读 CoeItems / CoeBlocks 的星辉石/蓝宝石/

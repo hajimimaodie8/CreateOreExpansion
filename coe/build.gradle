@@ -12,13 +12,15 @@ plugins {
 // ── 依赖 ───────────────────────────────────────────────────────────────────────
 // 仓库列表由 coe-conventions 注册（与根 build.gradle 逐条一致），此处不重复。
 //
-// ① core 共享库：**compileOnly**。
+// ① core 共享库：**jarJar(implementation(project(':core')))**（P4d：本模块 jar 要能单独拿出去跑）。
 //    · 根工程保留自己的 jarJar(implementation(project(':core')))，core 在**根 jar** 的
 //      META-INF/jarjar/ 里处于深度 1 —— 这是唯一有效的深度（MDG 的 jarJar 配置
 //      setTransitive(false)，且 FML 的 dependency locator 只扫一遍，深度 2 的 jar 永不生效，
 //      见 build/patch/p3v-EVIDENCE.txt §4c）。
-//    · 所以本模块**不**再嵌一份 core：那只会给发布 jar 多加约 118 KB 的惰性副本。
-//    · dev：core 的 classes/resources 由根工程 mods{} 的 "cews" 条目合并进根 mod 文件；
+//    · 所以本模块**自己也必须嵌一份 core**（P4d 改动）：深度 2 的那份没人扫，只有把 core 放进
+//      **本模块 jar 的第 1 层**，本 jar 单独丢进 mods/ 时才找得到 core 的类。
+//      代价：根 jar 里会多一份深度 2 的惰性副本（约 118 KB）——生产里不被扫描，也不会报错。
+//    · dev：core 的 classes/resources 由根工程 mods{} 的 "coe_integration" 条目合并进根 mod 文件；
 //      本模块是 GAME 层的另一个自动模块，按 JPMS 规则读得到同层模块的包。
 //
 // ② 外部编译面必须**自己重抄**：core 的 create / registrate / ponder / flywheel / jei
@@ -30,7 +32,12 @@ plugins {
 // ④ 不需要 jade / curios / optical / vintageimprovements / aeronautics / sable：
 //    那些包（compat/**）仍然住在根工程。
 dependencies {
-    compileOnly(project(':core'))
+    // P4d：本模块 jar 要**自足**（单独丢进玩家 mods/ 也能跑），所以自己嵌一份 core。
+    // 形态与根逐字同款：jarJar(...) 的参数用 implementation(...) —— 它同时给到编译可见性，
+    // 所以原来的 compileOnly(project(':core')) 已删除（留着＝同一个依赖声明两遍，见根 build.gradle 同款说明）。
+    // 为什么不会像 :coe 之于根那样触发 duplicate_mod：core **不是 mod**（coe_library=true，没有
+    // META-INF/neoforge.mods.toml），它的 jar 落到 runtimeClasspath 上只是个普通库，FML 不会把它当 mod 文件。
+    jarJar(implementation(project(':core')))
 
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
