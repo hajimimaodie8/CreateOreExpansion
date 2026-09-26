@@ -28,12 +28,15 @@ displayName = "${mod_name}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
 
-# ── [[mixins]] 为什么**不**在这里 ──────────────────────────────────────────────────────
-# 本工程只有一个 mixin 配置文件 createoreexpansion.mixins.json，它是**根工程**的资源
-# （src/main/resources/），由根模板的 [[mixins]] 声明。TRANS 的 16 个文件里没有任何 mixin
-# 类，所以本模块既不需要、也不该再声明一次：TOML 的 [[mixins]] 是顶层表数组，
-# 声明两次等于把同一个 config 注册两遍；声明一个不存在的 config 更会让加载期直接报错。
-# 声明前请先确认本模块真的有混入类。
+# ── [[mixins]]：本模块**没有**（P7b 复核结论）──────────────────────────────────────────
+# P7b 起 mixin 配置跟着类走：本工程 7 个 mixin 类 + 1 个配置插件**全部**住在 :coe，
+# 所以 [[mixins]] 声明与 createoreexpansion.mixins.json 都在 :coe
+# （coe/src/main/templates/META-INF/neoforge.mods.toml + coe/src/main/resources/）。
+# TRANS 的 17 个文件里**一个 mixin 类都没有**（实测：transmutation/src/main/java 下无 mixin/ 包），
+# 所以本模块既不声明 config、也不带 *.mixins.json —— 刻意不造空配置：
+# 声明一个不存在（或指向别层）的 config 会让 MixinConfig.create 在加载期抛
+# IllegalArgumentException，而"在这里再声明一次同一个 config"等于把它注册两遍。
+# 将来真加了混入类，再把配置与声明一起放进本模块。
 
 [[dependencies."${mod_id}"]]
 modId = "neoforge"

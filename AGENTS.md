@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-27（P7a：根降级为 dev-only，四个 hub 聚合入口已删、共享接线改 core 的 `LayerBootstrap`，16 个文件搬入各层 + `AllConfig` 生产缺陷修复。原 68,930 B 的长叙述已迁入 `markdown_output/`）。
+> 最后更新：2026-09-27（P7b：mixin 配置随类进 `:coe`、根侧配置与声明已删；每层落一份根 lang 完整拷贝；新增 `tools/check-module-selfsufficiency.ps1` 自足性关卡。原 68,930 B 的长叙述已迁入 `markdown_output/`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
@@ -19,7 +19,7 @@
 - 模组：`createoreexpansion`（Create 6.0.10 附属，NeoForge / Minecraft 1.21.1）
 - 根目录：`E:\mc\mcmod\createoreexpansion`，包根 `com.hjmmd_8.createoreexpansion`
 - 当前分支：`leaf-dev`
-- **工程结构（2026-09-27，P7a 后：根降级为 dev-only 集成载体）**：`settings.gradle` include 了 `core`（JarJar 嵌套共享库，59 文件，**不是 mod**）、`coe`（矿物拓展，192 文件，mod id `createoreexpansion`）、`cews`（能量波阵学，138 文件，mod id `cews`）、`transmutation`（机械嬗化学，17 文件，mod id `transmutation`）、`all-neoforge`（占位 0 文件）。**根 `src/main/java` 只剩 7 个 dev-only 文件**（`common/hub/{IntegrationMod,IntegrationBootstrap}` + `data/**` 的 datagen 驱动与两份 LangProvider + `LayerLangSplitter`）；四个 hub 聚合入口（`AllRecipeTypes`/`AllCreativeModeTabs`/`AllFluids`/`AllModEffects`）已删，共享注册表挂载 / 旋转载荷 / 三层配方类型唤醒顺序改由 core 的幂等入口 `common/registry/LayerBootstrap#ensureAttached` 承担（每个 `@Mod` 构造器**第一条语句**；`synchronized`，因 FML 的 mod 构造**并行**派发），创造页改由每层 `LayerCreativeTab.registerAll(...)` 自持。**根自己还是一个 mod：mod id `coe_integration`**（入口 `common/hub/IntegrationMod`），发布 jar 的 `[[mods]]` 就是它；**三个模块 jar 各带自己的 `@JeiPlugin`**。
+- **工程结构（P7b 后）**：五个 Gradle 子工程 = `core`（JarJar 嵌套共享库，**不是 mod**）、`coe`（mod id `createoreexpansion`）、`cews`（`cews`）、`transmutation`（`transmutation`）、`all-neoforge`（0 文件占位）；各层文件数与逐项机制见 `markdown_output/模块拆分进度与决策链.md` §2.6 与下节。**根 `src/main/java` 只剩 7 个 dev-only 文件**；共享注册表挂载 / 旋转载荷 / 配方类型唤醒顺序由 core 的幂等入口 `common/registry/LayerBootstrap#ensureAttached` 承担（每个 `@Mod` 构造器**第一条语句**，`synchronized`——FML 的 mod 构造**并行**派发），创造页由每层 `LayerCreativeTab.registerAll(...)` 自持。**根自己还是一个 mod：mod id `coe_integration`**。
 - 构建与验证流程（本工程一贯用法）：
   1. `.\gradlew.bat compileJava`
   2. 改动语言/资源时：`.\gradlew.bat runData`（同时兼作 Bootstrap / mixin 冒烟测试）
@@ -111,6 +111,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - `tools/check-layering.ps1` —— 分层方向断言（**扫五个根**：`src/main/java` + `core/` + `coe/` + `cews/` + `transmutation/` 各自的 `src/main/java`；层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CEWS→TRANS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运代码后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树做对比）。**每拆一层就要把该层加进两个脚本的 roots 表**——不加的后果是那一层计数变 0 而脚本照样 exit 0（P3d-β core / P3w coe / P3y transmutation / P3z cews 四次同一形状的静默逃逸）。
 - `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则（`Get-FileLayer` 函数体）必须逐字一致**（改一处要两处同改）。
 - `tools/check-package-overlap.ps1` —— **包重叠审计（JPMS）**：同包跨两模块 = 启动即 `ResolutionException`，三关全绿看不到；改包结构/拆层/加 `FMLModType` 后必跑到 0。
+- `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（45 条断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（有 mixin 类而 0 条声明 = 红，即 P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线。
 - `build/patch/*` 取证脚本（被 git 忽略，按需重生成）：`ChargerBandCheck.java` / `BandCheck.java`（转速分档逐整数比对）、`dump_light_squares.ps1` / `rasterize_top_face.ps1`（贴图取证）、`p3?-EVIDENCE.txt`（拆模块各阶段取证）。
 
 ## 🌊 波系统与变器：现行口径（要点；细则见「长文档索引」）
@@ -131,18 +132,17 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 ## 🧱 模块拆分：结论与踩坑（P1–P3z；全过程见 `markdown_output/模块拆分进度与决策链.md`）
 
-- **现状（P7a 后）**：`:coe`（192 文件，`createoreexpansion`）、`:cews`（138 文件，`cews`）、`:transmutation`（17 文件，`transmutation`）都是真子模块，各自带 `src/main/templates/META-INF/neoforge.mods.toml`，由根 `build.gradle` 的 `jarJar(compileOnly(project(':…')))` 嵌进 `META-INF/jarjar/` 第 1 层；`core` 是 JarJar 嵌套共享库（59 文件，不是 mod）；`all-neoforge` 仍是 0 文件占位。dev 的 `neoForge.mods{}` 四个条目 = **四个本模组 mod 文件**（`coe_integration` = 根输出 + core 输出、`coe`、`cews`、`transmutation`）。
-- **集成层去哪（P3z 定论）：根工程自己是一个 mod，mod id `coe_integration`**，入口 `common/hub/IntegrationMod`（构造器为空，接线仍由 `IntegrationBootstrap` 在 `FMLConstructModEvent` 上做）。**为什么必须如此**：CEWS 搬走后根里一个本模组 @Mod 都不剩，而 FML 对 `[[mods]]`/`@Mod` 是双向硬约束（有条目没类＝静默无入口；有类没条目＝`dangling_entrypoint` 硬错）；让根模板 `[[mods]]` 为空同样不行——没有 `ModContainer` 就没有 `AutomaticEventSubscriber` 注入，根侧 datagen 入口 / `IntegrationBootstrap` / Ctrl+扳手 / 配置重载会集体静默失效。**被否掉的两个选项及代价**：② 把集成层搬进 `:all-neoforge`——根就不再是组装 jar（`jarJar` 链整体搬家），而 all-neoforge 会变成用户明确不发布的「all」产物；③ hub/lang/JEI 就地拆到各层——hub 的四个聚合入口引用 2–3 层 ⇒ 造禁止方向，datagen 的「标签与语言只在主提供器跑 COE→CEWS→TRANS 并集」一拆 `src/generated` 就变，唯一 `@JeiPlugin` 的 UID 与侧栏顺序是玩家可观测的。**根模板现状**：`[[mods]]` = 1（`coe_integration`）、`[[dependencies.*]]` = 0（内容需求由三个嵌套 mod 各自声明）。
+- **现状（P7b 后）**：`:coe` / `:cews` / `:transmutation` 都是真子模块（细节见同文档 §2.6），各自带 `src/main/templates/META-INF/neoforge.mods.toml`，由根 `build.gradle` 的 `jarJar(compileOnly(project(':…')))` 嵌进 `META-INF/jarjar/` 第 1 层；`core` 是 JarJar 嵌套共享库（不是 mod）；`all-neoforge` 仍是 0 文件占位。dev 的 `neoForge.mods{}` 四个条目 = **四个本模组 mod 文件**（`coe_integration` = 根输出 + core 输出、`coe`、`cews`、`transmutation`）。
+- **集成层去哪（P3z 定论）：根工程自己是一个 mod，mod id `coe_integration`**，入口 `common/hub/IntegrationMod`（构造器为空，接线仍由 `IntegrationBootstrap` 在 `FMLConstructModEvent` 上做）。**为什么必须如此**：CEWS 搬走后根里一个本模组 @Mod 都不剩，而 FML 对 `[[mods]]`/`@Mod` 是双向硬约束（有条目没类＝静默无入口；有类没条目＝`dangling_entrypoint` 硬错）；让根模板 `[[mods]]` 为空同样不行——没有 `ModContainer` 就没有 `AutomaticEventSubscriber` 注入，根侧 datagen 入口 / `IntegrationBootstrap` / Ctrl+扳手 / 配置重载会集体静默失效。被否掉的另两个选项与代价 → 同文档 §2.7。**根模板现状**：`[[mods]]` = 1（`coe_integration`）、`[[dependencies.*]]` = 0（内容需求由三个嵌套 mod 各自声明）。
 - **⛔ P3g 那句「拆任何一层都不可能」已被 P3w 推翻**（别再引用）：拐点是承认「**`@Mod` 入口是集成文件**」。`coe/build.gradle` 只有 `compileOnly(project(':core'))`、**没有** `project(':')` ⇒ **`:coe:compileJava` 通过本身就是「零根引用」的机器证明**（`:cews` / `:transmutation` 同理，三者都没有 `project(':')`）。
 - **注册器已按三层分家**：`AllBlocks` / `AllItems` / `AllBlockEntityTypes` **已删除**（`ccaf8a21`），声明住在 `common/registry/{coe,cews,transmutation}/`；**注册触发顺序必须在 `CreateOreExpansion` / `IntegrationBootstrap` 里显式写死**（没有兜底），每个层类的空 `register()` 只是类初始化触发器。**别和 Create 自己的 `com.simibubi.create.AllBlocks` / `AllItems` 搞混**（批量改名要做「裸名解析」判定）。
-- **P4a/P4b：assets 与 data 已按模块分家**（161 手写 + 56 生成 `git mv`，命名空间/路径未改）。机制 = **改写落盘路径**而非改 `--output`（`LayerDataProvider#run` 包一层 `CachedOutput`）；`build.gradle` 两处**承重**：`--existing <module>/src/main/resources/` 与系统属性 `coe.datagen.layerAssetRoots`（缺了=静默不生效）。
-- **P4c：lang 已按层落地**（2026-09-26 重做；见 `markdown_output/P4c-交接-生成物按层分家.md`）：新增集成层 `data/lang/LayerLangSplitter`，排两份 `LanguageProvider` **之后**注册；**归属靠注册对象的 `getDescriptionId()`、必须换资源命名空间、根文件一个字节都不许动**。实测归属 155/155（COE 133 / CEWS 20 / TRANS 2），249 条裸字符串键留根。
-- **⚠ 拆 lang 时不要把根文件改小**：`HashCache` 看不到「别的提供器后写了这个文件」，下一轮的重写会被哈希命中跳过 ⇒ 根文件停在拆分后的形态，模块侧生成目录一删那些键**再也补不回来**；同轮对同一路径的第二次写也不可靠（en_us 落地、zh_cn 没落地）。
+- **P4a/P4b/P4c 的机制，与「拆 lang 时不许把根文件改小」的 HashCache 坑** → `markdown_output/模块拆分进度与决策链.md` 标题 **`## 2. 从 AGENTS.md 迁入（P7b，2026-09-27）`**。**铁律仍在：根 lang 文件一个字节都不许动**。
+- **P7b：mixin 与语言按层自足**（机制全文 → 同文档 **§2.8**）。mixin **配置跟着类走**——7 个 mixin 类 + 配置插件全在 `:coe`，故配置是 `coe/src/main/resources/createoreexpansion.mixins.json` + coe 模板的 `[[mixins]]`；**根侧配置与声明都已删**，`:cews`/`:transmutation` 无 mixin 类 ⇒ 不声明、不造空配置。机制：FML 按**每个文件自己的 `[[mixins]]`** 登记（`LoadingModList.addMixinConfigs → file.getMixinConfigs()`），config 名走**类路径资源**（`MixinConfig.create → contextClassLoader`）。语言：`LayerLangSplitter` 现**另给每层落一份根 lang 的完整拷贝**（同路径、逐条复制）——lang 按整条 `getResourceStack` 逐键 `put`，内容一致 ⇒ 合装结果不变、单装不再露原始键名。
 - **221 生成配方 + 108 生成标签仍由集成层提供**（出处≠声明）：`CreateOreExpansionDatagen` 直挂 `RecipeProvider`；标签仍是单一 union 提供器，但**落盘时按注入的 `id→层` 表逐文件改道**（单层归模块、跨层按层各写一份，靠**合并**语义还原），并豁免 `purgeStale` 的 `/tags/`。
-- **`runData` 第二次跑 `written: 0` 不再是健康判据**：`HashCache` 存越界路径不能往返，被改写的 238 资产 + 56 data 每次都会重写。判据是 `git status` 与内容。
+- **`runData` 的 `written: 0` 不是健康判据**（判据是 `git status` 与内容）→ 同文档 §2.4。
 - **待查**：`runData` 偶发 `Found unused register callbacks`（现在约 7 次 2 次），日志里 sable 的 mixin 仍被装载 ⇒ `build.gradle` 对 runData 的 sable/aeronautics 排除**没有真正生效**。
 - **「全模组共用的东西」必须住 SHARED/`core`**：被两层以上用的契约/登记表若住在某一层，就会让另一层反向 import（禁止方向）。
-- **搬迁名单按「整包」生成**，不能按文件（`common/CoeCore.java` 与引用三层的 `AllRecipeTypes` 同包，整包判定才有意义）；**差一个文件就整包不合格**。工具见「工具」一节。
+- **搬迁名单按「整包」生成、不能按文件；差一个文件就整包不合格** → 同文档 §2.5；工具见「工具」一节。
 - **P7a 收口**：`:coe` 的 `Class.forName("…compat.curios.CurioMedallionBridge")` / `"…compat.jade.BasinLiveJadePlugin"` 字面量与那两个类现在同住 `:coe`（原先类在根 ⇒ 单装 coe.jar 静默把 6 个凝能佩降级）；硬时序（须在 `CoeItems.register()` 之前）未变。
 - **一条通用判据**：**core 里的方法只要描述符里出现 MC 类型就不可用**（哪怕方法体 MC-free）——`NoClassDefFoundError` 抛在调用点那一帧；「core 能不能放这个类」只能用**真调用一次**验证。
 - 历史细节（P3b/P3c/P3d-α/β/P3e/P3f/P3g/P3m/P3w 的逐条原文与提交号、P3h–P3v 取证索引）全部在 `markdown_output/模块拆分进度与决策链.md`。

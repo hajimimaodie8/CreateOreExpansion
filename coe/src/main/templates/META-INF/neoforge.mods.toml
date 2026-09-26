@@ -22,17 +22,29 @@ displayName = "${mod_name}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
 
-# ── [[mixins]] 为什么**不**在这里 ──────────────────────────────────────────────────────
-# 本工程只有一个 mixin 配置文件 createoreexpansion.mixins.json，它是**根工程**的资源
-# （src/main/resources/），由根模板的 [[mixins]] 声明。P3w 之后那 8 个 mixin 类里
-# 有 2 个（mixin/renderers/coe/EntityRendererAccessor、LivingEntityRendererAccessor）
-# 随 COE 住进了本模块，但**不需要**在这里再声明一次：TOML 的 [[mixins]] 是顶层表数组，
-# 声明两次等于把同一个 config 注册两遍。
-# 类解析不受影响：Mixin 服务在 ModLauncher 下 boot 进的是 cpw.mods.cl.ModuleClassLoader
-# （实测 run/logs/debug.log: "MixinService [ModLauncher] was successfully booted in
-# cpw.mods.cl.ModuleClassLoader"），也就是 GAME 层的联合加载器，按包在层内各模块间委派
-# —— 与"一个 mod 文件一个类加载器、彼此看不见"是两回事。
-# 声明一个不存在的 config 才会让加载期直接报错，所以这里刻意留空。
+# ── [[mixins]]：配置**跟着类走**（P7b）────────────────────────────────────────────────
+# P7b 起本模块声明自己的 mixin 配置。依据（全部读 FML / Mixin 源码实测）：
+#   · FML 按**每个 mod 文件自己的 [[mixins]]** 登记配置：
+#     LoadingModList.addMixinConfigs() 遍历 modFiles，对每个文件读 file.getMixinConfigs()
+#     （= ModFileParser.getMixinConfigs，读的就是那个文件自己的 [[mixins]] 表），
+#     再 DeferredMixinConfigRegistration.addMixinConfig(config, modId)。
+#   · config 名是**类路径资源名**，不是"相对 mod 文件的路径"：
+#     MixinConfig.create(configFile, ...) 只做 service.getResourceAsStream(configFile)，
+#     而 MixinServiceModLauncher.getResourceAsStream 是
+#     Thread.currentThread().getContextClassLoader().getResourceAsStream(name) ——
+#     ModLauncher 下 boot 进 cpw.mods.cl.ModuleClassLoader（GAME 层联合加载器）。
+#     对比：accessTransformers / enumExtensions 走的是 file.findResource(...)（相对 mod 文件）。
+#   ⇒ 所以【单装本 jar（顶层的 mod 文件）】与【被根 jar 嵌进 META-INF/jarjar/（第 1 层）】
+#     两种形态都能取到这个资源，本模块的 src/main/resources/ 就是资源根。
+# 本模块里现有 7 个 mixin 类 + 1 个配置插件（全部在 com/hjmmd_8/createoreexpansion/mixin/）：
+#   4 个 common mixin（ChargingRecipeAssembly / PoiTypes / ServerPlayerGameMode /
+#   TemplateStructurePiece）+ 3 个 client（renderers.coe 两个 accessor + renderers.Minecraft）
+#   + plugin = ...mixin.COEMixinConfigPlugin。**没有**第二个层的 mixin 类，
+#   所以本模块只有这一份配置（不需要按层再拆）。
+# ⚠ 声明的 config 名必须与 jar 里的资源名**逐字一致**：MixinConfig.create 读不到就抛
+#   IllegalArgumentException("The specified resource ... was invalid or could not be read")。
+[[mixins]]
+config = "${mod_id}.mixins.json"
 
 [[dependencies."${mod_id}"]]
 modId = "neoforge"

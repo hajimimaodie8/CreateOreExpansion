@@ -62,10 +62,17 @@ import net.minecraft.world.level.block.Block;
  * 也不会与任何提供器争同一路径。代价是那批键在根与模块各存一份——可接受，
  * lang 是覆盖式合并、同值不冲突。</p>
  *
- * <h2>三、为什么必须换资源命名空间</h2>
- * <p>只换工程根（{@code coe/src/generated/resources}）而不换命名空间，会让多个 mod 携带
- * <b>同一路径</b> {@code assets/createoreexpansion/lang/en_us.json}，资源包里同路径只有一个
- * 胜出者 ⇒ <b>随机遮蔽、丢一半键</b>。换命名空间后路径互不相同，MC 却仍把它们并进同一张表。</p>
+ * <h2>三、命名空间（P7b 起有两条并存的落地路径）</h2>
+ * <p><b>P4c 的"换命名空间"那一份</b>（{@code assets/coe|cews|transmutation/lang/…}）：只换工程根
+ * 而不换命名空间，会让多个 mod 携带同一路径；对 <b>models / textures</b> 这类"取最高优先级那一份"的
+ * 资源，同路径就是随机遮蔽。换命名空间后路径互不相同，MC 仍会按命名空间把它们并进同一张表。</p>
+ * <p><b>P7b 新加的那份刻意保留原名空间</b>（见"五"）：因为 {@code lang} 与 models/textures 的合并口径
+ * <b>不一样</b> —— {@code ClientLanguage#loadFrom} 对每个 locale 走
+ * {@code resourceManager.getResourceStack(assets/&lt;ns&gt;/lang/&lt;locale&gt;.json)}（<b>整条资源栈</b>），
+ * 再逐份 {@code appendFrom} → 逐 key {@code put}。实测源码：
+ * {@code net/minecraft/client/resources/language/ClientLanguage.java:39-73}
+ * （1.21.1 / NeoForge 21.1.228）。⇒ 同一个 lang 路径出现在两个 mod 里<b>不会遮蔽</b>，
+ * 而是按 pack 优先级逐 key 覆盖；各份内容一致时结果与"只有一份"<b>逐字节等价</b>。</p>
  *
  * <h2>四、读值的方式与执行时机</h2>
  * <p>它在两份根 {@code LanguageProvider} <b>之后</b>注册（见
@@ -76,6 +83,20 @@ import net.minecraft.world.level.block.Block;
  *
  * <p>本类只处理 {@code en_us} 与 {@code zh_cn}：{@code en_ud} 是 Registrate 按三层并集
  * 自动倒写的、不属于任何一层，原样留在根工程。</p>
+ *
+ * <h2>五、P7b：每层再落一份「根文件的完整拷贝」（自足用）</h2>
+ * <p><b>动机</b>：根独占 ~247 条裸字符串键（{@code createoreexpansion.goggles.*}、页标题
+ * {@code itemGroup.…energy_wave_study}、{@code recipe_type.*}、tooltip…），它们<b>没有机械归属</b>
+ * （见"一"），所以单装任一模块 jar 时这些条目会显示<b>原始键名</b>（不崩、无日志）。
+ * P7b 的解法不是"把键按层切走"，而是：<b>根文件一个字节都不动</b>，把根文件的<b>完整内容</b>
+ * （不是按注册对象切出的子集）原样再写一份到每层的
+ * {@code assets/createoreexpansion/lang/&lt;locale&gt;.json}。合装时三份内容逐字相同、
+ * 覆盖后仍是同一张表；单装时该模块自带全部键。这就是"语言自足"。</p>
+ * <p><b>为什么不违反"二"的铁律</b>：本类<b>仍然只写模块侧路径</b>，根路径不出现任何写操作
+ * （{@code HashCache} 里根 lang 的条目依旧只由两份 {@code LanguageProvider} 拥有，本类不碰）；
+ * 模块侧这份也走同一个 {@code DataProvider.saveStable(cache, …)}，不用 {@code Files.write}
+ * 绕开缓存。键值逐条从<b>本轮刚落盘的根文件</b>复制（见"四"），因此键集与根<b>恒等</b>——
+ * 既不增、也不删、也不改任何 value。</p>
  */
 public class LayerLangSplitter implements DataProvider {
 
@@ -162,6 +183,25 @@ public class LayerLangSplitter implements DataProvider {
                 subset.forEach(json::addProperty);
                 writes.add(DataProvider.saveStable(cache, json, target));
                 CoeCore.LOGGER.info("[Layer Lang Splitter] wrote {} -> keys={}", target, subset.size());
+            }
+
+            // ── P7b：再给每层落一份「根文件的完整拷贝」（自足；见类注释"五"）────────────────
+            // 键集**恒等于根**：逐条从上面读到的 root 复制，不增、不删、不改任何 value。
+            // 序列化路径与两份根 LanguageProvider 逐字相同（TreeMap + saveStable），
+            // 所以模块侧这份与根文件**逐字节相同**；根路径本身在下面一行都不出现。
+            TreeMap<String, String> full = new TreeMap<>(root);
+            for (Layer layer : layers) {
+                if (layer.assetRoot == null) {
+                    CoeCore.LOGGER.warn("[Layer Lang Splitter] {}: module root unknown -> full copy NOT written for '{}'",
+                        locale, layer.id);
+                    continue;
+                }
+                Path target = layer.assetRoot
+                    .resolve("assets").resolve(CoeCore.REGISTRY_NAMESPACE).resolve("lang").resolve(locale + ".json");
+                JsonObject json = new JsonObject();
+                full.forEach(json::addProperty);
+                writes.add(DataProvider.saveStable(cache, json, target));
+                CoeCore.LOGGER.info("[Layer Lang Splitter] wrote full copy {} -> keys={}", target, full.size());
             }
         }
 
