@@ -47,3 +47,41 @@ dependencies {
     // 因此 core 的发布元数据、嵌套 jar 内容与玩家运行期所需的 JEI 版本都不受影响。
     compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
 }
+
+// ── P4e：core 的 jar 必须声明 FMLModType: GAMELIBRARY ─────────────────────────────────
+//
+// 症状（上一轮真发布 jar 实测）：不加这一行时 core 的 MANIFEST 只有 `Manifest-Version: 1.0`，
+// 于是 core 的类在**生产里一个都不可用**，而且是「静默」的 —— 编译期、runData、分层断言全绿，
+// 只有玩家调用到碰 MC 的 core 方法时才抛 NoClassDefFoundError（例如某个 core 类的字段初始化器
+// 里写着 net.minecraft.* 类型）。
+//
+// 根因（FML 4.0.42 源码，逐条读过，不是猜的）：
+//   · `JarModsDotTomlModFileReader#createModFile` 先读 manifest 主属性 `ModFile.TYPE`
+//     （`new Attributes.Name("FMLModType")`，见 ModFile.java:62）：
+//       有 META-INF/neoforge.mods.toml → 按 mods.toml 建 ModFile（类型 MOD）；
+//       无 mods.toml 但**有** FMLModType → 按 `manifestParser` + 该类型建 ModFile；
+//       两者都没有 → 返回 null，落到 `NestedLibraryModReader`（LOWEST 优先级），
+//       而它**硬编码** `IModFile.Type.LIBRARY`（NestedLibraryModReader.java:30）。
+//   · `ModValidator` 按类型分层（ModValidator.java:37-39、65-75）：
+//       LIBRARY     → `getPluginResources()` → `Layer.PLUGIN`
+//       MOD/GAMELIBRARY → `getModResources()` → `Layer.GAME`
+//   · ModLauncher 的层级父关系（javap IModuleLayerManager$Layer 的静态初始化实测）：
+//       BOOT=[]  SERVICE=[BOOT]  PLUGIN=[BOOT]  GAME=[PLUGIN, SERVICE]
+//     于是 **PLUGIN 层看不见 GAME 层** ⇒ LIBRARY 的 core 看不见 MC / NeoForge / Create。
+//   · core 是 57 个文件的重度 MC 依赖库 ⇒ 判成 LIBRARY 等于整份 core 失效。
+//
+// NeoForge 自己的对照（本机 gradle 缓存里的真 jar，用 MANIFEST 实测）：
+//   碰 MC 的 `mixinextras-neoforge-0.5.3.jar`  → `FMLModType: GAMELIBRARY`
+//   纯库的 `coremods-7.0.3.jar`              → 无 FMLModType（= 默认 LIBRARY）
+// 本行照抄前者。
+//
+// ⚠ 这一行有**前置条件**：core 升到 GAME 层后与根工程同处一个 Configuration，JPMS 不允许
+//   同一个包属于两个模块 ⇒ 只要 core 与别的源码根共用任何一个包，启动期就会
+//   `java.lang.module.ResolutionException`（从「静默 NoClassDefFoundError」变成「开不起来」）。
+//   P4e 已把 core 的 data/lang/Translatable.java 挪进 core 独占的 common/i18n。
+//   改动包结构后必须重跑：`tools/check-package-overlap.ps1`（五根包重叠必须为 0）。
+jar {
+    manifest {
+        attributes 'FMLModType': 'GAMELIBRARY'
+    }
+}

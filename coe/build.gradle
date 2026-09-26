@@ -13,21 +13,45 @@ plugins {
 // 仓库列表由 coe-conventions 注册（与根 build.gradle 逐条一致），此处不重复。
 //
 // ① core 共享库：**jarJar(implementation(project(':core')))**（P4d：本模块 jar 要能单独拿出去跑）。
-//    · 根工程保留自己的 jarJar(implementation(project(':core')))，core 在**根 jar** 的
-//      META-INF/jarjar/ 里处于深度 1 —— 这是唯一有效的深度（MDG 的 jarJar 配置
-//      setTransitive(false)，且 FML 的 dependency locator 只扫一遍，深度 2 的 jar 永不生效，
-//      见 build/patch/p3v-EVIDENCE.txt §4c）。
-//    · 所以本模块**自己也必须嵌一份 core**（P4d 改动）：深度 2 的那份没人扫，只有把 core 放进
-//      **本模块 jar 的第 1 层**，本 jar 单独丢进 mods/ 时才找得到 core 的类。
-//      代价：根 jar 里会多一份深度 2 的惰性副本（约 118 KB）——生产里不被扫描，也不会报错。
+//    · ⚠ **P4e 更正**：P4d 在这里（以及 p3v §4c）写的理由是**错的** ——
+//      「FML 的 dependency locator 只扫一遍、深度 2 的 jar 永不生效」不成立。
+//      FML 4.0.42 的 `JarSelector.detect` → `recursivelyDetectContainedJars` 是**递归**的
+//      （JarJarSelector-0.4.1 源码里那个 while 循环会继续读每一层新解出的 jar 自己的
+//      META-INF/jarjar/metadata.json），深度 2、3 的副本一样会被发现。
+//      真正的去重机制是**标识三元组**：`ContainedJarMetadata` 的 equals/hashCode =
+//      (identifier, version, path, isObfuscated)，而内层副本的 path 字符串与第 1 层**逐字相同**
+//      （都是 "META-INF/jarjar/com.hjmmd_8.createoreexpansion.coe_core-1.0.0.jar"）⇒
+//      在 `detectedJarsBySource.keySet()` 里塌成**一个**，`select()` 只产出一份。
+//      实测：根 jar 第 1 层那份与本模块内层那份 SHA256 逐字节相同（02960DAF…）。
+//    · **结论不变**，但正确的理由是「**每个 jar 的编译面必须自足**」：根侧 30 个文件直接
+//      import core，让根只能从 :coe 的内层借 core，等于「:coe 不在场根就崩」；本模块单独
+//      发布时同理。所以两边各嵌一份 core（各在自己 jar 的第 1 层）。
+//      代价：根 jar 里多一份内层副本（core 约 118 KB）——生产里与第 1 层那份塌成同一份，
+//      不会变成第二个 mod 文件。
 //    · dev：core 的 classes/resources 由根工程 mods{} 的 "coe_integration" 条目合并进根 mod 文件；
 //      本模块是 GAME 层的另一个自动模块，按 JPMS 规则读得到同层模块的包。
 //
 // ② 外部编译面必须**自己重抄**：core 的 create / registrate / ponder / flywheel / jei
 //    全是 compileOnly，而 compileOnly **不传递**（P3v §4e 实测）。
 //
-// ③ skiller：只 compileOnly。它是独立 mod，必须留在**根 jar** 的 META-INF/jarjar/ 深度 1；
-//    在本模块再嵌一层会落到深度 2 → 惰性（同 §4c）。
+// ③ skiller（P4e：从 compileOnly 改成 jarJar(implementation(...))）。
+//    · 上一轮实测：coe.jar 里 com/leaf/skiller/ 条目 = 0，而本模块有 31 个文件直接
+//      `import com.leaf.skiller.*`（实测计数；技能条目/策略/客户端界面）⇒ 单独把 coe.jar 丢进 mods/
+//      必 NoClassDefFoundError。只 compileOnly 只能保证**根 jar** 里有 skiller
+//      （根 build.gradle 自己那行 jarJar(implementation("com.leaf:skiller:1.0.0"))），
+//      救不了单独发布的本模块。
+//    · 现在本模块**自己嵌一份** skiller（形态与根那行逐字同款），本 jar 才自足。
+//    · 为什么不会造成「重复 mod」（**实测 + 源码**，不是推测）：
+//      root jar 第 1 层有 skiller，本模块内层也有一份（路径都是
+//      "META-INF/jarjar/skiller-1.0.0.jar"，实测 SHA256 逐字节相同 D39281CC…）；
+//      `ContainedJarMetadata` 的去重键是 (identifier, version, path, isObfuscated)，
+//      三要素相同 ⇒ 两份塌成一个候选，`JarSelector.select()` 只产出一份，
+//      `pipeline.addModFile` 因此**只登记一个** skiller mod 文件（不会 duplicate_mod）。
+//      ⚠ 这依赖「内层副本与第 1 层副本版本/路径完全一致」——将来若两处 skiller 版本不同，
+//      就会变成两份**不同**的 candidate，`select()` 会按版本区间挑一个（HashMultimap 顺序、
+//      不保证是第 1 层那份）。所以升级 skiller 必须**根与本模块同时改**，只改一处是雷。
+//    · 单独装本模块时它是第 1 层，正常生效。
+//      实测见 build/patch/p4e-EVIDENCE.txt。
 //
 // ④ 不需要 jade / curios / optical / vintageimprovements / aeronautics / sable：
 //    那些包（compat/**）仍然住在根工程。
@@ -54,5 +78,10 @@ dependencies {
     compileOnly("curse.maven:createaddition-439890:8083378")
     runtimeOnly("curse.maven:createaddition-439890:8083378")
 
-    compileOnly("com.leaf:skiller:1.0.0")
+    // 技能内核 Skiller（P4e）：本模块有 31 个文件直接 import com.leaf.skiller.*（实测计数），
+    // 所以它必须随本 jar 一起发布 —— jarJar(...) 把 skiller-1.0.0.jar 嵌进本 jar 的
+    // META-INF/jarjar/；参数用 implementation(...) 同时给到编译可见性，
+    // 于是原来的 compileOnly("com.leaf:skiller:1.0.0") 已删除（留着＝同一个依赖声明两遍）。
+    // 坐标与根 build.gradle 那行逐字同源（同一个本地 maven 仓库 libs-maven/）。
+    jarJar(implementation("com.leaf:skiller:1.0.0"))
 }

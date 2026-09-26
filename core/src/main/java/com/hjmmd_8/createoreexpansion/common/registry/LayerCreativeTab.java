@@ -6,7 +6,7 @@ import java.util.function.Supplier;
 import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
+import com.hjmmd_8.createoreexpansion.common.i18n.Translatable;
 
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;

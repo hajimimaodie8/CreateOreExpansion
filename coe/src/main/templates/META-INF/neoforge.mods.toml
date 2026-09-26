@@ -78,3 +78,22 @@ type = "required"
 versionRange = "[1.5.11,)"
 ordering = "NONE"
 side = "BOTH"
+
+# ── 技能内核 Skiller（P4e 新增）：**required** ────────────────────────────────────────
+# 为什么是 required 而不是 optional：本模块有 31 个文件直接 import com.leaf.skiller.*
+# （实测计数；技能条目 / 策略 / 客户端设置界面），缺了它不是"少一个联动"而是整条技能线
+# NoClassDefFoundError —— optional 会让玩家在**加载成功后**才随机崩，比拒绝加载更糟。
+# skiller 由本模块自己的 META-INF/jarjar/ 提供
+#（coe/build.gradle 的 jarJar(implementation("com.leaf:skiller:1.0.0"))），
+# 单独装本模块时它是第 1 层、必然在场；被根 jar 嵌进第 2 层时由根 jar 第 1 层那份满足
+#（FML 的依赖图按 mod id 建，不按文件，跨文件声明照样生效）。
+# ordering = AFTER：本模块的技能条目要往 Skiller 自己的注册表里登记，
+# 让 skiller 先构造完更稳；skiller 不反向依赖本模块，没有环。
+# modId / versionRange 与 libs-maven 里那颗 jar 自己的 META-INF/neoforge.mods.toml
+# （modId = "skiller" / version = "1.0.0"）逐字对齐。
+[[dependencies."${mod_id}"]]
+modId = "skiller"
+type = "required"
+versionRange = "[1.0.0,)"
+ordering = "AFTER"
+side = "BOTH"

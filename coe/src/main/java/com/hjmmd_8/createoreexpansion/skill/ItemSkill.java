@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.skill;
 
+import com.hjmmd_8.createoreexpansion.common.i18n.Translatable;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
-import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
 import net.minecraft.resources.ResourceLocation;
 
 public interface ItemSkill extends Translatable {

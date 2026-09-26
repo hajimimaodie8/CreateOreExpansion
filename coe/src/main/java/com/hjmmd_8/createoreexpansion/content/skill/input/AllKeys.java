@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.input;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.data.lang.Translatable;
+import com.hjmmd_8.createoreexpansion.common.i18n.Translatable;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.createmod.catnip.client.ConflictSafeKeyMapping;
 import net.minecraft.client.KeyMapping;
@@ -20,8 +20,8 @@ import java.util.function.BiConsumer;
  *
  * <p><b>为什么它属于 COE 而不是 core</b>：四个键全部服务于技能释放/技能设置
  * （{@code SKILL_RELEASE*} 是技能释放键，{@code SKILL_SETTINGS} 开关本模组的技能设置界面）。
- * 留在 {@code common} 顶层会因 implements {@link Translatable}（{@code data/lang}，集成层，
- * core 编译期看不见）把整个包卡住；探针实测该项就是 1 个「找不到符号」。</p>
+ * 留在 {@code common} 顶层会因 implements {@link Translatable}（P4e 起住在 core 的
+ * {@code common/i18n}，core 编译期看不见）把整个包卡住；探针实测该项就是 1 个「找不到符号」。</p>
  *
  * <p>唯一的非 COE 消费者是 {@code mixin/ServerPlayerGameModeMixin}（SHARED 路径，
  * 允许 import COE）。注解里的 modid 恒为 {@code createoreexpansion}（{@code CoeCore.MOD_ID}），

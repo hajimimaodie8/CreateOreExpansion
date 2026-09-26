@@ -87,7 +87,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
   - **`evaluationDependsOn` 必需**：跨项目读 `project(':core').sourceSets` / `project(':coe').sourceSets` 之前必须 `evaluationDependsOn(':core')` / `evaluationDependsOn(':coe')`，否则静默落回根工程自己的扩展（路径全错但 `projectDir` 是对的，极易误判）。两行现在都在根 `build.gradle`。
   - **`additionalRuntimeClasspath` 禁止**：它把 core 钉成 **BOOT 层**自动模块（父层只有 JDK boot）⇒ core 看不见 MC/NeoForge/Create，`runData` 崩 `NoClassDefFoundError: ModConfigSpec$Builder`。正确配方 = `evaluationDependsOn(':core')` + 把 core 的 sourceSet 绑进**根 mod 的 `mods{}` 条目**（`neoForge { mods { "createoreexpansion" { sourceSet(sourceSets.main); sourceSet(project(':core').sourceSets.main) } } }`）；`additionalRuntimeClasspath files(...)` 目录形态同样是错的。
   - **根 → `:coe` 必须 `compileOnly(project(':coe'))` + `jarJar(compileOnly(project(':coe')))`**；**用 `implementation` 会让 dev 硬崩**（那个 jar 进 runtimeClasspath 后被 FML 当成第二个 `createoreexpansion` mod 文件 → `duplicate_mod`）。
-  - **根必须保留 `jarJar(implementation(project(':core')))`**：MDG 的 jarJar 是 `setTransitive(false)`，嵌在嵌套 jar 里的 jar 永远不会被扫到，core 必须在根 jar 的第 1 层。
+  - **根必须保留 `jarJar(compileOnly(project(':core')))`**（P4e 改；写 `implementation` 会让带 `FMLModType` 的 core jar 进 dev classpath 抢包，`runData` 崩 `ResolutionException`）。
 - **`@EventBusSubscriber` 的作用域是「每个 mod 文件」，不是全局**：`AutomaticEventSubscriber.inject` 只喂本文件的扫描结果并按 `mod.getModId()==modid` 过滤 —— **「住在 A 文件里、却标 B 的 modid」的类会静默不注入，且没有任何警告**。现修法在 `common/hub/IntegrationBootstrap`（走 scan data、不加载类、自维护无名单）。**这项审计必须查两种形态、而且必须在文件搬完之后对搬完的树再跑一遍**：① **正向**（P3w 发现）＝根文件里的类标着某个层的 id；② **镜像**（P3y `TransmutationEventHandler`、P3z `content/energyfield/` 两个类实证）＝**子模块文件里的类标着别的 id**。判据永远是「**类的 modid == 它所在 mod 文件的 id**」——文件一搬，正向就可能变成镜像，两种形态都只静默失效（无警告、无报错、编译全绿）。
 - **jar 字节数只在同一个工作树里可比**：`.cache/` 曾被整片塞进发布 jar（`exclude("src/generated/**/.cache")` 从来没匹配过），在临时 worktree 里重建 HEAD 会少 21 KB，**差点被误判成回归**。现已 `exclude(".cache/**")` + `exclude("**/.cache/**")`。
 - **`content/` 包不得 import 任何可选模组类**（Curios 只允许出现在 `compat/curios`；条件加载走 `Class.forName` + `ModList.isLoaded`）。可选依赖在 `neoforge.mods.toml` 里**必须 optional**（`curios` 曾是 required，导致没装的玩家在加载阶段直接崩）。**CA（`createaddition`）是唯一例外：第 2、3 层对它是 required，第 4 层 optional。**
@@ -110,6 +110,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 - `tools/check-layering.ps1` —— 分层方向断言（**扫五个根**：`src/main/java` + `core/` + `coe/` + `cews/` + `transmutation/` 各自的 `src/main/java`；层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CEWS→TRANS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运代码后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树做对比）。**每拆一层就要把该层加进两个脚本的 roots 表**——不加的后果是那一层计数变 0 而脚本照样 exit 0（P3d-β core / P3w coe / P3y transmutation / P3z cews 四次同一形状的静默逃逸）。
 - `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则（`Get-FileLayer` 函数体）必须逐字一致**（改一处要两处同改）。
+- `tools/check-package-overlap.ps1` —— **包重叠审计（JPMS）**：同包跨两模块 = 启动即 `ResolutionException`，三关全绿看不到；改包结构/拆层/加 `FMLModType` 后必跑到 0。
 - `build/patch/*` 取证脚本（被 git 忽略，按需重生成）：`ChargerBandCheck.java` / `BandCheck.java`（转速分档逐整数比对）、`dump_light_squares.ps1` / `rasterize_top_face.ps1`（贴图取证）、`p3?-EVIDENCE.txt`（拆模块各阶段取证）。
 
 ## 🌊 波系统与变器：现行口径（要点；细则见「长文档索引」）
@@ -137,7 +138,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **P4a/P4b：assets 与 data 已按模块分家**（161 手写 + 56 生成 `git mv`，命名空间/路径未改）。机制 = **改写落盘路径**而非改 `--output`（`LayerDataProvider#run` 包一层 `CachedOutput`）；`build.gradle` 两处**承重**：`--existing <module>/src/main/resources/` 与系统属性 `coe.datagen.layerAssetRoots`（缺了=静默不生效）。
 - **P4c：lang 已按层落地**（2026-09-26 重做；见 `markdown_output/P4c-交接-生成物按层分家.md`）：新增集成层 `data/lang/LayerLangSplitter`，排两份 `LanguageProvider` **之后**注册；**归属靠注册对象的 `getDescriptionId()`、必须换资源命名空间、根文件一个字节都不许动**。实测归属 155/155（COE 133 / CEWS 20 / TRANS 2），249 条裸字符串键留根。
 - **⚠ 拆 lang 时不要把根文件改小**：`HashCache` 看不到「别的提供器后写了这个文件」，下一轮的重写会被哈希命中跳过 ⇒ 根文件停在拆分后的形态，模块侧生成目录一删那些键**再也补不回来**；同轮对同一路径的第二次写也不可靠（en_us 落地、zh_cn 没落地）。
-- **221 生成配方 + 108 生成标签仍由集成层提供**（出处≠声明）：`CreateOreExpansionDatagen` 直挂 `RecipeProvider`；标签是单一 union 提供器。硬搬会被下次 `runData` 的 stale 清理吃掉。要拆只能**按 tag 文件逐文件路由**（单层归模块、跨层 5 + 外部 5 留根）。
+- **221 生成配方 + 108 生成标签仍由集成层提供**（出处≠声明）：`CreateOreExpansionDatagen` 直挂 `RecipeProvider`；标签是单一 union 提供器。硬搬会被下次 `runData` 的 stale 清理吃掉。要拆只能**按 tag 文件逐文件路由**（单层归模块、跨层 3 留根）。
 - **`runData` 第二次跑 `written: 0` 不再是健康判据**：`HashCache` 存越界路径不能往返，被改写的 238 资产 + 56 data 每次都会重写。判据是 `git status` 与内容。
 - **待查**：`runData` 偶发 `Found unused register callbacks`（现在约 7 次 2 次），日志里 sable 的 mixin 仍被装载 ⇒ `build.gradle` 对 runData 的 sable/aeronautics 排除**没有真正生效**。
 - **「全模组共用的东西」必须住 SHARED/`core`**：被两层以上用的契约/登记表若住在某一层，就会让另一层反向 import（禁止方向）。

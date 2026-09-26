@@ -233,26 +233,49 @@ dependencies {
     // 开发环境（runClient/runData）需要 Skiller 作为一个真实 mod 在场：
     // MDG 会把 jarJar 依赖一并放进运行时 classpath，无需额外声明。
     //
-    // ── core 共享库（P3d：普通库，JarJar 嵌套，不是 mod）──────────────────────────────
-    // core **不是** mod，只有一个 mod 身份 createoreexpansion（这里**不许**出现 "coe_core"
-    // 这样的第二个 mod 名：core 没有也不该有 META-INF/neoforge.mods.toml）。
+    // ── core 共享库（P3d：普通库，JarJar 嵌套，**没有 mod id**）──────────────────────
+    // core **不是** mod：没有 `META-INF/neoforge.mods.toml`、没有 mod id，这里**不许**出现
+    // "coe_core" 这样的第二个 mod 名。
+    // （P4e 起它带 `FMLModType: GAMELIBRARY` —— 那是**模块层归属**声明，不是 mod 身份：
+    //   它让 core 进 GAME 层而不是 PLUGIN 层，见 core/build.gradle；仍然没有 [[mods]]。）
     // "core 的类也是本 mod 的类" 这件事用**源绑定**表达 —— 见上面 neoForge.mods{} 里
     // 那行 `sourceSet(project(':core').sourceSets.main)`，它只改 dev 的 fml.modFolders。
     // 下面这一行负责另两件事：「编译期可见」与「发布时嵌进 META-INF/jarjar/」。
-    // 不另写 implementation project(':core')：DependencyHandler 的 `implementation(...)`
-    // 返回 Dependency 对象，外层 jarJar(...) 再用同一个对象登记到 jarJar 配置 ——
-    // 两件事由这一行同时完成（上面那行 skiller 就是同一写法）。再写一行是同一个依赖声明两遍。
+    // ⚠ **P4e：这里必须用 compileOnly，不能用 implementation**（与上面 :coe / :transmutation / :cews
+    // 三条同一个形状、同一类后果，只是症状不同）。
+    //   背景：core 的 jar 从 P4e 起带 `FMLModType: GAMELIBRARY`（core/build.gradle）——
+    //   生产里这是修 NoClassDefFoundError 的关键，但在 **dev** 里它让 core 的 jar 变成一个
+    //   **真正会被 FML 认领的 mod 文件**：`JarModsDotTomlModFileReader` 见到 FMLModType 就直接建
+    //   ModFile（以前没有这个属性、又没有 mods.toml，落到 `NestedLibraryModReader` 时因为
+    //   `discoveryAttributes.parent() == null` 而被**整个忽略**）。
+    //   `implementation` 会把 core 的 jar 放进 `sourceSets.main.runtimeClasspath`，而 FML 的
+    //   dev 发现逻辑会扫 classpath 上每个可识别的 mod 文件 ⇒ core 的类同时从**两处**进 GAME 层：
+    //     ① core 的 jar（自动模块 `coe.core`）；
+    //     ② fml.modFolders 把 core 的 sourceSet 输出并进根 mod 文件（`coe_integration`）。
+    //   两个模块导出同一个包 → `ModuleLayerHandler` 直接抛（P4e 实测，`runData` 秒崩）：
+    //     java.lang.module.ResolutionException: Modules coe.core and coe_integration
+    //     export package com.hjmmd_8.createoreexpansion.common.i18n to module kubejs
+    //   compileOnly 让那个 jar 从 runtimeClasspath 上消失 ⇒ dev 里 core 只剩 ② 这一条来源
+    //   （与 P4e 之前的行为逐字相同），而「编译期可见 + 发布时嵌进 jar」两件事不受影响
+    //   （jarJar 配置照样解析得到 core 的 jar 变体）。
+    //   为什么不干脆撤掉 ② 让 core 只当独立模块：core 有 `@EventBusSubscriber`（AllConfig 等），
+    //   而 `IntegrationBootstrap` 正是靠**根 mod 文件的 scan data** 找到它们；撤掉合并会让
+    //   那一整类事件订阅静默失效（AGENTS.md 红线：注解的作用域是「每个 mod 文件」）。
     // ⚠ dev 运行期的可见性**不是**由依赖声明决定的（P3m 实测改正了 P3d 的错误结论）：
-    // 上面那行 jarJar(implementation(...)) 已经让「编译期可见 + 发布时嵌进 jar」两件事成立，
-    // core 的 jar 也**确实**会进 runData 的 java.class.path。但**进 java.class.path ≠ 游戏看得见**：
+    // 当年那行 jarJar(implementation(...)) 让「编译期可见 + 发布时嵌进 jar」成立，
+    // core 的 jar 也**确实**会进 runData 的 java.class.path（P4e 已改成 compileOnly，
+    // 那个 jar 现在**不在** classpath 上了 —— 见本块开头）。但**进 java.class.path ≠ 游戏看得见**：
     //   · BSL（BootstrapLauncher）把 legacy classpath 的每个 jar/目录都变成 **BOOT 层**
     //     自动模块，其类加载器（堆栈里的 MC-BOOTSTRAP）**只**以 JDK boot 层为父
     //     （`new ModuleClassLoader("MC-BOOTSTRAP", cfg, List.of(ModuleLayer.boot()), null)`），
     //     MC/NeoForge/Create 都不在其中 ⇒ core 的方法体一碰 MC 就 NoClassDefFoundError。
-    //   · java.class.path 上**不在 legacy classpath 里**的 jar，只有「本身是 mod 文件
-    //     （含 META-INF/neoforge.mods.toml）」的才会被 FML 收成 GAME 层的 mod 文件；
-    //     普通库 jar 既不是 mod、又不在 GAME 层的类加载器链上 ⇒ **完全不可见**
-    //     （实测：删掉 additionalRuntimeClasspath 后连 ...util.GoggleUtil 本身都 NoClassDefFoundError）。
+    //   · java.class.path 上不在 legacy classpath 里的普通库 jar 既不是 mod、又不在 GAME 层的
+    //     类加载器链上 ⇒ **完全不可见**（实测：删掉 additionalRuntimeClasspath 后连
+    //     ...util.GoggleUtil 本身都 NoClassDefFoundError）。
+    //     ⚠ P4e 更正这句的边界：被判成「mod 文件」的不止带 `META-INF/neoforge.mods.toml` 的 jar
+    //     —— 带 **`FMLModType`** 的 jar 同样会被 `JarModsDotTomlModFileReader` 认领
+    //     （`GAMELIBRARY` → GAME 层、`LIBRARY` → PLUGIN 层）。core 正是因此才必须从
+    //     runtimeClasspath 上挪走，否则它变成一个与 `coe_integration` 抢包的真模块。
     //   · 旧的 `additionalRuntimeClasspath project(':core')` 正是把 core 钉进 BOOT 层那一半，
     //     所以它**注定看不见 MC**（jar 与目录形态都试过，目录只是让模块名变成目录名 main）。
     // 正确做法（P3m 落地）＝把 core 的 source set 作为**本 mod 的第二个源**登记进
@@ -261,8 +284,9 @@ dependencies {
     // mod 文件**（一个 SecureJar 多根 union），core 的类因此由 **GAME 层**的
     // TransformingClassLoader 定义 ⇒ MC/NeoForge/Create 全部可见。
     // 这一步**只影响 dev**（modFolders 是 dev 启动参数）；生产仍由嵌套 jar 提供，
-    // 也仍需要上面那行 jarJar(...)。
-    jarJar(implementation(project(':core')))
+    // 也仍需要上面那行 jarJar(...)。compileOnly（P4e）只为把那个 jar 挡在 dev 的
+    // runtimeClasspath 之外 —— 理由见本块开头那段 ResolutionException 实测。
+    jarJar(compileOnly(project(':core')))
     // ── coe 模块（P3w：矿物拓展自己的 mod 文件，源码在 coe/，由根 jar 用 JarJar 嵌套）──
     // ⛔ 这里**必须**是 compileOnly，不能是 implementation：
     //   implementation(project(':coe')) 会把 coe/build/libs/createoreexpansion-1.0.0.jar 放进
