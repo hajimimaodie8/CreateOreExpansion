@@ -51,14 +51,17 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * <p><b>实际做法：只改写落盘路径，不碰提供器的构造</b>。
  * {@code DataProvider.saveStable} 把最终 {@code Path} 交给 {@code CachedOutput#writeIfNeeded}，
  * 所以这里覆写 {@link #run(CachedOutput)}，用一个<b>把路径从根输出换到本层输出</b>的
- * {@link CachedOutput} 包一层再交给基类。被改写的只有两类路径：</p>
+ * {@link CachedOutput} 包一层再交给基类。被改写的路径（P4a 加前两条，P4b 加第三条）：</p>
  * <ul>
  *   <li>{@code assets/<命名空间>/blockstates/**}</li>
  *   <li>{@code assets/<命名空间>/models/**}</li>
+ *   <li>{@code data/**}&nbsp;——<b>但含 {@code /tags/} 段的路径例外</b></li>
  * </ul>
- * <p>其余一律原样落在根工程的 {@code src/generated/resources}：
- * {@code lang/**}（三层并集 + 与根工程 LanguageProvider 共写同一文件）、
- * {@code data/**}（本轮范围只有 assets；标签/配方的布局不在这一轮改）。</p>
+ * <p>标签必须留在根工程：{@code LayerRegistrate#genData} 只在主层（COE）跑标签提供器并在这里
+ * 做 COE → CEWS → TRANS 三层并集，所以<b>一个</b> tag 文件里可能同时列着三层条目；
+ * 按层拆开会让"只装一个模块"的玩家看到不同的标签内容（数据包语义改变）。
+ * 语言同样是三层并集、且与根工程的两个 {@code LanguageProvider} 共写同一个 {@code en_us.json}，
+ * 所以 {@code assets/<命名空间>/lang/**} 也原样留在根工程的 {@code src/generated/resources}。</p>
  *
  * <p>副产物三点，都已在实现里考虑：① 传给 {@code CachedOutput} 的是<b>改写后</b>的路径，
  * 所以 {@code .cache} 里记的也是改写后的路径；② {@code HashCache.purgeStaleAndWrite} 只遍历根输出
@@ -131,7 +134,8 @@ public class LayerDataProvider extends RegistrateDataProvider {
         }
         LayerAssetRelocatingCache relocating = new LayerAssetRelocatingCache(cache, rootOutput, layerAssetRoot,
             layerId == null ? "coe" : layerId,
-            "assets/" + namespace + "/blockstates/", "assets/" + namespace + "/models/");
+            "assets/" + namespace + "/blockstates/", "assets/" + namespace + "/models/",
+            "data/");
         return super.run(relocating).thenRun(relocating::purgeStale);
     }
 
@@ -169,6 +173,13 @@ public class LayerDataProvider extends RegistrateDataProvider {
             }
             Path relative = rootOutput.relativize(path);
             String key = relative.toString().replace('\\', '/');
+            // P4b: TAGS are never relocated. `LayerRegistrate#genData` runs the tag provider ONLY on
+            // the primary (COE) layer and builds the COE -> CEWS -> TRANS union there, so a tag file
+            // may list entries of several layers. Every tag path contains a `/tags/` segment
+            // (`data/<any namespace>/tags/<registry>/...`), whichever namespace it belongs to.
+            if (key.contains("/tags/")) {
+                return path;
+            }
             for (String prefix : relocatingPrefixes) {
                 if (key.startsWith(prefix)) {
                     return layerAssetRoot.resolve(relative);
@@ -181,7 +192,8 @@ public class LayerDataProvider extends RegistrateDataProvider {
          * 类注释"三"：{@code HashCache.purgeStaleAndWrite} 只遍历根输出目录，
          * 模块目录不在它的视野里，所以"某个方块被删掉之后它留下的方块状态"不会被自动清掉
          * （拆分前会）。这里补上与它<b>同语义</b>的一次清理：只在本层这次真的产出了资产时执行，
-         * 只在 {@code assets/<ns>/blockstates|models} 这两个改写子树里走，删掉本次没产出的文件。
+         * 只在 {@code assets/<ns>/blockstates|models} 与 {@code data/}（不含 {@code /tags/}）
+         * 这些改写子树里走，删掉本次没产出的文件。
          * 目录清理失败只记日志、不抛（与上游 purgeStaleAndWrite 同口径）。
          */
         private void purgeStale() {
