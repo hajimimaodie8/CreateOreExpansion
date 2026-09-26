@@ -3,6 +3,8 @@ package com.hjmmd_8.createoreexpansion.common.machine;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.mojang.blaze3d.platform.InputConstants;
 
+import java.util.function.BooleanSupplier;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
@@ -51,6 +53,30 @@ public final class MachineRotateClient {
 	private static boolean installed;
 
 	/**
+	 * 修饰键的实际来源。<b>默认 = 物理 Ctrl（左右任一）</b>，与拆分前的行为逐字相同。
+	 *
+	 * <p><b>为什么做成可替换的</b>：Ctrl 原本是写死的（{@code InputConstants.KEY_LCONTROL}），
+	 * 于是玩家<b>不能在"控制"里改</b>，与"所有按键都必须可自定义"的要求冲突。
+	 * 但键位注册必须走 {@code RegisterKeyMappingsEvent} + {@code KeyMapping}，
+	 * 而那个注册表住在 {@code :coe} 的 {@code AllKeys}（core <b>不许</b>引用任何层：
+	 * {@code tools/check-layering.ps1} 禁止 {@code CORE→*}）。所以 core 只留一个"取值钩子"，
+	 * 由 {@code :coe} 在注册键位时把它指向 {@code AllKeys.ROTATE_MODIFIER}。</p>
+	 *
+	 * <p>没装任何层 / 钩子未被设置时回落到物理 Ctrl ⇒ <b>默认行为零改变</b>。</p>
+	 */
+	private static BooleanSupplier modifierSource = MachineRotateClient::defaultCtrlDown;
+
+	/**
+	 * 由内容模块在注册键位时调用，把修饰键改成玩家可自定义的那个 {@code KeyMapping}。
+	 * 后设的覆盖先设的（多个模块都调也只会得到同一个键位）。
+	 */
+	public static void installModifierSource(BooleanSupplier source) {
+		if (source != null) {
+			modifierSource = source;
+		}
+	}
+
+	/**
 	 * 把本类挂到 game 总线（幂等）。<b>只能由客户端专属代码调用</b>（见类注释）。
 	 */
 	public static void install() {
@@ -62,8 +88,13 @@ public final class MachineRotateClient {
 		CoeCore.LOGGER.debug("[P7a] Ctrl+扳手旋转的客户端拦截已挂到 game 总线");
 	}
 
-	/** Ctrl 是否按下（左右任一）。输入事件里用 {@code InputConstants} 查物理按键状态。 */
+	/** 修饰键是否按下（默认实现 = 物理 Ctrl 左右任一）。 */
 	private static boolean ctrlDown() {
+		return modifierSource.getAsBoolean();
+	}
+
+	/** 默认修饰键：物理 Ctrl（左右任一）。键位钩子未安装时用它。 */
+	private static boolean defaultCtrlDown() {
 		long window = Minecraft.getInstance()
 			.getWindow()
 			.getWindow();

@@ -38,6 +38,9 @@ public enum AllKeys implements Translatable {
     /** 技能设置：打开本模组的小设置界面（"创造模式释放技能是否消耗能量"开关），默认 J
      *  ——J 与最常用的 WASD/E/R/G/C/空格/Shift/Ctrl 都不冲突，也在 Create 自己的键位之外 */
     SKILL_SETTINGS("skill_settings", GLFW.GLFW_KEY_J, "Skill Settings"),
+    /** 机器旋转的修饰键：与"扳手右键"组合 = 旋转本模组无模式机器（交互规则第 4 条）。
+     * 默认左 Ctrl，<b>玩家可在"控制"里自定义</b>（原先写死在 core 里，改不了）。 */
+    ROTATE_MODIFIER("rotate_modifier", GLFW.GLFW_KEY_LEFT_CONTROL, "Rotate Machine (Modifier)"),
     ;
 
     public static final Translatable MOD_NAME_TRANSLATABLE = () -> "createoreexpansion.mod_name";
@@ -84,6 +87,9 @@ public enum AllKeys implements Translatable {
 
             event.register(key.keybind);
         }
+        // 把 Ctrl+扳手 的修饰键指向上面这个玩家可自定义的键位（core 只留钩子，见 MachineRotateClient）。
+        com.hjmmd_8.createoreexpansion.common.machine.MachineRotateClient
+                .installModifierSource(ROTATE_MODIFIER::isPressed);
     }
 
     public KeyMapping getKeybind() {
