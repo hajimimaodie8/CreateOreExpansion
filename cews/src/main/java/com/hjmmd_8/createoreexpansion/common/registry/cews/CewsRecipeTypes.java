@@ -12,9 +12,9 @@ import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
  * 翡翠/蓝宝石/星辉石应力充能器的能量波击中物品时按 {@code level} 字段匹配。
  * 注册 id、序列化器、配方类型与拆分前逐字一致。</p>
  *
- * <p><b>本类不做注册动作</b>：两张注册表住在 {@link LayerRecipeType}（SHARED），
- * 由 {@code AllRecipeTypes.register(modEventBus)} 统一挂到事件总线——六个条目共用同一对注册表，
- * 这是"注册顺序不变"的前提。</p>
+ * <p><b>本类不做注册动作</b>：两张注册表住在 {@link LayerRecipeType}（core），
+ * 由 {@code LayerBootstrap.ensureAttached(modEventBus)} 统一挂到事件总线——六个条目共用同一对注册表
+ * （且"恰挂一次"），这是"注册顺序不变"的前提。</p>
  */
 public final class CewsRecipeTypes {
 

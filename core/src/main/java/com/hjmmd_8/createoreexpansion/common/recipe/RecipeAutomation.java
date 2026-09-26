@@ -24,9 +24,8 @@ import net.neoforged.neoforge.items.wrapper.RecipeWrapper;
  * 因此可以原样住进共享库。调用方从"层 → hub 聚合入口"变成"层 → core"，方向不变、语义不变
  * ——方法体与 {@code AllRecipeTypes} 里那份逐字相同。</p>
  *
- * <p>{@code common/hub/AllRecipeTypes} 里同名成员<b>原地保留</b>（hub 是集成层，本轮不动它），
- * 于是根侧既有调用点一行不改；两层各持一份实现是本轮刻意接受的代价，
- * 记在 P3q 证据的"未做/遗留"一节里。</p>
+ * <p>{@code common/hub/AllRecipeTypes} 当时把同名成员<b>原地保留</b>了一份（P3q 刻意接受的
+ * 双份实现代价）；P7a 删除那个聚合入口之后，<b>全仓唯一实现就是本类</b>。</p>
  */
 public final class RecipeAutomation {
 

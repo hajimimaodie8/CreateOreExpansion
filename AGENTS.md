@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-26（P3z：CEWS 也拆出 `:cews`，**三层内容模块全部拆完**；由此确立「根工程 = 集成层 mod `coe_integration`」。原 68,930 B 的长叙述已迁入 `markdown_output/`）。
+> 最后更新：2026-09-27（P7a：根降级为 dev-only，四个 hub 聚合入口已删、共享接线改 core 的 `LayerBootstrap`，16 个文件搬入各层 + `AllConfig` 生产缺陷修复。原 68,930 B 的长叙述已迁入 `markdown_output/`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
@@ -19,7 +19,7 @@
 - 模组：`createoreexpansion`（Create 6.0.10 附属，NeoForge / Minecraft 1.21.1）
 - 根目录：`E:\mc\mcmod\createoreexpansion`，包根 `com.hjmmd_8.createoreexpansion`
 - 当前分支：`leaf-dev`
-- **工程结构（2026-09-26，P3z 后：三层内容模块全部拆出）**：`settings.gradle` include 了 `core`（JarJar 嵌套共享库，57 文件，**不是 mod**）、`coe`（矿物拓展，177 文件，mod id `createoreexpansion`）、`cews`（能量波阵学，133 文件，mod id `cews`）、`transmutation`（机械嬗化学，16 文件，mod id `transmutation`）、`all-neoforge`（P3a 占位，0 文件）。**根工程 `src/main/java` 只剩集成层 29 个文件**（`common/hub/**` 聚合入口 + `data/**` datagen 驱动与两份 LangProvider + `compat/**` Curios/Jade/唯一 `@JeiPlugin` + `mixin/**` + 少量 `client/**`/`foundation/**`），且**根自己也是一个 mod：mod id `coe_integration`**（入口 `common/hub/IntegrationMod`）；发布 jar 的 `[[mods]]` 就是它，内容需求由三个嵌套 mod 各自声明。
+- **工程结构（2026-09-27，P7a 后：根降级为 dev-only 集成载体）**：`settings.gradle` include 了 `core`（JarJar 嵌套共享库，59 文件，**不是 mod**）、`coe`（矿物拓展，192 文件，mod id `createoreexpansion`）、`cews`（能量波阵学，138 文件，mod id `cews`）、`transmutation`（机械嬗化学，17 文件，mod id `transmutation`）、`all-neoforge`（占位 0 文件）。**根 `src/main/java` 只剩 7 个 dev-only 文件**（`common/hub/{IntegrationMod,IntegrationBootstrap}` + `data/**` 的 datagen 驱动与两份 LangProvider + `LayerLangSplitter`）；四个 hub 聚合入口（`AllRecipeTypes`/`AllCreativeModeTabs`/`AllFluids`/`AllModEffects`）已删，共享注册表挂载 / 旋转载荷 / 三层配方类型唤醒顺序改由 core 的幂等入口 `common/registry/LayerBootstrap#ensureAttached` 承担（每个 `@Mod` 构造器**第一条语句**；`synchronized`，因 FML 的 mod 构造**并行**派发），创造页改由每层 `LayerCreativeTab.registerAll(...)` 自持。**根自己还是一个 mod：mod id `coe_integration`**（入口 `common/hub/IntegrationMod`），发布 jar 的 `[[mods]]` 就是它；**三个模块 jar 各带自己的 `@JeiPlugin`**。
 - 构建与验证流程（本工程一贯用法）：
   1. `.\gradlew.bat compileJava`
   2. 改动语言/资源时：`.\gradlew.bat runData`（同时兼作 Bootstrap / mixin 冒烟测试）
@@ -67,7 +67,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **客户端渲染**：技能预览框、波口指示灯、护目镜档位提示、Jade/查询仪读数——只有进游戏才看得见（技能 W5 渲染器移植的验收条件就是「进游戏看预览是否还在」）。
 - **JEI**：`@JeiPlugin` 的类别装配与侧栏顺序在运行期才发生；UID 重复、类别漏装配只有加载时暴露。
 - **配置**：`runData` 时**根本不加载配置**；配置键名/容器名写错要到进游戏才暴露，**容器名一变（如 `coe_core-common.toml`）= 老玩家设置静默丢失**。
-- **创造页内容同步**：`AllCreativeModeTabs` 层类各持一份手写 `TABS` 列表，**新增页忘了加进列表 = 静默不注册**（无编译错误，无警告）；标签页内容清单 `EnergyWaveStudyTab#CONTENTS` 同理。
+- **创造页内容同步**：每层的 `XxxCreativeTabs` 各持一份手写 `TABS` 列表，**新增页忘了加进列表 = 静默不注册**（无编译错误、无警告）；`EnergyWaveStudyTab#CONTENTS` 同理。
 - **包重叠（JPMS）**：`runData`/`runClient` 覆盖不到——dev 里根与 core 是同一个 mod 文件，只有**真发布 jar 进游戏**才能验。
 - **可选依赖「没装也能加载」**：唯一取证方式是**把该模组从 dev 运行时依赖里临时去掉跑一次 `runData`**，日志里该类名 0 命中才算通过。
 
@@ -81,7 +81,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 ## 🚩 红线（不许越，逐条都是踩过的坑）
 
-- **注册命名空间恒 `createoreexpansion`**（存档红线）：命名空间类引用一律指 `CoeCore.REGISTRY_NAMESPACE`，`modLoc` 一律 `CoeCore.modLoc`，日志一律 `CoeCore.LOGGER`（前缀 `[createoreexpansion/]`）；`@Mod` / `@EventBusSubscriber` 上的 `MOD_ID`（17 处）**不许**换成命名空间。**配置注册动作在 core，但目标容器仍是 `createoreexpansion`**——否则文件名变 `coe_core-common.toml`，老玩家设置静默丢失。CEWS/TRANS 拆包同理：**命名空间、配置键、语言键、数据包路径一律不许改**（mod id 可以分家）。
+- **注册命名空间恒 `createoreexpansion`**（存档红线）：命名空间类引用一律指 `CoeCore.REGISTRY_NAMESPACE`，`modLoc` 一律 `CoeCore.modLoc`，日志一律 `CoeCore.LOGGER`（前缀 `[createoreexpansion/]`）；`@Mod` / `@EventBusSubscriber` 上的 `MOD_ID`（17 处）**不许**换成命名空间。**配置注册动作在 :coe，但目标容器仍是 `createoreexpansion`**——否则文件名变 `coe_core-common.toml`，老玩家设置静默丢失。CEWS/TRANS 拆包同理：**命名空间、配置键、语言键、数据包路径一律不许改**（mod id 可以分家）。
 - **包粒度（JPMS 硬约束）**：同一个 Java 包**不能同时属于两个 mod 文件**，否则启动期抛 `java.lang.module.ResolutionException`。**一个包要么全在 core/子模块、要么全在根；搬走后根侧同名包必须为空。** 生产里 JarJar 嵌套的库是 PLUGIN 层的真 JPMS 自动模块，所以这条**只有真发布 jar 进游戏能验**。详见 `markdown_output/模块拆分进度与决策链.md` §1.9。
 - **依赖接线（照抄，别自创）**：
   - **`evaluationDependsOn` 必需**：跨项目读 `project(':core').sourceSets` / `project(':coe').sourceSets` 之前必须 `evaluationDependsOn(':core')` / `evaluationDependsOn(':coe')`，否则静默落回根工程自己的扩展（路径全错但 `projectDir` 是对的，极易误判）。两行现在都在根 `build.gradle`。
@@ -131,7 +131,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 ## 🧱 模块拆分：结论与踩坑（P1–P3z；全过程见 `markdown_output/模块拆分进度与决策链.md`）
 
-- **现状（P3z 后：三层内容模块全部拆出，根只剩集成层）**：`:coe`（177 文件，mod id `createoreexpansion`）、`:cews`（133 文件，mod id `cews`）、`:transmutation`（16 文件，mod id `transmutation`）都是真子模块，各自带自己的 `src/main/templates/META-INF/neoforge.mods.toml`，由根 `build.gradle` 的 `jarJar(compileOnly(project(':…')))` 嵌进 `META-INF/jarjar/` 第 1 层；`core` 是 JarJar 嵌套的共享库（57 文件，不是 mod）；`all-neoforge` 仍是 0 文件占位。dev 的 `neoForge.mods{}` 四个条目 = **四个本模组 mod 文件**（`coe_integration` = 根输出 + core 输出、`coe`、`cews`、`transmutation`）。
+- **现状（P7a 后）**：`:coe`（192 文件，`createoreexpansion`）、`:cews`（138 文件，`cews`）、`:transmutation`（17 文件，`transmutation`）都是真子模块，各自带 `src/main/templates/META-INF/neoforge.mods.toml`，由根 `build.gradle` 的 `jarJar(compileOnly(project(':…')))` 嵌进 `META-INF/jarjar/` 第 1 层；`core` 是 JarJar 嵌套共享库（59 文件，不是 mod）；`all-neoforge` 仍是 0 文件占位。dev 的 `neoForge.mods{}` 四个条目 = **四个本模组 mod 文件**（`coe_integration` = 根输出 + core 输出、`coe`、`cews`、`transmutation`）。
 - **集成层去哪（P3z 定论）：根工程自己是一个 mod，mod id `coe_integration`**，入口 `common/hub/IntegrationMod`（构造器为空，接线仍由 `IntegrationBootstrap` 在 `FMLConstructModEvent` 上做）。**为什么必须如此**：CEWS 搬走后根里一个本模组 @Mod 都不剩，而 FML 对 `[[mods]]`/`@Mod` 是双向硬约束（有条目没类＝静默无入口；有类没条目＝`dangling_entrypoint` 硬错）；让根模板 `[[mods]]` 为空同样不行——没有 `ModContainer` 就没有 `AutomaticEventSubscriber` 注入，根侧 datagen 入口 / `IntegrationBootstrap` / Ctrl+扳手 / 配置重载会集体静默失效。**被否掉的两个选项及代价**：② 把集成层搬进 `:all-neoforge`——根就不再是组装 jar（`jarJar` 链整体搬家），而 all-neoforge 会变成用户明确不发布的「all」产物；③ hub/lang/JEI 就地拆到各层——hub 的四个聚合入口引用 2–3 层 ⇒ 造禁止方向，datagen 的「标签与语言只在主提供器跑 COE→CEWS→TRANS 并集」一拆 `src/generated` 就变，唯一 `@JeiPlugin` 的 UID 与侧栏顺序是玩家可观测的。**根模板现状**：`[[mods]]` = 1（`coe_integration`）、`[[dependencies.*]]` = 0（内容需求由三个嵌套 mod 各自声明）。
 - **⛔ P3g 那句「拆任何一层都不可能」已被 P3w 推翻**（别再引用）：拐点是承认「**`@Mod` 入口是集成文件**」。`coe/build.gradle` 只有 `compileOnly(project(':core'))`、**没有** `project(':')` ⇒ **`:coe:compileJava` 通过本身就是「零根引用」的机器证明**（`:cews` / `:transmutation` 同理，三者都没有 `project(':')`）。
 - **注册器已按三层分家**：`AllBlocks` / `AllItems` / `AllBlockEntityTypes` **已删除**（`ccaf8a21`），声明住在 `common/registry/{coe,cews,transmutation}/`；**注册触发顺序必须在 `CreateOreExpansion` / `IntegrationBootstrap` 里显式写死**（没有兜底），每个层类的空 `register()` 只是类初始化触发器。**别和 Create 自己的 `com.simibubi.create.AllBlocks` / `AllItems` 搞混**（批量改名要做「裸名解析」判定）。
@@ -143,7 +143,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **待查**：`runData` 偶发 `Found unused register callbacks`（现在约 7 次 2 次），日志里 sable 的 mixin 仍被装载 ⇒ `build.gradle` 对 runData 的 sable/aeronautics 排除**没有真正生效**。
 - **「全模组共用的东西」必须住 SHARED/`core`**：被两层以上用的契约/登记表若住在某一层，就会让另一层反向 import（禁止方向）。
 - **搬迁名单按「整包」生成**，不能按文件（`common/CoeCore.java` 与引用三层的 `AllRecipeTypes` 同包，整包判定才有意义）；**差一个文件就整包不合格**。工具见「工具」一节。
-- **已知静默逃逸（未修）**：`:coe` 的 `CreateOreExpansion` 里两处 `Class.forName("…compat.curios.CurioMedallionBridge")` / `"…compat.jade.BasinLiveJadePlugin"` 字面量留在 `:coe`（字符串 = 零编译边）；挪走会静默把 6 个凝能佩降级成普通物品（硬时序），收口代价见 `模块拆分进度与决策链.md` §1.17。
+- **P7a 收口**：`:coe` 的 `Class.forName("…compat.curios.CurioMedallionBridge")` / `"…compat.jade.BasinLiveJadePlugin"` 字面量与那两个类现在同住 `:coe`（原先类在根 ⇒ 单装 coe.jar 静默把 6 个凝能佩降级）；硬时序（须在 `CoeItems.register()` 之前）未变。
 - **一条通用判据**：**core 里的方法只要描述符里出现 MC 类型就不可用**（哪怕方法体 MC-free）——`NoClassDefFoundError` 抛在调用点那一帧；「core 能不能放这个类」只能用**真调用一次**验证。
 - 历史细节（P3b/P3c/P3d-α/β/P3e/P3f/P3g/P3m/P3w 的逐条原文与提交号、P3h–P3v 取证索引）全部在 `markdown_output/模块拆分进度与决策链.md`。
 

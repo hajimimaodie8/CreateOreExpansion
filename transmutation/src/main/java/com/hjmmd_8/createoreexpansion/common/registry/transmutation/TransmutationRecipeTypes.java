@@ -11,9 +11,10 @@ import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
  * <p>本层目前只有一个配方类型：嬗变（{@code createoreexpansion:transmuting}）——
  * 鼓风机吹过嬗变液时的工作盆加工。注册 id、序列化器、配方类型与拆分前逐字一致。</p>
  *
- * <p><b>本类不做注册动作</b>：两张注册表住在 {@link LayerRecipeType}（SHARED），
- * 由 {@code AllRecipeTypes.register(modEventBus)} 统一挂到事件总线——六个条目共用同一对注册表，
- * 这是"注册顺序不变"的前提。</p>
+ * <p><b>本类不做注册动作</b>：两张注册表住在 {@link LayerRecipeType}（core），
+ * 由 {@code LayerBootstrap.ensureAttached(modEventBus)} 统一挂到事件总线——六个条目共用同一对注册表
+ * （且"恰挂一次"），这是"注册顺序不变"的前提。本类会被 {@code LayerBootstrap} 的固定名单
+ * <b>第一个</b>唤醒，所以 {@code transmuting} 仍是六个条目里的第一个。</p>
  */
 public final class TransmutationRecipeTypes {
 

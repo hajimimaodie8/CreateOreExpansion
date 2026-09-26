@@ -5,7 +5,6 @@
   "plugin": "com.hjmmd_8.createoreexpansion.mixin.COEMixinConfigPlugin",
   "mixins": [
     "ChargingRecipeAssemblyMixin",
-    "LanguageProviderAccessor",
     "PoiTypesMixin",
     "ServerPlayerGameModeMixin",
     "TemplateStructurePieceMixin"

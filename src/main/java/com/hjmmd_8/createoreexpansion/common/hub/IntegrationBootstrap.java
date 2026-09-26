@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -23,10 +22,10 @@ import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.neoforgespi.language.ModFileScanData;
 
 /**
- * <b>根侧集成触发器</b>（P3w）——{@code :coe} 拆出去之后，hub 的注册触发与
- * 被孤立的 {@code @EventBusSubscriber} 的补挂都住在这里。
+ * <b>根侧集成触发器</b>（P3w）——现在只剩一件事：给"住根工程、却标着
+ * {@code createoreexpansion}"的 {@code @EventBusSubscriber} 补挂总线（见"四"）。
  *
- * <h2>一、为什么需要它</h2>
+ * <h2>一、它从哪来（以及 P7a 拿走了什么）</h2>
  * <p>P3w 把矿物拓展（176 个文件 + {@code @Mod} 入口 {@code CreateOreExpansion}）整体搬进
  * Gradle 子模块 {@code :coe}，而 {@code :coe} 只允许编译期依赖 {@code :core}
  * （root → :coe 已经是单向边，反向再加一条就是构图期的
@@ -35,35 +34,24 @@ import net.neoforged.neoforgespi.language.ModFileScanData;
  * <ul>
  *   <li>CEWS 自己的 {@code AllEntityTypes.register} → {@code CewsMod} 构造器；</li>
  *   <li>TRANS 自己的 {@code AllModPotions} / {@code AllFanProcessingTypes} → {@code TransmutationMod}；</li>
- *   <li>hub 的 5 处（见"三"）→ <b>本类</b>。</li>
+ *   <li>hub 的 5 处 → 一度由<b>本类</b>代管；<b>P7a 已整体删除那 5 处</b>（四个聚合入口
+ *       {@code AllRecipeTypes} / {@code AllCreativeModeTabs} / {@code AllFluids} /
+ *       {@code AllModEffects} 也一并删除），职责改由 core 的幂等入口
+ *       {@code common.registry.LayerBootstrap#ensureAttached}（三个模块的 {@code @Mod}
+ *       构造器各调一次）与"各层自持创造页登记"承担。</li>
  * </ul>
  *
- * <h2>二、为什么是"事件触发"而不是"CEWS / TRANS 构造器直接调一下"</h2>
- * <p>本类住 {@code common/hub}（SHARED 层）。如果让 {@code CewsMod} / {@code TransmutationMod}
- * 直接 import 本类并调用，就会造出本工程<b>第一条</b> {@code CEWS -> 根侧 SHARED} 与
- * {@code TRANS -> 根侧 SHARED} 的源码边 —— 而 {@code tools/layer-usage.ps1} 的 LAYER-NO
- * 判据正是"该层文件的整个项目闭包必须落在 CORE + 本层 + 允许的下层"，根侧 SHARED
- * 一律算 <b>blocker</b>（P3q/P3s：那是"这一层还不能独立成模块"的工作清单）。
- * 实测：直接调用会让 CEWS 与 TRANS 各多出一个 LAYER-NO 文件（基线是 0）。
- * 所以改成<b>事件触发</b>：本类自己挂 {@code @EventBusSubscriber}（P3z 起挂根工程自己的 mod
- * {@code coe_integration}），FML 在<b>那个 mod</b> 构造完成、自动订阅者注入之后立刻派发
- * {@code FMLConstructModEvent}
- * （{@code FMLModContainer#constructMod} 与 {@code ModLoader#constructMods} 的次序），
- * 而 {@code RegisterEvent} 是<b>全部 mod 构造完之后</b>才由 NeoForge 派发的 ——
- * 于是"挂 DeferredRegister"这件事照样早于 {@code RegisterEvent}，
- * 同时 CEWS / TRANS 两个层文件对本类<b>零引用</b>。</p>
- * <p>附带好处：SHARED 文件从不被两个工具当作 source 层判定，所以这条接线本身
- * 不会给任何层加 blocker；而它要做的两件事（hub 触发 / 补挂订阅者）本来就属于集成层。</p>
+ * <h2>二、为什么是"事件触发"</h2>
+ * <p>本类住 {@code common/hub}，而根工程在文档口径里是"集成层"。让模块直接 import 根侧类会造出
+ * {@code CEWS -> 根侧 SHARED} / {@code TRANS -> 根侧 SHARED} 的源码边，而
+ * {@code tools/layer-usage.ps1} 的 LAYER-NO 判据会把根侧 SHARED 算成 blocker。
+ * 所以本类自己挂 {@code @EventBusSubscriber}（P3z 起挂根工程自己的 mod {@code coe_integration}），
+ * FML 在<b>那个 mod</b> 构造完成、自动订阅者注入之后立刻派发 {@code FMLConstructModEvent}。</p>
+ * <p><b>P7a 备注</b>：共享接线现在走 core 的 {@code LayerBootstrap}（core 是底层，
+ * 任何模块 import 它都不构成禁止方向），所以"必须早于 {@code RegisterEvent}"这条时序要求
+ * 不再依赖本类；本类剩下的补挂只服务 dev。</p>
  *
- * <h2>三、hub 触发</h2>
- * <p>顺序与拆分前 {@code CreateOreExpansion} 构造器里逐条一致：
- * {@code installTabRegistrar} → {@code AllCreativeModeTabs.register} → {@code AllFluids.register}
- * → {@code AllModEffects.register} → {@code AllRecipeTypes.register}。
- * 其中只有第一个真正对时序敏感，而 {@code LayerCreativeTab.installTabRegistrar} 对
- * "注入之前就来过的请求"会<b>补跑</b>（见其类注释），所以触发时机（甚至 mod 构造顺序）
- * 都不影响结果。</p>
- *
- * <h2>四、补挂被孤立的 {@code @EventBusSubscriber}（P3w 实测发现）</h2>
+ * <h2>三、补挂被孤立的 {@code @EventBusSubscriber}（P3w 实测发现）</h2>
  * <p><b>FML 的 {@code @EventBusSubscriber} 自动注入是"按 mod 文件"作用域的</b>：
  * {@code FMLModContainer} 构造完 mod 之后调
  * {@code AutomaticEventSubscriber.inject(this, this.scanResults, layer)}，用的是
@@ -73,11 +61,17 @@ import net.neoforged.neoforgespi.language.ModFileScanData;
  * 用的是同一份 scanResults）。</p>
  * <p>P3w 之后根工程的模板不再声明 {@code createoreexpansion}（它随 {@code :coe} 走），
  * 于是<b>所有仍住根工程、却写着 {@code modid = createoreexpansion} 的订阅类都不会再被注入</b>。
- * 这些类一个都不能丢：数据生成入口、配置重载、Ctrl+扳手旋转、能量场命令、
- * 嬗变玩家 tick、凝能佩弓事件……所以在这里<b>显式</b>补挂到 createoreexpansion 容器的总线上，
- * 路由规则与 {@code AutomaticEventSubscriber} 逐字同构（{@code IModBusEvent} 的子类挂 mod 总线，
+ * 所以在这里<b>显式</b>补挂到 createoreexpansion 容器的总线上，路由规则与
+ * {@code AutomaticEventSubscriber} 逐字同构（{@code IModBusEvent} 的子类挂 mod 总线，
  * 其余挂 game 总线；{@code Dist} 过滤在<b>不加载目标类</b>的前提下从扫描数据里判，
  * 免得专用服务器上加载客户端类）。</p>
+ * <p><b>P7a 之后这份名单只剩一个类</b>：{@code data/CreateOreExpansionDatagen}（datagen 入口，
+ * dev 专用，必须挂在 {@code createoreexpansion} 容器的 mod 总线上，否则
+ * {@code GatherDataEvent} 的生成器 {@code shouldExecute=false} 而静默 0 产物）。
+ * 其余四类曾经的孤儿都已各归各家：{@code client/ClientEvents} 等随内容搬进模块文件
+ * （在那边"No modid"或"modid == 文件 id"，由 FML 正常注入）、{@code common.AllConfig} 的订阅搬成
+ * {@code :coe} 的 {@code foundation/AllConfigSubscriber}、{@code client.MachineRotateClient}
+ * 改成 core 逻辑 + 客户端薄入口显式 {@code install()}。</p>
  * <p><b>维护提醒</b>：以后凡是<b>住根工程</b>却写 {@code @EventBusSubscriber(modid = CoeCore.MOD_ID)}
  * 的新类都会被自动补挂（本类按扫描数据遍历，不需要改名单）。
  * <b>反面同样要查（P3y/P3z 实证）</b>：住在<b>某个层模块</b>里、却标着另一个 modid 的类
@@ -112,7 +106,7 @@ public final class IntegrationBootstrap {
         // 事件本身不提供容器（ModLifecycleEvent#getContainer() 是包私有的），按 mod id 从 ModList 取。
         ModContainer rootMod = ModList.get().getModContainerById(ROOT_MOD_ID).orElse(null);
         if (rootMod == null) {
-            CoeCore.LOGGER.error("[P3w] 找不到 {} 的 ModContainer，hub 注册触发与订阅者补挂都无法进行", ROOT_MOD_ID);
+            CoeCore.LOGGER.error("[P3w] 找不到 {} 的 ModContainer，被孤立订阅者的补挂无法进行", ROOT_MOD_ID);
             return;
         }
         install(rootMod);
@@ -129,17 +123,11 @@ public final class IntegrationBootstrap {
         }
         installed = true;
 
-        IEventBus rootBus = rootMod.getEventBus();
+        // P7a：hub 的注册触发已整体删除——共享注册表的挂载、旋转载荷的注册、三层配方类型
+        // 声明类的唤醒顺序都搬进了 core 的 LayerBootstrap（由三个模块的 @Mod 构造器各调一次）。
+        // 根容器在这里只剩一件事：给下面那批"住根、却标着 createoreexpansion"的订阅类补挂总线。
 
-        // ── ① hub 触发（顺序与拆分前 CreateOreExpansion 构造器内逐条一致）──────────────
-        // P3q：创造页的登记动作由根侧注入（层的 Registrate 发请求、hub 按 COE → CEWS 顺序登记）。
-        LayerCreativeTab.installTabRegistrar(AllCreativeModeTabs::registerTabs);
-        AllCreativeModeTabs.register(rootBus);
-        AllFluids.register();
-        AllModEffects.register(rootBus);
-        AllRecipeTypes.register(rootBus);
-
-        // ── ② 补挂被孤立的 @EventBusSubscriber ─────────────────────────────────────────
+        // ── 补挂被孤立的 @EventBusSubscriber ─────────────────────────────────────────
         reattachOrphanedSubscribers(rootMod);
     }
 

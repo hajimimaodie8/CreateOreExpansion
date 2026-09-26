@@ -49,8 +49,9 @@ import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
  * 波变器少一项可加工类型，但不会崩（见 {@code ensureInitialized()} 的容错）。</p>
  *
  * <p><b>登记表当前只有这一个消费者</b>：{@code StellarWaveMachineCatalog} 用它替换原先对
- * {@code AllRecipeTypes} 的六处引用（鼓风机／角磨床／三台充能器）。聚合入口 {@code AllRecipeTypes}
- * 仍是"注册顺序"的协调者（它决定六个条目进注册表的顺序），职责不重叠。</p>
+ * {@code AllRecipeTypes} 的六处引用（鼓风机／角磨床／三台充能器）。那个聚合入口已在 P7a 删除，
+ * "注册顺序"的协调者现在是 {@link LayerBootstrap}（core 的固定 {@code Class.forName} 名单），
+ * 与本表的"可加工能力"职责不重叠。</p>
  *
  * <p><b>给后续维护者</b>：新增一个"可被波加工"的配方类型 = ① 在所属层的 {@code XxxRecipeTypes}
  * 里声明常量；② 在该层 {@code LayerOrder} 对应的 {@link #addOrdered(LayerOrder)} 链上
@@ -63,7 +64,7 @@ public final class WaveRecipeCapabilities {
      * 本模组三层的<b>显式排序键</b>。
      *
      * <p><b>枚举声明顺序即权值</b>（{@code ordinal()}），所以这里的先后就是"波可加工配方类型"
-     * 列表在层间看到的先后。当前值刻意对齐聚合入口 {@code AllRecipeTypes} 的层间顺序
+     * 列表在层间看到的先后。当前值刻意对齐已删除的聚合入口 {@code AllRecipeTypes} 的层间顺序
      * <b>TRANS → COE → CEWS</b>（P3c 定的，本轮不许动）——它同时也是改前
      * {@code StellarWaveMachineCatalog.registerCreateNatives()} 里
      * "{@code AllRecipeTypes.TRANSMUTING} 先被读到"所隐含的顺序。</p>

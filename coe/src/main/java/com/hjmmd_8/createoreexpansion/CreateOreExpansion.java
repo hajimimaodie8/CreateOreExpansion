@@ -6,9 +6,11 @@ import com.hjmmd_8.createoreexpansion.common.AllGemTags;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllStructureProcessors;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllTiers;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
+import com.hjmmd_8.createoreexpansion.common.registry.LayerBootstrap;
+import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionBindingRecipe;
@@ -36,15 +38,18 @@ import net.neoforged.fml.config.ModConfig;
  *   <li>{@code AllModPotions.register} + {@code AllModPotions::registerBrewingRecipes} +
  *       {@code AllFanProcessingTypes.init()} → {@code TransmutationMod} 构造器与其自己的
  *       {@code RegisterEvent} 监听器（TRANS 层自己的东西）；</li>
- *   <li>hub 的五个触发点（{@code LayerCreativeTab.installTabRegistrar} /
- *       {@code AllCreativeModeTabs.register} / {@code AllFluids.register} /
- *       {@code AllModEffects.register} / {@code AllRecipeTypes.register}）→
- *       根侧集成类 {@code common/hub/IntegrationBootstrap}，由 CEWS / TRANS 的
- *       {@code @Mod} 构造器<b>幂等地</b>调用（hub 是集成层，永远不许进 core，也永远不该进 :coe）。</li>
+ *   <li><b>P7a 起</b>：共享注册表的挂载、旋转载荷的注册、三层配方类型声明类的唤醒顺序 →
+ *       core 的幂等入口 {@code common.registry.LayerBootstrap#ensureAttached}
+ *       （本构造器第一条语句）。原先那五处 hub 聚合入口
+ *       （{@code LayerCreativeTab.installTabRegistrar} / {@code AllCreativeModeTabs.register} /
+ *       {@code AllFluids.register} / {@code AllModEffects.register} / {@code AllRecipeTypes.register}）
+ *       已<b>整体删除</b>。</li>
  * </ul>
- * <p>时序上只有 {@code installTabRegistrar} 敏感，而它对"注入之前就来过的请求"会<b>补跑</b>
- * （见 {@code LayerCreativeTab} 类注释），所以 FML 的构造顺序（COE → TRANS → CEWS）不影响结果；
- * 其余几处只是往事件总线挂 {@code DeferredRegister}，只要早于 {@code RegisterEvent} 即可。</p>
+ * <p><b>更正一条旧注释</b>：P3w 时期这里写着"hub 触发由根侧 {@code IntegrationBootstrap} 负责，
+ * 由 CEWS / TRANS 的 {@code @Mod} 构造器<b>幂等地</b>调用"——代码里从来没有模块调用过它，
+ * 真实机制一直是 {@code IntegrationBootstrap} 自己挂 {@code FMLConstructModEvent}。
+ * P7a 之后这条也不再需要：根工程降级为 dev-only，发布形态只有三个模块 jar，
+ * 共享接线只剩 {@code LayerBootstrap} 这一条路。</p>
  *
  * <p><b>两处反射桥接为什么留在这里</b>（{@link #bootstrapCurios()} / {@link #bootstrapJade()}）：
  * 它们只含 {@code Class.forName} 的字符串字面量，<b>不产生任何编译边</b>；而
@@ -64,8 +69,8 @@ import net.neoforged.fml.config.ModConfig;
  *   <li>TRANS 的物品 / 药水 / 风扇加工类型 → {@code TransmutationMod}。</li>
  * </ul>
  *
- * <p><b>Registrate 分家</b>：本层（{@code common/registry/coe/**} + {@code AllFluids} +
- * {@code SeriesTraits}）的注册引用 {@link CoeRegistrate#REGISTRATE}。
+ * <p><b>Registrate 分家</b>：本层（{@code common/registry/coe/**} + {@code SeriesTraits}）的注册引用
+ * {@link CoeRegistrate#REGISTRATE}。
  * 那个实例的 {@code CreateRegistrate} 命名空间参数<b>仍是</b> {@code createoreexpansion}
  * （见 {@code common/registry/LayerRegistrate}），所以注册 id 与拆分前逐字一致。</p>
  */
@@ -87,11 +92,20 @@ public class CreateOreExpansion {
     public static final String MOD_ID = CoeCore.MOD_ID;
 
     public CreateOreExpansion(IEventBus modEventBus, ModContainer modContainer) {
+        // ── P7a：共享接线（必须是构造器的第一条语句，见 LayerBootstrap 类注释"四"）───────────
+        // 幂等地做三件"必须恰好发生一次"的事：挂两张共享配方类型注册表 + 一张共享创造页注册表、
+        // 注册跨层共用的旋转载荷（Ctrl+扳手）、按固定顺序（TRANS → COE → CEWS）唤醒三层的
+        // XxxRecipeTypes，让条目进注册表的顺序与拆分前逐字相同。
+        // 这三个模块谁先构造都成立；先到的做实事，其余直接返回。
+        LayerBootstrap.ensureAttached(modEventBus);
+
+        // P7a：本层自己的创造页。登记动作不再由根侧注入（根工程已降级为 dev-only），
+        // 而是每层自持；页的显示顺序由 withTabsBefore 的拓扑排序决定，与登记先后无关。
+        LayerCreativeTab.registerAll(CoeCreativeTabs.tabs());
+
         // P3w：原先在这里的 `LayerCreativeTab.installTabRegistrar(() -> AllCreativeModeTabs.registerTabs())`
-        // 是 9 处触发点之一（hub 的 AllCreativeModeTabs 住根工程，:coe 看不到），已搬到根侧集成类
-        // common/hub/IntegrationBootstrap，由 CEWS / TRANS 的 @Mod 构造器幂等调用。
-        // 时序安全：installTabRegistrar 对"注入之前就来过的请求"会补跑（LayerCreativeTab 类注释），
-        // 而 CoeRegistrate 的静态块正是在本构造器第 8 步发出请求。
+        // 与四个 hub 聚合入口（AllCreativeModeTabs / AllFluids / AllModEffects / AllRecipeTypes）
+        // 都已在 P7a 删除，职责由 LayerBootstrap + 各层自持的登记动作取代。
 
         // P3k：MOD 事件总线随「mod 身份」常量一起搬到共享库（库没有生命周期，
         // 也不该反向依赖 @Mod 入口）；本类只负责在构造时把它填上。全仓无消费者。
@@ -106,26 +120,22 @@ public class CreateOreExpansion {
         AllDataComponents.register(modEventBus);
         // P3w：`AllEntityTypes.register(modEventBus)`（CEWS 层）搬去 CewsMod 构造器；
         // `AllFanProcessingTypes.init()` 的 RegisterEvent 钩子（TRANS 层）搬去 TransmutationMod。
-        // 统一交互规则第 4 条：Ctrl + 扳手右键 = 旋转本模组机器（客户端拦截 → 服务端校验并旋转）
-        // P3o：载荷类（common/machine/MachineRotatePayload）已搬进 core 库，**不 import 本 @Mod 入口**，
-        // 所以"谁来接 mod bus"这件事必须由根侧显式写死（库没有生命周期）。行为与逐个引用写法逐字一致。
-        modEventBus.addListener((net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent event) ->
-                MachineRotatePayload.registerPayloads(event));
+        // P7a：`MachineRotatePayload::registerPayloads` 已从本类搬到 LayerBootstrap 的幂等块
+        //（单装 cews.jar 时原先没人注册它 ⇒ Ctrl+扳手在 CEWS 机器上完全没反应）。
 
         // 配置：目标容器<b>必须是</b> createoreexpansion（本 mod 自己的容器）。
         // 文件名 = <modid>-common.toml，挂到别的容器上会让老玩家的
         // createoreexpansion-common.toml 被静默弃用（设置"丢一次"）。
-        // 另一个理由：AllConfig 自身是 @EventBusSubscriber(modid = createoreexpansion)，
-        // 只有挂在本容器上，ModConfigEvent 才会送达它。
+        // P7a：配置值的订阅方不再是 core 的 AllConfig（core 在发布形态里没有 ModContainer，
+        // 注解永远不会被注入），而是本模块 foundation/AllConfigSubscriber —— 它的 modid 与
+        // 本文件 id 天然配对，调 AllConfig.refresh()。
         modContainer.registerConfig(ModConfig.Type.COMMON, AllConfig.SPEC);
 
         // 本层 Registrate 的事件接线。静态块里已经设好 tooltip 工厂与默认创造页（基础页）；
         // 见 CoeRegistrate 的类注释（顺序由类初始化保证）。
         CoeRegistrate.REGISTRATE.registerEventListeners(modEventBus);
 
-        // P3w：`AllCreativeModeTabs.register(modEventBus)`（hub）已随上面的集成职责一起搬到
-        // 根侧 IntegrationBootstrap。它只往事件总线挂一个 DeferredRegister，
-        // 只要早于 RegisterEvent 即可（TRANS / CEWS 构造器都远早于它）。
+        // P7a：创造页注册表的挂载与页的登记都在本构造器开头（LayerBootstrap + LayerCreativeTab.registerAll）。
 
         // 按层显式触发类初始化（顺序与拆分前逐层一致）。
         // CEWS / TRANS 两层的方块与物品由它们各自的 @Mod 构造器触发（见 CewsMod / TransmutationMod）。
@@ -150,12 +160,9 @@ public class CreateOreExpansion {
 
         CoeItems.register();
         AllGemTags.register();
-        // P3w：底下这五处原先就在这里，全是跨层 / hub 触发点，整块搬去根侧：
-        //   AllFluids.register()          -> IntegrationBootstrap（hub -> TRANS 转发）
-        //   AllModEffects.register(bus)   -> IntegrationBootstrap（hub -> TRANS 转发）
-        //   AllModPotions.register(bus)   -> TransmutationMod 构造器（TRANS 层自己的东西）
-        //   AllModPotions::registerBrewingRecipes -> TransmutationMod 的 game bus 监听
-        //   AllRecipeTypes.register(bus)  -> IntegrationBootstrap（hub 聚合三层的配方类型）
+        // P7a：底下这两处原先也在 hub 里，现在各归各家：
+        //   AllFluids.register()    -> TransmutationMod 构造器（TransmutationFluids.register()）
+        //   AllModEffects.register(bus) -> TransmutationMod 构造器（TransmutationEffects.register(bus)）
         AllStructureProcessors.register(modEventBus);
         MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
@@ -168,7 +175,8 @@ public class CreateOreExpansion {
         bootstrapJade();
 
         CoeCore.LOGGER.info("[COE] mod 初始化完成（mod id={}，注册命名空间={}）：矿物拓展内容已注册，"
-                + "共享地基（配置/数据组件/旋转载荷）已由本构造器接线",
+                + "共享接线（共享注册表/旋转载荷/配方类型唤醒顺序）由 LayerBootstrap 幂等完成，"
+                + "配置缓存由 AllConfigSubscriber 刷新",
             MOD_ID, CoeCore.REGISTRY_NAMESPACE);
     }
 

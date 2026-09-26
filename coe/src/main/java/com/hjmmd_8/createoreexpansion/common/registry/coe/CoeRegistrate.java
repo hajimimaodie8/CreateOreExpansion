@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -10,7 +9,7 @@ import com.simibubi.create.foundation.data.CreateRegistrate;
  * <b>COE（矿物拓展，mod id {@code createoreexpansion}）自己的 Registrate</b>。
  *
  * <p>拆分前全模组共用一个 {@code CreateOreExpansion.REGISTRATE}；P3b 起每一层各持一个实例，
- * 本层（{@code common/registry/coe/**}、{@code AllFluids}、{@code SeriesTraits}）的所有
+ * 本层（{@code common/registry/coe/**}、{@code SeriesTraits}）的所有
  * {@code .item(...) / .block(...) / .blockEntity(...)} 都走这里。</p>
  *
  * <p><b>命名空间</b>：{@link LayerRegistrate} 的构造参数恒为
@@ -32,10 +31,9 @@ public final class CoeRegistrate {
         LayerRegistrate.create(CoeCore.REGISTRY_NAMESPACE, true);
 
     static {
-        // 创造标签页的 holder 必须先就位，defaultCreativeTab 才能拿到 ResourceKey。
-        // P3q：登记动作由根侧注入（LayerCreativeTab.installTabRegistrar），本层只发"请求"；
-        // ensureRegistered() 幂等，CEWS / TRANS 那边也会调（谁先初始化都成立）。
-        LayerCreativeTab.ensureRegistered();
+        // P7a：这里不再需要"请求登记创造页"——登记动作已由
+        // CreateOreExpansion 构造器里的 LayerCreativeTab.registerAll(CoeCreativeTabs.tabs()) 直接完成，
+        // 而 defaultCreativeTab 只要 ResourceKey（由 id 算出，不依赖 holder），顺序无所谓。
         // 通用两级提示（描述行 + 动能统计）。充能器专用提示归 CEWS，本层不接。
         RegistrateTooltips.install(REGISTRATE);
         // COE 的默认创造页 = 基础页（矿物拓展）——本层自己的常量，不再绕 SHARED 聚合入口

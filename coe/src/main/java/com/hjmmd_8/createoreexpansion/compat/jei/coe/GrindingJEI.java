@@ -1,11 +1,11 @@
-package com.hjmmd_8.createoreexpansion.compat.jei;
+package com.hjmmd_8.createoreexpansion.compat.jei.coe;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
-import com.hjmmd_8.createoreexpansion.common.hub.AllRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.coe.AdvancedGrindingCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.coe.DismantlingCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.coe.GrindingCategory;
@@ -28,6 +28,11 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 角磨配方 JEI 集成（分类仿照机械动力 CreateJEI 的动力锯分类注册方式）。
+ *
+ * <p><b>P7a</b>：本类整体从集成层（{@code :coe} 之外的根工程 {@code compat/jei/GrindingJEI}）
+ * 搬进 {@code :coe}，包名随之改为 {@code compat.jei.coe}（JPMS 红线：同一个 Java 包不能同时
+ * 属于两个 mod 文件，而三个模块都要有自己的 {@code @JeiPlugin}）。
+ * 插件 UID {@code createoreexpansion:grinding_jei} <b>一字未改</b>。</p>
  */
 @JeiPlugin
 public class GrindingJEI implements IModPlugin {
@@ -45,7 +50,7 @@ public class GrindingJEI implements IModPlugin {
 		allCategories.clear();
 
 		CreateRecipeCategory<?> grinding = builder(GrindingRecipe.class)
-			.addTypedRecipes(AllRecipeTypes.GRINDING)
+			.addTypedRecipes(CoeRecipeTypes.GRINDING)
 			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
 			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), Items.IRON_INGOT)
 			.emptyBackground(177, 70)
@@ -60,7 +65,7 @@ public class GrindingJEI implements IModPlugin {
 			.build(CoeCore.modLoc("advanced_grinding"), AdvancedGrindingCategory::new);
 
 		CreateRecipeCategory<?> dismantling = builder(DismantlingRecipe.class)
-			.addTypedRecipes(AllRecipeTypes.DISMANTLING)
+			.addTypedRecipes(CoeRecipeTypes.DISMANTLING)
 			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
 			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), CoeItems.SAPPHIRE_INGOT.get())
 			.emptyBackground(177, 70)

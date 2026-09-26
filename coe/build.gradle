@@ -53,8 +53,15 @@ plugins {
 //    · 单独装本模块时它是第 1 层，正常生效。
 //      实测见 build/patch/p4e-EVIDENCE.txt。
 //
-// ④ 不需要 jade / curios / optical / vintageimprovements / aeronautics / sable：
-//    那些包（compat/**）仍然住在根工程。
+// ④ P7a：**Curios 与 Jade 的编译面必须补上**（旧注释写"那些包仍然住在根工程"，已不成立）。
+//    P7a 把 compat/curios/**、compat/jade/**、compat/jei/** 整体搬进本模块，这些类直接
+//    import top.theillusivec4.curios.api.* 与 snownee.jade.api.*，所以编译期必须在场。
+//    两个都是 **compileOnly**（与根工程同口径：可选依赖，绝不进发布依赖、绝不 jarJar）：
+//      · Curios：由 mods.toml 的 type=optional 声明，运行期由 CreateOreExpansion#bootstrapCurios
+//        的 Class.forName 隔离加载（未装时凝能佩降级为普通物品）；
+//      · Jade：同理，由 bootstrapJade 的 Class.forName 隔离加载。
+//    dev 运行期这两个的实例来自**根工程**的 runtimeOnly / localRuntime（runData / runClient
+//    用的是根工程的运行时类路径），所以本模块不需要 runtimeOnly。
 dependencies {
     // P4d：本模块 jar 要**自足**（单独丢进玩家 mods/ 也能跑），所以自己嵌一份 core。
     // 形态与根逐字同款：jarJar(...) 的参数用 implementation(...) —— 它同时给到编译可见性，
@@ -77,6 +84,14 @@ dependencies {
     // CC&A：compat/createaddition/** 属于 COE（锭→板/杆/线整条线跑在它的轧机上）
     compileOnly("curse.maven:createaddition-439890:8083378")
     runtimeOnly("curse.maven:createaddition-439890:8083378")
+
+    // Curios（可选集成）：compat/curios/CurioMedallionBridge / CurioMedallionItems 直接
+    // import top.theillusivec4.curios.api.*。P7a 起这两个类住本模块（原先住根工程）。
+    compileOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api"
+
+    // Jade（可选集成）：compat/jade/BasinLiveItemStorage / BasinLiveJadePlugin 直接
+    // implement snownee.jade.api.*。P7a 起住本模块；运行期由 bootstrapJade 的 Class.forName 隔离。
+    compileOnly("maven.modrinth:jade:15.8.3+neoforge")
 
     // 技能内核 Skiller（P4e）：本模块有 31 个文件直接 import com.leaf.skiller.*（实测计数），
     // 所以它必须随本 jar 一起发布 —— jarJar(...) 把 skiller-1.0.0.jar 嵌进本 jar 的

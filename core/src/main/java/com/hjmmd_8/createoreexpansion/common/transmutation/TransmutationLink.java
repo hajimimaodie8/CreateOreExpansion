@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.common.transmutation;
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.Entity;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * <b>嬗变线（TRANS）与其它层之间的窄契约</b>（P3t：core 侧的唯一入口，具体实现由 TRANS 层注入）。
@@ -19,15 +20,16 @@ import net.minecraft.world.entity.Entity;
  * Fluid")} 条目不会被任何一个"真正被执行的" datagen 提供器收集——{@code LayerRegistrate} 只为
  * 三层的实例挂提供器，core 里新建的 Registrate 没人挂，{@code runData} 会把语言文件里那一行
  * 删掉（{@code src/generated} 出现 diff）。所以走本仓已定型的<b>注入</b>手法
- * （形状与 {@code common.energy.MedallionLink}、{@code common.registry.LayerCreativeTab} 的
- * {@code installTabRegistrar} 相同）：把「COE 真正需要的那两件事」提成这个契约，
- * TRANS 在声明初始化时把实现注入进来。</p>
+ * （形状与 {@code common.energy.MedallionLink}、{@code common.registry.LayerBootstrap} 相同）：
+ * 把「COE 真正需要的那几件事」提成这个契约，TRANS 在声明初始化时把实现注入进来。</p>
  *
- * <p><b>为什么契约暴露的是"查询"而不是"那两个对象"</b>：若返回 {@code FluidType} / {@code MobEffect}，
+ * <p><b>为什么两个查询暴露的是"查询"而不是"那两个对象"</b>：若返回 {@code FluidType} / {@code MobEffect}，
  * 调用方在未注入（或注册表尚未绑定）时就得自己处理 {@code null}，而
  * {@code Entity#getFluidTypeHeight} 对 {@code null} 参数会直接 NPE（fastutil 的
  * {@code Object2DoubleMap} 要对 key 取哈希）。提成查询后，未注入时一律得到 {@code false}，
- * 调用点的行为与"没有嬗变线"逐字一致，也不需要任何 {@code null} 分支。</p>
+ * 调用点的行为与"没有嬗变线"逐字一致，也不需要任何 {@code null} 分支。
+ * （P7a 新增的 {@link #transmutationDisorder()} 是这条口径的<b>唯一例外</b>——它的调用方
+ * 必须拿到 holder 才能构造效果实例，理由见该方法自己的注释。）</p>
  *
  * <p><b>行为等价性</b>：{@link #isInTransmutationFluid} 用的还是旧的
  * {@code entity.getFluidTypeHeight(TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D} 判定，
@@ -52,7 +54,7 @@ import net.minecraft.world.entity.Entity;
  *
  * <p><b>未注入时的可观测性</b>：{@link #NONE} 的两个查询都返回 {@code false} ⇒ "星辉石物品在
  * 嬗变液里不发光/不免疫嬗乱"。而唯一会读本契约的两处都发生在开档之后的 tick / 事件里，
- * 注入（{@code TransmutationFluids} 的静态块，由根构造器里原本那句 {@code AllFluids.register()}
+ * 注入（{@code TransmutationFluids} 的静态块，P7a 起由 {@code TransmutationMod} 构造器触发）
  * 触发）远早于它们，所以这条路径只用于"契约本身能不能用"的探针与将来的模块裁剪。</p>
  */
 public interface TransmutationLink {
@@ -94,6 +96,25 @@ public interface TransmutationLink {
      */
     default boolean isTransmutationDisorder(Holder<MobEffect> effect) {
         return false;
+    }
+
+    /**
+     * 嬗乱效果本身的引用（给"要施放它"的调用方用）；<b>未注入时返回 {@code null}</b>。
+     *
+     * <p><b>P7a：为什么这里允许返回 null，而上面两个查询不允许</b>——两个查询的调用点会把结果直接
+     * 喂给原版（{@code Entity#getFluidTypeHeight} 对 {@code null} 参数立刻 NPE），所以它们的口径是
+     * "未注入 = false"。而本方法的唯一调用方是 COE 的黄玉弓命中效果：它要构造一个
+     * {@code MobEffectInstance}，<b>只能</b>拿到 holder 才能构造；拿到 {@code null} 时正确的行为是
+     * "这次不施加嬗乱"（TRANS 没装就没有这个效果），这是调用点一行的显式判空，不是隐藏的陷阱。</p>
+     *
+     * <p>搬迁前的调用点是 COE 直接读集成层别名
+     * {@code common/hub/AllModEffects.TRANSMUTATION_DISORDER}——那条边 {@code COE -> TRANS}
+     * 是禁止方向，且单装 coe.jar 时那个类根本不在（{@code NoClassDefFoundError}），
+     * 所以必须走本契约。</p>
+     */
+    @Nullable
+    default Holder<MobEffect> transmutationDisorder() {
+        return null;
     }
 
     /** 空实现：两个查询都返回 {@code false}。 */

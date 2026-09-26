@@ -12,9 +12,12 @@ import com.hjmmd_8.createoreexpansion.compat.jei.cews.StellarWaveTransmuterCateg
  * 它与"有配方的类别"分开存放，是因为 JEI 的生命周期回调不同
  * （见协调入口的三段 {@code register*} 方法）。</p>
  *
- * <p><b>调用方</b>：{@link com.hjmmd_8.createoreexpansion.compat.jei.CreateOreExpansionJEI}
- * （SHARED 层的 JEI 协调入口，也是唯一的 {@code @JeiPlugin}）。它按拆分前
- * {@code loadCategories()} 里的顺序收集各层内容，所以 JEI 侧栏里的分类顺序一字不变。</p>
+ * <p><b>调用方</b>（P7a 更正）：同模块的 {@code compat.jei.cews.CewsJeiPlugin}（{@code :cews} 自己的
+ * {@code @JeiPlugin}）。原来写的是"集成层的 {@code CreateOreExpansionJEI} 按拆分前的逐条顺序收集，
+ * 所以 JEI 侧栏里的分类顺序一字不变"——<b>那个机制描述是错的</b>：JEI 侧栏顺序由
+ * {@code config/jei/recipe-category-sort-order.ini} 对<b>配方类型 UID</b> 排序决定
+ * （{@code RecipeManagerInternal} 构造时统一排序），与插件、与收集顺序都无关。
+ * 保持顺序要做的唯一一件事就是"别改类别 UID、别少注册类别"，本轮两者都没做。</p>
  */
 public final class CewsJeiCategories {
 

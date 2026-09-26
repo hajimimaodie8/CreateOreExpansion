@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.common.registry.transmutation;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
-import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -27,8 +26,9 @@ public final class TransmutationRegistrate {
         LayerRegistrate.create(CoeCore.REGISTRY_NAMESPACE, false);
 
     static {
-        // P3q：登记动作由根侧注入（LayerCreativeTab.installTabRegistrar），本层只发"请求"。
-        LayerCreativeTab.ensureRegistered();
+        // P7a：不再需要"请求登记创造页"——本层自己没有页，而它借用的 COE 基础页由 :coe 的
+        // @Mod 构造器登记（LayerCreativeTab.registerAll(CoeCreativeTabs.tabs())）。
+        // defaultCreativeTab 只要 ResourceKey（由 id 算出、不依赖 holder），顺序无所谓。
         RegistrateTooltips.install(REGISTRATE);
         // TRANS -> COE 是允许方向（不是环）：TRANS 的默认创造页就是 COE 的基础页
         REGISTRATE.defaultCreativeTab(CoeCreativeTabs.BASE_TAB.key());

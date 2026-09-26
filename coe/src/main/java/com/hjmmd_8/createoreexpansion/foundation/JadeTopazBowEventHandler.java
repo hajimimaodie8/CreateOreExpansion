@@ -5,7 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.skill.BowCurseSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.BowDisarmSkill;
-import com.hjmmd_8.createoreexpansion.common.hub.AllModEffects;
+import com.hjmmd_8.createoreexpansion.common.transmutation.TransmutationLink;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfig;
 import com.hjmmd_8.createoreexpansion.skill.ItemSkill;
@@ -91,7 +91,15 @@ public class JadeTopazBowEventHandler {
 		} else if (roll < 0.9F) {
 			addEffect(target, MobEffects.MOVEMENT_SLOWDOWN, 60, 0);
 		} else {
-			addEffect(target, AllModEffects.TRANSMUTATION_DISORDER, 60, 0);
+			// P7a：嬗乱效果不再由集成层别名 common/hub/AllModEffects 转发（那条边 COE -> TRANS
+			// 是禁止方向，且单装 coe.jar 时那个类根本不在场 ⇒ 这一分支会 NoClassDefFoundError）。
+			// 改走 core 的窄契约 common.transmutation.TransmutationLink：TRANS 在场时拿到的
+			// 就是同一个 DeferredHolder（行为逐字不变），不在场时返回 null ⇒ 只跳过"施加嬗乱"，
+			// 缴械那半边照旧（与拆分前在"装齐四个模块"时的行为完全一致）。
+			var disorder = TransmutationLink.get().transmutationDisorder();
+			if (disorder != null) {
+				addEffect(target, disorder, 60, 0);
+			}
 
 			ItemStack held = target.getMainHandItem();
 			if (!held.isEmpty()) {

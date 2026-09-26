@@ -30,8 +30,9 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  *
  * <p><b>为什么 DeferredRegister 只留一份（SHARED）</b>：与原 {@code AllCreativeModeTabs.TABS}
  * 完全一样——同名同命名空间（{@link CoeCore#REGISTRY_NAMESPACE}）的一张创造页注册表。
- * 三层（这里是两层）各自建一张会让 {@code RegisterEvent} 多一条监听、也会改变
- * "先注册哪个页"这件事；这里保持"一张表 + 按层顺序登记"的写法，注册顺序可与拆分前逐字一致。</p>
+ * 两层各自建一张会让 {@code RegisterEvent} 多一条监听；一张表由谁挂总线（P7a 起 =
+ * {@link LayerBootstrap#ensureAttached}，恰一次）与"谁先登记页"是两件事，后者只影响
+ * {@code BuiltInRegistries.CREATIVE_MODE_TAB} 的枚举顺序。</p>
  *
  * <p><b>{@link #tabKey(String)} 为什么是 static 工具而不是 {@code key()}</b>：{@code withTabsBefore}
  * 需要的是一个 {@link ResourceKey}，而 {@code ResourceKey} 必须在 <b>页的 holder 还不存在</b>时就能算出来
@@ -65,53 +66,24 @@ public final class LayerCreativeTab {
     }
 
     // -----------------------------------------------------------------------
-    // P3q: 层的"我要建页了"请求 → 根侧注入注册动作
+    // P7a：登记动作<b>按层自持</b>——原来的"根侧注入 registrar"机制已删除
     //
-    // 三个层的 Registrate 必须在设 defaultCreativeTab 之前拿到自己的页 key，而"按层顺序
-    // 把页登记进注册表"这件事只有根侧知道全貌（COE 的页要在 CEWS 的页之前登记，反之不行）。
-    // 于是：层调用 ensureRegistered()（core 入口，幂等），根侧在 CreateOreExpansion 构造器里
-    // installTabRegistrar(...) 把真正的登记动作（按层顺序遍历两层的页）注入进来。
-    // 形状与 P3e 的 LayerRegistrate.installOwnerChain / P3p 的 MedallionLink 相同。
+    // 旧形态（P3q）：层调用 ensureRegistered() 发请求，根侧
+    // installTabRegistrar(...) 把"按层顺序遍历所有页"的动作注入进来。那套机制的前提是
+    // **根工程在场**；而 P7a 的终局是根工程降级为 dev-only、发布形态只有三个模块 jar，
+    // 所以登记动作必须由每一层自己发起：
+    //     :coe  → LayerCreativeTab.registerAll(CoeCreativeTabs.tabs())
+    //     :cews → LayerCreativeTab.registerAll(CewsCreativeTabs.tabs())
     //
-    // 两个细节是刻意的：
-    //   1) installTabRegistrar 会在"请求已经来过"时立刻补跑 —— FML 构造 mod 的顺序不保证
-    //      COE 一定在 CEWS / TRANS 之前，晚到的注入不能把先来的请求丢掉；
-    //   2) key() 不再依赖 holder（见下），所以即使登记还没发生，
-    //      REGISTRATE.defaultCreativeTab(tab.key()) 也拿得到正确的 ResourceKey，不会 NPE。
-    // 幂等标志在跑之前置位（与拆分前 AllCreativeModeTabs.ensureTabs() 逐字同序）。
+    // 谁先登记不影响玩家可见顺序：创造页的显示顺序是 withTabsBefore 图上的**拓扑排序**
+    // （CreativeModeTabRegistry.recalculateItemCreativeModeTabs → TopologicalSort），
+    // 登记顺序只影响 BuiltInRegistries.CREATIVE_MODE_TAB 的枚举顺序（不进存档、不参与网络同步）。
+    // 每层的 tabs() 只含自己那一页，因此跨层不会撞 id
+    // （同 id 二次登记会抛 IllegalStateException("Duplicate registration …")）。
+    //
+    // key() 本来就不依赖 holder（见下），所以 Registrate 设 defaultCreativeTab 时不需要
+    // "页已经登记过"这个前提——这也是本机制能被删掉的前提。
     // -----------------------------------------------------------------------
-    private static Runnable tabRegistrar;
-    private static boolean tabRegistrationRequested;
-    private static boolean tabRegistrationDone;
-
-    /** 根侧注入"按层顺序登记所有页"的动作（在 CreateOreExpansion 构造器里调用一次）。 */
-    public static void installTabRegistrar(Runnable registrar) {
-        tabRegistrar = registrar;
-        if (tabRegistrationRequested && !tabRegistrationDone) {
-            runTabRegistrar();
-        }
-    }
-
-    /**
-     * 幂等地请求登记创造页（层的 Registrate 调用；等价于拆分前的
-     * {@code AllCreativeModeTabs.ensureTabs()}，只是登记动作由根侧注入）。
-     */
-    public static void ensureRegistered() {
-        if (tabRegistrationDone) {
-            return;
-        }
-        tabRegistrationRequested = true;
-        if (tabRegistrar == null) {
-            return; // 注入还没到；installTabRegistrar 会补跑
-        }
-        runTabRegistrar();
-    }
-
-    private static void runTabRegistrar() {
-        tabRegistrationDone = true;
-        tabRegistrar.run();
-    }
-
     private final String id;
     private final String titleTranslationKey;
     private final ResourceKey<CreativeModeTab> before;
@@ -146,8 +118,9 @@ public final class LayerCreativeTab {
     /**
      * 把若干页按<b>给定顺序</b>登记进注册表（等价于拆分前遍历枚举 {@code values()} 的那段循环）。
      *
-     * <p>顺序就是调用方传进来的列表顺序，因此"哪个页先注册"这件事完全由协调入口决定，
-     * 与拆分前逐字一致。</p>
+     * <p><b>P7a：调用方 = 每个层自己的 {@code @Mod} 构造器</b>（见上面那段注释），
+     * 一页只登记一次；同一个 id 登记两次会抛
+     * {@code IllegalStateException("Duplicate registration …")}。</p>
      */
     public static void registerAll(List<LayerCreativeTab> tabs) {
         for (LayerCreativeTab tab : tabs) {
@@ -173,12 +146,12 @@ public final class LayerCreativeTab {
     /**
      * 页的 {@link ResourceKey}。
      *
-     * <p><b>P3q：不再依赖 holder</b>。原先返回 {@code holder.getKey()}，于是"登记必须先于读取"
+     * <p><b>P3q 起不再依赖 holder</b>。原先返回 {@code holder.getKey()}，于是"登记必须先于读取"
      * 成了层 Registrate 的硬约束（它要拿 key 去设 {@code defaultCreativeTab}）。而 key 本就是
      * id 的纯函数 —— {@code DeferredHolder.getKey()} 返回的也正是
      * {@code ResourceKey.create(CREATIVE_MODE_TAB, id)}，与 {@link #tabKey(String)} 逐字同值。
-     * 改成直接算出来之后，登记动作可以由根侧稍后注入（{@link #ensureRegistered()}），
-     * 不会因为 FML 构造 mod 的顺序不同而 NPE。值不变 ⇒ 所有既有调用点行为不变。</p>
+     * P7a 删掉"根侧注入登记动作"那套机制之后，这条性质是本机制能成立的前提：
+     * 页的登记可以晚于 Registrate 设 {@code defaultCreativeTab}，不会 NPE，值也不变。</p>
      */
     public ResourceKey<CreativeModeTab> key() {
         return tabKey(id);

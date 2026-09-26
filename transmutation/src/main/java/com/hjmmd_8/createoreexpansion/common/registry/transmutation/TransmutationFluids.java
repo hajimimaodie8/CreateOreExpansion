@@ -29,10 +29,10 @@ import net.neoforged.neoforge.common.Tags;
  * {@code createoreexpansion:transmutation_fluid} 与
  * {@code createoreexpansion:transmutation_fluid_bucket} 都还是老 id。</p>
  *
- * <p><b>注册时机零变化</b>：真正的触发仍是 {@code CreateOreExpansion} 构造器里的
- * {@code AllFluids.register()}（原第 140 行的位置与顺序都没动），它转发到
- * {@link #register()}；而 Registrate 的 {@code REGISTRATE} 实例由
- * {@code CoeRegistrate} 静态块初始化，与拆分前同一个（命名空间恒为
+ * <p><b>注册时机</b>：P7a 之前由 {@code CreateOreExpansion} 构造器里的 {@code AllFluids.register()}
+ * 转发触发（那个聚合入口已删除）；现在由 {@code TransmutationMod} 构造器<b>自己</b>调
+ * {@link #register()}——"谁的东西谁注册"，也正是"只装 transmutation.jar 时嬗变液仍然存在"的前提。
+ * {@code REGISTRATE} 实例仍由 {@code CoeRegistrate} 静态块初始化（命名空间恒为
  * {@link CoeCore#REGISTRY_NAMESPACE}）。</p>
  *
  * <p><b>P3t：本类同时是 core 契约 {@link TransmutationLink} 的注入点</b>（见下方静态块与
@@ -80,12 +80,13 @@ public final class TransmutationFluids {
 	private TransmutationFluids() {
 	}
 
-	/** 注册触发（由 {@code common.hub.AllFluids#register} 转发，调用点与拆分前一致）。 */
+	/** 注册触发（P7a 起由 {@code TransmutationMod} 构造器直接调用，见类注释）。 */
 	public static void register() {
 	}
 
 	/**
-	 * {@link TransmutationLink} 的 TRANS 侧实现：两个查询逐字对应旧的直读写法。
+	 * {@link TransmutationLink} 的 TRANS 侧实现：两个查询逐字对应旧的直读写法，
+	 * 再加一个把嬗乱 holder 交出去的访问器（P7a，见其自身注释）。
 	 *
 	 * <p>方法体故意与搬迁前的调用点保持同一形状（同一个 {@code getFluidTypeHeight} 判定、
 	 * 同一处 {@code ==} 身份比较），只是把"读哪个声明"从 hub 别名换成了本层字段。</p>
@@ -120,6 +121,24 @@ public final class TransmutationFluids {
 		@Override
 		public boolean isTransmutationDisorder(Holder<MobEffect> effect) {
 			return effect != null && effect == TransmutationEffects.TRANSMUTATION_DISORDER;
+		}
+
+		/**
+		 * <b>P7a 新增</b>：把嬗乱效果本身的 holder 交出去（给"要施放它"的调用方）。
+		 *
+		 * <p>唯一的调用方是 COE 的黄玉弓命中效果（{@code foundation/JadeTopazBowEventHandler}）——
+		 * 它原先直接读集成层别名 {@code common/hub/AllModEffects.TRANSMUTATION_DISORDER}，
+		 * 那条边是禁止方向 {@code COE -> TRANS}，且单装 coe.jar 时那个类不在场会
+		 * {@code NoClassDefFoundError}。</p>
+		 *
+		 * <p>返回的是<b>同一个 {@code DeferredHolder}</b>（与上面身份比较用的是同一个对象），
+		 * 所以"凝能佩按 holder 身份识别嬗乱"那条判据对经本方法施放的效果照样成立。
+		 * 未绑定时这里不解引用（返回 holder 本身，不调 {@code .get()}），
+		 * 与 {@link TransmutationEffects#TRANSMUTATION_DISORDER} 的语义一致。</p>
+		 */
+		@Override
+		public Holder<MobEffect> transmutationDisorder() {
+			return TransmutationEffects.TRANSMUTATION_DISORDER;
 		}
 	}
 

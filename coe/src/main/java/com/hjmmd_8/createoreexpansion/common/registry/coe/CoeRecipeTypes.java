@@ -17,12 +17,12 @@ import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
  * （id 由常量名 {@code Lang.asId} 得到，命名空间恒为 {@code createoreexpansion}）。</p>
  *
  * <p><b>声明顺序 = 拆分前枚举里的相对顺序</b>（LIGHTNING → LIGHTNING_BLOCK → GRINDING → DISMANTLING）。
- * 协调入口 {@code common/AllRecipeTypes} 按拆分前的<b>整体</b>顺序读这些常量，
- * 所以本类里的字段顺序请勿改动。</p>
+ * 层间顺序由 core 的 {@code common.registry.LayerBootstrap} 用固定名单（TRANS → COE → CEWS）
+ * 唤醒各层来保证，所以本类里的字段顺序请勿改动。</p>
  *
- * <p><b>本类不做注册动作</b>：两张注册表住在 {@link LayerRecipeType}（SHARED），
- * 由 {@code AllRecipeTypes.register(modEventBus)} 统一挂到事件总线——六个条目共用同一对注册表，
- * 这是"注册顺序不变"的前提。</p>
+ * <p><b>本类不做注册动作</b>：两张注册表住在 {@link LayerRecipeType}（core），
+ * 由 {@code LayerBootstrap.ensureAttached(modEventBus)} 统一挂到事件总线——六个条目共用同一对注册表
+ * （且"恰挂一次"，二次挂会抛 {@code IllegalStateException}），这是"注册顺序不变"的前提。</p>
  */
 public final class CoeRecipeTypes {
 

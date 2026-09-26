@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;
 import com.simibubi.create.foundation.data.CreateRegistrate;
@@ -30,8 +29,8 @@ public final class CewsRegistrate {
         LayerRegistrate.create(CoeCore.REGISTRY_NAMESPACE, false);
 
     static {
-        // P3q：登记动作由根侧注入（LayerCreativeTab.installTabRegistrar），本层只发"请求"。
-        LayerCreativeTab.ensureRegistered();
+        // P7a：这里不再需要"请求登记创造页"——登记动作已由 CewsMod 构造器里的
+        // LayerCreativeTab.registerAll(CewsCreativeTabs.tabs()) 直接完成。
         // 共享库的通用两级（描述行 + 动能统计），再由本层补上充能器那一段。
         RegistrateTooltips.install(REGISTRATE);
         ChargerKineticTooltip.withChargers(REGISTRATE);

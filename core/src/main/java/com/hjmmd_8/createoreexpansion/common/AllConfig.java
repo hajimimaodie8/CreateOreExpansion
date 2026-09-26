@@ -1,14 +1,33 @@
 package com.hjmmd_8.createoreexpansion.common;
 
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 
-// P3k：modid 改从共享库取（值恒为 "createoreexpansion"，一字未变）——
-// 本类所在的 common 包整体属于 core 库，库不能反向依赖根 @Mod 入口 CreateOreExpansion。
-@EventBusSubscriber(modid = CoeCore.MOD_ID)
+/**
+ * <b>本模组的 common 配置规格 + 静态缓存</b>。
+ *
+ * <h2>P7a：为什么本类<b>没有</b> {@code @EventBusSubscriber}</h2>
+ * <p>它原先标着 {@code @EventBusSubscriber(modid = CoeCore.MOD_ID)}，
+ * 靠 FML 的自动订阅注入收 {@code ModConfigEvent}。那条路在<b>发布形态里从不发生</b>：
+ * core 的 jar 带 {@code FMLModType: GAMELIBRARY}，走 {@code JarModsDotTomlModFileReader.manifestParser}
+ * 分支，而那个分支的 {@code DefaultModFileInfo.getMods()} 硬编码返回 {@code emptyList()}
+ * ⇒ core 这个 mod 文件<b>没有 ModContainer</b> ⇒ {@code AutomaticEventSubscriber.inject} 对它不发生。
+ * （dev 里之所以"看起来没事"：{@code fml.modFolders} 把 core 的输出并进了根 mod 文件，
+ * 于是 {@code IntegrationBootstrap} 的补挂能扫到本类。生产里 jarjar 嵌套 jar 是独立 ModFile，
+ * 扫描结果里没有本类。）</p>
+ *
+ * <p>后果是<b>整个 {@code createoreexpansion-common.toml} 生产里失效</b>：玩家改的设置一条都不生效，
+ * 而 29 处 {@code AllConfig.*} 读的都是下面的静态缓存（恒为硬编码默认值），并且没有任何报错。</p>
+ *
+ * <p>修法（P7a）：订阅动作搬到 {@code :coe} 的薄订阅类
+ * {@code foundation/AllConfigSubscriber}（它的 modid 就是所在 mod 文件的 id
+ * {@code createoreexpansion}，天生配对），由它调 {@link #refresh()}。
+ * 本类因此彻底不含注解——core 是库，库不该有"谁能收到事件"的假设。</p>
+ *
+ * <p><b>别把 {@code registerConfig} 也搬走</b>：目标容器必须仍是
+ * {@code createoreexpansion}（文件名 {@code createoreexpansion-common.toml}），
+ * 挂到别的容器上等于把老玩家的设置静默弃用。</p>
+ */
 public final class AllConfig {
     // 获取Builder
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
@@ -204,8 +223,18 @@ public final class AllConfig {
     /** 波命中目标后是否再在命中点自动补料（初值 = 默认 false：只在变器穿波时取一次） */
     public static boolean waveRefillPayloadOnHit = false;
 
-    @SubscribeEvent
-    static void onLoad(final ModConfigEvent event) {
+    /**
+     * 用当前配置值刷新全部静态缓存（每个 {@code ModConfigEvent} 调一次，见类注释）。
+     *
+     * <p><b>为什么是 public static 而不是 {@code @SubscribeEvent}</b>：库没有 mod 身份、
+     * 也就没有"事件会送到这里"的保证（见类注释）。订阅方是 {@code :coe} 的
+     * {@code foundation/AllConfigSubscriber}，它住 {@code createoreexpansion} 那个 mod 文件里，
+     * 注解的 modid 与文件 id 天然一致。</p>
+     *
+     * <p>方法体与拆分前的 {@code @SubscribeEvent void onLoad(ModConfigEvent)} <b>逐字相同</b>
+     * （唯一的差别是入参不再需要）。</p>
+     */
+    public static void refresh() {
         // 在加载Config后填充缓存
         tier1MinRpm = COMMON.GRINDING.tier1MinRpm.get();
         tier1Time = COMMON.GRINDING.tier1Time.get().floatValue();

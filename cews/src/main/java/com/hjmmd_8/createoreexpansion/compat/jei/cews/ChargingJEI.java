@@ -1,10 +1,9 @@
-package com.hjmmd_8.createoreexpansion.compat.jei;
+package com.hjmmd_8.createoreexpansion.compat.jei.cews;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
-import com.hjmmd_8.createoreexpansion.compat.jei.cews.ChargingCategory;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
 
@@ -26,6 +25,10 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
  *
  * <p>第三方适配本模组的充能加工只需在数据包添加带 {@code level} 字段的配方 JSON，
  * 无需新增配方类型或分类。</p>
+ *
+ * <p><b>P7a</b>：本类整体从集成层（根工程 {@code compat/jei/ChargingJEI}）搬进 {@code :cews}，
+ * 包名随之改为 {@code compat.jei.cews}（JPMS：同一个包不能跨两个 mod 文件）。
+ * 插件 UID {@code createoreexpansion:charging_jei} <b>一字未改</b>。</p>
  */
 @JeiPlugin
 public class ChargingJEI implements IModPlugin {

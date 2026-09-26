@@ -1,6 +1,8 @@
 package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.registry.LayerBootstrap;
+import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -21,12 +23,11 @@ import net.neoforged.fml.common.Mod;
  *   <li>可选桥接：<b>Jade 的波实体提示插件</b> 与 <b>Sable 物理结构桥接</b>（判据与日志文案原样搬运）。</li>
  * </ul>
  *
- * <p><b>P3w：hub 的注册触发不在这里</b>。{@code CreateOreExpansion} 搬进
- * Gradle 子模块 {@code :coe} 之后，它原先那 5 处 hub 触发点（创造页登记动作的注入 /
- * 页注册表接线 / 流体系列 / 效果 / 配方类型）归 {@code common/hub/IntegrationBootstrap}
- * 管，由 FML 在本构造器跑完后的 {@code FMLConstructModEvent} 上触发。
- * 本层<b>不</b>引用那个类 —— 那会造成 {@code CEWS -> 根侧 SHARED} 的源码边，
- * 让 {@code tools/layer-usage.ps1} 的 LAYER-NO 从 0 变 1（见该类的类注释"二"）。</p>
+ * <p><b>P7a：hub 的注册触发已不存在</b>。{@code CreateOreExpansion} 搬进 Gradle 子模块 {@code :coe}
+ * 之后，它原先那 5 处 hub 触发点由根侧 {@code IntegrationBootstrap} 代管了一阵；P7a 把那四个聚合
+ * 入口（{@code AllRecipeTypes} / {@code AllCreativeModeTabs} / {@code AllFluids} / {@code AllModEffects}）
+ * <b>整体删除</b>，职责改成 core 的幂等入口 {@code common.registry.LayerBootstrap#ensureAttached}
+ * 加各层自持的创造页登记——core 是底层，任何模块都可以安全 import（不再是"集成层"那条禁止边）。</p>
  *
  * <p><b>为什么不把 CEWS 的 Registrate 挂到 COE 的 mod 总线上</b>：NeoForge 的
  * {@code DatagenModLoader} 只为 {@code --mod} 指定的那个 mod 执行生成器，所以三个 Registrate 的
@@ -42,12 +43,20 @@ public class CewsMod {
     public static final String MOD_ID = "cews";
 
     public CewsMod(IEventBus modEventBus, ModContainer modContainer) {
+        // ── P7a：共享接线（必须是构造器的第一条语句，见 LayerBootstrap 类注释"四"）───────────
+        // 幂等地做三件"必须恰好发生一次"的事：挂共享注册表、注册跨层共用的旋转载荷
+        // （Ctrl+扳手；原先只有 :coe 注册它 ⇒ 单装 cews.jar 时 CEWS 机器上完全没反应）、
+        // 按固定顺序唤醒三层配方类型声明类。本模块第一个构造时由本行完成，否则直接返回。
+        LayerBootstrap.ensureAttached(modEventBus);
+
+        // P7a：本层自己的创造页（登记动作从"根侧注入"改成"每层自持"）。
+        LayerCreativeTab.registerAll(CewsCreativeTabs.tabs());
+
         // P3w：原先在 CreateOreExpansion 构造器里的 `AllEntityTypes.register(modEventBus)`
         // 搬到这里 —— 它是 CEWS 层自己的注册表，而 :coe 已经看不到根工程的这个包。
-        // hub 的五个注册触发不在这里：它们住 common/hub/IntegrationBootstrap（SHARED），
-        // 由 FML 在本构造器跑完后的 FMLConstructModEvent 上触发。**本层不许 import 它**
-        // —— 那会造出 CEWS -> 根侧 SHARED 的源码边，让 layer-usage 的 LAYER-NO 从 0 变 1
-        // （见 IntegrationBootstrap 类注释"二"）。
+        // （P7a 更正一条旧注释：这里曾写"hub 的五个注册触发由 FML 在 FMLConstructModEvent 上触发"，
+        //   并强调"本层不许 import IntegrationBootstrap"。那段机制已随四个 hub 聚合入口一起删除，
+        //   现在共享接线走 core 的 LayerBootstrap —— 它是 core，任何层都可以安全 import。）
         AllEntityTypes.register(modEventBus);
 
         CewsRegistrate.REGISTRATE.registerEventListeners(modEventBus);

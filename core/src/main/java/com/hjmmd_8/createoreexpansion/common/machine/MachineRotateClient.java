@@ -1,16 +1,13 @@
-package com.hjmmd_8.createoreexpansion.client;
+package com.hjmmd_8.createoreexpansion.common.machine;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction;
-import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 /**
@@ -25,11 +22,45 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
  * <p><b>只拦本模组机器</b>：{@code block instanceof MachineInteraction} 且该机器<b>没有</b>特殊切换模式
  * （有模式的机器扳手只切模式，不旋转）。其它方块（Create 自己的机器、原版方块）一律放行，
  * 保持 Create/原版手感不变。</p>
+ *
+ * <h2>P7a：为什么本类从 {@code client/} 搬进 core，并且<b>没有</b> {@code @EventBusSubscriber}</h2>
+ * <p>它只引用 core 自己的 {@link MachineInteraction} / {@link MachineRotatePayload}，本来是"零层引用"
+ * 的共享件；但 {@code @EventBusSubscriber} 的注入判据是"类的 modid == 它所在 mod 文件的 id"，
+ * 而 core 在<b>发布形态里没有 ModContainer</b>（{@code FMLModType: GAMELIBRARY} ⇒
+ * {@code DefaultModFileInfo.getMods()} 恒空），注解在库里永远不会被处理。</p>
+ *
+ * <p>所以改成"逻辑住 core + 由客户端专属的薄入口显式调 {@link #install()}"：
+ * 内容模块里任何<b>客户端</b>{@code @EventBusSubscriber}（{@code Dist.CLIENT}）在其
+ * {@code FMLClientSetupEvent} 里调一次即可，幂等。</p>
+ *
+ * <p><b>为什么不放在各层 {@code @Mod} 构造器里调</b>：本类的方法体直接引用
+ * {@code net.minecraft.client.Minecraft} / {@code InputConstants}，专用服务器上不该被加载。
+ * 放在 {@code @Mod} 构造器（两个 Dist 都跑）里就得先判 Dist，而"类已被加载"这件事本身在
+ * 客户端类被剥离的环境里有风险；挂在 {@code Dist.CLIENT} 的订阅类里则天然只在客户端执行。</p>
+ *
+ * <p><b>注册到哪条总线</b>：{@code PlayerInteractEvent.RightClickBlock} 是 game 总线事件，
+ * 所以 {@link #install()} 挂 {@code NeoForge.EVENT_BUS}
+ * （== {@code FMLLoader.getBindings().getGameBus()}，与 {@code AutomaticEventSubscriber}
+ * 给无 modid 订阅类用的那条是同一个实例）。</p>
  */
-@EventBusSubscriber(modid = CoeCore.MOD_ID, value = Dist.CLIENT)
 public final class MachineRotateClient {
 
 	private MachineRotateClient() {}
+
+	/** 幂等标志：多个模块的客户端入口都会调 {@link #install()}，只允许真正挂一次。 */
+	private static boolean installed;
+
+	/**
+	 * 把本类挂到 game 总线（幂等）。<b>只能由客户端专属代码调用</b>（见类注释）。
+	 */
+	public static void install() {
+		if (installed) {
+			return;
+		}
+		installed = true;
+		NeoForge.EVENT_BUS.register(MachineRotateClient.class);
+		CoeCore.LOGGER.debug("[P7a] Ctrl+扳手旋转的客户端拦截已挂到 game 总线");
+	}
 
 	/** Ctrl 是否按下（左右任一）。输入事件里用 {@code InputConstants} 查物理按键状态。 */
 	private static boolean ctrlDown() {
