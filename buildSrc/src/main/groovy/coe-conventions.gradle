@@ -154,6 +154,18 @@ if (!isLibrary) {
         into 'build/generated/sources/modMetadata'
     }
     sourceSets.main.resources.srcDir generateModMetadata
+
+    // ── P4a：本模块的 datagen 产物也是本模块的资源 ────────────────────────────────
+    // 三层的 blockstates / models 由集成层的 datagen 入口改写落盘到
+    // <module>/src/generated/resources（见 core/.../LayerRegistrate#attachDataGenerator 与
+    // LayerDataProvider#run 的说明；LANG 与 data/** 仍留在根工程）。既然文件住在模块目录里，
+    // 就必须把该目录登记成本模块 main 源集的资源目录，否则：
+    //   · 发布时它不会进本模块的 jar（根 jar 的 META-INF/jarjar/ 里那份就缺资源）；
+    //   · dev 里它不在本模块的 mod 文件根上（-Dfml.modFolders 用的是 sourceSet output）。
+    // `.cache` 是 datagen 的哈希缓存，不进任何产物（与根 build.gradle 同一条排除规则）。
+    sourceSets.main.resources.srcDir 'src/generated/resources'
+    sourceSets.main.resources.exclude '.cache/**'
+    sourceSets.main.resources.exclude '**/.cache/**'
 }
 
 // ── 4) ModDevGradle 配置 ────────────────────────────────────────────────────

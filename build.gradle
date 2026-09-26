@@ -118,7 +118,34 @@ neoForge {
             // gameDirectory = project.file('run-data')
 
             // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
-            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath(), '--existing-mod', 'create'
+            //
+            // ── P4a：三个内容模块的手写资源也是 datagen 的「existing」输入 ──────────────────────
+            // 背景（NeoForge 源码里的注释就写着这一条）：GatherDataEvent#DataGeneratorConfig 建
+            // ExistingFileHelper 用的资源管理器时，会把**正在生成的那个 mod**（这里是
+            // createoreexpansion）的资源包**排除掉**（"ignore actively generated models, their
+            // resource packs should be included using --existing <packPath>"）。
+            // P4a 把 models/block/**、textures/** 搬进 <module>/src/main/resources 之后，这些文件在
+            // dev 里就属于 :coe / :cews / :transmutation 这三个 mod 文件（其中 :coe 的 mod id 正是
+            // createoreexpansion）——不显式加 --existing，datagen 的 ExistingFileHelper 就找不到
+            // 手写模型，BlockModelProvider 会抛 "Model ... does not exist"。
+            // 已有的那行 '--existing src/main/resources/' 继续保留（根工程仍有 data/** 等手写资源）。
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(),
+                    '--existing', file('src/main/resources/').getAbsolutePath(),
+                    '--existing', file('coe/src/main/resources/').getAbsolutePath(),
+                    '--existing', file('cews/src/main/resources/').getAbsolutePath(),
+                    '--existing', file('transmutation/src/main/resources/').getAbsolutePath(),
+                    '--existing-mod', 'create'
+
+            // ── P4a：每层的 datagen 输出根（blockstates / models 改写到各自的模块目录）────────────
+            // datagen 只有一个 --output 根，三层 Registrate 的注册命名空间又必须都是
+            // createoreexpansion（NeoForge 只为 --mod 指定的那个 mod 跑生成器），所以"按模块分家"
+            // 只能由集成层的 datagen 入口自己改写落盘路径：
+            //   core/.../common/registry/LayerDataProvider#run(CachedOutput) 用一个把
+            //   assets/<ns>/blockstates/** 与 assets/<ns>/models/** 从根输出换到本层输出的
+            //   CachedOutput 包一层；lang/** 与 data/** 仍留在根工程。
+            // 路径是**构建期**知识，所以由这一行交给运行时；取不到时 Java 侧不改写（退化成旧行为）。
+            systemProperty 'coe.datagen.layerAssetRoots',
+                    "coe=${file('coe/src/generated/resources').absolutePath};cews=${file('cews/src/generated/resources').absolutePath};transmutation=${file('transmutation/src/generated/resources').absolutePath}"
         }
 
         // applies to all the run configs above

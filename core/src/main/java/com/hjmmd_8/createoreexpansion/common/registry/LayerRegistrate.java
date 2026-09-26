@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.registry;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -145,16 +146,19 @@ public class LayerRegistrate extends CreateRegistrate {
      * 把本层的 datagen 提供器挂到<b>真正会执行</b>的那个生成器上（{@code createoreexpansion} 的），
      * 并记住它供 {@link #getDataProvider} 使用。
      *
-     * @param registrate 本层 Registrate（必须是 {@link LayerRegistrate} 实例）
-     * @param generator  目标生成器（createoreexpansion 的）
-     * @param namespace  注册命名空间（恒为 {@code createoreexpansion}，只用于提供器标签）
-     * @param layerId    层标签；{@code null} = 不加前缀（COE 保持与拆分前同名）
-     * @param event      datagen 事件
+     * @param registrate     本层 Registrate（必须是 {@link LayerRegistrate} 实例）
+     * @param generator      目标生成器（createoreexpansion 的）
+     * @param namespace      注册命名空间（恒为 {@code createoreexpansion}，只用于提供器标签）
+     * @param layerId        层标签；{@code null} = 不加前缀（COE 保持与拆分前同名）
+     * @param event          datagen 事件
+     * @param layerAssetRoot 本层模块的 {@code src/generated/resources}（P4a：本层的
+     *                       blockstates / models 改写到这里）；{@code null} = 不改写
      */
     public static void attachDataGenerator(CreateRegistrate registrate, DataGenerator generator,
-                                           String namespace, @Nullable String layerId, GatherDataEvent event) {
+                                           String namespace, @Nullable String layerId, GatherDataEvent event,
+                                           @Nullable Path layerAssetRoot) {
         LayerRegistrate self = (LayerRegistrate) registrate;
-        self.attachedProvider = new LayerDataProvider(registrate, namespace, layerId, event);
+        self.attachedProvider = new LayerDataProvider(registrate, namespace, layerId, event, layerAssetRoot);
         generator.addProvider(true, self.attachedProvider);
     }
 
