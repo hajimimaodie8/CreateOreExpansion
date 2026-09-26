@@ -5,7 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsMod;
 import com.hjmmd_8.createoreexpansion.client.render.types.AllRenderTypes;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -38,8 +38,15 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *       自绘区域棱线框 + 方向推进风片/方块串（复用项目技能框同款透明线管线）；</li>
  *   <li><b>淡出完成</b>：alpha 收敛到 0 后才从状态表移除，渲染自然消失。</li>
  * </ul>
+ *
+ * <p><b>P3z：modid 改成 {@link CewsMod#MOD_ID}</b>（与
+ * {@link EnergyFieldCommandRegistration} 同款、同理由的镜像形态修复）。本类随 CEWS 搬进
+ * {@code :cews} 后住在 cews 那个 mod 文件里，而原先标的是 {@code CoeCore.MOD_ID}
+ * （= createoreexpansion）—— 搬完就既不被 cews 容器注入、也不在根文件的扫描数据里，
+ * 会<b>静默失效</b>（护目镜指示框整体不再绘制，无警告无报错）。改标本文件的 id 即恢复
+ * "类的 modid == 它所在 mod 文件的 id"这条不变量。本类只订阅 game 总线事件，语义不变。</p>
  */
-@EventBusSubscriber(modid = CoeCore.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = CewsMod.MOD_ID, value = Dist.CLIENT)
 public final class EnergyFieldGoggleOutlineRenderer {
 
 	/** 加速场 = 天蓝；偏转场 = 品红。 */

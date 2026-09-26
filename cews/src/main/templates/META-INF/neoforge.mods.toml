@@ -1,11 +1,27 @@
-# ${mod_name} — NeoForge 模块元数据模板（P3a 骨架）
+# ${mod_name} — NeoForge 模块元数据模板（P3a 骨架 → P3z 落地）
+#
+# 本模块 = **cews（能量波阵学 CEWS）自己的 mod 文件**（P3z 起）。
 # 由 buildSrc 的 coe-conventions 插件在 processResources 时展开 TOML 占位符：
 #   模板：<module>/src/main/templates/META-INF/neoforge.mods.toml
 #   展开：<module>/build/generated/sources/modMetadata/META-INF/neoforge.mods.toml
+# mod_id = cews（mod id 分家），但**注册命名空间仍是 createoreexpansion**
+# （common/CoeCore#REGISTRY_NAMESPACE）：注册 id / 语言键 / 配置键 / 数据包路径一个都没变。
+#
+# 根工程的模板（src/main/templates/...）**只声明 coe_integration**（根工程自己的集成层
+# mod 入口），不再声明本 id；同一个 mod id 出现在两个 mod 文件里会被 UniqueModListBuilder
+# 判 duplicate_mod 硬崩。
 modLoader = "javafml"
 loaderVersion = "${loader_version_range}"
 license = "${mod_license}"
 
+# ============================ cews（能量波阵学 CEWS） ============================
+# 本段与根模板原先那段**逐字对齐**：同样的 modId / version / displayName / authors /
+# description 字段顺序 —— 本模块 gradle.properties 里
+#   mod_id=cews / mod_name=Create: Energy Wave Studies / mod_version=1.0.0 /
+#   mod_authors=hjmmd_8, Leaf / description=An expansion for create mod,add more ore block and more.
+# 展开后的值与根模板里那几行字面量逐字节相同；
+# 依赖集合与顺序也相同（neoforge / minecraft / create required、jei / curios optional、
+# createaddition required、createoreexpansion optional + AFTER）。
 [[mods]]
 modId = "${mod_id}"
 version = "${mod_version}"
@@ -13,11 +29,12 @@ displayName = "${mod_name}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
 
-# ── P3a 骨架阶段刻意不声明 [[mixins]] ────────────────────────────────────────
-# 本模块还没有自己的 mixin 配置；声明一个不存在的 config 会让加载期直接报错。
-# 搬入代码时（core 的 mixin 插件 / coe 的 createoreexpansion.mixins.json / …）在这里补：
-#   [[mixins]]
-#   config = "${mod_id}.mixins.json"
+# ── [[mixins]] 为什么**不**在这里 ──────────────────────────────────────────────────────
+# 本工程只有一个 mixin 配置文件 createoreexpansion.mixins.json，它是**根工程**的资源
+# （src/main/resources/），由根模板的 [[mixins]] 声明（P3z 起由根文件唯一的 mod
+# coe_integration 声明）。CEWS 的 133 个文件里没有任何 mixin 类，所以本模块既不需要、
+# 也不该再声明一次：TOML 的 [[mixins]] 是顶层表数组，声明两次等于把同一个 config
+# 注册两遍；声明一个不存在的 config 更会让加载期直接报错。
 
 [[dependencies."${mod_id}"]]
 modId = "neoforge"
@@ -41,11 +58,38 @@ versionRange = "[6.0.10,6.1.0)"
 ordering = "NONE"
 side = "BOTH"
 
-# ── 模块间依赖：P3a 只留注释，不产生任何实际依赖（模块之间保持零代码依赖）──────
-# cews → coe 是 optional（只装能量波阵学时用 ModList.isLoaded 判定），P3e 打开。
-# [[dependencies."${mod_id}"]]
-# modId = "coe_core"
-# type = "required"
-# versionRange = "[1.0.0,)"
-# ordering = "NONE"
-# side = "BOTH"
+[[dependencies."${mod_id}"]]
+modId = "jei"
+type = "optional"
+versionRange = "[19.27.0,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies."${mod_id}"]]
+modId = "curios"
+type = "optional"
+versionRange = "[9.5.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+# CC&A 对 CEWS 是 **required**（与拆分前根模板里那条逐字相同）
+[[dependencies."${mod_id}"]]
+modId = "createaddition"
+type = "required"
+versionRange = "[1.5.11,)"
+ordering = "NONE"
+side = "BOTH"
+
+# ── 模块间依赖：cews → createoreexpansion 是 **optional** ────────────────────────────
+# CEWS 单向依赖 COE（材料：星辉石/蓝宝石/翡翠部件），但**不是硬依赖** —— 未装 COE 时
+# 相关联动降级，本模块自身仍可加载（AGENTS.md「CEWS 单向依赖 COE」口径）。
+# createoreexpansion 由**另一个**嵌套 mod 文件（:coe 的 jar）声明 —— FML 的依赖图按
+# mod id 建，不按文件，所以跨文件声明照样生效。
+# 反过来 CEWS 不声明 transmutation：本层必须能在没有 TRANS 的情况下安装
+# （tools/check-layering.ps1 的 CEWS->TRANS 禁止方向）。
+[[dependencies."${mod_id}"]]
+modId = "createoreexpansion"
+type = "optional"
+versionRange = "[1.0.0,)"
+ordering = "AFTER"
+side = "BOTH"

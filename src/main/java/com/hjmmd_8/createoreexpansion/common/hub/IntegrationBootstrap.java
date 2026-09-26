@@ -45,8 +45,9 @@ import net.neoforged.neoforgespi.language.ModFileScanData;
  * 判据正是"该层文件的整个项目闭包必须落在 CORE + 本层 + 允许的下层"，根侧 SHARED
  * 一律算 <b>blocker</b>（P3q/P3s：那是"这一层还不能独立成模块"的工作清单）。
  * 实测：直接调用会让 CEWS 与 TRANS 各多出一个 LAYER-NO 文件（基线是 0）。
- * 所以改成<b>事件触发</b>：本类自己挂 {@code @EventBusSubscriber}，FML 在
- * {@code CewsMod} 构造完成、自动订阅者注入之后立刻派发 {@code FMLConstructModEvent}
+ * 所以改成<b>事件触发</b>：本类自己挂 {@code @EventBusSubscriber}（P3z 起挂根工程自己的 mod
+ * {@code coe_integration}），FML 在<b>那个 mod</b> 构造完成、自动订阅者注入之后立刻派发
+ * {@code FMLConstructModEvent}
  * （{@code FMLModContainer#constructMod} 与 {@code ModLoader#constructMods} 的次序），
  * 而 {@code RegisterEvent} 是<b>全部 mod 构造完之后</b>才由 NeoForge 派发的 ——
  * 于是"挂 DeferredRegister"这件事照样早于 {@code RegisterEvent}，
@@ -70,8 +71,7 @@ import net.neoforged.neoforgespi.language.ModFileScanData;
  * （loader 4.0.42 的 {@code AutomaticEventSubscriber} / {@code FMLJavaModLanguageProvider}；
  * 实测 {@code run/logs/debug.log}：createoreexpansion / transmutation / cews 各被 inject 一次，
  * 用的是同一份 scanResults）。</p>
- * <p>P3w 之后根工程的模板只声明 {@code cews} / {@code transmutation}，而
- * {@code createoreexpansion} 的 {@code [[mods]]} 搬到了 {@code :coe} 的文件里 ——
+ * <p>P3w 之后根工程的模板不再声明 {@code createoreexpansion}（它随 {@code :coe} 走），
  * 于是<b>所有仍住根工程、却写着 {@code modid = createoreexpansion} 的订阅类都不会再被注入</b>。
  * 这些类一个都不能丢：数据生成入口、配置重载、Ctrl+扳手旋转、能量场命令、
  * 嬗变玩家 tick、凝能佩弓事件……所以在这里<b>显式</b>补挂到 createoreexpansion 容器的总线上，
@@ -79,17 +79,22 @@ import net.neoforged.neoforgespi.language.ModFileScanData;
  * 其余挂 game 总线；{@code Dist} 过滤在<b>不加载目标类</b>的前提下从扫描数据里判，
  * 免得专用服务器上加载客户端类）。</p>
  * <p><b>维护提醒</b>：以后凡是<b>住根工程</b>却写 {@code @EventBusSubscriber(modid = CoeCore.MOD_ID)}
- * 的新类都会被自动补挂（本类按扫描数据遍历，不需要改名单）。</p>
+ * 的新类都会被自动补挂（本类按扫描数据遍历，不需要改名单）。
+ * <b>反面同样要查（P3y/P3z 实证）</b>：住在<b>某个层模块</b>里、却标着另一个 modid 的类
+ * （镜像形态）既不被本文件所在的容器注入、也不在本类的扫描数据里，会静默失效 ——
+ * 判据是"类的 modid == 它所在 mod 文件的 id"，搬完任何一层之后都要重跑这项审计。</p>
+ * <p>P3z 起根工程自己是一个 mod（{@link IntegrationMod}），所以本类仍有一个容器可挂 ——
+ * 若根文件的 {@code [[mods]]} 为空，本类连注入都不会发生（见 {@link IntegrationMod} 类注释"一"）。</p>
  */
 @EventBusSubscriber(modid = IntegrationBootstrap.ROOT_MOD_ID)
 public final class IntegrationBootstrap {
 
     /**
-     * 根工程那个 mod 文件的 mod id（它声明 cews / transmutation，见
-     * {@code src/main/templates/META-INF/neoforge.mods.toml}）。本类作为共享层文件挂它的
+     * 根工程那个 mod 文件的 mod id（P3z 起 = {@link IntegrationMod#MOD_ID}，即 {@code coe_integration}；
+     * 见 {@code src/main/templates/META-INF/neoforge.mods.toml}）。本类作为共享层文件挂它的
      * mod 总线：那个容器既是"触发时机"的来源，也是"扫描结果"的来源。
      */
-    public static final String ROOT_MOD_ID = "cews";
+    public static final String ROOT_MOD_ID = IntegrationMod.MOD_ID;
 
     /** 幂等标志：mod 构造是并行派发的，只做一次。 */
     private static boolean installed;
@@ -99,7 +104,7 @@ public final class IntegrationBootstrap {
 
     /**
      * 触发点：FML 在<b>每个</b> mod 构造完成、自动订阅者注入之后派发
-     * {@code FMLConstructModEvent}；本类只挂在 {@code cews} 的 mod 总线上（见类注释"二"）。
+     * {@code FMLConstructModEvent}；本类只挂在 {@link #ROOT_MOD_ID} 的 mod 总线上（见类注释"二"）。
      * 这一步一定早于任何 {@code RegisterEvent}。
      */
     @SubscribeEvent
@@ -114,8 +119,9 @@ public final class IntegrationBootstrap {
     }
 
     /**
-     * @param rootMod 触发者所在的 mod 容器（根工程的 mod 文件，声明 cews / transmutation）。
-     *                既提供挂 DeferredRegister 的总线，也提供那个文件的扫描结果。
+     * @param rootMod 触发者所在的 mod 容器（根工程的 mod 文件，P3z 起它的 mod id 是
+     *                {@link IntegrationMod#MOD_ID}）。既提供挂 DeferredRegister 的总线，
+     *                也提供那个文件的扫描结果。
      */
     private static void install(ModContainer rootMod) {
         if (installed) {

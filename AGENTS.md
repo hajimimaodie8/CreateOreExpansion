@@ -1,13 +1,13 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-25（瘦身重排 + CEWS 现状更正；原 68,930 B 的长叙述已迁入 `markdown_output/`，现约 34.3 KB）。
+> 最后更新：2026-09-26（P3z：CEWS 也拆出 `:cews`，**三层内容模块全部拆完**；由此确立「根工程 = 集成层 mod `coe_integration`」。原 68,930 B 的长叙述已迁入 `markdown_output/`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
 
 - **技能换核**（15 条已定事实、技能系统现状速记、W5/W6 收尾清单）→ `markdown_output/技能内核换核执行方案.md`，找标题 **`## 从 AGENTS.md 迁入（2026-09-25）`** 的两节（`### A.` 已定事实 1–15、`### B.` 技能系统现状速记）；旧分析 `markdown_output/技能内核对比与迁移分析.md` 只作参考。
-- **模块拆分 P1–P3w**（时间线、决策表、逐条原文、P3h–P3v 取证索引）→ `markdown_output/模块拆分进度与决策链.md`，找标题 **`## 0. 一页时间线（TL;DR）`** 与 **`## 1. 从 AGENTS.md 迁入（2026-09-25）：原文逐条`**。
+- **模块拆分 P1–P3z**（时间线、决策表、逐条原文、P3h–P3z 取证索引）→ `markdown_output/模块拆分进度与决策链.md`，找标题 **`## 0. 一页时间线（TL;DR）`** 与 **`## 1. 从 AGENTS.md 迁入（2026-09-25）：原文逐条`**；**P3z 那一轮「根工程拆完 CEWS 之后是什么」的完整方案（3 个选项 + 各自代价 + 选择理由 + 遗留）在 `build/patch/p3z-EVIDENCE.txt` 第 0 节**（`build/` 被忽略，重跑该轮即可重生成）。
 - **变器应力闸门 / 转速分档 / 护目镜读数口径**（2026-09-24/25 定稿全部细则）→ `markdown_output/能量波三态与变器双模式（需求与进度）.md`，找标题 **`## 从 AGENTS.md 迁入（2026-09-25）：变器应力闸门 · 转速分档 · 护目镜读数口径`**。
 - **四模块自由组合方案 / 各层依赖矩阵 / 发布策略** → `markdown_output/四模块自由组合（方案评判·风险·工作量）.md`，找 **`## 13. 各层依赖矩阵`**、**`## 15. P3 模块布局定稿`**。
 - **CEWS 拆分方案**（耦合点 12 条、模块边界判据、待定项、风险与验收）→ `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`（读全文）。
@@ -19,7 +19,7 @@
 - 模组：`createoreexpansion`（Create 6.0.10 附属，NeoForge / Minecraft 1.21.1）
 - 根目录：`E:\mc\mcmod\createoreexpansion`，包根 `com.hjmmd_8.createoreexpansion`
 - 当前分支：`leaf-dev`
-- **工程结构（2026-09-25，P3w 后）**：`settings.gradle` 里 include 了 `core`（JarJar 嵌套的共享库，57 个 java 文件，**不是 mod**）、`coe`（矿物拓展，177 个 java 文件，**携带 mod id `createoreexpansion`**）、`cews` / `transmutation` / `all-neoforge`（仍是 P3a 空骨架，0 个 java 文件）。**CEWS / TRANS 的源码此刻还在根工程 `src/main/java`**，根同时持有集成层。
+- **工程结构（2026-09-26，P3z 后：三层内容模块全部拆出）**：`settings.gradle` include 了 `core`（JarJar 嵌套共享库，57 文件，**不是 mod**）、`coe`（矿物拓展，177 文件，mod id `createoreexpansion`）、`cews`（能量波阵学，133 文件，mod id `cews`）、`transmutation`（机械嬗化学，16 文件，mod id `transmutation`）、`all-neoforge`（P3a 占位，0 文件）。**根工程 `src/main/java` 只剩集成层 29 个文件**（`common/hub/**` 聚合入口 + `data/**` datagen 驱动与两份 LangProvider + `compat/**` Curios/Jade/唯一 `@JeiPlugin` + `mixin/**` + 少量 `client/**`/`foundation/**`），且**根自己也是一个 mod：mod id `coe_integration`**（入口 `common/hub/IntegrationMod`）；发布 jar 的 `[[mods]]` 就是它，内容需求由三个嵌套 mod 各自声明。
 - 构建与验证流程（本工程一贯用法）：
   1. `.\gradlew.bat compileJava`
   2. 改动语言/资源时：`.\gradlew.bat runData`（同时兼作 Bootstrap / mixin 冒烟测试）
@@ -88,7 +88,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
   - **`additionalRuntimeClasspath` 禁止**：它把 core 钉成 **BOOT 层**自动模块（父层只有 JDK boot）⇒ core 看不见 MC/NeoForge/Create，`runData` 崩 `NoClassDefFoundError: ModConfigSpec$Builder`。正确配方 = `evaluationDependsOn(':core')` + 把 core 的 sourceSet 绑进**根 mod 的 `mods{}` 条目**（`neoForge { mods { "createoreexpansion" { sourceSet(sourceSets.main); sourceSet(project(':core').sourceSets.main) } } }`）；`additionalRuntimeClasspath files(...)` 目录形态同样是错的。
   - **根 → `:coe` 必须 `compileOnly(project(':coe'))` + `jarJar(compileOnly(project(':coe')))`**；**用 `implementation` 会让 dev 硬崩**（那个 jar 进 runtimeClasspath 后被 FML 当成第二个 `createoreexpansion` mod 文件 → `duplicate_mod`）。
   - **根必须保留 `jarJar(implementation(project(':core')))`**：MDG 的 jarJar 是 `setTransitive(false)`，嵌在嵌套 jar 里的 jar 永远不会被扫到，core 必须在根 jar 的第 1 层。
-- **`@EventBusSubscriber` 的作用域是「每个 mod 文件」，不是全局**：`AutomaticEventSubscriber.inject` 只喂本文件的扫描结果并按 `mod.getModId()==modid` 过滤 —— **「住在 A 文件里、却标 B 的 modid」的类会静默不注入，且没有任何警告**。拆任何层之前先做这项分析；现修法在 `common/hub/IntegrationBootstrap`（走 scan data、不加载类、自维护无名单）。
+- **`@EventBusSubscriber` 的作用域是「每个 mod 文件」，不是全局**：`AutomaticEventSubscriber.inject` 只喂本文件的扫描结果并按 `mod.getModId()==modid` 过滤 —— **「住在 A 文件里、却标 B 的 modid」的类会静默不注入，且没有任何警告**。现修法在 `common/hub/IntegrationBootstrap`（走 scan data、不加载类、自维护无名单）。**这项审计必须查两种形态、而且必须在文件搬完之后对搬完的树再跑一遍**：① **正向**（P3w 发现）＝根文件里的类标着某个层的 id；② **镜像**（P3y `TransmutationEventHandler`、P3z `content/energyfield/` 两个类实证）＝**子模块文件里的类标着别的 id**。判据永远是「**类的 modid == 它所在 mod 文件的 id**」——文件一搬，正向就可能变成镜像，两种形态都只静默失效（无警告、无报错、编译全绿）。
 - **jar 字节数只在同一个工作树里可比**：`.cache/` 曾被整片塞进发布 jar（`exclude("src/generated/**/.cache")` 从来没匹配过），在临时 worktree 里重建 HEAD 会少 21 KB，**差点被误判成回归**。现已 `exclude(".cache/**")` + `exclude("**/.cache/**")`。
 - **`content/` 包不得 import 任何可选模组类**（Curios 只允许出现在 `compat/curios`；条件加载走 `Class.forName` + `ModList.isLoaded`）。可选依赖在 `neoforge.mods.toml` 里**必须 optional**（`curios` 曾是 required，导致没装的玩家在加载阶段直接崩）。**CA（`createaddition`）是唯一例外：第 2、3 层对它是 required，第 4 层 optional。**
 - **改动分层 / 注册 / 搬运代码后必须跑分层断言并到 0 违规**（白名单保持为空）。工具见下一节。
@@ -108,8 +108,8 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 ## 🔧 工具（一行一个；细节都写在脚本头注释里）
 
-- `tools/check-layering.ps1` —— 分层方向断言（扫 `src/main/java` + `core/src/main/java`，层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运代码后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树做对比）。
-- `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则必须逐字一致**（改一处要两处同改）。
+- `tools/check-layering.ps1` —— 分层方向断言（**扫五个根**：`src/main/java` + `core/` + `coe/` + `cews/` + `transmutation/` 各自的 `src/main/java`；层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CEWS→TRANS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运代码后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树做对比）。**每拆一层就要把该层加进两个脚本的 roots 表**——不加的后果是那一层计数变 0 而脚本照样 exit 0（P3d-β core / P3w coe / P3y transmutation / P3z cews 四次同一形状的静默逃逸）。
+- `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则（`Get-FileLayer` 函数体）必须逐字一致**（改一处要两处同改）。
 - `build/patch/*` 取证脚本（被 git 忽略，按需重生成）：`ChargerBandCheck.java` / `BandCheck.java`（转速分档逐整数比对）、`dump_light_squares.ps1` / `rasterize_top_face.ps1`（贴图取证）、`p3?-EVIDENCE.txt`（拆模块各阶段取证）。
 
 ## 🌊 波系统与变器：现行口径（要点；细则见「长文档索引」）
@@ -128,10 +128,11 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
   4. **显示层零档数/阈值/半径常量**：攻击态一档一行、当前档亮白；充能器一档一行、当前档用**该档光芒色**；行序以机器名开头；**别再合并成一条长对照行**。
   5. **"转速不足"不自己写文案**：覆写 BE 的 `isSpeedRequirementFulfilled()` 让 Create 自己打两行（零新增翻译键）；场节拍固定 **2 tick**（`FIELD_INTERVAL_FLOOR_TICKS`）。
 
-## 🧱 模块拆分：结论与踩坑（P1–P3w；全过程见 `markdown_output/模块拆分进度与决策链.md`）
+## 🧱 模块拆分：结论与踩坑（P1–P3z；全过程见 `markdown_output/模块拆分进度与决策链.md`）
 
-- **现状**：`:coe` 是真子模块（177 文件，mod id 仍是 `createoreexpansion`，提交 `6b971dc1` + `88627fff` 的根接线）；`core` 是 JarJar 嵌套的共享库（57 文件，不是 mod）；`cews`/`transmutation`/`all-neoforge` 仍是 0 文件的 P3a 骨架。
-- **⛔ P3g 那句「拆任何一层都不可能」已被 P3w 推翻**（别再引用）：拐点是承认「**`@Mod` 入口是集成文件**」。`coe/build.gradle` 只有 `compileOnly(project(':core'))`、**没有** `project(':')` ⇒ **`:coe:compileJava` 通过本身就是「零根引用」的机器证明**。
+- **现状（P3z 后：三层内容模块全部拆出，根只剩集成层）**：`:coe`（177 文件，mod id `createoreexpansion`）、`:cews`（133 文件，mod id `cews`）、`:transmutation`（16 文件，mod id `transmutation`）都是真子模块，各自带自己的 `src/main/templates/META-INF/neoforge.mods.toml`，由根 `build.gradle` 的 `jarJar(compileOnly(project(':…')))` 嵌进 `META-INF/jarjar/` 第 1 层；`core` 是 JarJar 嵌套的共享库（57 文件，不是 mod）；`all-neoforge` 仍是 0 文件占位。dev 的 `neoForge.mods{}` 四个条目 = **四个本模组 mod 文件**（`coe_integration` = 根输出 + core 输出、`coe`、`cews`、`transmutation`）。
+- **集成层去哪（P3z 定论）：根工程自己是一个 mod，mod id `coe_integration`**，入口 `common/hub/IntegrationMod`（构造器为空，接线仍由 `IntegrationBootstrap` 在 `FMLConstructModEvent` 上做）。**为什么必须如此**：CEWS 搬走后根里一个本模组 @Mod 都不剩，而 FML 对 `[[mods]]`/`@Mod` 是双向硬约束（有条目没类＝静默无入口；有类没条目＝`dangling_entrypoint` 硬错）；让根模板 `[[mods]]` 为空同样不行——没有 `ModContainer` 就没有 `AutomaticEventSubscriber` 注入，根侧 datagen 入口 / `IntegrationBootstrap` / Ctrl+扳手 / 配置重载会集体静默失效。**被否掉的两个选项及代价**：② 把集成层搬进 `:all-neoforge`——根就不再是组装 jar（`jarJar` 链整体搬家），而 all-neoforge 会变成用户明确不发布的「all」产物；③ hub/lang/JEI 就地拆到各层——hub 的四个聚合入口引用 2–3 层 ⇒ 造禁止方向，datagen 的「标签与语言只在主提供器跑 COE→CEWS→TRANS 并集」一拆 `src/generated` 就变，唯一 `@JeiPlugin` 的 UID 与侧栏顺序是玩家可观测的。**根模板现状**：`[[mods]]` = 1（`coe_integration`）、`[[dependencies.*]]` = 0（内容需求由三个嵌套 mod 各自声明）。
+- **⛔ P3g 那句「拆任何一层都不可能」已被 P3w 推翻**（别再引用）：拐点是承认「**`@Mod` 入口是集成文件**」。`coe/build.gradle` 只有 `compileOnly(project(':core'))`、**没有** `project(':')` ⇒ **`:coe:compileJava` 通过本身就是「零根引用」的机器证明**（`:cews` / `:transmutation` 同理，三者都没有 `project(':')`）。
 - **注册器已按三层分家**：`AllBlocks` / `AllItems` / `AllBlockEntityTypes` **已删除**（`ccaf8a21`），声明住在 `common/registry/{coe,cews,transmutation}/`；**注册触发顺序必须在 `CreateOreExpansion` / `IntegrationBootstrap` 里显式写死**（没有兜底），每个层类的空 `register()` 只是类初始化触发器。**别和 Create 自己的 `com.simibubi.create.AllBlocks` / `AllItems` 搞混**（批量改名要做「裸名解析」判定）。
 - **「全模组共用的东西」必须住 SHARED/`core`**：被两层以上用的契约/登记表若住在某一层，就会让另一层反向 import（禁止方向）。
 - **搬迁名单按「整包」生成**，不能按文件（`common/CoeCore.java` 与引用三层的 `AllRecipeTypes` 同包，整包判定才有意义）；**差一个文件就整包不合格**。工具见「工具」一节。
@@ -164,11 +165,11 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **不要 Skiller 的「按 R 启用技能」总开关**：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手 `refresh(player)`，并 `setToggleKeysEnabled(false)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`。
 - **内置的是我方 fork 版**（`_ref/Skiller` 的 `coe-embed` 分支，补丁 `build/patch/skiller-coe-embed.patch`，**未 push**）——升级 Skiller 必须重放补丁。
 - **扣能时机易写歪**：`consumeResource` 必须先过 `CoeSkillSupport.willDoWork(...)`；**冷却类技能要在 `consumeResource` 与 `release` 两处同判**。
-- **拆任何层之前先做 `@EventBusSubscriber` 的「文件/modid 错配」分析**（见红线）。
+- **拆任何一层的前后都要做 `@EventBusSubscriber` 的「文件/modid 错配」审计，两种形态都查**（见红线）。
 
 **CEWS 模块（能量波阵学，进行中）**：能量波系统要从矿物拓展里独立成一个板块 **CEWS = Create: Energy Wave Studies（机械动力：能量波阵学）**，最终形态是**独立的内置 jar**（JarJar 嵌套模块）。
 - **阶段 0 已完成**：创造标签页 `createoreexpansion:energy_wave_study`（顺序 **矿物拓展 → 能量波阵学 → Create 调色板**）；**"什么属于 CEWS"的唯一清单** = `common/registry/cews/EnergyWaveStudyTab#CONTENTS`（**17 项**：3 台应力充能器 + 能量场控制器 + 星辉波变器 + 3 台能量调级器 + 3 台波速调节器 + 3 台波差器 + 2 种机壳 + 波情查询仪；**强化避雷针按用户裁定留在矿物页**）；内容同步走 `BuildCreativeModeTabContentsEvent`（往新页放 + 从基础页剔除，注册代码未动）——**加/减机器只改这份清单**。
-- **阶段 1 现状（2026-09-25 更正，原文写「阶段 1/2 未做」已过期）**：`cews/` 子模块**骨架已经在 `settings.gradle` 里 include**（P3a，`fbf33cdf`），但**此刻是 0 个 java 文件的空壳**，CEWS 源码仍全部住在根工程 `src/main/java`（`content/{charger,wave,machine,energyfield}` + `registry/cews`）；`jarJar` 嵌套与拆包**都还没做**，`cews/build.gradle` 里把两条依赖行（`implementation project(':core')` / `compileOnly project(':coe')`）注释着等接上。**范式已经跑通**：`:coe` 就是先例（P3w），照它的形态搬即可 —— 顺序、坑与红线见 `markdown_output/模块拆分进度与决策链.md`。
+- **阶段 1/2 已落地（P3z，2026-09-26）**：`cews/src/main/java` 有 **133 个文件**（`content/{charger,wave,machine,energyfield}/**` + `common/registry/cews/**` + `compat/jei/cews/**` + `client/renderer/cews/**`），`CewsMod` 是它的 `@Mod` 入口，`jarJar(compileOnly(project(':cews')))` 已把 `…cews-1.0.0.jar` 嵌进根 jar 的 `META-INF/jarjar/` 第 1 层；`cews/build.gradle` = `compileOnly(project(':core'))` + `compileOnly(project(':coe'))` + **自己重抄的外部编译面**（create/ponder/registrate + jei + flywheel-api + createaddition + jade + 本地 jar optical/vintage），**没有 `project(':')`** ⇒ `:cews:compileJava` 通过本身就是「零根引用」的机器证明。取证 `build/patch/p3z-EVIDENCE.txt`（含七个关卡、类名并集前后对照、`@EventBusSubscriber` 审计与跨文件真调用探针）。
 - **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可以是 `cews`），否则所有方块/物品/配方/标签 id 全变、老存档报废；配置键、语言键、数据包路径同理不许改。
 - **英文名建议用复数**：`Create: Energy Wave Studies`（学科名英文习惯用 Studies；缩写 CEWS 不变）。id 一律用 `energy_wave_study`，与英文名解耦。
 - 全部耦合点（12 条）、模块边界判定、3 个待定项、风险清单与验收标准见 `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`——**动手前先读那份**。

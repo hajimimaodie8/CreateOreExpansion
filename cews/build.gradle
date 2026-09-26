@@ -1,11 +1,72 @@
-// ── cews：能量波阵学（P3a 骨架）────────────────────────────────────────────────
-// P3e 才把 107 个文件（content/{charger,wave,machine,energyfield} + registry/cews）
-// 搬进 cews/src/main/java/**（包名一字不改）。
+// ── cews：能量波阵学（P3a 骨架 → P3z 落地）─────────────────────────────────────
+// mod id = cews（**注册命名空间仍是 createoreexpansion**：common/CoeCore#REGISTRY_NAMESPACE，
+// 注册 id / 语言键 / 配置键 / 数据包路径一个都不许变）。
+// P3z 起 133 个 CEWS 文件 + @Mod 入口 CewsMod 都住在本模块，本模块自己的
+// src/main/templates/META-INF/neoforge.mods.toml 声明 cews；
+// 根工程的模板**不再**声明它 —— 两个 mod 文件同声明一个 id 会被
+// UniqueModListBuilder 判 duplicate_mod 硬崩（P3v §4b 实测）。
 plugins {
     id 'net.neoforged.moddev' // 版本由根 build.gradle 的 plugins 块提供
     id 'coe-conventions'
 }
 
-// P3a 刻意不声明任何跨模块依赖。P3e 起按下面的行接上（CEWS 单向依赖 COE）：
-//   implementation project(':core')
-//   compileOnly project(':coe')      // 材料来自矿物扩展：optional 依赖，运行期用 ModList.isLoaded 判定
+// ── 依赖 ───────────────────────────────────────────────────────────────────────
+// 仓库列表由 coe-conventions 注册（与根 build.gradle 逐条一致），此处不重复。
+dependencies {
+    // ① core 共享库：**compileOnly**。
+    //    · 根工程保留自己的 jarJar(implementation(project(':core')))，core 在**根 jar** 的
+    //      META-INF/jarjar/ 里处于深度 1 —— 这是唯一有效的深度（MDG 的 jarJar 配置
+    //      setTransitive(false)，FML 的 dependency locator 只扫一遍，深度 2 的 jar 永不生效，
+    //      见 p3v-EVIDENCE §4c）。
+    //    · 所以本模块**不**再嵌一份 core。
+    compileOnly(project(':core'))
+
+    // ② COE（矿物拓展，第 2 层）：**compileOnly**，**不 jarJar**。
+    //    · CEWS → COE 是允许方向（四模块方案 §13）：本层读 CoeItems / CoeBlocks 的星辉石/蓝宝石/
+    //      翡翠材料，以及 compat/createaddition/CreateAdditionCompat（它在 :coe）。
+    //    · ⛔ 不能写 implementation(project(':coe'))：COE 是**独立发布的 mod**
+    //      （自带 mods.toml 声明 createoreexpansion），implementation 会把 :coe 的 jar 放进
+    //      runtimeClasspath（dev 的 duplicate_mod 风险，P3v §4b 实测），而 jarJar 嵌套一份则会让
+    //      发布 jar 里出现第二个 createoreexpansion mod 文件（生产 duplicate_mod 硬崩），
+    //      且深度 2 永不生效。本模块只在自己的 mods.toml 里声明它 **optional**。
+    compileOnly(project(':coe'))
+
+    // ③ 外部编译面必须**自己重抄**：core 与 :coe 的 create / registrate / ponder / jei
+    //    全是 compileOnly，而 compileOnly **不传递**（P3v §4e 实测）。
+    implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
+    implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
+    implementation("com.tterrag.registrate:Registrate:${registrate_version}")
+
+    // compat/jei/cews/** 属于 CEWS（JEI 分类渲染器 + 动画）；基类住在 core 的
+    // compat/jei/base/**，其父类链上有 JEI 类型 ⇒ 编译期必须有 JEI API。
+    compileOnly("mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}")
+    runtimeOnly("mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}")
+
+    // Flywheel：与 :transmutation 同款理由 —— 父类链（core 的 ProcessingViaFanCategory /
+    // 各 renderer 的基类）签名里出现 dev.engine_room.flywheel 的类型，javac 必须能加载它
+    // 才能解析继承链（P3y 实测：少了这一行报且只报一行「无法访问 PartialModel」）。
+    compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
+    runtimeOnly("dev.engine-room.flywheel:flywheel-neoforge-${minecraft_version}:${flywheel_version}")
+
+    // CC&A：compat/jei/cews/createaddition/**（特斯拉线圈波充能/充电配方载荷）直接 import
+    // com.mrh0.createaddition.** 的类；CEWS 的 mods.toml 对它是 required（沿用拆分前口径）。
+    compileOnly("curse.maven:createaddition-439890:8083378")
+
+    // Jade（可选集成）：compat/jei/cews/WaveJadePlugin 直接 implement snownee.jade.api.*，
+    // 运行期由 CewsMod#bootstrapJade 用 Class.forName 隔离加载（未装 Jade 时绝不触碰）。
+    compileOnly("maven.modrinth:jade:15.8.3+neoforge")
+
+    // Create Optical / Vintage Improvements：**本地 jar**（libs/ 在根目录，所以用 rootProject.files）。
+    // compat/jei/cews/{optical,vintageimprovements}/** 直接写它们的 FQN
+    // （net.lpcamors.optical.* / com.negodya1.vintageimprovements.*），编译期必须在场；
+    // 运行期由 ModList.isLoaded 守卫隔离，未安装时绝不加载其类。
+    compileOnly rootProject.files("libs/create_optical-0.4.2.jar")
+    compileOnly rootProject.files("libs/vintageimprovements-1.21.1-0.0.0.3.jar")
+
+    // ④ 不需要 skiller / curios / aeronautics / sable：
+    //    · skiller 是独立 mod，必须留在**根 jar** 的 META-INF/jarjar/ 深度 1；
+    //    · Curios 桥接住根工程（compat/curios/**）；
+    //    · 可选物理结构（Sable/Aeronautics）的实现住 **core** 的 compat/sable/**，
+    //      而 CEWS 只经 core 的 common/structure/SableBridges（零可选模组类型）取用 ⇒ 无需其 jar。
+    //    （与 :transmutation 一样，这是实测结论而不是推断 —— 见本文件顶部的 P3z 探针记录。）
+}

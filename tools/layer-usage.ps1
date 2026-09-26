@@ -27,6 +27,11 @@
 # TRANS package paths (`common/registry/transmutation/**`, `compat/jei/transmutation/**`,
 # `content/transmuting/**`), so the counts stay TRANS=16. Without it the report would read
 # TRANS=0 while still exiting 0 -- the same silent escape, a third time.
+# P3z adds the FIFTH (`cews/src/main/java/...`, the Gradle sub-module that now holds the 133
+# CEWS files + the @Mod entry CewsMod), again package-relative and again without touching
+# Get-FileLayer: all 133 sit on CEWS package paths (`content/{charger,wave,machine,energyfield}/**`,
+# `common/registry/cews/**`, `compat/jei/cews/**`, `client/renderer/cews/**`), so CEWS stays 133.
+# Without it the report would read CEWS=0 while still exiting 0 -- the same silent escape.
 # Deliberately pure ASCII: PowerShell 5.1 reads a BOM-less .ps1 as
 # ANSI and can swallow quotes mid-script.
 
@@ -39,6 +44,7 @@ $ErrorActionPreference = 'Stop'
 $pkgRoot    = Join-Path $Repo 'src\main\java\com\hjmmd_8\createoreexpansion'
 $coePkgRoot = Join-Path $Repo 'coe\src\main\java\com\hjmmd_8\createoreexpansion'
 $transPkgRoot = Join-Path $Repo 'transmutation\src\main\java\com\hjmmd_8\createoreexpansion'
+$cewsPkgRoot  = Join-Path $Repo 'cews\src\main\java\com\hjmmd_8\createoreexpansion'
 $prefix     = 'com.hjmmd_8.createoreexpansion.'
 if (-not (Test-Path $pkgRoot)) { throw "package root not found: $pkgRoot" }
 
@@ -91,10 +97,12 @@ function Get-FileLayer {
 # root tree, so Get-FileLayer needs no new rule (and stays verbatim identical to the one
 # in tools\check-layering.ps1).
 # P3y: :transmutation is the FOURTH, same shape again (all 16 files land in TRANS).
+# P3z: :cews is the FIFTH, same shape again (all 133 files land in CEWS).
 $roots = @(
     @{ Path = $pkgRoot;      Prefix = '' },
     @{ Path = $coePkgRoot;   Prefix = '' },
-    @{ Path = $transPkgRoot; Prefix = '' }
+    @{ Path = $transPkgRoot; Prefix = '' },
+    @{ Path = $cewsPkgRoot;  Prefix = '' }
 )
 foreach ($root in $roots) {
     if (-not (Test-Path $root.Path)) { throw "package root not found: $($root.Path)" }

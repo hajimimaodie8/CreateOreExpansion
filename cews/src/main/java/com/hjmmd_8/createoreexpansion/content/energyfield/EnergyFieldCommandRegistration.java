@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsMod;
 import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
 import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
 
@@ -26,8 +26,18 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * （携带工程师护目镜时显示，见 {@link EnergyFieldGoggleOutlineRenderer}），
  * 数据经 {@link EnergyFieldSyncPayload} 从服务端同步。故本类只负责命令注册与
  * 登录/换维度时的补发同步。</p>
+ *
+ * <p><b>P3z：modid 改成 {@link CewsMod#MOD_ID}</b>（镜像形态的错配修复）。
+ * 本类随 CEWS 搬进 Gradle 子模块 {@code :cews}，于是它住在 <b>cews 那个 mod 文件</b>里，
+ * 而 FML 的 {@code @EventBusSubscriber} 自动注入是"按 mod 文件"作用域的：
+ * {@code FMLModContainer.constructMod()} 只喂本文件的扫描结果、并只挂
+ * {@code mod.getModId() == modid} 的类。原先这里写的是 {@code CoeCore.MOD_ID}
+ * （= createoreexpansion），搬完之后既不会被 cews 容器注入（id 不等）、
+ * 也不在根文件的扫描数据里（{@code IntegrationBootstrap} 的补挂遍历够不着）
+ * —— 会<b>静默失效</b>、无任何警告。改标自己文件的 id 后由 FML 直接注入，dev 与生产同一路径。
+ * 本类只订阅 game 总线事件（命令注册 / 玩家登录），modid 只决定"哪个容器的总线"，语义不变。</p>
  */
-@EventBusSubscriber(modid = CoeCore.MOD_ID)
+@EventBusSubscriber(modid = CewsMod.MOD_ID)
 public final class EnergyFieldCommandRegistration {
 
 	@SubscribeEvent

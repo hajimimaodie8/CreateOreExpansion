@@ -9,11 +9,12 @@
 #   CORE  (the shared library module) must NOT depend on COE / CEWS / TRANS
 # Anything may depend on SHARED; SHARED is never judged as a source.
 #
-# Four source roots are scanned:
+# Five source roots are scanned:
 #   src/main/java/com/hjmmd_8/createoreexpansion             -> COE / CEWS / TRANS / SHARED by path
 #   core/src/main/java/com/hjmmd_8/createoreexpansion        -> CORE (the whole library is shared)
 #   coe/src/main/java/com/hjmmd_8/createoreexpansion         -> COE / CEWS / TRANS / SHARED by path
 #   transmutation/src/main/java/com/hjmmd_8/createoreexpansion -> COE / CEWS / TRANS / SHARED by path
+#   cews/src/main/java/com/hjmmd_8/createoreexpansion        -> COE / CEWS / TRANS / SHARED by path
 # The second root matters: `core` is a JarJar-nested library, and without it every file
 # moved into `core` would silently escape this check.
 # P3w adds the THIRD root for the same reason: the Gradle sub-module `:coe` now holds the
@@ -22,10 +23,16 @@
 # P3y adds the FOURTH root for exactly the same reason: the Gradle sub-module
 # `:transmutation` now holds the 16 TRANS files (plus the @Mod entry TransmutationMod),
 # and a tool that still scans only the three old roots would print TRANS=0 while exiting 0.
+# P3z adds the FIFTH root for the same reason, a third time: the Gradle sub-module `:cews`
+# now holds the 133 CEWS files (plus the @Mod entry CewsMod), and a tool that still scanned
+# only the four old roots would print CEWS=0 while exiting 0 -- the split would look perfect
+# exactly because the files had become invisible.
 # The root table below is the ONLY place that knows about roots; the layer rules
-# (Get-FileLayer / Get-TargetLayer) are unchanged, and both module trees are scanned with
+# (Get-FileLayer / Get-TargetLayer) are unchanged, and every module tree is scanned with
 # the same package-relative paths as the root tree (so `content/transmuting/**` still lands
-# in TRANS and `common/registry/transmutation/**` still lands in TRANS, by the old rules).
+# in TRANS and `common/registry/transmutation/**` still lands in TRANS, by the old rules;
+# the same holds for CEWS: `content/{charger,wave,machine,energyfield}/**`,
+# `common/registry/cews/**`, `compat/jei/cews/**`, `client/renderer/cews/**`).
 #
 # Layer of a FILE is decided purely by its path (see Get-FileLayer).
 # Layer of an IMPORT / fully-qualified reference is decided by its package (see Get-TargetLayer),
@@ -58,6 +65,7 @@ $pkgRoot     = Join-Path $repoRoot 'src\main\java\com\hjmmd_8\createoreexpansion
 $corePkgRoot = Join-Path $repoRoot 'core\src\main\java\com\hjmmd_8\createoreexpansion'
 $coePkgRoot  = Join-Path $repoRoot 'coe\src\main\java\com\hjmmd_8\createoreexpansion'
 $transPkgRoot = Join-Path $repoRoot 'transmutation\src\main\java\com\hjmmd_8\createoreexpansion'
+$cewsPkgRoot  = Join-Path $repoRoot 'cews\src\main\java\com\hjmmd_8\createoreexpansion'
 $prefix      = 'com.hjmmd_8.createoreexpansion.'
 
 # ---------------------------------------------------------------------------
@@ -71,12 +79,16 @@ $prefix      = 'com.hjmmd_8.createoreexpansion.'
 # (P3v section 3: "the tool already says SHARED -- believe it").
 # `:transmutation` (P3y) uses it for the same reason; its 16 files all sit on
 # TRANS package paths, so TRANS stays 16 and no rule had to be added.
+# `:cews` (P3z) likewise: its 133 files all sit on CEWS package paths
+# (content/{charger,wave,machine,energyfield}/**, common/registry/cews/**,
+# compat/jei/cews/**, client/renderer/cews/**), so CEWS stays 133 and no rule was added.
 # ---------------------------------------------------------------------------
 $roots = @(
     @{ Path = $pkgRoot;      Prefix = '' },
     @{ Path = $corePkgRoot;  Prefix = 'core\' },
     @{ Path = $coePkgRoot;   Prefix = '' },
-    @{ Path = $transPkgRoot; Prefix = '' }
+    @{ Path = $transPkgRoot; Prefix = '' },
+    @{ Path = $cewsPkgRoot;  Prefix = '' }
 )
 
 foreach ($root in $roots) {
@@ -279,7 +291,7 @@ foreach ($e in $entries) {
     }
 }
 
-Write-Host 'layering check: src/main/java + core/src/main/java + coe/src/main/java + transmutation/src/main/java'
+Write-Host 'layering check: src/main/java + core/src/main/java + coe/src/main/java + transmutation/src/main/java + cews/src/main/java'
 Write-Host ('  files by layer : COE={0}  CEWS={1}  TRANS={2}  SHARED={3}  CORE(library)={4}' -f $stats['COE'], $stats['CEWS'], $stats['TRANS'], $stats['SHARED'], $stats['CORE'])
 Write-Host '  forbidden edge directions checked : COE->CEWS, COE->TRANS, TRANS->CEWS, CEWS->TRANS, CORE->COE/CEWS/TRANS'
 if ($NoFqn) { Write-Host '  (fully-qualified-reference pass disabled by -NoFqn)' }

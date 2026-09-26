@@ -70,8 +70,10 @@ evaluationDependsOn(':core')
 // P3w：同上，:coe 的 sourceSets 也要跨项目读（它是 createoreexpansion 那个 mod 文件）。
 evaluationDependsOn(':coe')
 // P3y：同上，:transmutation 的 sourceSets 也要跨项目读（它是 transmutation 那个 mod 文件）。
-// 跨项目依赖链是单向的 root → :coe / :transmutation → :core，没有环（P3y 探针实测）。
 evaluationDependsOn(':transmutation')
+// P3z：同上，:cews 的 sourceSets 也要跨项目读（它是 cews 那个 mod 文件）。
+// 跨项目依赖链是单向的 root → :coe / :cews / :transmutation → :core，没有环（P3y 探针实测）。
+evaluationDependsOn(':cews')
 
 neoForge {
     // Specify the version of NeoForge to use.
@@ -147,8 +149,14 @@ neoForge {
         // sourceSet 被并成同一个文件（P3v §4a 实测）。组名本身不参与任何判定，
         // 它只是分组键（读 UserdevLocator：名字只做 Map 的 key）。
         // 所以两个条目 = dev 里两个本模组 mod 文件，ModDiscoverer 会打印两行。
-        "cews" {
-            // 根工程输出（CewsMod / TransmutationMod / hub / data / compat / mixin …）
+        // ── P3z：条目数 = dev 里本模组 mod 文件的个数 ──────────────────────────────
+        "coe_integration" {
+            // P3z：**根工程自己的 mod 文件**（集成层）。
+            // CEWS 搬走之后根工程一个本模组 @Mod 都不剩了，而 FML 要求每个 [[mods]] 条目
+            // 都有同文件的 @Mod 类（有条目没类 = 静默无入口；有类没条目 = dangling_entrypoint
+            // 硬错）。所以根工程现在自己是第四个 mod：modId=coe_integration，
+            // 入口 = common/hub/IntegrationMod（集成层 + 根资源 + jarJar 组装都挂在它名下）。
+            // 注册命名空间一字未变（仍是 createoreexpansion）。
             sourceSet(sourceSets.main)
             // P3M：core 的 classes/resources 也**作为本 mod 的源**交给 FML（dev 限定）。
             // 效果：`-Dfml.modFolders` 里多出 core 的目录，FML 把它们与根工程输出
@@ -168,8 +176,13 @@ neoForge {
             // P3y：:transmutation 是 **transmutation** 自己的 mod 文件（它的
             // src/main/templates/META-INF/neoforge.mods.toml 声明该 id），同理必须
             // **单开一个条目**（P3u 实测：多条 sourceSet 进同一组只出一个文件）。
-            // 三个条目 = dev 里三个本模组 mod 文件。
             sourceSet(project(':transmutation').sourceSets.main)
+        }
+        "cews" {
+            // P3z：:cews 是 **cews** 自己的 mod 文件（它的
+            // src/main/templates/META-INF/neoforge.mods.toml 声明该 id），同理必须
+            // **单开一个条目**。四个条目 = dev 里四个本模组 mod 文件。
+            sourceSet(project(':cews').sourceSets.main)
         }
     }
 }
@@ -243,6 +256,16 @@ dependencies {
     // AllRecipeTypes、data/CreateOreExpansionDatagen、data/lang/*、compat/jei/CreateOreExpansionJEI）
     // 直接 import TRANS 的类。
     jarJar(compileOnly(project(':transmutation')))
+    // ── cews 模块（P3z：能量波阵学自己的 mod 文件，源码在 cews/，由根 jar 用 JarJar 嵌套）──
+    // 与上面 :coe / :transmutation 两条**同款、同理由**：必须是 compileOnly（implementation 会让
+    // cews/build/libs/cews-1.0.0.jar 进 runtimeClasspath → FML 把它当第二个 cews mod 文件 →
+    // fml.modloadingissue.duplicate_mod 硬崩，P3v §4b 实测的同一形状）；外层 jarJar(...) 让那个
+    // jar 嵌进本 jar 的 META-INF/jarjar/（深度 1，唯一有效深度）。
+    // 同时它也是根工程的**编译面**：根侧 SHARED 文件（common/hub/AllCreativeModeTabs、
+    // AllRecipeTypes、data/CreateOreExpansionDatagen、data/RecipeProvider、data/lang/*、
+    // compat/jei/{CreateOreExpansionJEI,ChargingJEI}、client/*ModelRegistration）直接
+    // import CEWS 的类。
+    jarJar(compileOnly(project(':cews')))
     implementation("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     implementation("net.createmod.ponder:ponder-neoforge:${ponder_version}+mc${minecraft_version}")
     compileOnly("dev.engine-room.flywheel:flywheel-neoforge-api-${minecraft_version}:${flywheel_version}")
