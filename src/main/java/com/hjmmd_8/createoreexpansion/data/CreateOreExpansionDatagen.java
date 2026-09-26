@@ -65,6 +65,13 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * （每份只含该层元素）。跨层能拆的前提是实测确认了 vanilla {@code TagLoader} 对同一数据包路径
  * 的多资源包是<b>累加合并</b>（{@code listMatchingResourceStacks} + 无 {@code "replace"}），
  * 不是"后者覆盖"——详见 {@code LayerDataProvider} 类注释"四"。</p>
+ *
+ * <p><b>P7d：221 条生成配方的落点分家</b>。配方<b>不由 Registrate 产出</b>
+ * （{@code data/RecipeProvider} 才是唯一挂到生成器上的那个配方提供器），所以上面那套路径改写
+ * 覆盖不到它们——P7c §5 实测三个模块 jar 的 {@code data/**&#47;recipe/**} 与根的 221 条交集 = 0。
+ * 修法是把本类解析出的「层名 → 模块输出根」一并交给 {@code RecipeProvider}，由它在
+ * {@code Coe/CewsRecipeProvider} 的调用点显式绑层（{@code LayerRecipeRouter}）。
+ * 层不按路径推断：两层的配方路径都形如 {@code data/createoreexpansion/recipe/...}。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class CreateOreExpansionDatagen {
@@ -97,13 +104,15 @@ public class CreateOreExpansionDatagen {
         LayerRegistrate.attachDataGenerator(CewsRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, "cews", event, cewsRoot);
         LayerRegistrate.attachDataGenerator(TransmutationRegistrate.REGISTRATE, generator, CoeCore.REGISTRY_NAMESPACE, "transmutation", event, transmutationRoot);
 
+        // 层名 → 该模块 src/generated/resources。标签路由（P5）与 P7d 的配方路由共用这一张表。
+        Map<String, Path> layerRoots = layerRoots(coeRoot, cewsRoot, transmutationRoot);
+
         // —— P5：标签按「逐文件归属」路由到各模块（见 LayerDataProvider 类注释"四"）——
         // 表用三层各自的 getAll(BLOCK / ITEM) 建，零手工维护（与 LayerLangSplitter 同一手法）。
         // 传的是**惰性查询**：真正的表在提供器运行时才构建（那时注册已完成，见 tagElementLayer）。
-        // 与路由成对的另一处修改在 core 的 LayerDataProvider#purgeStale（跳过 /tags/），
-        // 不跳的话非主层提供器的 stale 清理会把主层刚路由进来的标签删掉。
-        LayerDataProvider.installTagRouter(CreateOreExpansionDatagen::tagElementLayer,
-            tagLayerRoots(coeRoot, cewsRoot, transmutationRoot));
+        // 与路由成对的另一处修改在 core 的 LayerDataProvider#purgeStale（跳过 /tags/ 与 /recipe/），
+        // 不跳的话非主层提供器的 stale 清理会把主层刚路由进来的标签与配方删掉。
+        LayerDataProvider.installTagRouter(CreateOreExpansionDatagen::tagElementLayer, layerRoots);
 
         // —— 三层并集顺序 + 主层（P3e 从 LayerRegistrate 挪到这里）——
         // LayerRegistrate 住 SHARED、将来要原样搬进 core 库，不许 import 任何层专属类；
@@ -126,7 +135,13 @@ public class CreateOreExpansionDatagen {
             generator.addProvider(true, new LayerLangSplitter(output, coeRoot, cewsRoot, transmutationRoot));
         }
         if (event.includeServer()) {
-            generator.addProvider(true, new RecipeProvider(output, event.getLookupProvider()));
+            // ── P7d：221 条生成配方按「产出它的 provider」改道到模块目录 ────────────────────
+            // 配方不由 Registrate 产出（它们是本工程自己的 RecipeProvider：COE 拆磨 61 + CEWS 工具充能 160），
+            // 所以 LayerDataProvider 那套改道覆盖不到它们 —— P7c §5 实测：三个模块 jar 的
+            // data/**/recipe/** 与根的 221 条交集 = 0，单装任一模块 jar 一条生成配方都没有。
+            // 这里把「层名 → 模块输出根」交给它，由它按调用点（Coe/CewsRecipeProvider）逐层绑定；
+            // 层绝不按路径推断（CEWS 的配方路径也是 data/createoreexpansion/recipe/...）。
+            generator.addProvider(true, new RecipeProvider(output, event.getLookupProvider(), layerRoots));
         }
     }
 
@@ -156,9 +171,12 @@ public class CreateOreExpansionDatagen {
         return null;
     }
 
-    /** "层名 → 该模块的 {@code src/generated/resources}"；取不到的层不进表（那层的标签于是留根）。 */
-    private static Map<String, Path> tagLayerRoots(@Nullable Path coeRoot, @Nullable Path cewsRoot,
-                                                   @Nullable Path transmutationRoot) {
+    /**
+     * "层名 → 该模块的 {@code src/generated/resources}"；取不到的层不进表（那层的标签留根、
+     * 那层产出的配方也留根）。标签路由（P5）与配方路由（P7d）共用这一张表。
+     */
+    private static Map<String, Path> layerRoots(@Nullable Path coeRoot, @Nullable Path cewsRoot,
+                                                @Nullable Path transmutationRoot) {
         Map<String, Path> roots = new LinkedHashMap<>();
         if (coeRoot != null) {
             roots.put("coe", coeRoot);

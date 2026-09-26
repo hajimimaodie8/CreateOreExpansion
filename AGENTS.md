@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-27（P7c：27 个根侧手写 `data/**` 按「引用 id→层」归位——5 个共享件住 `core`、22 个归 `:coe`，各模块 jar 顶层物理携带；自足性关卡 45→52 条。原 68,930 B 的长叙述已迁入 `markdown_output/`）。
+> 最后更新：2026-09-28（P7d：221 条生成配方按 provider **显式绑层**落进各模块 jar——61 拆磨 COE / 160 充能 CEWS，集合与 HEAD 逐条相同；2 条跨层手写标签按层拆半；自足性关卡 52→66 条。原 68,930 B 的长叙述已迁入 `markdown_output/`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
@@ -111,7 +111,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - `tools/check-layering.ps1` —— 分层方向断言（**扫五个根**：`src/main/java` + `core/` + `coe/` + `cews/` + `transmutation/` 各自的 `src/main/java`；层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CEWS→TRANS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运代码后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树做对比）。**每拆一层就要把该层加进两个脚本的 roots 表**——不加的后果是那一层计数变 0 而脚本照样 exit 0（P3d-β core / P3w coe / P3y transmutation / P3z cews 四次同一形状的静默逃逸）。
 - `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则（`Get-FileLayer` 函数体）必须逐字一致**（改一处要两处同改）。
 - `tools/check-package-overlap.ps1` —— **包重叠审计（JPMS）**：同包跨两模块 = 启动即 `ResolutionException`，三关全绿看不到；改包结构/拆层/加 `FMLModType` 后必跑到 0。
-- `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（52 条断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（有 mixin 类而 0 条声明 = 红，即 P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线、每个 jar 自带全部共享 `data/**`（`core` 真源）且根侧 `src/main/resources/data/**` 必须为空（P7c）。
+- `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（66 条断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（有 mixin 类而 0 条声明 = 红，即 P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线、每个 jar 自带全部共享 `data/**`（`core` 真源）且根侧 `src/main/resources/data/**` 必须为空（P7c）、221 条生成配方按层分发（61/160/0）、跨层手写标签按层拆半（P7d）。
 - `build/patch/*` 取证脚本（被 git 忽略，按需重生成）：`ChargerBandCheck.java` / `BandCheck.java`（转速分档逐整数比对）、`dump_light_squares.ps1` / `rasterize_top_face.ps1`（贴图取证）、`p3?-EVIDENCE.txt`（拆模块各阶段取证）。
 
 ## 🌊 波系统与变器：现行口径（要点；细则见「长文档索引」）
@@ -138,7 +138,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **注册器已按三层分家**：`AllBlocks` / `AllItems` / `AllBlockEntityTypes` **已删除**（`ccaf8a21`），声明住在 `common/registry/{coe,cews,transmutation}/`；**注册触发顺序必须在 `CreateOreExpansion` / `IntegrationBootstrap` 里显式写死**（没有兜底），每个层类的空 `register()` 只是类初始化触发器。**别和 Create 自己的 `com.simibubi.create.AllBlocks` / `AllItems` 搞混**（批量改名要做「裸名解析」判定）。
 - **P4a/P4b/P4c 的机制，与「拆 lang 时不许把根文件改小」的 HashCache 坑** → `markdown_output/模块拆分进度与决策链.md` 标题 **`## 2. 从 AGENTS.md 迁入（P7b，2026-09-27）`**。**铁律仍在：根 lang 文件一个字节都不许动**。
 - **P7b：mixin 与语言按层自足**（机制全文 → 同文档 **§2.8**）。mixin **配置跟着类走**——7 个 mixin 类 + 配置插件全在 `:coe`，故配置是 `coe/src/main/resources/createoreexpansion.mixins.json` + coe 模板的 `[[mixins]]`；**根侧配置与声明都已删**，`:cews`/`:transmutation` 无 mixin 类 ⇒ 不声明、不造空配置。机制：FML 按**每个文件自己的 `[[mixins]]`** 登记（`LoadingModList.addMixinConfigs → file.getMixinConfigs()`），config 名走**类路径资源**（`MixinConfig.create → contextClassLoader`）。语言：`LayerLangSplitter` 现**另给每层落一份根 lang 的完整拷贝**（同路径、逐条复制）——lang 按整条 `getResourceStack` 逐键 `put`，内容一致 ⇒ 合装结果不变、单装不再露原始键名。
-- **108 生成标签已自足；221 生成配方还没有**（P7c）：标签仍是单一 union 提供器，但**落盘时按注入的 `id→层` 表逐文件改道**（单层归模块、跨层按层各写一份，靠**合并**语义还原），并豁免 `purgeStale` 的 `/tags/`。**221 生成配方仍只落根** ⇒ 单装任一模块 jar 一条都没有（三模块 jar 的 `data/**/recipe/**` 共 111 条、交集 = 0；221 = 61 拆磨 COE + 160 工具充能 CEWS，两层 `Coe/CewsRecipeProvider` 已分家、只缺落盘改道）⇒ **⑥ 是发布阻断，不能不做**（P7a §6d 错）。
+- **108 生成标签与 221 生成配方都已自足**（P7c/P7d）：标签仍是单一 union 提供器、按注入的 `id→层` 表逐文件改道（单层归模块、跨层按层各写一份，靠**合并**语义还原），豁免 `purgeStale` 的 `/tags/`。**221 生成配方**（61 拆磨 COE + 160 工具充能 CEWS）由 `LayerRecipeRouter` 在 `Coe/CewsRecipeProvider` 的**调用点显式绑层**改道到各模块 `src/generated/resources`；**不许**按路径判层（两层命名空间相同 ⇒ 路径逐字同类），并同样豁免 `purgeStale` 的 `/recipe/`。⇒ ⑥ 已闭合。
 - **手写 `data/**` 按层自足（P7c）**：「只引用某一层」的进该层模块，「全原版/外部或横跨两层」的住 `core/src/main/resources/data/**`，由 `coe-conventions`+根各一行复制进每个模块 jar；根侧 `src/main/resources/data/**` 必须为空。
 - **`runData` 的 `written: 0` 不是健康判据**（判据是 `git status` 与内容）→ 同文档 §2.4。
 - **待查**：`runData` 偶发 `Found unused register callbacks`（现在约 7 次 2 次），日志里 sable 的 mixin 仍被装载 ⇒ `build.gradle` 对 runData 的 sable/aeronautics 排除**没有真正生效**。

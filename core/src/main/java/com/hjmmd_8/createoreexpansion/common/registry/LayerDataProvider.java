@@ -134,13 +134,19 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * 才真正构建（那时注册已完成）。未注入（{@code tagElementLayer == null}）时标签一律留根，
  * 退化成 P5 之前的行为。</p>
  *
- * <p><b>⚠️ 与路由成对的那个修改：{@code purgeStale} 必须跳过 {@code /tags/}</b>。
+ * <p><b>⚠️ 与路由成对的那个修改：{@code purgeStale} 必须跳过 {@code /tags/} 与 {@code /recipe/}</b>。
  * 提供器执行顺序恒为 COE → CEWS → TRANS，而<b>所有</b>标签（含跨层文件的 CEWS 那半）都由主层
  * COE 那个提供器写；CEWS 提供器的 {@code purgeStale} 会遍历
  * {@code cews/src/generated/resources/data/}，此时它的 {@code produced} 非空（有自己的战利品表），
  * 于是会把 COE 刚路由进它名下的标签<b>当垃圾删掉</b>。语义上豁免完全正当：标签只由主层提供器产出，
  * 非主层提供器的 {@code produced} 对 {@code /tags/} 永远不权威。代价要写明并接受：
  * <b>模块目录里的标签失去自动 stale 清理</b>（某天删掉一个标签注册，旧文件会留下）。</p>
+ *
+ * <p><b>P7d 追加 {@code /recipe/} 到同一豁免</b>：生成配方由<b>另一个</b>提供器写
+ * （集成层的 {@code data/RecipeProvider} 经 {@link LayerRecipeRouter} 改道），本模块 Registrate
+ * 提供器的 {@code produced} 对它同样永远不权威。不豁免的话第二次 {@code runData} 会把上一轮
+ * 刚落盘的 61 / 160 条配方当 stale 删掉——与标签同一个坑（P4f 已踩过一次）。配方的 stale 清理
+ * 由写出它们的那个路由器自己负责（{@code LayerRecipeRouter#purgeStale}，范围只限配方子树）。</p>
  *
  * <p>另外：本路由做在 {@code writeIfNeeded} <b>之内</b>而不是做成"后置拷贝 pass"，
  * 是因为标签必须<b>从不在根落盘</b>——若先写根、再把根删掉，下一轮 {@code HashCache} 会以为
@@ -356,9 +362,11 @@ public class LayerDataProvider extends RegistrateDataProvider {
          * 只在 {@code assets/<ns>/blockstates|models} 与 {@code data/} 这些改写子树里走，
          * 删掉本次没产出的文件。
          *
-         * <p><b>⚠️ 必须跳过 {@code /tags/}</b>（类注释"四"）：跨层标签里属于别的层的那一份
-         * 由主层（COE）提供器写进本模块目录，本提供器的 {@code produced} 对它永远不权威，
-         * 不跳过就会把刚路由进来的标签当 stale 删掉。</p>
+         * <p><b>⚠️ 必须跳过 {@code /tags/} 与 {@code /recipe/}</b>（类注释"四"）：跨层标签里属于别的层
+         * 的那一份由主层（COE）提供器写进本模块目录，P7d 起生成配方也由<b>别的</b>提供器
+         * （{@code data/RecipeProvider}）写进本模块目录 —— 本提供器的 {@code produced} 对这两类
+         * 永远不权威，不跳过就会把刚落盘的东西当 stale 删掉。配方的 stale 清理由
+         * {@link LayerRecipeRouter#purgeStale()} 自己负责（范围只限配方子树）。</p>
          *
          * <p>目录清理失败只记日志、不抛（与上游 purgeStaleAndWrite 同口径）。</p>
          */
@@ -373,7 +381,8 @@ public class LayerDataProvider extends RegistrateDataProvider {
                 }
                 try (Stream<Path> walk = Files.walk(dir)) {
                     for (Path file : walk.filter(Files::isRegularFile).toList()) {
-                        if (slash(layerAssetRoot.relativize(file)).contains("/tags/")) {
+                        String key = slash(layerAssetRoot.relativize(file));
+                        if (key.contains("/tags/") || key.contains("/recipe/")) {
                             continue;
                         }
                         if (!produced.contains(file)) {

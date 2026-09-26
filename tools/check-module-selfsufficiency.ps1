@@ -91,6 +91,37 @@
 #         module jar; every one of them belongs in core (shared) or in its owning module.
 #         This is the assertion that was red before P7c (27 stranded files) and is the durable
 #         form of that hole -- it cannot come back by someone re-adding a file to the root tree.
+#   F. generated recipe distribution (P7d).  Before P7d all 221 generated recipes
+#      (61 COE dismantling + 160 CEWS tool-charging) were written to the ROOT datagen output
+#      only: the three module jars held 111 unrelated hand-written recipes and had an
+#      intersection of ZERO with those 221.  A player installing cews.jar alone got none of
+#      the 160 tool-charging recipes; installing coe.jar alone got none of the 61 dismantling
+#      recipes.  The layer is bound at the Coe/CewsRecipeProvider call site (never inferred
+#      from the path -- both layers write data/createoreexpansion/recipe/...), so these
+#      assertions pin the distribution:
+#      F1 src/generated/resources/data/**/recipe/** holds no file at all (same durable shape
+#         as E2: the root output is not a shipped artifact).
+#      F2 the per-module generated recipe counts are exactly coe=61 / cews=160 /
+#         transmutation=0 and their sum is 221.  Adding or removing a generated recipe turns
+#         the gate red on purpose; update this table together with the recipe.
+#      F3 every generated recipe file of a module is packaged in THAT module's jar,
+#         byte-identical (SHA-256).
+#      F4 none of a module's generated recipes appears in another module's jar: the explicit
+#         per-provider layer binding must not leak across layers.
+#   G. cross-layer hand-written block tags, split per layer (P7d).
+#      data/createoreexpansion/tags/block/jade_sapphire_light.json (17 COE + 1 CEWS) and
+#      machines_heavy.json (1 COE + 2 CEWS) used to be carried WHOLE by every module jar (they
+#      lived in the shared home).  TagLoader (L45-59) accumulates every copy of the same
+#      data-pack path, but a single-module install then references blocks that jar does not
+#      contain and TagLoader drops the WHOLE tag with an ERROR (L84-115) -- a fake
+#      self-sufficiency.  The fix is the P4f shape: the same path split into one file per
+#      layer, each holding only that layer's entries, so the union at runtime is unchanged.
+#      G1 neither split tag remains in the shared home (that is what made every jar carry the
+#         whole file).
+#      G2 both halves exist, and the union of their values is element-for-element the
+#         pre-split set (nothing added, nothing removed); each half is pinned in order.
+#      G3 a module jar carries exactly its own half of each split tag and never the other
+#         layer's half.
 #
 # KNOWN GAP (do not mistake this script for proof of runtime behaviour)
 #   Everything here is static jar/source inspection.  It cannot prove that Mixin really
@@ -132,22 +163,91 @@ $javapExe = Resolve-JdkTool 'javap'
 # EXPECTED JARS -- the single table that knows about modules.  Add a module here
 # the same day its Gradle project starts producing a jar that is shipped alone;
 # a module missing from this table is simply not audited (exit stays 0).
+# genRecipes is the number of datagen-produced recipes (P7d) this module must
+# carry under <module>/src/generated/resources/data/**/recipe/**: 61 COE
+# dismantling (4 vanilla sets x 9 + 5 mod sets x 5) and 160 CEWS tool-charging
+# (32 chargeable items x 5 levels).  See assertion F2.
 # ---------------------------------------------------------------------------
 $modules = [ordered]@{
     'coe' = @{
-        jar    = 'coe\build\libs\createoreexpansion-1.0.0.jar'
-        modId  = 'createoreexpansion'
-        src    = 'coe\src\main\java'
+        jar        = 'coe\build\libs\createoreexpansion-1.0.0.jar'
+        modId      = 'createoreexpansion'
+        src        = 'coe\src\main\java'
+        genRecipes = 61
     }
     'cews' = @{
-        jar    = 'cews\build\libs\cews-1.0.0.jar'
-        modId  = 'cews'
-        src    = 'cews\src\main\java'
+        jar        = 'cews\build\libs\cews-1.0.0.jar'
+        modId      = 'cews'
+        src        = 'cews\src\main\java'
+        genRecipes = 160
     }
     'transmutation' = @{
-        jar    = 'transmutation\build\libs\transmutation-1.0.0.jar'
-        modId  = 'transmutation'
-        src    = 'transmutation\src\main\java'
+        jar        = 'transmutation\build\libs\transmutation-1.0.0.jar'
+        modId      = 'transmutation'
+        src        = 'transmutation\src\main\java'
+        genRecipes = 0
+    }
+}
+
+$expectedGeneratedRecipes = 221
+
+# P7d: the two hand-written block tags that referenced BOTH layers.  Each layer owns a half at
+# the SAME data-pack path in its own jar; TagLoader merges the copies at runtime.  'full' is the
+# pre-split element list: the two halves must cover exactly it (G2).
+$splitTags = [ordered]@{
+    'jade_sapphire_light' = @{
+        full = @(
+            'createoreexpansion:jade_block',
+            'createoreexpansion:jade_ore',
+            'createoreexpansion:deepslate_jade_ore',
+            'createoreexpansion:raw_jade_block',
+            'createoreexpansion:jade_stress_charger',
+            'createoreexpansion:jade_small_bud',
+            'createoreexpansion:jade_medium_bud',
+            'createoreexpansion:jade_large_bud',
+            'createoreexpansion:jade_cluster',
+            'createoreexpansion:jade_budding_block',
+            'createoreexpansion:sapphire_block',
+            'createoreexpansion:nether_sapphire_ore',
+            'createoreexpansion:raw_sapphire_block',
+            'createoreexpansion:sapphire_small_bud',
+            'createoreexpansion:sapphire_medium_bud',
+            'createoreexpansion:sapphire_large_bud',
+            'createoreexpansion:sapphire_cluster',
+            'createoreexpansion:sapphire_budding_block'
+        )
+        coe  = @(
+            'createoreexpansion:jade_block',
+            'createoreexpansion:jade_ore',
+            'createoreexpansion:deepslate_jade_ore',
+            'createoreexpansion:raw_jade_block',
+            'createoreexpansion:jade_small_bud',
+            'createoreexpansion:jade_medium_bud',
+            'createoreexpansion:jade_large_bud',
+            'createoreexpansion:jade_cluster',
+            'createoreexpansion:jade_budding_block',
+            'createoreexpansion:sapphire_block',
+            'createoreexpansion:nether_sapphire_ore',
+            'createoreexpansion:raw_sapphire_block',
+            'createoreexpansion:sapphire_small_bud',
+            'createoreexpansion:sapphire_medium_bud',
+            'createoreexpansion:sapphire_large_bud',
+            'createoreexpansion:sapphire_cluster',
+            'createoreexpansion:sapphire_budding_block'
+        )
+        cews = @('createoreexpansion:jade_stress_charger')
+    }
+    'machines_heavy' = @{
+        full = @(
+            'createoreexpansion:power_angle_grinder',
+            'createoreexpansion:energy_wave_regulator',
+            'createoreexpansion:wave_speed_regulator'
+        )
+        coe  = @('createoreexpansion:power_angle_grinder')
+        cews = @(
+            'createoreexpansion:energy_wave_regulator',
+            'createoreexpansion:wave_speed_regulator'
+        )
     }
 }
 
@@ -648,6 +748,171 @@ if (Test-Path -LiteralPath $rootData) {
 Write-Check ($stranded.Count -eq 0) 'E2 no hand-written data/** file is stranded in the root integration layer' `
     ("rootHome=" + $rootDataRel + " files=" + $stranded.Count + `
      $(if ($stranded.Count -gt 0) { ' -> move each one to core/src/main/resources/data (vanilla/external or cross-layer ids) or to the module that owns its ids: [' + (($stranded | ForEach-Object { $_.FullName.Substring($rootData.Length + 1) }) -join ', ') + ']' } else { ' (root does not publish, so a file left here reaches no shipped jar)' }))
+Write-Host ''
+
+# ---------------------------------------------------------------------------
+# F. generated recipe distribution (P7d)
+#    Before P7d every one of the 221 datagen-produced recipes (61 COE dismantling + 160 CEWS
+#    tool-charging) was written to the ROOT output only, so a module jar held ZERO of them.
+#    The layer is bound at the Coe/CewsRecipeProvider call site (never inferred from the path:
+#    both layers write data/createoreexpansion/recipe/...), so these assertions pin where each
+#    layer's recipes ended up.
+# ---------------------------------------------------------------------------
+Write-Host '[F] generated recipe distribution (P7d)'
+
+$recipeEntryPattern = '^data/[^/]+/recipe/.+\.json$'
+
+# One jar listing per module, reused by F3 and F4.
+$moduleEntries = @{}
+foreach ($name in $modules.Keys) {
+    $moduleEntries[$name] = @(Get-JarEntries (Join-Path $repoRoot $modules[$name].jar))
+}
+
+function Get-GeneratedRecipes {
+    param([string]$DataRoot)
+    $found = @()
+    if (-not (Test-Path -LiteralPath $DataRoot)) { return $found }
+    foreach ($f in (Get-ChildItem -LiteralPath $DataRoot -Recurse -File -Filter '*.json')) {
+        $entry = Get-DataJarEntry $f.FullName
+        if ($entry -and ($entry -match $recipeEntryPattern)) { $found = $found + $f }
+    }
+    return $found
+}
+
+# F1 -- the root datagen output must not hold generated recipes any more (E2's twin).
+$rootRecipes = @(Get-GeneratedRecipes (Join-Path $repoRoot 'src\generated\resources\data'))
+Write-Check ($rootRecipes.Count -eq 0) 'F1 no generated recipe is stranded in the root datagen output' `
+    ("rootData=src\generated\resources\data files=" + $rootRecipes.Count + `
+     $(if ($rootRecipes.Count -gt 0) { ' -> the layer binding is not active; every recipe must be written to the module that produced it: [' + (($rootRecipes | Select-Object -First 5 | ForEach-Object { Get-DataJarEntry $_.FullName }) -join ', ') + $(if ($rootRecipes.Count -gt 5) { ', ...' } else { '' }) + ']' } else { ' (root does not publish, so a recipe left here reaches no shipped jar)' }))
+
+# F2 -- exact per-module counts and their sum.
+$ownRecipes = @{}
+$recipeTotal = 0
+$recipeDetail = @()
+$countsOk = $true
+foreach ($name in $modules.Keys) {
+    $ownRecipes[$name] = @(Get-GeneratedRecipes (Join-Path $repoRoot ($name + '\src\generated\resources\data')))
+    $recipeTotal = $recipeTotal + $ownRecipes[$name].Count
+    if ($ownRecipes[$name].Count -ne $modules[$name].genRecipes) { $countsOk = $false }
+    $recipeDetail = $recipeDetail + ($name + '=' + $ownRecipes[$name].Count + '/' + $modules[$name].genRecipes)
+}
+$countsOk = $countsOk -and ($recipeTotal -eq $expectedGeneratedRecipes)
+Write-Check $countsOk 'F2 the three modules hold exactly the expected generated recipe counts (sum 221)' `
+    ("[" + ($recipeDetail -join '  ') + "] sum=" + $recipeTotal + " expectedSum=" + $expectedGeneratedRecipes + `
+     " (61 = COE dismantling 4x9+5x5, 160 = CEWS tool-charging 32x5)")
+
+# F3 -- each module packages its own generated recipes, byte for byte.
+foreach ($name in $modules.Keys) {
+    $jarpath = Join-Path $repoRoot $modules[$name].jar
+    $missing = @()
+    $mismatch = @()
+    foreach ($f in $ownRecipes[$name]) {
+        $entry = Get-DataJarEntry $f.FullName
+        if (-not $entry) { continue }
+        if (-not ($moduleEntries[$name] -contains $entry)) { $missing = $missing + $entry; continue }
+        if ((Get-JarEntryHash $jarpath $entry) -ne (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash) {
+            $mismatch = $mismatch + $entry
+        }
+    }
+    $nonEmpty = ($modules[$name].genRecipes -eq 0) -or ($ownRecipes[$name].Count -gt 0)
+    Write-Check (($missing.Count -eq 0) -and ($mismatch.Count -eq 0) -and $nonEmpty) `
+        ($name + ' F3 every generated recipe of this module is packaged in its own jar byte-identical') `
+        ("ownGenerated=" + $ownRecipes[$name].Count + " missing=" + $missing.Count + " hashMismatch=" + $mismatch.Count + `
+         $(if ($missing.Count -gt 0) { ' missing=[' + (($missing | Select-Object -First 5) -join ', ') + $(if ($missing.Count -gt 5) { ', ...' } else { '' }) + ']' } else { '' }))
+}
+
+# F4 -- the explicit layer binding must not leak: no generated recipe in a foreign jar.
+foreach ($name in $modules.Keys) {
+    $leaks = @()
+    foreach ($other in $modules.Keys) {
+        if ($other -ceq $name) { continue }
+        foreach ($f in $ownRecipes[$name]) {
+            $entry = Get-DataJarEntry $f.FullName
+            if ($entry -and ($moduleEntries[$other] -contains $entry)) { $leaks = $leaks + ($entry + ' -> ' + $other + '.jar') }
+        }
+    }
+    Write-Check ($leaks.Count -eq 0) ($name + ' F4 no generated recipe of this module appears in another module jar') `
+        ("ownGenerated=" + $ownRecipes[$name].Count + " leaked=" + $leaks.Count + $(if ($leaks.Count -gt 0) { ' [' + (($leaks | Select-Object -First 5) -join ', ') + ']' } else { '' }))
+}
+Write-Host ''
+
+# ---------------------------------------------------------------------------
+# G. cross-layer hand-written block tags split per layer (P7d)
+#    jade_sapphire_light (17 COE + 1 CEWS) and machines_heavy (1 COE + 2 CEWS) used to live in the
+#    shared home, which every module jar carries WHOLE.  On a single-module install the references
+#    to the other layer's blocks cannot resolve, and TagLoader L84-115 then logs an ERROR and drops
+#    the entire tag -- so "shared everywhere" was a fake self-sufficiency.  Each tag is now one
+#    file per layer at the same data-pack path; TagLoader unions the copies at runtime (L45-59,
+#    replace=false), so the merged result is the pre-split set.
+# ---------------------------------------------------------------------------
+Write-Host '[G] cross-layer hand-written block tags split per layer (P7d)'
+
+$tagSourceRel = 'src\main\resources\data\createoreexpansion\tags\block'
+$sharedHomeAbs = Join-Path $repoRoot 'core\src\main\resources\data'
+
+$leftover = @()
+foreach ($tagName in $splitTags.Keys) {
+    if (Test-Path -LiteralPath (Join-Path $sharedHomeAbs ('createoreexpansion\tags\block\' + $tagName + '.json'))) {
+        $leftover = $leftover + $tagName
+    }
+}
+Write-Check ($leftover.Count -eq 0) 'G1 neither split tag is left in the shared data home' `
+    ("sharedHome=core\src\main\resources\data leftover=[" + ($leftover -join ', ') + "]" + `
+     $(if ($leftover.Count -gt 0) { ' (a whole file there is copied into EVERY module jar, and a single-module install then fails the tag with an ERROR)' } else { '' }))
+
+foreach ($tagName in $splitTags.Keys) {
+    $spec = $splitTags[$tagName]
+    $problems = @()
+    $seen = @()
+    foreach ($layer in @('coe', 'cews')) {
+        $rel = 'data\createoreexpansion\tags\block\' + $tagName + '.json'
+        $file = Join-Path $repoRoot ($layer + '\' + $tagSourceRel + '\' + $tagName + '.json')
+        if (-not (Test-Path -LiteralPath $file)) { $problems = $problems + ($layer + ': file missing'); continue }
+        $obj = $null
+        try { $obj = (Get-Content -LiteralPath $file -Raw -Encoding UTF8) | ConvertFrom-Json } catch { $problems = $problems + ($layer + ': unparsable json'); continue }
+        if ($obj.replace -ne $false) { $problems = $problems + ($layer + ': replace is not false') }
+        $values = @($obj.values)
+        $expected = @($spec[$layer])
+        if ($values.Count -ne $expected.Count) { $problems = $problems + ($layer + ': values=' + $values.Count + ' expected=' + $expected.Count) }
+        for ($i = 0; $i -lt [Math]::Min($values.Count, $expected.Count); $i++) {
+            if ([string]$values[$i] -cne [string]$expected[$i]) {
+                $problems = $problems + ($layer + ' value[' + $i + ']=' + $values[$i] + ' expected=' + $expected[$i])
+            }
+        }
+        $seen = $seen + $values
+    }
+    $full = @($spec.full)
+    if ($seen.Count -ne $full.Count) { $problems = $problems + ('union=' + $seen.Count + ' presplit=' + $full.Count) }
+    foreach ($v in $full) { if ($seen -notcontains $v) { $problems = $problems + ('lost ' + $v) } }
+    foreach ($v in $seen) { if ($full -notcontains $v) { $problems = $problems + ('added ' + $v) } }
+    $coeCount = @($spec.coe).Count
+    $cewsCount = @($spec.cews).Count
+    Write-Check ($problems.Count -eq 0) ('G2 ' + $tagName + ' halves exist and their union is element-for-element the pre-split set') `
+        $(if ($problems.Count -eq 0) { 'coe=' + $coeCount + ' cews=' + $cewsCount + ' union=' + $full.Count + ' presplit=' + $full.Count + ' lost=0 added=0' } else { $problems -join '; ' })
+}
+
+foreach ($name in $modules.Keys) {
+    $jarpath = Join-Path $repoRoot $modules[$name].jar
+    $problems = @()
+    foreach ($tagName in $splitTags.Keys) {
+        $spec = $splitTags[$tagName]
+        $entry = 'data/createoreexpansion/tags/block/' + $tagName + '.json'
+        $rel = 'data\createoreexpansion\tags\block\' + $tagName + '.json'
+        $inJar = ($moduleEntries[$name] -contains $entry)
+        if ($spec.ContainsKey($name)) {
+            $file = Join-Path $repoRoot ($name + '\' + $tagSourceRel + '\' + $tagName + '.json')
+            if (-not (Test-Path -LiteralPath $file)) { $problems = $problems + ($tagName + ': own half source missing'); continue }
+            if (-not $inJar) { $problems = $problems + ($tagName + ': own half not in jar'); continue }
+            if ((Get-JarEntryHash $jarpath $entry) -ne (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash) {
+                $problems = $problems + ($tagName + ': own half is not the packaged bytes')
+            }
+        } elseif ($inJar) {
+            $problems = $problems + ($tagName + ': carries a half this layer does not own')
+        }
+    }
+    Write-Check ($problems.Count -eq 0) ($name + ' G3 this jar carries exactly its own half of every split tag') `
+        $(if ($problems.Count -eq 0) { 'splitTags=' + $splitTags.Count + ' both checked' } else { $problems -join '; ' })
+}
 Write-Host ''
 
 # ---------------------------------------------------------------------------
