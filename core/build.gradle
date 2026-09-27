@@ -23,8 +23,9 @@ dependencies {
     // （机器交互 / 应力口径 / 配方登记表…），所以这里保留 Create 的编译期依赖：
     // 与根 build.gradle 同一坐标、同一写法（:slim + transitive=false），
     // compileOnly ⇒ 不进 core 的发布元数据、也不会在运行期重复提供 Create。
-    // 本轮搬进来的 ChargingRecipeTools 只用到 Minecraft 的 ItemLike，
-    // 这一行是为后续共享文件预留的编译面（不多不少：flywheel/ponder/Registrate 等仍是根工程的事）。
+    // 这一行是保留的通用编译面：core 里的共享契约要直接引用 Create 的类型。
+    // （W6-d 之前这里举的例子是 ChargingRecipeTools —— 它已按方案 §2.4 的 P2 搬进 :coe，
+    //  所以那一句删掉：core 现在没有任何"充能配方工具"概念。）
     compileOnly("com.simibubi.create:create-${minecraft_version}:${create_version}:slim") { transitive = false }
     // P3f：整包搬进 core 的 compat/sable/** 直接引用 Sable 的类型（Pose3d/Pose3dc、SubLevel、
     // ServerSubLevel、LevelPlot、ServerSubLevelContainer…），所以 core 自己也需要 Sable 的编译面。

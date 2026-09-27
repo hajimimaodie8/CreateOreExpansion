@@ -54,8 +54,9 @@ dependencies {
     // com.mrh0.createaddition.** 的类；CEWS 的 mods.toml 对它是 required（沿用拆分前口径）。
     compileOnly("curse.maven:createaddition-439890:8083378")
 
-    // Jade（可选集成）：compat/jei/cews/WaveJadePlugin 直接 implement snownee.jade.api.*，
-    // 运行期由 CewsMod#bootstrapJade 用 Class.forName 隔离加载（未装 Jade 时绝不触碰）。
+    // Jade：本编译面在 W6-c 之后**已无消费者**（唯一的 Jade 类 compat/jei/cews/WaveJadePlugin
+    // 随能量波引擎进了 :coe，W6-d 又换回 :coe 的 compat/jade/WaveJadePlugin）。
+    // 删它属于构建面改动、与"搬运代码"是两件事，本轮只登记事实、不动这一行。
     compileOnly("maven.modrinth:jade:15.8.3+neoforge")
 
     // Create Optical / Vintage Improvements：**本地 jar**（libs/ 在根目录，所以用 rootProject.files）。

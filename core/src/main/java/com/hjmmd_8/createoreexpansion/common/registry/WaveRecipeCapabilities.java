@@ -102,7 +102,7 @@ public final class WaveRecipeCapabilities {
     private static final Map<LayerOrder, Map<String, IRecipeTypeInfo>> BY_KEY =
         new LinkedHashMap<>();
 
-    /** 唤醒三层的类名（见类注释"为什么本类要自己去唤醒三层"）。 */
+    /** 唤醒各层的类名（见类注释"为什么本类要自己去唤醒三层"）。 */
     private static final String[] LAYER_CLASSES = layerClassNames();
 
     /**
@@ -117,13 +117,20 @@ public final class WaveRecipeCapabilities {
      * 只留三层的<b>类简单名</b>字面量。拼出来的结果与改前逐字相同
      * （本类与那三个类同在 {@code …common.registry} 下），因此行为零变化，
      * 而"core 不许认识任何层"这条纪律又能被工具机械核验。</p>
+     *
+     * <p><b>W6-d（2026-09-30）</b>：删掉 {@code prefix + "cews.CewsRecipeTypes"} 这一项——
+     * 那个类已随 W6-c 整体删除（{@code CHARGING} 进了 {@code CoeRecipeTypes}），
+     * 所以这条 {@code Class.forName} <b>永远失败</b>，被 {@link #ensureInitialized()} 里
+     * 既有的 try/catch 静默吞掉。删掉一项<b>不改变任何行为</b>：它从来没能唤醒过任何东西，
+     * 而剩下的两项顺序（TRANS → COE）逐字不变；组顺序由 {@link LayerOrder} 枚举声明顺序决定、
+     * 组内顺序由各层 {@code add(...)} 的书写顺序决定，两者都与本数组无关。
+     * 删它只是让"名单里还留着一个已删除的类"这条误导消失。</p>
      */
     private static String[] layerClassNames() {
         String prefix = WaveRecipeCapabilities.class.getPackageName() + ".";
         return new String[] {
             prefix + "transmutation.TransmutationRecipeTypes",
-            prefix + "coe.CoeRecipeTypes",
-            prefix + "cews.CewsRecipeTypes"
+            prefix + "coe.CoeRecipeTypes"
         };
     }
 

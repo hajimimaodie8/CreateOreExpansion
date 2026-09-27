@@ -87,10 +87,14 @@
 #         "modules must not call DeferredRegister.register(" would be red by design, because
 #         those calls are module-owned registries that have no business going through core
 #         (core may not know any layer).
-#      Line comments are stripped before matching D1-D4, so javadoc that merely mentions one
-#      of these names does not count as a call site.  The strip is deliberately naive (it
-#      also cuts at "//" inside a string literal); that can only hide a violation sitting
-#      after such a literal on the same line, which none of these patterns can be.
+#      Comments are stripped before matching D1-D4 (and before counting @JeiPlugin for B3),
+#      so javadoc that merely mentions one of these names does not count as a call site.
+#      W6-d (2026-09-30): the strip used to remove BLOCK comments first and LINE comments
+#      second, and that order silently swallowed real code -- see Get-SourceCode and the
+#      "W6-d SILENT-HOLE" note there.  It is now one left-to-right pass.  The strip is still
+#      deliberately naive about STRING literals (it cuts at "//" inside one); that can only
+#      hide a violation sitting after such a literal on the same line, which none of these
+#      patterns can be.
 #   E. hand-written data/** home assertions (P7c):
 #      E1 every file under <module>/src/main/resources/data/** is packaged in that module's own
 #         jar, byte-identical.  This is what makes the per-layer half of the P7c move real.
@@ -358,6 +362,15 @@ function Get-DataJarEntry {
 
 # One javap -v pass per jar; returns a hashtable classfile-path -> record.
 # Records: Ebs (bool), Modid (string or $null), Jei (bool).
+#
+# W6-d (2026-09-30): the CALLER must now assert that this returned a record for every class
+# it asked about (B6a / C2a).  The parse loop below is keyed by the "Classfile " line javap
+# prints per class; a class for which javap prints no such line (error, unreadable entry,
+# unsupported class file version on some JDK) simply gets NO record -- and a class with no
+# record is a class B6 never judged and, in the core jar, a class C2 would count as "not a
+# subscriber" while never having looked at it.  That is the exact failure shape this whole
+# script exists to catch (an assertion that passes because it saw nothing), so the count is
+# asserted instead of assumed.
 function Get-CompiledAnnotations {
     param([string]$JarPath, [string[]]$ClassNames)
     $records = @{}
@@ -426,11 +439,40 @@ function Get-TomlStringValues {
 }
 
 # Java source with line and block comments removed (see the header for the caveat).
+#
+# W6-d SILENT-HOLE FIX (2026-09-30).  The old body was:
+#     $raw = [regex]::Replace($raw, '(?s)/\*.*?\*/', '')   # block comments FIRST
+#     $raw = [regex]::Replace($raw, '(?m)//.*$', '')       # line comments SECOND
+# That order is WRONG, and it fails in the quiet direction.  If a LINE comment contains
+# "/*" -- a completely ordinary thing to write, e.g. "// see content/energyfield/**" --
+# the block pass pairs that "/*" with the NEXT "*/" anywhere later in the file and deletes
+# everything in between, real code included.  Measured on this tree (W6-c): it ate the
+#     modEventBus.addListener(EnergyFieldSyncPayload::registerPayloads);
+# line in CreateOreExpansion.java, so D3 reported ONE payload type instead of two and
+# STILL printed PASS -- an assertion that "worked" while unable to see the site it exists
+# for.  The mirror case is just as bad: a "//" inside a block comment makes the line pass
+# delete the "*/" that closes it, which leaves an unterminated "/*" behind that can pair
+# with a LATER "*/" and swallow the code between -- so neither sequential order is safe.
+#
+# The replacement is ONE left-to-right pass with an alternation, i.e. the exact semantics
+# "strip whichever comment starts first":
+#     (?s:/\*.*?\*/)   a block comment, closed at its FIRST "*/"
+#     (?m://.*$)       a line comment, to the end of the line
+# .NET scans left to right and takes the LEFTMOST match, so a "/*" inside a line comment
+# can no longer open a block, and a "//" inside a block comment can no longer close or
+# merge one (the whole block is consumed by a single match before the scanner ever reaches
+# the "//").  This is a STRICTENING: the visible-text set is a superset of what EITHER
+# sequential order produced for real code, so it can only ever UN-hide a call site.  There
+# is no path by which it hides something the old body saw.
+#
+# Remaining, documented imprecision (unchanged from before): a "//" inside a STRING literal
+# still cuts the rest of that line.  Closing that needs a real tokenizer (string/char
+# literals, text blocks, escapes); it is deliberately left alone here because a buggy
+# tokenizer is a much worse failure mode than this known, one-line-bounded one.
 function Get-SourceCode {
     param([string]$Path)
     $raw = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
-    $raw = [regex]::Replace($raw, '(?s)/\*.*?\*/', '')
-    $raw = [regex]::Replace($raw, '(?m)//.*$', '')
+    $raw = [regex]::Replace($raw, '(?s:/\*.*?\*/)|(?m://.*$)', '')
     return $raw
 }
 
@@ -550,6 +592,12 @@ foreach ($name in $modules.Keys) {
     $classNames = @($classEntries | ForEach-Object { ($_ -replace '\.class$', '') -replace '/', '.' })
     $records = Get-CompiledAnnotations $jarPath $classNames
 
+    # B6a -- the parser must not have silently skipped input (see Get-CompiledAnnotations).
+    Write-Check ($records.Count -eq $classNames.Count) `
+        ($name + ' B6a javap produced a record for every class of this jar') `
+        ("classesInJar=" + $classNames.Count + " parsedRecords=" + $records.Count + `
+         $(if ($records.Count -ne $classNames.Count) { ' -> a class with no record is a class B6 never judged' } else { ' (no class was skipped by the annotation parser)' }))
+
     $jeiClasses = @()
     foreach ($cls in $records.Keys) {
         if ($records[$cls].Jei -and ($cls -like '*compat/jei/*') -and ($cls -like '*!/com/hjmmd_8/createoreexpansion/*')) {
@@ -666,6 +714,10 @@ Write-Check ($coreModIds.Count -eq 0) 'core C1 [[mods]] is empty (it is a librar
 $coreClassEntries = @($coreEntries | Where-Object { $_ -like 'com/hjmmd_8/*.class' })
 $coreClassNames = @($coreClassEntries | ForEach-Object { ($_ -replace '\.class$', '') -replace '/', '.' })
 $coreRecords = Get-CompiledAnnotations $corePath $coreClassNames
+Write-Check ($coreRecords.Count -eq $coreClassNames.Count) `
+    'core C2a javap produced a record for every class of the library jar' `
+    ("classesInJar=" + $coreClassNames.Count + " parsedRecords=" + $coreRecords.Count + `
+     $(if ($coreRecords.Count -ne $coreClassNames.Count) { ' -> a class with no record is treated as "no subscriber" without ever being read' } else { ' (no class was skipped by the annotation parser)' }))
 $coreSubscribers = @()
 foreach ($cls in $coreRecords.Keys) {
     if ($coreRecords[$cls].Ebs) { $coreSubscribers = $coreSubscribers + (($cls -split '!/')[-1]) }

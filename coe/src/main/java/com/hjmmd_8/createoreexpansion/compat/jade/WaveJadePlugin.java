@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.compat.jei;
+package com.hjmmd_8.createoreexpansion.compat.jade;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
@@ -69,6 +69,12 @@ import snownee.jade.api.config.IPluginConfig;
  * {@link IServerDataProvider}，把两者经 Jade 服务端数据通道按需下发：data provider 只对
  * {@link StellarWaveEntity} 注册——普通波（{@link AbstractChargerWaveEntity} 其余实现）无
  * 对应 provider，Jade 根本不会为其发起数据请求，于是"波载荷"行按空载显示。</p>
+ *
+ * <p><b>包名（W6-d）</b>：本类是 <b>Jade</b> 插件，住 {@code compat.jade}
+ * （与 {@code BasinLiveJadePlugin} 同包，也就是拆分前的包名）。W6-c 曾按当时的字面授权把它
+ * 折进 {@code compat.jei}，代价是 {@code check-package-heritage} 多一条 NON-FORCED 改名；
+ * 本轮换回 {@code compat.jade}，NON-FORCED 回到 4。两个 {@code Class.forName} 字面量
+ * （见 {@code CreateOreExpansion#bootstrapJade()}）同步指向本包。</p>
  */
 @WailaPlugin
 public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, IServerDataProvider<EntityAccessor> {

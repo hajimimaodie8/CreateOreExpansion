@@ -81,7 +81,8 @@ import net.neoforged.neoforge.registries.RegisterEvent;
  *   <li>CEWS 的机器、页签内容、Sable 桥接 → {@code CewsMod}；
  *       <b>W6-c 起下列东西回到本类</b>：两个能量波实体类型（{@code AllEntityTypes}）、
  *       三台应力充能器的方块/方块实体登记（{@code common.registry.coe.charger}）、
- *       能量场载荷的挂载点、以及 Jade 波插件（{@code compat.jei.WaveJadePlugin}）的加载点；</li>
+ *       能量场载荷的挂载点、以及 Jade 波插件（{@code compat.jade.WaveJadePlugin}，W6-d 换回
+ *       pre-split 包名）的加载点；</li>
  *   <li>TRANS 的物品 / 药水 / 风扇加工类型 → 曾经搬去 {@code TransmutationMod}，
  *       <b>W6-b2 起全部回到本类</b>：嬗化的 16 个 Java 文件 + 24 个资源文件整块搬进 {@code :coe}，
  *       {@code TransmutationMod} 只剩空壳（{@code :transmutation} 的 mod id 保留，作为"以后加新配方"
@@ -288,8 +289,13 @@ public class CreateOreExpansion {
      * 住 {@code compat.jei.cews}）。类随波引擎进 {@code :coe} 之后，加载方也必须跟着走——
      * 否则只装 {@code coe.jar} 时没有任何人会去触发它（{:cews} 不在场），
      * 波实体就没有 Jade 提示。这与 P7a 对 {@code CurioMedallionBridge} /
-     * {@code BasinLiveJadePlugin} 的处理<b>完全同形</b>。类名换成了新的包
-     * {@code compat.jei}（折进本层已有的包，不新建 {@code compat.jei.coe}）。</p>
+     * {@code BasinLiveJadePlugin} 的处理<b>完全同形</b>。</p>
+     *
+     * <p><b>W6-d</b>：W6-c 当时把 {@code WaveJadePlugin} 折进了 {@code :coe} 已有的
+     * {@code compat.jei} 包（代价是 {@code check-package-heritage} 多一条 NON-FORCED）。
+     * 它是 <b>Jade</b> 插件而不是 JEI 插件，而 {@code compat.jade} 本来就在 {@code :coe}
+     * （{@code BasinLiveJadePlugin} 就住那儿）——于是本轮换回 {@code compat.jade}
+     * （= 拆分前的包名），两个 {@code Class.forName} 字面量现在同包不同类。</p>
      */
     private static void bootstrapJade() {
         if (ModList.get().isLoaded("jade")) {
@@ -300,7 +306,7 @@ public class CreateOreExpansion {
                 CoeCore.LOGGER.warn("[Jade] 工作盆物品行实时化插件加载失败（不影响游戏运行）", t);
             }
             try {
-                Class.forName("com.hjmmd_8.createoreexpansion.compat.jei.WaveJadePlugin");
+                Class.forName("com.hjmmd_8.createoreexpansion.compat.jade.WaveJadePlugin");
                 CoeCore.LOGGER.info("[Jade] 能量波信息显示插件已加载（随波引擎进 COE）");
             } catch (Throwable t) {
                 CoeCore.LOGGER.warn("[Jade] 能量波信息显示插件加载失败（不影响游戏运行）", t);

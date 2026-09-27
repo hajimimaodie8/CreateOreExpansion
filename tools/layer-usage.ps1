@@ -102,7 +102,19 @@ function Get-FileLayer {
     # NOTE: common/registry/coe/charger/** needs no rule of its own -- the generic
     # `^common/registry/coe/` test above already returns COE for it.
     if ($r -match '^client/renderer/CreateChargerRenderer\.java$') { return 'COE' }
-    if ($r -match '^compat/jei/(ChargingJEI|WaveJadePlugin)\.java$') { return 'COE' }
+    if ($r -match '^compat/jei/ChargingJEI\.java$') { return 'COE' }
+    # W6-d (2026-09-30): WaveJadePlugin is a JADE plugin, not a JEI one, so it went back to
+    # the pre-split package compat/jade (where its sibling BasinLiveJadePlugin already lives).
+    # FILE-granular on purpose: the generic `^compat/` SHARED rule below still governs
+    # compat/jade/BasinLiveJadePlugin, and only this one file is L1.  Its LAYER IS UNCHANGED
+    # (COE -> COE), so every per-layer count stays byte-for-byte what it was.
+    if ($r -match '^compat/jade/WaveJadePlugin\.java$') { return 'COE' }
+    # W6-d: ChargingRecipeTools left `core` for :coe (plan section 2.4 P2 -- its writers
+    # (CoeItems, 7 sites) and its only reader (CoeChargingRecipeProvider) are all in :coe
+    # now).  PACKAGE-granular: `common/charger/` exists only in :coe, so a future file there
+    # must not silently fall back to the generic `^common/` SHARED rule.  This one file IS a
+    # real layer change (CORE -> COE) -- that is the point of the move, not a side effect.
+    if ($r -match '^common/charger/')      { return 'COE' }
     # CewsClientSetup is split by W6-c; its L1 half (the two wave-entity renderer
     # registrations) moved into the existing :coe package `client`.
     if ($r -match '^client/WaveEntityRendererRegistration\.java$') { return 'COE' }
