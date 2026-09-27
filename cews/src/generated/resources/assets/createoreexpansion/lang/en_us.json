@@ -173,6 +173,7 @@
   "createoreexpansion.jei.transmuter.line2": "2) The variant carries the scanned machines' recipe types plus the heat read from lit Blaze Burners in range (heated/superheated, enabling heated mixing and other heat-gated recipes); chain steps = wave level (minus 1 per successful craft).",
   "createoreexpansion.jei.transmuter.line3": "3) Payload: up to 5 items (5 kinds), 2 B fluid, FE energy (cap = the most expensive CC&A charging recipe) and lightning strikes (taken from FULLY CHARGED reinforced lightning rods; the wave strikes wherever it hits, and the strike is processed by the lightning strike system).",
   "createoreexpansion.jei.transmuter.line4": "4) On item hit, matching recipes run: dual-input spends auxiliary items, fluid/FE entries deduct the payload; when the chain ends the leftovers return to nearby storage or drop/waste.",
+  "createoreexpansion.keyinfo.rotate_modifier": "Rotate Machine (Modifier)",
   "createoreexpansion.keyinfo.skill_release": "Release skill",
   "createoreexpansion.keyinfo.skill_release_2": "Release skill 2 (2nd skill)",
   "createoreexpansion.keyinfo.skill_release_3": "Release skill 3 (3rd skill)",

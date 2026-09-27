@@ -287,6 +287,8 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.skill_release_2", "Release skill 2 (2nd skill)");
         add("createoreexpansion.keyinfo.skill_release_3", "Release skill 3 (3rd skill)");
         add("createoreexpansion.keyinfo.skill_settings", "Skill Settings");
+        // 机器旋转的修饰键（默认左 Ctrl；与"扳手右键"组合 = 旋转本模组无模式机器）
+        add("createoreexpansion.keyinfo.rotate_modifier", "Rotate Machine (Modifier)");
 
         // ========== Skill settings screen ==========
         add("createoreexpansion.skill_settings.title", "Skill Settings");

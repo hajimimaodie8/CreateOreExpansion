@@ -190,6 +190,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.skill_release_2", "技能释放 2（第二技能）");
         add("createoreexpansion.keyinfo.skill_release_3", "技能释放 3（第三技能）");
         add("createoreexpansion.keyinfo.skill_settings", "技能设置");
+        // 机器旋转的修饰键（默认左 Ctrl；与"扳手右键"组合 = 旋转本模组无模式机器）
+        add("createoreexpansion.keyinfo.rotate_modifier", "旋转机器（修饰键）");
 
         // ========== 技能设置界面 ==========
         add("createoreexpansion.skill_settings.title", "技能设置");
