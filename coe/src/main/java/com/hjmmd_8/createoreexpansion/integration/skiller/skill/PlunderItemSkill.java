@@ -39,9 +39,12 @@ import net.minecraft.world.level.Level;
  *       <td>逐条保留</td></tr>
  * </table>
  *
- * <p>与 {@link SkinItemSkill} 一样，新实现不实现 {@code StrategySkill}：旧
- * {@code EntityStrategy} 只服务客户端描边预览（{@code calculate} 恒返回空集合），
- * 迁移期预览仍由旧渲染器提供，W5 再统一补策略与渲染器。</p>
+ * <p><b>实体描边预览</b>：与 {@link SkinItemSkill} 一样，本类<b>实现</b> {@code StrategySkill}
+ * 并引用 {@code CoeEntityStrategy.KEY}（该策略的 {@code collect} 恒返回空集合，存在的意义
+ * 只有一个：给出 {@code getRendererId()}）。没有策略对象的话，内核的渲染调度根本认不出本技能，
+ * 对着生物按住技能键不会有任何预选框 —— 这正是迁移期漏掉、W2 渲染统一时补上的一环；
+ * 旧渲染栈（{@code client/tool/**}）已整条删除，预览只剩 {@code CoeEntityOutlineRenderer}
+ * 一条路径。</p>
  *
  * @since 1.0.0
  */

@@ -1,14 +1,15 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.client.render.types.AllRenderTypes;
-import com.hjmmd_8.createoreexpansion.client.tool.OutlineRenderer;
-import com.hjmmd_8.createoreexpansion.client.tool.SkillRendererConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
+import com.leaf.skiller.client.ClientSkillCache;
+import com.leaf.skiller.content.skill.SkillComponent;
 import com.leaf.skiller.foundation.renderer.StrategyRenderer;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
+import com.leaf.skiller.foundation.skill.SkillBundle;
 import com.leaf.skiller.foundation.skill.StrategySkill;
 import com.leaf.skiller.foundation.strategy.SkillStrategy;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -28,6 +29,7 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -44,11 +46,40 @@ import java.util.Set;
  * <ul>
  *   <li><b>缓冲类型</b>：旧实现收的是 Create 的 {@code SuperRenderTypeBuffer} 并自己
  *       {@code buffer.draw(type)}；新接口给的是原版 {@link MultiBufferSource}，
- *       <b>不要调 draw</b>（由框架统一冲刷），只需按 RenderType 取 VertexConsumer。</li>
+ *       <b>必须自己冲刷</b>（见 {@link #flush}：按 RenderType 立即 {@code endBatch}）。
+ *       上游 {@code client.ClientEvents.onRenderLevel} 只把
+ *       {@code mc.renderBuffers().bufferSource()} 传进来、<b>自己不冲刷</b>，
+ *       所以"由框架统一冲刷"是错的（旧文档里那句已更正）。漏掉这一步的症状是
+ *       "算完了却什么都看不到"。</li>
  *   <li><b>上色时机</b>：旧实现由调度器读 NBT 颜色再传进渲染器；新实现里上下文是自己造的，
  *       所以颜色在 {@link #getContext} 里读 {@code OutlineColor} 子标签，默认白色 +
- *       {@link SkillRendererConfig#ALPHA}（与旧 {@code defaultConfig} 兜底一致）。</li>
+ *       {@link OutlineColors#ALPHA}（与旧 {@code defaultConfig} 兜底一致）。</li>
+ *   <li><b>槽位门</b>：新内核的 {@code StrategyRenderers.schedule()} 把身上<b>所有</b>
+ *       {@code StrategySkill} 都排上（它只按"有没有渲染器"分桶，没有按键筛选），
+ *       而旧调度器还有一道"按按键槽位只选一个"的门。缺了这道门，一把锹上同一族的
+ *       两个策略技能（{@code channel} 引渠 + {@code grade} 平场）会同时亮两个框。
+ *       本类的门见 {@link #slotAllows(ISkillInstance)}。</li>
  * </ul>
+ *
+ * <h2>槽位门：刻意选择（用户可见，回退方式写在这里）</h2>
+ * <p><b>口径 = 严格跟按键槽位</b>（键一 → 槽位 0、键二 → 1、键三 → 2），与释放侧
+ * {@code integration/skiller/CoeSkillRelease#release}（逐槽位判 {@code PlayerPressedKeys}）
+ * <b>完全一致</b>。理由：预览必须与实效一致 —— "显示两个框但只有一个会生效"是缺陷
+ * 而不是设计。上游 {@code StrategyRenderer} / {@code ISkillInstance} 契约里
+ * <b>根本没有槽位概念</b>，槽位只存在于 {@code ClientSkillCache.skills} 的
+ * {@code SkillComponent.bindings()}（{@code Map<槽位, SkillBundle>}），所以这道门
+ * 只能落在我们自己的渲染器里，内核不许改。</p>
+ * <p><b>这是一次刻意选择，可以一行回退到"同族全亮"</b>（迁移期的那种缺陷行为）：
+ * 把 {@link #slotAllows(ISkillInstance)} 的调用行换成旧的三键或门即可，只此一行 ——</p>
+ * <pre>{@code
+ * if (!AllKeys.SKILL_RELEASE.isPressed()
+ *         && !AllKeys.SKILL_RELEASE_2.isPressed()
+ *         && !AllKeys.SKILL_RELEASE_3.isPressed()) {
+ *     return Optional.empty();
+ * }
+ * }</pre>
+ * <p>回退后行为 = "三键任一按下 → 本类被调度的所有策略都画"（锹两个框、剑两遍描边）。
+ * 它<b>不影响服务端</b>：释放侧始终按槽位。</p>
  *
  * <h2>物理结构（Sable / 航空学 sub-level）</h2>
  * <p>结构上的方块被搬到了虚拟子世界（plot，pose 本地系），主世界那些坐标上什么都没有。
@@ -123,11 +154,9 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
     /** {@link #getContext} 的实际计算体。 */
     private Optional<BlockOutlineRenderContext> collectContext(ClientLevel level, Player player,
                                                               ISkillInstance<BlockOutlineRenderContext> instance) {
-        // 不按技能键就不显示预览（旧 SkillsStrategyRenderer 的门）。
-        // 新内核的 schedule() 是"把身上所有策略技能都排上"，没有这道门，缺了它预览会常亮。
-        if (!AllKeys.SKILL_RELEASE.isPressed()
-                && !AllKeys.SKILL_RELEASE_2.isPressed()
-                && !AllKeys.SKILL_RELEASE_3.isPressed()) {
+        // ── 门 1：槽位门（刻意选择：严格跟按键槽位，与释放侧一致；见类注释的回退方式）──
+        // 回退到"同族全亮"：把下面这一行换成 AllKeys 的三键或门。
+        if (!slotAllows(instance)) {
             return Optional.empty();
         }
         SubLevelBridge bridge = SableBridges.get();
@@ -206,7 +235,63 @@ public class CoeBlockOutlineRenderer implements StrategyRenderer<BlockOutlineRen
         float green = color != null && color.contains("g") ? color.getFloat("g") : 1.0F;
         float blue = color != null && color.contains("b") ? color.getFloat("b") : 1.0F;
         return Optional.of(new BlockOutlineRenderContext(
-                player, positions, red, green, blue, SkillRendererConfig.ALPHA, structureHit));
+                player, positions, red, green, blue, OutlineColors.ALPHA, structureHit));
+    }
+
+    /**
+     * 槽位门：本实例所在的按键槽位，当前必须是"按下的那个"。
+     *
+     * <p>走 {@link ClientSkillCache#skills} 的 {@link SkillComponent#bindings()}
+     * （{@code Map<槽位, SkillBundle>}），按 <b>身份</b>（{@code ==}）找本实例落在哪个槽位
+     * —— 内核的 {@code ISkillInstance} 没有 {@code slot()}，这是唯一的槽位来源。</p>
+     *
+     * <ul>
+     *   <li>槽位 0/1/2 分别对应 {@code AllKeys.SKILL_RELEASE / _2 / _3}
+     *       （与 {@code integration/skiller/client/CoeSkillClient#SLOT_KEYS} 同一顺序）；</li>
+     *   <li><b>查不到槽位就不画</b>：宁可少画一帧，也绝不"全部点亮"误导玩家
+     *       （与 {@link #collectContext} 里"拿不到结构位姿矩阵就这一帧不画"同形）。</li>
+     * </ul>
+     *
+     * <p>与 {@link CoeEntityOutlineRenderer#slotAllows} 是同一份逻辑的两份拷贝：本轮的
+     * 覆盖关卡要求 {@code bindings()} 在<b>两个渲染器文件里都能 grep 到</b>（槽位门存在性
+     * 断言），抽到公共 helper 会让这条断言失去意义；两份实现都只有十来行，且各自的
+     * 类注释都指向对方。</p>
+     */
+    private static boolean slotAllows(ISkillInstance<?> instance) {
+        Integer slot = slotOf(instance);
+        if (slot == null) {
+            return false;
+        }
+        return switch (slot) {
+            case 0 -> AllKeys.SKILL_RELEASE.isPressed();
+            case 1 -> AllKeys.SKILL_RELEASE_2.isPressed();
+            case 2 -> AllKeys.SKILL_RELEASE_3.isPressed();
+            default -> false; // 槽位越界一律视为未按下（与 ClientSkillCache#setKeySource 的契约一致）
+        };
+    }
+
+    /**
+     * 反查本实例在 {@code ClientSkillCache.skills} 里的按键槽位。
+     *
+     * @return 槽位下标；实例还不在缓存里（换工具的那一帧）或缓存为空时返回 {@code null}
+     */
+    private static Integer slotOf(ISkillInstance<?> instance) {
+        SkillComponent component = ClientSkillCache.skills;
+        if (component == null || instance == null) {
+            return null;
+        }
+        for (Map.Entry<Integer, SkillBundle> binding : component.bindings().entrySet()) {
+            SkillBundle bundle = binding.getValue();
+            if (bundle == null) {
+                continue;
+            }
+            for (ISkillInstance<?> candidate : bundle.getAllData()) {
+                if (candidate == (ISkillInstance<?>) instance) {
+                    return binding.getKey();
+                }
+            }
+        }
+        return null;
     }
 
     /**

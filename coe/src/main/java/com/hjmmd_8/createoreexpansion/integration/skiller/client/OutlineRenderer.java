@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.client.tool;
+package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -20,6 +20,14 @@ import java.util.*;
  * <p>两个入口：旧签名（顶点即原坐标）与带 {@code lookupOffset} 的重载（顶点整体减偏移）。
  * 后者是给物理结构（局部坐标在 {@code 2.048e7} 量级）用的抗浮点抵消手段，见该重载的说明。
  * 两者共用同一套合并/取状态逻辑，旧签名的行为一字未改。</p>
+ *
+ * <h2>为什么住在 {@code integration/skiller/client/}</h2>
+ * <p>渲染统一（W2）之前它住在 {@code client/tool/}，被旧 {@code BlockToolOutlineRenderer}
+ * 与新的 {@link CoeBlockOutlineRenderer} 同时使用；旧栈删除后它成为唯一路径的几何引擎。
+ * 落点<b>只能是这里而不是 {@code client/render/**}</b>：{@code tools/check-layering.ps1} 的
+ * {@code Get-FileLayer} 按路径判层，{@code client/render/**} 被<b>刻意判为 SHARED</b>，
+ * 而本类与 COE 的渲染器同属 COE；搬进 SHARED 会当场产生 {@code SHARED -> COE} 违规
+ * （{@code integration/skiller/**} 判 COE）。</p>
  */
 public class OutlineRenderer {
 
@@ -38,8 +46,8 @@ public class OutlineRenderer {
     /**
      * 渲染优化的外轮廓，并把<b>写进顶点缓冲的顶点</b>整体平移 {@code -lookupOffset}。
      *
-     * <p><b>为什么需要它（物理结构 / 浮点精度）</b>：结构局部（plot）坐标在 {@code 2.048e7} 量级，
-     * 而 float 只有 24 bit 尾数——该量级的整数 ulp 已经是 2，顶点一旦以局部大数写进顶点缓冲，
+     * <p><b>为什么需要它（物理结构 / 浮点精度）</b>：结构局部（plot）坐标在 {@code 2.048e7}
+     * 量级，而 float 只有 24 bit 尾数——该量级的整数 ulp 已经是 2，顶点一旦以局部大数写进顶点缓冲，
      * 再乘"局部 → 世界"位姿矩阵就会出现<b>灾难性抵消</b>（框被画到别处 / 退化成不可见）。
      * 调用方把顶点整体减掉一个近处原点（{@code lookupOffset}）后，顶点只剩几十格量级，
      * 精度立刻恢复；只要同时把位姿矩阵的平移列补成"该原点的世界坐标"，几何位置就分毫不动。</p>

@@ -1,50 +1,32 @@
 package com.hjmmd_8.createoreexpansion.client;
 
-import com.hjmmd_8.createoreexpansion.client.tool.SkillsStrategyRenderer;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler.MedallionEffectHandler;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.EnergyTooltipHandler;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 import com.hjmmd_8.createoreexpansion.content.skill.tooltip.SkillsTooltipHandler;
-import net.createmod.catnip.render.DefaultSuperRenderTypeBuffer;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 import java.util.List;
 
 /**
- * AOE 范围挖掘 — 客户端预选框渲染注册
+ * 客户端工具提示事件（技能区 / 能量区 / 绑定行 / 祝福行）。
  *
- * <p>在 {@link RenderLevelStageEvent.Stage#AFTER_CUTOUT_BLOCKS} 阶段，
- * 调用所有工具的 outline render 绘制范围线框。</p>
- *
+ * <p><b>这里原先还有一个世界渲染回调</b>（{@code onWorldRenderLast}，在
+ * {@code AFTER_SKY} 阶段驱动旧 {@code client/tool/SkillsStrategyRenderer}，注释却写着
+ * {@code AFTER_CUTOUT_BLOCKS}，注释与代码本来就不符）。渲染统一（W2）之后技能预览只有
+ * 一条路径 —— Skiller 的 {@code StrategyRenderers}（由内核
+ * {@code com.leaf.skiller.client.ClientEvents#onRenderLevel} 驱动，阶段由各渲染器的
+ * {@code getStage()} 自报），旧调度器的两行调用已随之删除，本类不再持有任何渲染回调。</p>
  */
 @EventBusSubscriber(value = Dist.CLIENT)
 public class ClientEvents {
-
-    @SubscribeEvent
-    public static void onWorldRenderLast(RenderLevelStageEvent event) {
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
-            Minecraft instance = Minecraft.getInstance();
-
-            // 统一调用所有渲染器
-            SkillsStrategyRenderer.INSTANCE.schedule(
-                    instance.level,
-                    event.getCamera(),
-                    event.getPoseStack(),
-                    DefaultSuperRenderTypeBuffer.getInstance()
-            );
-        }
-
-        SkillsStrategyRenderer.INSTANCE.render(event.getStage());
-    }
 
     @SubscribeEvent
     public static void onItemTooltip(ItemTooltipEvent event) {
