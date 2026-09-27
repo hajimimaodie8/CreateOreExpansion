@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
-import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;

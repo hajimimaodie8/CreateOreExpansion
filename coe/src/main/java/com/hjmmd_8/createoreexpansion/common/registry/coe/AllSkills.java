@@ -19,12 +19,12 @@ import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
 import com.hjmmd_8.createoreexpansion.content.skill.strategy.HoeStrategy;
-import com.hjmmd_8.createoreexpansion.skill.ConfigSkill;
-import com.hjmmd_8.createoreexpansion.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.skill.ItemSkill;
-import com.hjmmd_8.createoreexpansion.skill.config.SkillConfig;
-import com.hjmmd_8.createoreexpansion.skill.strategy.EntityStrategy;
-import com.hjmmd_8.createoreexpansion.skill.strategy.SkillStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 

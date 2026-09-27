@@ -1,10 +1,10 @@
 package com.hjmmd_8.createoreexpansion.content.skill.strategy;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
-import com.hjmmd_8.createoreexpansion.skill.IParams;
-import com.hjmmd_8.createoreexpansion.skill.strategy.AreaStrategy;
-import com.hjmmd_8.createoreexpansion.skill.strategy.ConfigStrategy;
-import com.hjmmd_8.createoreexpansion.skill.util.BlockSearch;
+import com.hjmmd_8.createoreexpansion.foundation.IParams;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.AreaStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.ConfigStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.util.BlockSearch;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;

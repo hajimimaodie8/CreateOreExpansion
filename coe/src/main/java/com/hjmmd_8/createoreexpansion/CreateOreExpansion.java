@@ -151,8 +151,9 @@ public class CreateOreExpansion {
         // （注册 id 与显示名两支一致，玩家侧无感）。
         bootstrapCurios();
 
-        // P3p：工具能量门面（common.energy.ToolEnergy）已搬进 core，不能再 import 层里的
-        // IMedallion；共享库那边留了契约 common.energy.MedallionLink，具体实现是本层
+        // P3p：工具能量门面（P12 起包名还原为 content.equipment.tool.energy.ToolEnergy）已搬进
+        // core，不能再 import 层里的 IMedallion；共享库那边留了契约 common.energy.MedallionLink，
+        // 具体实现是本层
         // content.equipment.medallion.MedallionEnergyLink。库没有生命周期，
         // 「谁来实现契约」必须由根侧在这里写死（与 P3o 的 MachineRotatePayload 载荷接线同一配方）。
         // 必须在任何游戏内逻辑（tooltip / 技能扣能）之前完成，故放在物品注册之前。

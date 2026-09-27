@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 // 系列特性登记：物品注册链上写 .tag(AllModItemTags.STELLARSTONE_ITEMS) / .tag(AllModItemTags.THUNDERITE_ITEMS)
 // （Java 没有扩展方法，链上只能写成 .tag(...)；函数版见 SeriesTraits#addStellarstoneTraits(ItemBuilder)。
 //  判定口径 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定，全部收口在 SeriesTraits#isStellarstone/isThunderite）
-import com.hjmmd_8.createoreexpansion.skill.util.SkillOutlineColors;
+import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
 import com.hjmmd_8.createoreexpansion.common.charger.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
@@ -13,11 +13,11 @@ import com.hjmmd_8.createoreexpansion.content.equipment.medallion.StellarstoneSt
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.ThunderiteStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.bridge.MedallionCurios;
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergyColorConfig;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelItem;
-import com.hjmmd_8.createoreexpansion.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.skill.SkillsComponent;
-import com.hjmmd_8.createoreexpansion.skill.config.SkillConfig;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.common.*;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.Builder;

@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-28（P7d：221 条生成配方按 provider **显式绑层**落进各模块 jar——61 拆磨 COE / 160 充能 CEWS，集合与 HEAD 逐条相同；2 条跨层手写标签按层拆半；自足性关卡 52→66 条。原 68,930 B 的长叙述已迁入 `markdown_output/`）。
+> 最后更新：2026-09-28（P12：还原被「按路径判层」工具逼改的包名——68 个回基准、31 个被迫保留；改规则不改名字，层计数逐字不变。原 68,930 B 长叙述已迁入 `markdown_output/`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
@@ -112,6 +112,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则（`Get-FileLayer` 函数体）必须逐字一致**（改一处要两处同改）。
 - `tools/check-package-overlap.ps1` —— **包重叠审计（JPMS）**：同包跨两模块 = 启动即 `ResolutionException`，三关全绿看不到；改包结构/拆层/加 `FMLModType` 后必跑到 0。
 - `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（66 条断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（有 mixin 类而 0 条声明 = 红，即 P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线、每个 jar 自带全部共享 `data/**`（`core` 真源）且根侧 `src/main/resources/data/**` 必须为空（P7c）、221 条生成配方按层分发（61/160/0）、跨层手写标签按层拆半（P7d）。
+- `tools/check-package-heritage.ps1` —— 包名血统断言（基准 `fbf33cdf~1`）：非被迫改名（老包名空着却没回去）非 0 即 exit 1，无白名单。
 - `build/patch/*` 取证脚本（被 git 忽略，按需重生成）：`ChargerBandCheck.java` / `BandCheck.java`（转速分档逐整数比对）、`dump_light_squares.ps1` / `rasterize_top_face.ps1`（贴图取证）、`p3?-EVIDENCE.txt`（拆模块各阶段取证）。
 
 ## 🌊 波系统与变器：现行口径（要点；细则见「长文档索引」）
@@ -137,16 +138,16 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **⛔ P3g 那句「拆任何一层都不可能」已被 P3w 推翻**（别再引用）：拐点是承认「**`@Mod` 入口是集成文件**」。`coe/build.gradle` 只有 `compileOnly(project(':core'))`、**没有** `project(':')` ⇒ **`:coe:compileJava` 通过本身就是「零根引用」的机器证明**（`:cews` / `:transmutation` 同理，三者都没有 `project(':')`）。
 - **注册器已按三层分家**：`AllBlocks` / `AllItems` / `AllBlockEntityTypes` **已删除**（`ccaf8a21`），声明住在 `common/registry/{coe,cews,transmutation}/`；**注册触发顺序必须在 `CreateOreExpansion` / `IntegrationBootstrap` 里显式写死**（没有兜底），每个层类的空 `register()` 只是类初始化触发器。**别和 Create 自己的 `com.simibubi.create.AllBlocks` / `AllItems` 搞混**（批量改名要做「裸名解析」判定）。
 - **P4a/P4b/P4c 的机制，与「拆 lang 时不许把根文件改小」的 HashCache 坑** → `markdown_output/模块拆分进度与决策链.md` 标题 **`## 2. 从 AGENTS.md 迁入（P7b，2026-09-27）`**。**铁律仍在：根 lang 文件一个字节都不许动**。
-- **P7b：mixin 与语言按层自足**（机制全文 → 同文档 **§2.8**）。mixin **配置跟着类走**——7 个 mixin 类 + 配置插件全在 `:coe`，故配置是 `coe/src/main/resources/createoreexpansion.mixins.json` + coe 模板的 `[[mixins]]`；**根侧配置与声明都已删**，`:cews`/`:transmutation` 无 mixin 类 ⇒ 不声明、不造空配置。机制：FML 按**每个文件自己的 `[[mixins]]`** 登记（`LoadingModList.addMixinConfigs → file.getMixinConfigs()`），config 名走**类路径资源**（`MixinConfig.create → contextClassLoader`）。语言：`LayerLangSplitter` 现**另给每层落一份根 lang 的完整拷贝**（同路径、逐条复制）——lang 按整条 `getResourceStack` 逐键 `put`，内容一致 ⇒ 合装结果不变、单装不再露原始键名。
+- **P7b：mixin 与语言按层自足**（机制全文 → 同文档 **§2.8**）。mixin **配置跟着类走**——7 个 mixin 类 + 配置插件全在 `:coe`，故配置是 `coe/src/main/resources/createoreexpansion.mixins.json` + coe 模板的 `[[mixins]]`；**根侧配置与声明都已删**，`:cews`/`:transmutation` 无 mixin 类 ⇒ 不声明、不造空配置。语言：`LayerLangSplitter` 现**另给每层落一份根 lang 的完整拷贝**（同路径、逐条复制），内容一致 ⇒ 合装结果不变、单装不再露原始键名。
 - **108 生成标签与 221 生成配方都已自足**（P7c/P7d）：标签仍是单一 union 提供器、按注入的 `id→层` 表逐文件改道（单层归模块、跨层按层各写一份，靠**合并**语义还原），豁免 `purgeStale` 的 `/tags/`。**221 生成配方**（61 拆磨 COE + 160 工具充能 CEWS）由 `LayerRecipeRouter` 在 `Coe/CewsRecipeProvider` 的**调用点显式绑层**改道到各模块 `src/generated/resources`；**不许**按路径判层（两层命名空间相同 ⇒ 路径逐字同类），并同样豁免 `purgeStale` 的 `/recipe/`。⇒ ⑥ 已闭合。
 - **手写 `data/**` 按层自足（P7c）**：「只引用某一层」的进该层模块，「全原版/外部或横跨两层」的住 `core/src/main/resources/data/**`，由 `coe-conventions`+根各一行复制进每个模块 jar；根侧 `src/main/resources/data/**` 必须为空。
-- **`runData` 的 `written: 0` 不是健康判据**（判据是 `git status` 与内容）→ 同文档 §2.4。
+- **`runData` 的 `written: 0` 不是健康判据** → 同文档 §2.4。
 - **待查**：`runData` 偶发 `Found unused register callbacks`（现在约 7 次 2 次），日志里 sable 的 mixin 仍被装载 ⇒ `build.gradle` 对 runData 的 sable/aeronautics 排除**没有真正生效**。
 - **「全模组共用的东西」必须住 SHARED/`core`**：被两层以上用的契约/登记表若住在某一层，就会让另一层反向 import（禁止方向）。
 - **搬迁名单按「整包」生成、不能按文件；差一个文件就整包不合格** → 同文档 §2.5；工具见「工具」一节。
 - **P7a 收口**：`:coe` 的 `Class.forName("…compat.curios.CurioMedallionBridge")` / `"…compat.jade.BasinLiveJadePlugin"` 字面量与那两个类现在同住 `:coe`（原先类在根 ⇒ 单装 coe.jar 静默把 6 个凝能佩降级）；硬时序（须在 `CoeItems.register()` 之前）未变。
 - **一条通用判据**：**core 里的方法只要描述符里出现 MC 类型就不可用**（哪怕方法体 MC-free）——`NoClassDefFoundError` 抛在调用点那一帧；「core 能不能放这个类」只能用**真调用一次**验证。
-- 历史细节（P3b/P3c/P3d-α/β/P3e/P3f/P3g/P3m/P3w 的逐条原文与提交号、P3h–P3v 取证索引）全部在 `markdown_output/模块拆分进度与决策链.md`。
+- 历史细节（P3b–P3w、P3h–P3v 取证）→ 同文档。
 
 ## 📐 其它现行口径（系列特性 / 机器交互 / 语言键）
 
@@ -154,7 +155,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **机器交互四条统一规则**（用户 2026-09-15 定稿）：① 空手右键某个面 = 开/关该面开口；② 空手右键指示灯 = 只切那盏灯对应的开口；③ 扳手右键 = 有特殊模式的机器只切模式、没模式的机器照旧切开口；④ 旋转必须 **Ctrl + 扳手右键**。
   实现三件套：契约 **`common/machine/MachineInteraction`**（原 `content/machine/CewsMachine`，P2 改名并从 CEWS 挪到共享层；`hasModeSwitch()`；`onWrenched` 默认"吞掉但不旋转"，防 Create 默认旋转在没按 Ctrl 时生效；`rotateAsCreate()` 直接复用 `IWrenchable` 默认旋转、不复制逻辑；`onEmptyHandPortToggle`）、载荷 **`common/machine/MachineRotatePayload`**（服务端校验：本模组机器 + 无模式 + 手持扳手 + 距离）、客户端 `client/MachineRotateClient`（Ctrl 判定后取消本地交互并发包）。
   **为什么 Ctrl 必须在客户端判定**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
-  副作用修复：`StellarWaveTransmuterBlock` 以前**没实现 `IWrenchable`**（`onWrenched` 没有 `@Override`）→ Create 的扳手从来没分发到它，变器切模式其实一直不生效；现已随契约修好。
+  副作用更正：`StellarWaveTransmuterBlock` 曾**没实现 `IWrenchable`**（`onWrenched` 无 `@Override`）→ 扳手不分发、切模式不生效；**这是基准 `fbf33cdf~1` 之前（P2 机器交互契约那轮）就修好的**，不记在本次模块分区的账上；规则本身现仍生效。
 - **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文漏了 **17 条**（雷鸣合金整条材料线 11 条 + 能量场控制器 + 蓝宝石充能器/两个调节器 + 嬗变液方块与流体），英文客户端在这些条目上显示原始键名——已在 `d869e2d2` 补齐，英文名沿用「与 Stellarstone 同构」的规律。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
   ```powershell
   $en = Get-Content src\generated\resources\assets\createoreexpansion\lang\en_us.json -Raw -Encoding UTF8 | ConvertFrom-Json

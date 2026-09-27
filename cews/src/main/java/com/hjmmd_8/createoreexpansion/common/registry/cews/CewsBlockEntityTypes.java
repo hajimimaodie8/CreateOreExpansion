@@ -2,10 +2,10 @@ package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import com.hjmmd_8.createoreexpansion.client.renderer.cews.CreateChargerRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.cews.FieldControllerRenderer;
-import com.hjmmd_8.createoreexpansion.client.renderer.cews.wave.EnergyWaveDisperserRenderer;
-import com.hjmmd_8.createoreexpansion.client.renderer.cews.wave.OctaEnergyWaveDifferencerRenderer;
-import com.hjmmd_8.createoreexpansion.client.renderer.cews.wave.SixFaceDisperserRenderer;
-import com.hjmmd_8.createoreexpansion.client.renderer.cews.wave.WaveGateRenderer;
+import com.hjmmd_8.createoreexpansion.client.renderer.wave.EnergyWaveDisperserRenderer;
+import com.hjmmd_8.createoreexpansion.client.renderer.wave.OctaEnergyWaveDifferencerRenderer;
+import com.hjmmd_8.createoreexpansion.client.renderer.wave.SixFaceDisperserRenderer;
+import com.hjmmd_8.createoreexpansion.client.renderer.wave.WaveGateRenderer;
 import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.block.StellarstoneStressChargerBlockEntity;

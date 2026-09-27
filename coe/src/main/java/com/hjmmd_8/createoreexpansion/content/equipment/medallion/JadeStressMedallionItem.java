@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion;
 
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import net.minecraft.world.item.ItemStack;
 

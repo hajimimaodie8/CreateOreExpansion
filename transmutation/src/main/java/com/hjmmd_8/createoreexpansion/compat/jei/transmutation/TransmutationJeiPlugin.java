@@ -9,7 +9,7 @@ import org.jetbrains.annotations.NotNull;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationJeiCategories;
-import com.hjmmd_8.createoreexpansion.compat.jei.base.CreateRecipeCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.category.base.CreateRecipeCategory;
 
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;

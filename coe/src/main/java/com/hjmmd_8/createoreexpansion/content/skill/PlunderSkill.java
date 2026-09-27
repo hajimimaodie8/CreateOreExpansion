@@ -1,12 +1,12 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
-import com.hjmmd_8.createoreexpansion.skill.SkillEnergySpend;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfig;
-import com.hjmmd_8.createoreexpansion.skill.ConfigSkill;
-import com.hjmmd_8.createoreexpansion.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.skill.context.HitSkillContext;
-import com.hjmmd_8.createoreexpansion.skill.strategy.EntityStrategy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.HitSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;

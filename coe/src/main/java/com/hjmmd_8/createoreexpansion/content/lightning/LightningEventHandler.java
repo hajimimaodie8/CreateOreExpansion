@@ -138,7 +138,7 @@ public final class LightningEventHandler {
      * {@code RecipeHolder} 这类中立类型——核心层不出现任何 CC&amp;A 硬编码。</p>
      */
     private static Optional<RecipeHolder<? extends Recipe<?>>> findCcaCharging(ServerLevel level, ItemStack stack) {
-        return com.hjmmd_8.createoreexpansion.compat.createaddition.CreateAdditionCompat
+        return com.hjmmd_8.createoreexpansion.compat.createaddition.coe.CreateAdditionCompat
             .findChargingRecipe(level, stack);
     }
 

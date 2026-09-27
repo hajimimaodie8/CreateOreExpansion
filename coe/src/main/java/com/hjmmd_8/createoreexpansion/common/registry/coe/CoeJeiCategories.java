@@ -2,9 +2,9 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.compat.jei.coe.LightningBlockCategory;
-import com.hjmmd_8.createoreexpansion.compat.jei.coe.LightningCategory;
-import com.hjmmd_8.createoreexpansion.compat.jei.base.CreateRecipeCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningBlockCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningCategory;
+import com.hjmmd_8.createoreexpansion.compat.jei.category.base.CreateRecipeCategory;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
 import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
 
@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.Blocks;
  * <p>本层有两个类别：<b>雷击加工</b>（{@code lightning}）与<b>方块雷击加工</b>
  * （{@code lightning_block}），催化剂 = 原版避雷针 + 本模组的强化避雷针。</p>
  *
- * <p><b>调用方</b>（P7a 更正）：同模块的 {@code compat.jei.coe.CreateOreExpansionJEI}
+ * <p><b>调用方</b>（P7a 更正、P12 包名还原）：同模块的 {@code compat.jei.CreateOreExpansionJEI}
  * （{@code :coe} 自己的 {@code @JeiPlugin}）。原来写的是"集成层的
  * {@code CreateOreExpansionJEI} 按拆分前的逐条顺序收集，所以 JEI 侧栏里的分类顺序一字不变"——
  * <b>那个机制描述是错的</b>：侧栏顺序由 {@code recipe-category-sort-order.ini} 对配方类型 UID

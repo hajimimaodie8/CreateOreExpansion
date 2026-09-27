@@ -1,13 +1,13 @@
 package com.hjmmd_8.createoreexpansion.mixin;
 
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.skill.SkillItemStack;
-import com.hjmmd_8.createoreexpansion.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.content.skill.context.DestroyBlockContext;
-import com.hjmmd_8.createoreexpansion.skill.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationContextFactory;

@@ -32,6 +32,15 @@
 # Get-FileLayer: all 133 sit on CEWS package paths (`content/{charger,wave,machine,energyfield}/**`,
 # `common/registry/cews/**`, `compat/jei/cews/**`, `client/renderer/cews/**`), so CEWS stays 133.
 # Without it the report would read CEWS=0 while still exiting 0 -- the same silent escape.
+# P12 (2026-09-28): Get-FileLayer is rewritten in BOTH tools (still byte-identical) to
+# recognise the PRE-SPLIT package names.  The split had renamed packages only so that these
+# path rules would classify them, and a package name does not decide which Gradle module a
+# file lives in.  The new rules cover exactly the same files as the old ones
+# (foundation/item/skill/**, foundation/util/**, compat/jei/{category,subcategory,animation}/**,
+# compat/jei/{CreateOreExpansionJEI,GrindingJEI}, compat/optical/**, compat/vintageimprovements/**,
+# compat/createaddition/**, client/renderer/wave/**, client/SkillSettingsScreen,
+# mixin/renderers/{EntityRendererAccessor,LivingEntityRendererAccessor}), so every per-layer
+# count must be identical to the pre-P12 run (COE=177 CEWS=136 TRANS=17 SHARED=24 CORE=60).
 # Deliberately pure ASCII: PowerShell 5.1 reads a BOM-less .ps1 as
 # ANSI and can swallow quotes mid-script.
 
@@ -59,28 +68,46 @@ function Get-FileLayer {
     if ($r -match '^common/registry/transmutation/')  { return 'TRANS' }
     if ($r -match '^content/(charger|wave|machine|energyfield)/') { return 'CEWS' }
     if ($r -match '^content/(transmuting|transmutation)/')        { return 'TRANS' }
-    # P3r: the old skill framework is COE, not SHARED.  It used to live under
-    # foundation/item/skill/** and foundation/{IParams,ParamsPool,FrameParams,util/*},
-    # which made every layer's closure reach a SHARED path; the whole tree now lives
-    # in the top-level `skill` package (a COE-owned package).  The two P3e paths stay.
+    # P12 (2026-09-28): the P3r/P3z rules below are rewritten to recognise the PRE-SPLIT
+    # package names.  The split had renamed packages only so that these path rules would
+    # classify them -- a package name does not decide which Gradle module a file lives in
+    # -- and the request was for every module's package set to match the pre-split tree
+    # wherever JPMS allows it.  Each new rule classifies exactly the same FILES (same
+    # layer) as the rule it replaces, so the layer counts stay byte-for-byte the same.
+    #
+    # The old skill framework is COE, not SHARED: foundation/item/skill/**,
+    # foundation/{IParams,ParamsPool,FrameParams} and the six skill helpers of
+    # foundation/util are the classes that lived there before the split.
+    # foundation/util cannot be one blanket rule: BarTooltipRender was in that same
+    # pre-split package but is SHARED and now lives in core/util (core and coe may not
+    # claim one package), so that single exception is file-granular on purpose.
     # NOTE: only these sub-paths are COE -- the rest of client/ (MachineRotateClient,
-    # WaveQueryGaugeModelRegistration, client/AllRenderTypes, client/renderer/{Grinder,Empty})
-    # stays SHARED for the time being.
-    if ($r -match '^skill/')               { return 'COE' }
+    # client/cews/WaveQueryGaugeModelRegistration, client/render/AllRenderTypes,
+    # client/renderer/{Grinder,Empty}EntityRenderer) stays out of COE for the time being.
+    if ($r -match '^foundation/item/skill/')                             { return 'COE' }
+    if ($r -match '^foundation/(IParams|ParamsPool|FrameParams)\.java$') { return 'COE' }
+    if ($r -match '^foundation/util/') {
+        if ($r -match '^foundation/util/BarTooltipRender') { return 'SHARED' }
+        return 'COE'
+    }
     if ($r -match '^integration/skiller/') { return 'COE' }
     if ($r -match '^client/tool/')         { return 'COE' }
-    # P3r: COE-owned renderer + JEI/mixin subtrees that live under SHARED-looking parents.
+    # COE-owned renderer + JEI/mixin subtrees that live under SHARED-looking parents.
     if ($r -match '^client/renderer/GrinderRenderer')          { return 'COE' }
     if ($r -match '^client/renderer/EmptyEntityRenderer')      { return 'COE' }
-    if ($r -match '^compat/jei/coe/')                          { return 'COE' }
-    # P3r: the CC&A bridge that BOTH the lightning line (COE) and the wave line (CEWS)
-    # use had to be split -- CreateAdditionCompat lives here (COE), the transmuter-side
-    # helper stays in compat/jei/cews/createaddition (CEWS).
+    if ($r -match '^client/SkillSettingsScreen')               { return 'COE' }
+    if ($r -match '^compat/jei/(CreateOreExpansionJEI|GrindingJEI)') { return 'COE' }
+    if ($r -match '^compat/jei/(category|subcategory|animation)/')   { return 'COE' }
+    # The CC&A bridge that BOTH the lightning line (COE) and the wave line (CEWS) use.
+    # CreateAdditionCompat (COE, born in P3r) moved into compat/createaddition/coe/ so
+    # that the two wave-side classes could keep their pre-split package name.
+    if ($r -match '^compat/createaddition/(TeslaCoilWaveCharger|CreateAdditionTransmuterSupport)') { return 'CEWS' }
     if ($r -match '^compat/createaddition/')                   { return 'COE' }
-    if ($r -match '^mixin/renderers/coe/')                     { return 'COE' }
-    # P3r: CEWS-owned renderer + compat subtrees.
-    if ($r -match '^client/renderer/cews/')                    { return 'CEWS' }
+    if ($r -match '^mixin/renderers/(EntityRendererAccessor|LivingEntityRendererAccessor)') { return 'COE' }
+    # CEWS-owned renderer + compat subtrees.
+    if ($r -match '^client/renderer/(cews|wave)/')             { return 'CEWS' }
     if ($r -match '^compat/jei/cews/')                         { return 'CEWS' }
+    if ($r -match '^compat/(optical|vintageimprovements)/')    { return 'CEWS' }
     # P3t: the THIRD sibling of the two rules above.  P3r added the COE and CEWS JEI
     # subtrees but forgot TRANS, so compat/jei/transmutation/TransmutingCategory was
     # judged SHARED while TransmutationJeiCategories (TRANS) imported it.  Same shape,

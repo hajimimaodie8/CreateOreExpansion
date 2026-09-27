@@ -5,8 +5,8 @@ import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 import java.awt.Color;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.structure.SableBridges;
-import com.hjmmd_8.createoreexpansion.common.structure.SubLevelBridge;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
+import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.util.BarTooltipRender;

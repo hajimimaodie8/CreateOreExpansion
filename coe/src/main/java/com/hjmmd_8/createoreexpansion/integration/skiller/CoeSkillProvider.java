@@ -1,10 +1,10 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
-import com.hjmmd_8.createoreexpansion.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.skill.SkillItemStack;
-import com.hjmmd_8.createoreexpansion.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.leaf.skiller.AllSkillInstanceFactories;
 import com.leaf.skiller.api.registry.SkillerBuiltInRegistries;
 import com.leaf.skiller.content.skill.SkillComponent;

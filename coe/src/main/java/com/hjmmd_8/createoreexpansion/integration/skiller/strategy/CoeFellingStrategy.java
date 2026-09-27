@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
-import com.hjmmd_8.createoreexpansion.skill.util.BlockSearch;
+import com.hjmmd_8.createoreexpansion.foundation.util.BlockSearch;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.CoeSkillSupport;
 import com.leaf.skiller.api.registry.SkillerRegistries;
@@ -25,7 +25,7 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
  * {@code searchRange} 曼哈顿半径），并把<b>起点自身剔除</b>（起点由触发端那次普通挖掘负责）。
  * 差别只在数据来源——配置从技能实例按<b>有效等级</b>取（等价旧
  * {@code SkillsComponent.applySkillBoost} 的效果），不再是旧
- * {@link com.hjmmd_8.createoreexpansion.skill.DataSkill}。</p>
+ * {@link com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill}。</p>
  *
  * <p><b>速度修正不在本类</b>：旧 {@code FellingSkill#load} 里注册的
  * {@code BreakBlockSpeedModifiableAttribute} 修饰器不在技能释放链路上（它只影响挖掘耗时），

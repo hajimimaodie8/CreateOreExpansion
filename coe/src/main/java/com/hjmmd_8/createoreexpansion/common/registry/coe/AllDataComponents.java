@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.common.energy.ToolDataComponents;
 import com.hjmmd_8.createoreexpansion.common.registry.DataComponentRegistrar;
-import com.hjmmd_8.createoreexpansion.skill.SkillsComponent;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -25,7 +25,8 @@ import java.util.function.UnaryOperator;
  *
  * <p><b>P3p：这个类被拆成了两半。</b>它是「工具能量环」上唯一的承重块——它 import
  * {@link SkillsComponent}（根侧共享层），而 {@code SkillsComponent} 又反向 import
- * {@code common.energy} 的工具能量类，于是 {@code common.energy} 永远进不了共享库（core）。
+ * {@code common.energy} 的工具能量类，于是那一组类当时进不了共享库（core）。
+ * （P12 还原包名后它们在 core 里的位置是 {@code content.equipment.tool.energy}。）
  * 现在把<b>纯数据</b>的那 9 个组件（只依赖 MC 的 {@code int}/{@code long}/
  * {@code ResourceLocation}/{@code List}）搬进了 core 的 {@link ToolDataComponents}，
  * 这里只留技能线专属的 {@code skills}，并对那 9 个组件保留<b>同名别名</b>

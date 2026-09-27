@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.attribute;
 
-import com.hjmmd_8.createoreexpansion.skill.attribute.SingleModifiableAttribute;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.attribute.SingleModifiableAttribute;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 

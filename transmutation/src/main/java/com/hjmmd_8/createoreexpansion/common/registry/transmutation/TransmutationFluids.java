@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.transmutation;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
 import com.hjmmd_8.createoreexpansion.common.transmutation.TransmutationLink;
-import com.hjmmd_8.createoreexpansion.content.transmuting.block.TransmutationFluidBlock;
+import com.hjmmd_8.createoreexpansion.content.transmuting.fluid.TransmutationFluidBlock;
 import com.hjmmd_8.createoreexpansion.content.transmuting.fluid.TransmutationFluid;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 import com.tterrag.registrate.util.entry.FluidEntry;

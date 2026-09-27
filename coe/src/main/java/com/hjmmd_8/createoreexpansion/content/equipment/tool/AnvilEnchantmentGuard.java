@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.tool;
 
 import com.hjmmd_8.createoreexpansion.common.AllTags.AllItemTags;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.energy.ToolEnchantments;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceKey;
@@ -31,10 +31,11 @@ import java.util.Map;
  * </ul>
  *
  * <p><b>P3l 为什么它搬来 COE</b>：它守卫的是<b>工具附魔</b>（四个附魔的 allowed tag 是
- * {@code COOLDOWN_TOOLS} / {@code SKILL_TOOLS}），而附魔声明住在 {@code common/energy}
- * （工具能量契约，编译期属于根侧）⇒ 留在 {@code common} 顶层就是一个 {@code CORE →
- * 根侧 SHARED} 的引用，core 编译期看不见（探针实测 3 个「找不到符号」：
- * {@code ToolEnchantments}）。搬到 COE 后 {@code content → common.energy} 是合法方向。</p>
+ * {@code COOLDOWN_TOOLS} / {@code SKILL_TOOLS}），而附魔声明住在工具能量契约里
+ * （当时是 {@code common/energy}，P12 起包名还原为 {@code content/equipment/tool/energy}，
+ * 两份都仍在共享库 core）⇒ 留在 {@code common} 顶层就是一个 {@code CORE → 根侧 SHARED} 的
+ * 引用，core 编译期看不见（探针实测 3 个「找不到符号」：{@code ToolEnchantments}）。
+ * 搬到 COE 后 {@code content → 共享库} 是合法方向（{@code CORE} 是各层都能引用的底层）。</p>
  */
 // modid 恒为 "createoreexpansion"（值未变），从共享库取是因为库不能反向依赖根 @Mod 入口
 // CreateOreExpansion。

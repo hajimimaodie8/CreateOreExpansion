@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client.tool;
 
-import com.hjmmd_8.createoreexpansion.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 
 /**
  * 工具渲染配置 —— 承载单个技能的一次渲染所需参数。

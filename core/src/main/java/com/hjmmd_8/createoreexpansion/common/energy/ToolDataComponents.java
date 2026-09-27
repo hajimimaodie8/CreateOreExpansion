@@ -15,7 +15,8 @@ import java.util.function.UnaryOperator;
  *
  * <p>这些组件的类型只依赖 Minecraft（{@code Integer} / {@code Long} / {@code ResourceLocation} /
  * {@code List}），没有任何技能线的类型，所以它们属于共享库（core）——
- * {@code common.energy} 的能量门面读的是这里的常量，不再反向依赖 COE 的注册类。</p>
+ * {@code common.energy} 的能量门面（P12 起包名还原为
+ * {@code content.equipment.tool.energy}）读的是这里的常量，不再反向依赖 COE 的注册类。</p>
  *
  * <p><b>注册顺序不变</b>：本类字段的文本顺序就是它们进注册表的顺序
  * （{@code energy}(2) → … → {@code skill_cooldown_until}(10)），

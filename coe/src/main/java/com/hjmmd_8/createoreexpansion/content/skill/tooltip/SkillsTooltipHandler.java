@@ -1,10 +1,10 @@
 package com.hjmmd_8.createoreexpansion.content.skill.tooltip;
 
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
-import com.hjmmd_8.createoreexpansion.skill.SkillEnergySpend;
-import com.hjmmd_8.createoreexpansion.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.skill.SkillItemStack;
-import com.hjmmd_8.createoreexpansion.skill.SkillType;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.screens.Screen;

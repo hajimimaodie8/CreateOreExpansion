@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
-import com.hjmmd_8.createoreexpansion.skill.util.DualDirection;
+import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
