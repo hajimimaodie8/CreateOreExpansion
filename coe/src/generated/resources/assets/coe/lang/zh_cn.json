@@ -46,6 +46,7 @@
   "item.createoreexpansion.crushed_topaz_ore": "粉碎黄玉矿石",
   "item.createoreexpansion.diamond_grinding_wheel": "钻石角磨轮",
   "item.createoreexpansion.gold_grinding_wheel": "金角磨轮",
+  "item.createoreexpansion.incomplete_transmute_mechanism": "未完成的嬗化构件",
   "item.createoreexpansion.iron_grinding_wheel": "铁角磨轮",
   "item.createoreexpansion.jade_axe": "翡翠斧",
   "item.createoreexpansion.jade_big_shard": "大块翡翠",
@@ -131,5 +132,6 @@
   "item.createoreexpansion.topaz_sword": "黄玉剑",
   "item.createoreexpansion.topaz_wire": "黄玉线",
   "item.createoreexpansion.transmutation_fluid_bucket": "嬗变液桶",
+  "item.createoreexpansion.transmute_mechanism": "嬗化构件",
   "item.createoreexpansion.zinc_grinding_wheel": "锌角磨轮"
 }

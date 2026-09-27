@@ -33,7 +33,9 @@ import net.neoforged.neoforgespi.language.ModFileScanData;
  * {@code CreateOreExpansion} 构造器里的 9 处跨层触发点必须搬出 {@code :coe}：</p>
  * <ul>
  *   <li>CEWS 自己的 {@code AllEntityTypes.register} → {@code CewsMod} 构造器；</li>
- *   <li>TRANS 自己的 {@code AllModPotions} / {@code AllFanProcessingTypes} → {@code TransmutationMod}；</li>
+ *   <li>TRANS 自己的 {@code AllModPotions} / {@code AllFanProcessingTypes} → {@code TransmutationMod}；
+ *       <b>W6-b2 起又回到 {@code CreateOreExpansion}</b>（嬗化内容整块进 {@code :coe}，
+ *       {@code TransmutationMod} 空壳化）——本类从头到尾没有代管过它们；</li>
  *   <li>hub 的 5 处 → 一度由<b>本类</b>代管；<b>P7a 已整体删除那 5 处</b>（四个聚合入口
  *       {@code AllRecipeTypes} / {@code AllCreativeModeTabs} / {@code AllFluids} /
  *       {@code AllModEffects} 也一并删除），职责改由 core 的幂等入口

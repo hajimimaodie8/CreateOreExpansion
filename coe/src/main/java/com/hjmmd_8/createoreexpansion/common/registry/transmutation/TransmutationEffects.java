@@ -18,10 +18,10 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  * 这正是 AGENTS 说的「全模组共用的登记表住在某一层里」的镜像问题：层自己的东西住在聚合入口里。
  * 按 P3c 的既有模式，声明回到本层（那个别名 {@code common/AllModEffects} 已在 P7a 删除）。</p>
  *
- * <p><b>注册顺序</b>：{@code DeferredRegister} 由本层自己的 {@code @Mod} 入口
- * （{@code TransmutationMod} 构造器）挂总线。P7a 之前它由集成层的别名转发、
- * 触发点在 {@code CreateOreExpansion} 构造器里——那条路在"只装 transmutation.jar"时不存在
- * （嬗乱效果根本不会注册），现在归本层自己。</p>
+ * <p><b>注册顺序</b>：{@code DeferredRegister} 由第一层的 {@code CreateOreExpansion} 构造器
+ * （W6-b2 起；此前是 {@code TransmutationMod} 构造器）挂总线。P7a 之前它由集成层的别名转发、
+ * 触发点就在 {@code CreateOreExpansion} 构造器里——嬗化机制整块搬回第一层后触发点又回到那里，
+ * 口径是「内容在哪一层，就由那一层的 {@code @Mod} 触发」。</p>
  *
  * <p><b>datagen 归属没变</b>：MobEffect 不经 datagen，注册命名空间仍是
  * {@link CoeCore#REGISTRY_NAMESPACE}（{@code createoreexpansion}），注册 id
@@ -40,7 +40,7 @@ public final class TransmutationEffects {
 	private TransmutationEffects() {
 	}
 
-	/** 注册触发（P7a 起由 {@code TransmutationMod} 构造器直接调用）。 */
+	/** 注册触发（W6-b2 起由 {@code CreateOreExpansion} 构造器直接调用；此前是 {@code TransmutationMod}）。 */
 	public static void register(IEventBus modEventBus) {
 		EFFECTS.register(modEventBus);
 	}

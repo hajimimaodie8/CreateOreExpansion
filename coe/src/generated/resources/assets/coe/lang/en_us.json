@@ -46,6 +46,7 @@
   "item.createoreexpansion.crushed_topaz_ore": "Crushed Topaz Ore",
   "item.createoreexpansion.diamond_grinding_wheel": "Diamond Grinding Wheel",
   "item.createoreexpansion.gold_grinding_wheel": "Gold Grinding Wheel",
+  "item.createoreexpansion.incomplete_transmute_mechanism": "Incomplete Transmute Mechanism",
   "item.createoreexpansion.iron_grinding_wheel": "Iron Grinding Wheel",
   "item.createoreexpansion.jade_axe": "Jade Axe",
   "item.createoreexpansion.jade_big_shard": "Big Jade Shard",
@@ -131,5 +132,6 @@
   "item.createoreexpansion.topaz_sword": "Topaz Sword",
   "item.createoreexpansion.topaz_wire": "Topaz Wire",
   "item.createoreexpansion.transmutation_fluid_bucket": "Transmutation Fluid Bucket",
+  "item.createoreexpansion.transmute_mechanism": "Transmute Mechanism",
   "item.createoreexpansion.zinc_grinding_wheel": "Zinc Grinding Wheel"
 }

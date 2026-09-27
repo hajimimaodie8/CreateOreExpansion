@@ -1,8 +1,11 @@
 // ── transmutation：机械嬗化学（P3a 骨架 → P3y 落地）────────────────────────────
 // mod id 继续是 transmutation（注册命名空间仍是 createoreexpansion：
 // common/CoeCore#REGISTRY_NAMESPACE，注册 id / 语言键 / 数据包路径一个都不许变）。
-// P3y 起 16 个 TRANS 文件 + @Mod 入口 TransmutationMod 都住在本模块，本模块自己的
-// src/main/templates/META-INF/neoforge.mods.toml 声明 transmutation；
+// W6-b2 起本模块是**空壳**：嬗化的 16 个 Java 文件与 24 个资源文件整块搬进 :coe
+//（包名逐字未变），这里只剩 @Mod 入口 TransmutationMod（构造器已清空，只保留 LayerBootstrap
+// 接线与一行日志），本模块自己的
+// src/main/templates/META-INF/neoforge.mods.toml 仍声明 transmutation（mod id 保留 =
+// "以后往第三层加新配方"的容器，见 build/patch/w6b2-EVIDENCE.txt）；
 // 根工程的模板**不再**声明它 —— 两个 mod 文件同声明一个 id 会被
 // UniqueModListBuilder 判 duplicate_mod 硬崩（P3v §4b 实测）。
 plugins {

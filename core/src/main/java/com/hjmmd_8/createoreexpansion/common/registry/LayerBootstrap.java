@@ -75,8 +75,16 @@ public final class LayerBootstrap {
     private static boolean attached;
 
     /**
-     * 要唤醒的三层配方类型声明类（<b>固定顺序 = 拆分前 {@code AllRecipeTypes} 里六个常量的层间顺序</b>：
+     * 要唤醒的配方类型声明类（<b>固定顺序 = 拆分前 {@code AllRecipeTypes} 里六个常量的层间顺序</b>：
      * TRANS → COE → CEWS）。
+     *
+     * <p><b>W6-b2 起名单收短成两条</b>（方案 §2 的读法 (ii)）：嬗化机制整块搬进 {@code :coe} 之后，
+     * {@code transmutation.TransmutationRecipeTypes} 与 {@code coe.CoeRecipeTypes} 同属第一层，
+     * 名单里不再需要单独一项——{@code CoeRecipeTypes} 的<b>第一个字段</b>就是
+     * {@code TRANSMUTING} 的转发声明，读它会先把 {@code TransmutationRecipeTypes} 初始化掉，
+     * 所以 {@code transmuting} 仍然排在 {@code lightning} 之前（六个条目的数值注册 id 7..12
+     * 逐字不变，实测见 {@code build/patch/w6b2-EVIDENCE.txt}）。
+     * <b>顺序语义依旧承重</b>：{@code cews.CewsRecipeTypes}（{@code charging}）必须留在最后。</p>
      *
      * <p>字段初始化器在静态块之前执行（文本顺序），且本类是纯静态工具、没有静态块，
      * 所以这里不会踩到"类初始化未完成就取字段"的坑。</p>
@@ -128,16 +136,21 @@ public final class LayerBootstrap {
     }
 
     /**
-     * 拼出三层配方类型声明类的全名（见类注释"五"）。
+     * 拼出配方类型声明类的全名（见类注释"五"）。
      *
-     * <p>包前缀由本类自己的包自报（本类与那三个类同住 {@code …common.registry} 的不同子包），
+     * <p>包前缀由本类自己的包自报（本类与那两个类同住 {@code …common.registry} 的不同子包），
      * 只留<b>子包 + 简单名</b>的字面量，因此源码里不出现任何层的全限定名。
      * 拼出来的结果与拆分前逐字相同，行为零变化。</p>
+     *
+     * <p><b>W6-b2</b>：第一项 {@code transmutation.TransmutationRecipeTypes} 已从名单里删掉
+     * （它现在与 {@code coe.CoeRecipeTypes} 同住 {@code :coe}，由后者的第一个字段转发触发，
+     * 见 {@link #LAYER_RECIPE_TYPE_CLASSES}）。<b>不要把它加回来</b>：那会让
+     * {@code transmuting} 被"提前"唤醒一次，虽然条目顺序不变（同一张 {@code DeferredRegister}
+     * 按 id 去重），但名单与 {@code WaveRecipeCapabilities} 的口径就不再一一对应了。</p>
      */
     private static String[] layerRecipeTypeClassNames() {
         String prefix = LayerBootstrap.class.getPackageName() + ".";
         return new String[] {
-            prefix + "transmutation.TransmutationRecipeTypes",
             prefix + "coe.CoeRecipeTypes",
             prefix + "cews.CewsRecipeTypes"
         };

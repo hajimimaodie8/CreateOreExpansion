@@ -31,9 +31,17 @@
 #           (MixinConfig.create -> MixinServiceModLauncher.getResourceAsStream ->
 #           contextClassLoader).  So a per-module config works, but only when the
 #           [[mixins]] block and the resource live in the same jar.
-#      B3 at least one @JeiPlugin class under com/hjmmd_8/createoreexpansion/compat/jei/,
-#         confirmed with javap -v (the annotation is RuntimeInvisible, so "the source says
-#         @JeiPlugin" is not the same evidence as "the built class carries it").
+#      B3 every @JeiPlugin class the module's SOURCE declares is packaged in that module's
+#         jar -- and no plugin is packaged that the source does not declare.  Confirmed with
+#         javap -v (the annotation is RuntimeInvisible, so "the source says @JeiPlugin" is
+#         not the same evidence as "the built class carries it").
+#         W6-b2 (2026-09-29) made this two-sided: it used to read ">=1 @JeiPlugin", which was
+#         true while every shipped jar held content.  The third layer is now an empty shell
+#         (its only plugin, transmutation_jei, moved into :coe together with the whole
+#         transmutation mechanism), so ">=1" would demand a plugin that has no reason to
+#         exist.  Comparing source-declared vs jar-packaged keeps the original failure mode
+#         (a plugin whose class did not ship -- the P7a shape) AND catches a stray plugin,
+#         with the same one check per module (66 checks in total, unchanged).
 #      B4 assets/createoreexpansion/lang/en_us.json and zh_cn.json exist inside the jar,
 #         parse as JSON, and their key set AND values are identical to the root's generated
 #         lang file.  (P7b: each module also carries a full copy of the root language file,
@@ -520,8 +528,18 @@ foreach ($name in $modules.Keys) {
             $jeiClasses = $jeiClasses + $cls
         }
     }
-    Write-Check ($jeiClasses.Count -ge 1) ($name + ' B3 >=1 @JeiPlugin under compat/jei/ (javap -v)') `
-        ("count=" + $jeiClasses.Count + " -> " + (($jeiClasses | ForEach-Object { ($_ -split '!/')[-1] }) -join ', '))
+    # W6-b2: two-sided (see the header).  The expected number is what the module's own SOURCE
+    # declares, so an empty module (the third layer's shell) legitimately expects 0.
+    $jeiSrcRoot = Join-Path $repoRoot $modules[$name].src
+    $jeiSrcCount = 0
+    if (Test-Path -LiteralPath $jeiSrcRoot) {
+        foreach ($jf in (Get-ChildItem -LiteralPath $jeiSrcRoot -Recurse -File -Filter '*.java')) {
+            $jeiSrcCount += @([regex]::Matches((Get-SourceCode $jf.FullName), '@JeiPlugin\b')).Count
+        }
+    }
+    Write-Check ($jeiClasses.Count -eq $jeiSrcCount) ($name + ' B3 packaged @JeiPlugin count == source-declared count (javap -v)') `
+        ("jar=" + $jeiClasses.Count + " source=" + $jeiSrcCount + " -> " + `
+         $(if ($jeiClasses.Count -gt 0) { (($jeiClasses | ForEach-Object { ($_ -split '!/')[-1] }) -join ', ') } else { '(none declared, none packaged)' }))
 
     # B4 -- language self-sufficiency
     foreach ($locale in $langLocales) {

@@ -21,18 +21,21 @@
 # 176 COE files plus the @Mod entry, and a tool that still scans only the two old roots
 # would print COE=0 while exiting 0 (the same silent escape P3d-beta hit for core).
 # P3y adds the FOURTH root for exactly the same reason: the Gradle sub-module
-# `:transmutation` now holds the 16 TRANS files (plus the @Mod entry TransmutationMod),
-# and a tool that still scans only the three old roots would print TRANS=0 while exiting 0.
+# `:transmutation` held the 16 TRANS files (plus the @Mod entry TransmutationMod),
+# and a tool that still scanned only the three old roots would print TRANS=0 while exiting 0.
+# W6-b2 (2026-09-29): those 16 files moved into `:coe` (package names verbatim), so the
+# fourth root now holds ONE file -- the empty @Mod shell (TRANS=1 is the honest count).
+# The root stays in this table for exactly that reason: dropping it would make the third
+# layer invisible instead of empty.
 # P3z adds the FIFTH root for the same reason, a third time: the Gradle sub-module `:cews`
 # now holds the 133 CEWS files (plus the @Mod entry CewsMod), and a tool that still scanned
 # only the four old roots would print CEWS=0 while exiting 0 -- the split would look perfect
 # exactly because the files had become invisible.
 # The root table below is the ONLY place that knows about roots; the layer rules
 # (Get-FileLayer / Get-TargetLayer) are unchanged, and every module tree is scanned with
-# the same package-relative paths as the root tree (so `content/transmuting/**` still lands
-# in TRANS and `common/registry/transmutation/**` still lands in TRANS, by the old rules;
-# the same holds for CEWS: `content/{charger,wave,machine,energyfield}/**`,
-# `common/registry/cews/**`, `compat/jei/cews/**`, `client/renderer/cews/**`).
+# the same package-relative paths as the root tree.  W6-b2 re-judged the transmutation
+# paths (they are COE now, because that is the module they ship in), which is the same
+# "target classification" W6-a introduced for the wave engine.
 #
 # Layer of a FILE is decided purely by its path (see Get-FileLayer).
 # Layer of an IMPORT / fully-qualified reference is decided by its package (see Get-TargetLayer),
@@ -167,9 +170,19 @@ function Get-FileLayer {
     if ($r -match '^compat/jei/cews/')                         { return 'CEWS' }
     if ($r -match '^compat/(optical|vintageimprovements)/')    { return 'CEWS' }
     if ($r -match '^compat/createaddition/(TeslaCoilWaveCharger|CreateAdditionTransmuterSupport)') { return 'CEWS' }
-    # ---- the third layer (TRANS): unchanged by W6-a ----------------------
-    if ($r -match '^common/registry/transmutation/')  { return 'TRANS' }
-    if ($r -match '^content/(transmuting|transmutation)/')        { return 'TRANS' }
+    # ---- the third layer (TRANS): W6-b2 -----------------------------------
+    # W6-b2 (2026-09-29): the transmutation MECHANISM moved into :coe, so every
+    # file that used to be judged TRANS by its package path is COE now -- the
+    # same "target classification" W6-a started (the file and the layer it
+    # ships in must agree again).
+    # What is left of the third layer is exactly ONE file: its empty @Mod shell,
+    # which had to move to a package of its own
+    # (com.hjmmd_8.createoreexpansion.transmutation) because
+    # common.registry.transmutation is claimed by :coe now and two mod files may
+    # never declare one package (JPMS ResolutionException).
+    if ($r -match '^transmutation/TransmutationMod\.java$')           { return 'TRANS' }
+    if ($r -match '^common/registry/transmutation/')  { return 'COE' }
+    if ($r -match '^content/(transmuting|transmutation)/')        { return 'COE' }
     # P12 (2026-09-28): the P3r/P3z rules below are rewritten to recognise the PRE-SPLIT
     # package names.  The split had renamed packages only so that these path rules would
     # classify them -- a package name does not decide which Gradle module a file lives in
@@ -212,9 +225,9 @@ function Get-FileLayer {
     if ($r -match '^compat/(optical|vintageimprovements)/')    { return 'CEWS' }
     # P3t: the THIRD sibling of the two rules above.  P3r added the COE and CEWS JEI
     # subtrees but forgot TRANS, so compat/jei/transmutation/TransmutingCategory was
-    # judged SHARED while TransmutationJeiCategories (TRANS) imported it.  Same shape,
-    # same reason: that package holds TRANS's JEI category renderer and nothing else.
-    if ($r -match '^compat/jei/transmutation/')                { return 'TRANS' }
+    # judged SHARED while TransmutationJeiCategories imported it.
+    # W6-b2: that whole subtree is COE now (the transmutation mechanism moved into :coe).
+    if ($r -match '^compat/jei/transmutation/')                { return 'COE' }
     # SHARED: infrastructure, never judged as a source layer
     if ($r -notmatch '/') { return 'SHARED' }                       # mod root package
     if ($r -match '^(common|util|foundation|compat|client|data|mixin|integration)/') { return 'SHARED' }
@@ -261,8 +274,11 @@ function Get-TargetLayer {
     if ($rest -match '^client\.renderer\.(cews|wave)\.')    { return 'CEWS' }
     if ($rest -match '^client\.cews\.')                     { return 'CEWS' }
     if ($rest -match '^compat\.jei\.cews\.')                { return 'CEWS' }
-    if ($rest -match '^common\.registry\.transmutation\.')  { return 'TRANS' }
-    if ($rest -match '^content\.(transmuting|transmutation)\.')        { return 'TRANS' }
+    # W6-b2: the third layer is one file again (its empty @Mod shell); everything
+    # else that used to be judged TRANS is COE now (see Get-FileLayer).
+    if ($rest -match '^transmutation\.TransmutationMod(\.|$)') { return 'TRANS' }
+    if ($rest -match '^common\.registry\.transmutation\.')  { return 'COE' }
+    if ($rest -match '^content\.(transmuting|transmutation)\.')        { return 'COE' }
     # skill system == COE (see Get-FileLayer); only the tool/renderer sub-packages, not all of client.
     # P12: the pre-split package names are back, so these rules mirror Get-FileLayer again.
     if ($rest -match '^foundation\.item\.skill(\.|$)')                      { return 'COE' }
@@ -282,7 +298,7 @@ function Get-TargetLayer {
     if ($rest -match '^client\.renderer\.(cews|wave)(\.|$)')         { return 'CEWS' }
     if ($rest -match '^compat\.jei\.cews(\.|$)')                     { return 'CEWS' }
     if ($rest -match '^compat\.(optical|vintageimprovements)(\.|$)') { return 'CEWS' }
-    if ($rest -match '^compat\.jei\.transmutation(\.|$)')            { return 'TRANS' }
+    if ($rest -match '^compat\.jei\.transmutation(\.|$)')            { return 'COE' }
     # P3f: tolerate the BARE package name as well as a class inside it.  A file's own
     # `package com.hjmmd_8.createoreexpansion.util;` line is scanned by pass 2 like any
     # other fully-qualified occurrence, and without the (\.|$) alternative the string

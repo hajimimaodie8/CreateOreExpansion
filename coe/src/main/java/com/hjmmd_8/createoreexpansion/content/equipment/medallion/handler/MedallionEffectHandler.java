@@ -1,7 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.transmutation.TransmutationLink;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationFluids;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
@@ -34,25 +35,24 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * {@code compat.curios} 桥接）。未装 Curios 时这些查询恒为假，于是佩的被动效果全部静默失效，
  * 但物品实体侧（星辉/雷鸣系列）的行为与 Curios 无关，照旧生效。</p>
  *
- * <p><b>P3t：嬗变液与嬗乱改走 core 契约</b>。本类要读的两个声明都属于 TRANS 层
- * （{@code common/registry/transmutation/TransmutationFluids} 的嬗变液、{@code TransmutationEffects}
- * 的嬗乱），而 {@code COE -> TRANS} 是禁止方向，所以改读 core 的窄契约
- * {@link TransmutationLink}（实现由 TRANS 在声明初始化时注入）。两处判定与旧写法逐字相同：
- * 液体侧还是 {@code getFluidTypeHeight(嬗变液的 FluidType) > 0}，效果侧见下条；
- * 差别只是"谁去拿那两个对象"。层文件因此不再 import 集成层的
- * {@code common/hub/AllFluids} / {@code AllModEffects}。</p>
+ * <p><b>W6-b2：嬗变液与嬗乱改回直连（core 的窄契约整类删除）</b>。P3t 曾把这两处判定改走 core 的
+ * 嬗化窄契约（原住 {@code core/.../common/transmutation/}，W6-b2 连同实现一起删除；历史名称见
+ * {@code build/patch/w6b2-EVIDENCE.txt}），理由是"本类要读的两个声明都属于 TRANS 层，
+ * 而 {@code COE -> TRANS} 是禁止方向"。嬗化机制整块搬进 {@code :coe} 之后这条边<b>本来就是同层</b>
+ * （{@code common.registry.transmutation} 与凝能佩处理器现在同住 {@code coe/src/main/java}，
+ * 所以是 "谁的东西写在哪" 的正常引用），契约随之删掉，两处判定恢复成拆分前（{@code 46baf434~1}）
+ * 的直读写法：液体侧 {@code getFluidTypeHeight(嬗变液的 FluidType) > 0}，效果侧见下条。
+ * 撤掉契约还消掉了它的降级语义——"未注入 = 不免疫嬗乱"不再存在。</p>
  *
- * <p><b>P3u：修掉了"判据恒假"的既有缺陷</b>。{@link #onEffectApplicable} 里那句判定原本是
- * {@code event.getEffectInstance().getEffect() == AllModEffects.TRANSMUTATION_DISORDER.get()}，
- * 而 1.21 起 {@code MobEffectInstance#getEffect()} 返回 {@code Holder<MobEffect>}——于是它是
- * "Holder 与 MobEffect 的身份比较"，<b>恒为 false</b>（编译能过只因非 final 类可转型成接口）。
- * 也就是说这条 {@code MobEffectEvent.Applicable} 兜底<b>从来没拦下过任何一次嬗乱</b>；
- * 真正生效的只有 {@code TransmutationEventHandler} 里"接触嬗变液且佩戴星辉石佩就早退"那条主路径
- * ——流体接触这一路是好的，只有<b>非流体源</b>（雷鸣合金工具命中、黄玉弓的转化紊乱等）没被拦。
- * 现已按用户裁定去掉右侧的 {@code .get()}（改成比较同一个 {@code Holder}，实测本模组施放嬗乱的
- * 三个现场塞进 {@code MobEffectInstance} 的就是那个 {@code DeferredHolder} 本身）；
- * 判定实现住在 {@link TransmutationLink} 的 TRANS 侧实现里。
- * 修后星辉石佩开始豁免<b>所有来源</b>的嬗乱——这是本次唯一的玩法改动。</p>
+ * <p><b>P3u 的修复必须保留</b>：{@link #onEffectApplicable} 的判据<b>不是</b>恢复成
+ * {@code ... == TransmutationEffects.TRANSMUTATION_DISORDER.get()}。1.21 起
+ * {@code MobEffectInstance#getEffect()} 返回 {@code Holder<MobEffect>}，与右侧的 {@code MobEffect}
+ * 做身份比较<b>恒为 false</b>（编译能过只因非 final 类可转型成接口），那条
+ * {@code MobEffectEvent.Applicable} 兜底因此从来没拦下过任何一次嬗乱。现在的写法是比较同一个
+ * {@code Holder}：{@code event.getEffectInstance().getEffect() == TransmutationEffects.TRANSMUTATION_DISORDER}
+ * ——本模组施放嬗乱的三个现场（{@code AllTransmutingType}、{@code TransmutationEventHandler}、
+ * 黄玉弓事件处理器）塞进 {@code MobEffectInstance} 的都是那个 {@code DeferredHolder} 本身。
+ * 修后星辉石佩豁免<b>所有来源</b>的嬗乱——这是那一轮唯一的玩法改动，本轮原样保留。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class MedallionEffectHandler {
@@ -75,7 +75,7 @@ public final class MedallionEffectHandler {
     public static void onEffectApplicable(MobEffectEvent.Applicable event) {
         if (event.getEntity() instanceof Player player
             && event.getEffectInstance() != null
-            && TransmutationLink.get().isTransmutationDisorder(event.getEffectInstance().getEffect())
+            && event.getEffectInstance().getEffect() == TransmutationEffects.TRANSMUTATION_DISORDER
             && IMedallion.isWearing(player, CoeItems.STELLARSTONE_STRESS_MEDALLION.get())) {
             event.setResult(MobEffectEvent.Applicable.Result.DO_NOT_APPLY);
         }
@@ -116,7 +116,8 @@ public final class MedallionEffectHandler {
                     continue;
                 boolean thunderite = isThunderiteItem(item.getItem());
                 boolean stellar = isStellarstoneItem(item.getItem());
-                boolean inTransmutationFluid = TransmutationLink.get().isInTransmutationFluid(item);
+                boolean inTransmutationFluid =
+                    item.getFluidTypeHeight(TransmutationFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D;
                 if (thunderite) {
                     // 雷鸣系列：岩浆中免疫伤害（不销毁）、不燃烧、发光（仅岩浆）
                     boolean inLava = item.isInLava();

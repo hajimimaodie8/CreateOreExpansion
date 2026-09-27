@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler;
 
-import com.hjmmd_8.createoreexpansion.common.transmutation.TransmutationLink;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationFluids;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -37,8 +37,11 @@ public final class MedallionClientHandler {
             if (!MedallionEffectHandler.isStellarstoneItem(item.getItem()))
                 continue;
             boolean inVoid = item.getY() < -3;
+            // W6-b2：嬗化机制整块进 :coe 之后与凝能佩处理器同层，直接读嬗变液的 FluidType；
+            // 判定表达式与拆分前（46baf434~1）逐字相同，撤掉的只是 core 的那个嬗化窄契约
+            //（同层就不再需要"未注入 = false"的降级；契约整类已删，见 build/patch/w6b2-EVIDENCE.txt）。
             boolean inFluid = item.isInLava()
-                || TransmutationLink.get().isInTransmutationFluid(item);
+                || item.getFluidTypeHeight(TransmutationFluids.TRANSMUTATION_FLUID.get().getFluidType()) > 0.0D;
             if (inVoid || inFluid) {
                 if (random.nextFloat() > 0.25f)
                     continue; // 约每 4 tick 一个粒子

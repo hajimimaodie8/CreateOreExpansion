@@ -13,6 +13,12 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllFanProcessingTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllModPotions;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationFluids;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRegistrate;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionBindingRecipe;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.MedallionEnergyLink;
 import net.neoforged.bus.api.IEventBus;
@@ -20,6 +26,8 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.registries.RegisterEvent;
 
 /**
  * <b>COE（矿物拓展）的 {@code @Mod} 入口</b>。
@@ -37,7 +45,8 @@ import net.neoforged.fml.config.ModConfig;
  *   <li>{@code AllEntityTypes.register} → {@code CewsMod} 构造器（CEWS 层自己的东西）；</li>
  *   <li>{@code AllModPotions.register} + {@code AllModPotions::registerBrewingRecipes} +
  *       {@code AllFanProcessingTypes.init()} → {@code TransmutationMod} 构造器与其自己的
- *       {@code RegisterEvent} 监听器（TRANS 层自己的东西）；</li>
+ *       {@code RegisterEvent} 监听器（TRANS 层自己的东西）；
+ *       <b>W6-b2 起又搬回本类</b>——嬗化整块进 {@code :coe}，见下条；</li>
  *   <li><b>P7a 起</b>：共享注册表的挂载、旋转载荷的注册、三层配方类型声明类的唤醒顺序 →
  *       core 的幂等入口 {@code common.registry.LayerBootstrap#ensureAttached}
  *       （本构造器第一条语句）。原先那五处 hub 聚合入口
@@ -66,7 +75,10 @@ import net.neoforged.fml.config.ModConfig;
  *       而<b>它们原先的注册触发</b>（配置 / 数据组件 / 实体类型 / 风扇加工类型 / 旋转载荷）
  *       在 P3d 反过来<b>搬回到本类构造器</b>——库没有生命周期，那本就是 mod 的职责；</li>
  *   <li>CEWS 的机器、页签内容、能量场载荷、Jade 波插件、Sable 桥接 → {@code CewsMod}；</li>
- *   <li>TRANS 的物品 / 药水 / 风扇加工类型 → {@code TransmutationMod}。</li>
+ *   <li>TRANS 的物品 / 药水 / 风扇加工类型 → 曾经搬去 {@code TransmutationMod}，
+ *       <b>W6-b2 起全部回到本类</b>：嬗化的 16 个 Java 文件 + 24 个资源文件整块搬进 {@code :coe}，
+ *       {@code TransmutationMod} 只剩空壳（{@code :transmutation} 的 mod id 保留，作为"以后加新配方"
+ *       的容器）。六处注册触发的落点与理由见本构造器里的 W6-b2 注释块。</li>
  * </ul>
  *
  * <p><b>Registrate 分家</b>：本层（{@code common/registry/coe/**} + {@code SeriesTraits}）的注册引用
@@ -118,9 +130,20 @@ public class CreateOreExpansion {
         // 旋转载荷 → 配置），并且整块排在本类其余注册触发<b>之前</b>，
         // 保持它们相对既有注册触发顺序的先后关系不变。
         AllDataComponents.register(modEventBus);
-        // P3w：`AllEntityTypes.register(modEventBus)`（CEWS 层）搬去 CewsMod 构造器；
-        // `AllFanProcessingTypes.init()` 的 RegisterEvent 钩子（TRANS 层）搬去 TransmutationMod。
-        // P7a：`MachineRotatePayload::registerPayloads` 已从本类搬到 LayerBootstrap 的幂等块
+
+        // ── W6-b2：嬗化线（原 :transmutation 层）的注册触发搬回本构造器 ──────────────────
+        // 用户 2026-09-29 裁定：嬗化全部内容（16 个 Java + 24 个资源文件）整块进 :coe，
+        // TransmutationMod 空壳化；那六处注册触发必须落到"内容真正所在的那一层"，否则
+        // 只装 coe.jar 时嬗变液 / 嬗乱 / 药水 / 风扇加工类型一个都不会注册
+        // （W6-b 实测结论，见 build/patch/w6b-EVIDENCE.txt §5.1）。
+        // 位置 = 拆分前 CreateOreExpansion 里的相对位置（数据组件 → 药水 → 风扇加工钩子 → …）。
+        // ⚠ 只在这里触发一次：同一个 DeferredRegister 挂两次总线会在 RegisterEvent 上重复注册。
+        AllModPotions.register(modEventBus);
+        NeoForge.EVENT_BUS.addListener(AllModPotions::registerBrewingRecipes);
+        modEventBus.addListener(CreateOreExpansion::onRegisterFanProcessingTypes);
+        // P3w/P7a 的两条旧注释已被这一块取代（原写"这两个钩子搬去 TransmutationMod"）。
+        // 仍然成立的一条旧注记：`AllEntityTypes.register(modEventBus)`（CEWS 层）搬去 CewsMod 构造器；
+        // `MachineRotatePayload::registerPayloads` 已从本类搬到 LayerBootstrap 的幂等块
         //（单装 cews.jar 时原先没人注册它 ⇒ Ctrl+扳手在 CEWS 机器上完全没反应）。
 
         // 配置：目标容器<b>必须是</b> createoreexpansion（本 mod 自己的容器）。
@@ -134,11 +157,16 @@ public class CreateOreExpansion {
         // 本层 Registrate 的事件接线。静态块里已经设好 tooltip 工厂与默认创造页（基础页）；
         // 见 CoeRegistrate 的类注释（顺序由类初始化保证）。
         CoeRegistrate.REGISTRATE.registerEventListeners(modEventBus);
+        // W6-b2：嬗化的 Registrate（TransmutationRegistrate）现在<b>没有任何条目</b>（嬗化构件两个物品
+        // 已改挂 CoeRegistrate，理由见 TransmutationItems 的类注释），但它的接线保留在这里：
+        // 将来往它里面加新条目时，"条目进注册表"这件事不会再静默落空（壳模块的唯一用途就是这个）。
+        TransmutationRegistrate.REGISTRATE.registerEventListeners(modEventBus);
 
         // P7a：创造页注册表的挂载与页的登记都在本构造器开头（LayerBootstrap + LayerCreativeTab.registerAll）。
 
         // 按层显式触发类初始化（顺序与拆分前逐层一致）。
-        // CEWS / TRANS 两层的方块与物品由它们各自的 @Mod 构造器触发（见 CewsMod / TransmutationMod）。
+        // CEWS 的方块与物品由它自己的 @Mod 构造器触发（见 CewsMod）；嬗化（原 TRANS 层）的
+        // 流体 / 效果 / 物品由<b>本构造器</b>触发（W6-b2：内容已进 :coe，见上面的注释块）。
         CoeBlocks.register();
         CoeBlockEntityTypes.register();
         AllTiers.register();
@@ -161,9 +189,13 @@ public class CreateOreExpansion {
 
         CoeItems.register();
         AllGemTags.register();
-        // P7a：底下这两处原先也在 hub 里，现在各归各家：
-        //   AllFluids.register()    -> TransmutationMod 构造器（TransmutationFluids.register()）
-        //   AllModEffects.register(bus) -> TransmutationMod 构造器（TransmutationEffects.register(bus)）
+        // W6-b2：嬗化线的流体与效果（原 :transmutation 层）—— 这两处原先在 hub / TRANS 构造器里，
+        // 位置保持拆分前"物品之后、结构处理器之前"。流体仍挂 CoeRegistrate.REGISTRATE
+        //（实现纪律 X7：绝不换成 TransmutationRegistrate，否则 W5 A1 的 c:buckets 缺陷原地复活）；
+        // 嬗化构件两个物品也在这里触发类初始化（在 CoeItems 之后 = 与拆分前的条目先后一致）。
+        TransmutationFluids.register();
+        TransmutationEffects.register(modEventBus);
+        TransmutationItems.register();
         AllStructureProcessors.register(modEventBus);
         MedallionBindingRecipe.register(modEventBus);
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity::registerCapabilities);
@@ -179,6 +211,20 @@ public class CreateOreExpansion {
                 + "共享接线（共享注册表/旋转载荷/配方类型唤醒顺序）由 LayerBootstrap 幂等完成，"
                 + "配置缓存由 AllConfigSubscriber 刷新",
             MOD_ID, CoeCore.REGISTRY_NAMESPACE);
+    }
+
+    /**
+     * {@code RegisterEvent} 上的风扇加工类型注册钩子（W6-b2：从空壳化的
+     * {@code TransmutationMod#onRegister} 原样搬来，方法体一字未改）。
+     *
+     * <p><b>语义与拆分前逐字相同</b>：每次 {@code RegisterEvent} 触发都调
+     * {@code AllFanProcessingTypes.init()}（自身幂等），由它的类初始化把 {@code transmuting}
+     * 注册进 Create 的 {@code FAN_PROCESSING_TYPE}。挂哪条 mod 总线不影响结果 ——
+     * {@code RegisterEvent} 是发往每个 mod 总线的，所以这个监听器与
+     * {@code CewsMod} / 空壳 {@code TransmutationMod} 各自的监听器互不干扰。</p>
+     */
+    private static void onRegisterFanProcessingTypes(RegisterEvent event) {
+        AllFanProcessingTypes.init();
     }
 
     /**

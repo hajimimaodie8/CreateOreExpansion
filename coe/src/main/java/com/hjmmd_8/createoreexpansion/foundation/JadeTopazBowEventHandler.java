@@ -5,7 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.skill.BowCurseSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.BowDisarmSkill;
-import com.hjmmd_8.createoreexpansion.common.transmutation.TransmutationLink;
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
@@ -91,15 +91,15 @@ public class JadeTopazBowEventHandler {
 		} else if (roll < 0.9F) {
 			addEffect(target, MobEffects.MOVEMENT_SLOWDOWN, 60, 0);
 		} else {
-			// P7a：嬗乱效果不再由集成层别名 common/hub/AllModEffects 转发（那条边 COE -> TRANS
-			// 是禁止方向，且单装 coe.jar 时那个类根本不在场 ⇒ 这一分支会 NoClassDefFoundError）。
-			// 改走 core 的窄契约 common.transmutation.TransmutationLink：TRANS 在场时拿到的
-			// 就是同一个 DeferredHolder（行为逐字不变），不在场时返回 null ⇒ 只跳过"施加嬗乱"，
-			// 缴械那半边照旧（与拆分前在"装齐四个模块"时的行为完全一致）。
-			var disorder = TransmutationLink.get().transmutationDisorder();
-			if (disorder != null) {
-				addEffect(target, disorder, 60, 0);
-			}
+			// W6-b2：嬗化机制整块搬进 :coe 之后，这条引用<b>本来就是同层</b>——
+			// TransmutationEffects 与 TransmutationFluids 现在住 coe/src/main/java
+			// （包名仍是 common.registry.transmutation），所以可以直接读 holder。
+			// 恢复成拆分前 9e7b9dc1~1 的原文形状：直接传 holder、<b>不判空</b>
+			// （同层静态字段永不为 null，addEffect 的形参本身就是 Holder<MobEffect>）。
+			// 被撤掉的中间态是 core 的嬗化窄契约（原住 core/.../common/transmutation/，
+			// W6-b2 整类删除；历史名称见 build/patch/w6b2-EVIDENCE.txt），
+			// 它的"未注入 = 跳过嬗乱"降级语义随契约一起消失。
+			addEffect(target, TransmutationEffects.TRANSMUTATION_DISORDER, 60, 0);
 
 			ItemStack held = target.getMainHandItem();
 			if (!held.isEmpty()) {

@@ -4,10 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationFluids;
-import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationMod;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 
 import net.minecraft.world.effect.MobEffectInstance;
@@ -18,7 +18,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 /**
- * <b>嬗变液接触玩家的“嬗乱”发作</b>（TRANS 层的特性）。
+ * <b>嬗变液接触玩家的“嬗乱”发作</b>（嬗化线的特性；W6-b2 起随嬗化整块住第一层 {@code :coe}）。
  *
  * <p><b>P3i 归位</b>：本类原先住在共享路径 {@code foundation/TransmutationEventHandler}，
  * 但内容<b>全部是 TRANS 的</b>——接触的流体是 {@code TransmutationFluids.TRANSMUTATION_FLUID}（嬗变液），
@@ -31,25 +31,26 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
  * （同一个 {@code DeferredHolder} 对象，只是不再绕 hub——层文件不再 import 集成层），
  * 流体的判定表达式与注册时机一字未动。</p>
  *
- * <p><b>P3y：{@code modid} 从 {@code CoeCore.MOD_ID} 改成 {@code TransmutationMod.MOD_ID}，
- * 这是本类随 TRANS 拆进 :transmutation 之后<b>必须</b>改的唯一一行。</b>
- * 理由（P3w 买到的教训，见 {@code common/hub/IntegrationBootstrap} 类注释"四"）：
- * FML 的 {@code AutomaticEventSubscriber.inject} 是<b>按 mod 文件</b>作用域的 ——
- * 它只用<b>该文件</b>的扫描结果，并且只挂 {@code Objects.equals(mod.getModId(), modid)} 的类。
- * 本类现在住 {@code transmutation/src/main/**} ⇒ 属于 {@code transmutation} 这个 mod 文件，
- * 而它原先写的是 {@code createoreexpansion}（COE 的 mod id，COE 已搬到 :coe）：</p>
- * <ul>
- *   <li>{@code transmutation} 容器的注入会因为 modid 不匹配而<b>跳过</b>本类；</li>
- *   <li>{@code createoreexpansion} 容器（:coe 的文件）根本<b>看不到</b>本类的扫描数据；</li>
- *   <li>{@code IntegrationBootstrap} 的补挂只遍历<b>根文件</b>的扫描数据，同样看不到它。</li>
- * </ul>
- * <p>⇒ 结果会是<b>静默失效</b>（无警告、无报错）：嬗乱效果再也不会施加给碰到嬗变液的玩家。
- * 改写成 {@code TransmutationMod.MOD_ID} 后恢复「类的 modid == 它所在 mod 文件的 id」这条不变量，
- * 由 FML 自己的自动注入照常处理，不依赖任何跨文件扫描，dev 与生产同构。
- * 注册命名空间并没有变 —— 它恒为 {@code createoreexpansion}（{@code CoeCore.REGISTRY_NAMESPACE}），
- * 变的只是 mod 文件归属。{@code TransmutationMod.MOD_ID} 是编译期常量，可直接用于注解。</p>
+ * <p><b>W6-b2：本类随嬗化整块搬进 {@code :coe}，所以 {@code modid} 又改回 {@code CoeCore.MOD_ID}。</b>
+ * 这是本类第二次因"文件归属变了"而改这一行，判据始终是同一条
+ * （FML 的 {@code AutomaticEventSubscriber.inject} 是<b>按 mod 文件</b>作用域的：
+ * 它只用<b>该文件</b>的扫描结果，并且只挂 {@code Objects.equals(mod.getModId(), modid)} 的类，
+ * 见 {@code build/patch/fml-src/.../AutomaticEventSubscriber.java:51-52}）：
+ * <b>类的 modid 必须等于它所在那个 mod 文件的 id</b>。</p>
+ *
+ * <p>本类现在住 {@code coe/src/main/java/**} ⇒ 属于 {@code createoreexpansion} 这个 mod 文件
+ * （{@code :coe} 的 mod id 就是 {@code createoreexpansion}，见 {@code CreateOreExpansion.MOD_ID}），
+ * 于是注解读 {@link CoeCore#MOD_ID}。若仍写 {@code transmutation}（上一轮的取值），
+ * 症状照旧是<b>静默失效</b>：{@code createoreexpansion} 容器因 modid 不匹配跳过本类，
+ * 而 {@code transmutation} 容器根本看不到本类的扫描数据（它现在也不在自己那个 jar 里）——
+ * 无警告、无报错、编译全绿，只是"碰到嬗变液不再得嬗乱"。</p>
+ *
+ * <p><b>同时必须删掉那条 {@code import ...TransmutationMod}（编译期硬错，不是风格问题）</b>：
+ * 空壳 {@code TransmutationMod} 留在 {@code :transmutation}，而 {@code :coe} 对
+ * {@code :transmutation} <b>没有任何依赖</b>（反向依赖是禁止方向），所以那个类型在 {@code :coe}
+ * 的编译面上根本不存在。</p>
  */
-@EventBusSubscriber(modid = TransmutationMod.MOD_ID)
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class TransmutationEventHandler {
 
 	private static final Map<UUID, Integer> FLUID_CONTACT_TICKS = new HashMap<>();

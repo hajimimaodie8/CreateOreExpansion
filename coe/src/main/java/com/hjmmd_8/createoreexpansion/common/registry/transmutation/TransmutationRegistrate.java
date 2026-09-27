@@ -7,11 +7,19 @@ import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 
 /**
- * <b>TRANS（机械嬗化学，mod id {@code transmutation}）自己的 Registrate</b>。
+ * <b>TRANS（机械嬗化学，mod id {@code transmutation}）自己的 Registrate —— W6-b2 起没有任何条目</b>。
  *
- * <p>本层目前只有两个物品（{@link TransmutationItems#TRANSMUTE_MECHANISM} /
- * {@link TransmutationItems#INCOMPLETE_TRANSMUTE_MECHANISM}），但注册器要独立——
- * 否则 TRANS 模块永远无法脱离 COE 单独编译。</p>
+ * <p>原先它持有本层唯一的两个物品（{@link TransmutationItems#TRANSMUTE_MECHANISM} /
+ * {@link TransmutationItems#INCOMPLETE_TRANSMUTE_MECHANISM}）。W6-b2 把嬗化内容整块搬进
+ * {@code :coe}，那两个物品改挂 {@code CoeRegistrate.REGISTRATE}（理由见
+ * {@link TransmutationItems} 的类注释：datagen 的层名 {@code "transmutation"} 会让它们的模型
+ * 落进 {@code transmutation.jar}，正是 {@code c:buckets} 缺陷的镜像）。</p>
+ *
+ * <p><b>为什么本类仍然保留</b>：{@code transmutation} 这个 mod id 按用户裁定继续存在
+ * （{@code TransmutationMod} 是空壳），"以后往第三层加新配方/新条目"时就挂到这个实例上；
+ * 它的总线接线仍在 {@code CreateOreExpansion} 构造器里
+ * （{@code TransmutationRegistrate.REGISTRATE.registerEventListeners(modEventBus)}），
+ * 所以将来往这里加入口时不会出现"条目建好了却没人注册"的静默失效。</p>
  *
  * <p><b>命名空间仍是 {@code createoreexpansion}</b>（{@link CoeCore#REGISTRY_NAMESPACE}），
  * 注册 id 与拆分前逐字一致。</p>
