@@ -35,6 +35,18 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\prepare-run-published.ps1
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\prepare-run-published.ps1 -GameDir build/published-run-client
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tools\prepare-run-published.ps1 -NoThirdParty
+#   powershell -NoProfile -ExecutionPolicy Bypass -File tools\prepare-run-published.ps1 -OnlyModId coe
+#
+# -OnlyModId <coe|cews|transmutation>[,...]
+# --------------------------------
+# Installs ONLY the named released module jar(s) of this mod and leaves the other
+# module jars out. It filters OUR three module jars - it does NOT touch the
+# third-party set (that is what -SkipModId does). Purpose = single-module
+# degradation ("free combination" promise): e.g. -OnlyModId cews must still boot
+# (cews declares createoreexpansion as an *optional* dependency) and, because the
+# configuration is registered by :coe, must NOT create
+# <gameDir>/config/createoreexpansion-common.toml.
+# An unknown id is a hard failure: a typo must never silently yield an empty mods/.
 #
 # Exit codes: 0 ok, 1 precondition/verification failure.
 # =============================================================================
@@ -46,6 +58,9 @@ param(
     [switch]$NoThirdParty,
     # Third-party mod ids to leave out (isolate a suspect third-party mod).
     [string[]]$SkipModId = @(),
+    # Our module jar ids to install (coe / cews / transmutation). When non-empty the
+    # other module jars are left out; third-party jars are NOT affected.
+    [string[]]$OnlyModId = @(),
     # Re-run the Gradle collector task even if its output file already exists.
     [switch]$RefreshThirdPartyList
 )
@@ -76,6 +91,14 @@ foreach ($k in $moduleJars.Keys) {
     $p = $moduleJars[$k]
     if (-not (Test-Path -LiteralPath $p)) {
         Fail "missing released jar '$p'. Build it first with:  .\gradlew.bat processResources jar"
+    }
+}
+
+# Normalise -OnlyModId and reject unknown ids (a typo must not be silent).
+$OnlyModId = @($OnlyModId | ForEach-Object { $_.Trim().ToLowerInvariant() } | Where-Object { $_ -ne '' })
+foreach ($id in $OnlyModId) {
+    if (-not $moduleJars.Contains($id)) {
+        Fail ("-OnlyModId '{0}' is not one of: {1}" -f $id, (($moduleJars.Keys) -join ', '))
     }
 }
 
@@ -124,8 +147,12 @@ function Add-Planned([string]$name, [string]$src, [string]$origin) {
     $planOwner[$name] = $origin
 }
 
-# 1. our three released module jars
+# 1. our three released module jars (or, with -OnlyModId, just the named subset)
 foreach ($k in $moduleJars.Keys) {
+    if ($OnlyModId.Count -gt 0 -and -not ($OnlyModId -contains $k)) {
+        Write-Host "prepare-run-published: -OnlyModId: leaving out module jar '$k'"
+        continue
+    }
     $p = $moduleJars[$k]
     Add-Planned (Split-Path -Leaf $p) $p "module:$k"
 }
@@ -164,6 +191,7 @@ New-Item -ItemType Directory -Force -Path $modsDir | Out-Null
 $manifest = New-Object System.Collections.Generic.List[string]
 $manifest.Add("# W3 published-form mod set")
 $manifest.Add("# gameDir  : $GameDir")
+if ($OnlyModId.Count -gt 0) { $manifest.Add("# onlyMod  : $($OnlyModId -join ',')") }
 $manifest.Add("# prepared : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 $manifest.Add("# name`tsha256`tbytes`torigin`tsource")
 
