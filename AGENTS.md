@@ -67,7 +67,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - **客户端渲染**：技能预览框、波口指示灯、护目镜档位提示、Jade/查询仪读数——只有进游戏才看得见（技能 W5 渲染器移植的验收条件就是「进游戏看预览是否还在」）。
 - **JEI**：`@JeiPlugin` 的类别装配与侧栏顺序在运行期才发生；UID 重复、类别漏装配只有加载时暴露。
 - **配置**：`runData` 时**根本不加载配置**；配置键名/容器名写错要到进游戏才暴露，**容器名一变（如 `coe_core-common.toml`）= 老玩家设置静默丢失**。
-- **创造页内容同步**：每层的 `XxxCreativeTabs` 各持一份手写 `TABS` 列表，**新增页忘了加进列表 = 静默不注册**（无编译错误、无警告）；`EnergyWaveStudyTab#CONTENTS` 同理。
+- **创造页内容同步**：每层的 `XxxCreativeTabs` 各持一份手写 `TABS` 列表，**新增页忘了加进列表 = 静默不注册**（无编译错误、无警告）；`EnergyWaveStudyTab#CONTENTS` 同理。**每层 Registrate 自持创造页后**，清单"往新页放"半边 = **重复添加**（Registrate 已放好 ⇒ 抛 `already exists in the tab's list`；dev/发布同崩）⇒ 先 `remove` 再 `accept`（`remove` 无断言、幂等）。
 - **包重叠（JPMS）**：`runData`/`runClient` 覆盖不到——dev 里根与 core 是同一个 mod 文件，只有**真发布 jar 进游戏**才能验。
 - **可选依赖「没装也能加载」**：唯一取证方式是**把该模组从 dev 运行时依赖里临时去掉跑一次 `runData`**，日志里该类名 0 命中才算通过。
 
