@@ -166,6 +166,13 @@
 # as ANSI, which mangles non-ASCII text and can swallow quotes mid-script).  Read-only: it
 # writes nothing into the repository, only into %TEMP%.
 
+param(
+    # W8: run the synthetic fixtures for the newly added assertions and exit.  The fixtures
+    # go through the SAME functions the real audit uses, so "the check works" is measured,
+    # not assumed.  Exit code 0 = every fixture behaved as expected.
+    [switch]$SelfTest
+)
+
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -352,6 +359,19 @@ function Get-JarEntryHash {
     return (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
 }
 
+# Extract one jar entry to a scratch directory and return the file's path (or $null).
+# Used for the BINARY entries (nested JarJar jars) that Get-JarEntryText cannot read.
+function Expand-JarEntry {
+    param([string]$JarPath, [string]$Entry)
+    $dir = Join-Path $tempRoot ([guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    Push-Location $dir
+    try { [void](& $jarExe xf $JarPath $Entry 2>&1) } finally { Pop-Location }
+    $file = Join-Path $dir ($Entry -replace '/', '\')
+    if (Test-Path -LiteralPath $file) { return $file }
+    return $null
+}
+
 # <repo>\<root>\...\data\<rest>.json  ->  the jar entry name "data/<rest>.json"
 function Get-DataJarEntry {
     param([string]$FullName)
@@ -484,6 +504,384 @@ function Get-LangMap {
     return $map
 }
 
+# ===========================================================================
+# W8 (2026-09-30) -- REFLECTIVE CLASS-NAME LITERALS vs THE PACKAGED CLASSES
+# ===========================================================================
+# The fifth "all green but broken" case this project has hit.  WaveJadePlugin was
+# moved from ...compat.jei to ...compat.jade with `git mv`; the `package` line was
+# NOT updated (the edit tool refused because the new path had not been read, and
+# only the javadoc got a second edit).  javac does not care that the directory and
+# the package disagree -- it emits the class into the DECLARED package.  So:
+#   * compileJava was green,
+#   * all six static tools were green,
+#   * the jar held .../compat/jei/WaveJadePlugin.class, while
+#   * CreateOreExpansion asked its class loader for
+#     Class.forName("...compat.jade.WaveJadePlugin")
+#     -> ClassNotFoundException -> caught -> ONE WARN line -> the wave Jade tooltip
+#        silently disappeared.  Only runData's [Jade] line pair ever saw it.
+#
+# WHAT IS ASSERTED HERE (four checks, all derived from data -- there is no per-class
+# whitelist and no per-literal table to keep in step by hand):
+#
+#   Y1  every source file's `package` line equals the package its DIRECTORY implies.
+#       This is the root cause of the case above, and javac itself never checks it.
+#   Y2  every class-name literal that is loaded reflectively is CLASSIFIED:
+#
+#         OWN          the class is declared by a source file of the SAME module that
+#                      contains the literal -> the literal must resolve inside that
+#                      module's own jar.  Failure here = the WaveJadePlugin incident.
+#         CROSS        the class is declared by another module of this project.
+#                      Failing at run time is ALLOWED here and is by design ("one layer
+#                      is absent" is a supported install), but the class must really
+#                      exist in the OWNER's jar -- a literal naming a class that no
+#                      jar contains is the "deleted class left in the wake list" shape
+#                      (W6-d removed one such entry by hand).
+#         OPTIONAL     a non-project namespace, i.e. a probe whose whole purpose is to
+#                      detect that a third-party mod is NOT installed.  It must match
+#                      an entry of $optionalProbeReasons (namespace -> why it may fail)
+#                      and must NOT be packaged in any of our jars (then the probe
+#                      could never detect absence).
+#         DANGLING /   a project FQN no source file declares, or a non-project namespace
+#         UNCLASSIFIED that is not in the optional table -> always a failure: either a
+#                      typo/deleted class, or a new probe that must be classified first.
+#
+#       "Same jar" is resolved the way the game resolves it: a class counts as present
+#       when its .class entry is in the jar OR inside one of the jar's nested
+#       META-INF/jarjar/*.jar entries (that is exactly how :cews reaches core's
+#       SableSubLevelBridge, and how :coe reaches its own mixins).
+#
+#   Y3  the literal SCANNER is live (anti-vacuity, see Get-GuardProblem): the three
+#       shapes must each be seen at least once and the three classifications must each
+#       be non-empty.  A rename of Class.forName / getPackageName / the literal form
+#       turns this red instead of silently auditing nothing.
+#
+# THREE LITERAL SHAPES ARE SCANNED (comments already stripped by Get-SourceCode, so a
+# commented-out probe is not a site):
+#   1. Class.forName("<fqn>")                     -- the ordinary probe.
+#   1b. String v = "<fqn>"; ... Class.forName(v, ...)  -- the same probe one hop out
+#      (CewsMod's Sable class check is written that way).
+#   2. prefix + "<sub.class>" in a file that also uses getPackageName(),
+#      where prefix is that class's own package + "."  -- LayerBootstrap's wake list
+#      and WaveRecipeCapabilities' LAYER_CLASSES are written that way ON PURPOSE, so
+#      that core's source contains no layer FQN (check-layering's CORE -> * rule).
+#   3. any other "<com.hjmmd_8.createoreexpansion.Class>" literal whose last segment
+#      starts with an upper-case letter -- e.g. COEMixinConfigPlugin's
+#      shouldApplyMixin() name comparison, which silently stops matching if renamed.
+# ===========================================================================
+
+# One source-index record per .java file: the package its DIRECTORY implies (PathPkg)
+# and the package its `package` line declares (DeclPkg), plus both FQNs.
+function New-SourceRecord {
+    param([string]$Module, [string]$Rel, [string]$Code)
+    $dir = Split-Path -Parent $Rel
+    $pathPkg = 'com.hjmmd_8.createoreexpansion'
+    if ($dir) { $pathPkg = $pathPkg + '.' + ($dir -replace '[\\/]', '.') }
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($Rel)
+    $pm = [regex]::Match($Code, '(?m)^\s*package\s+([A-Za-z0-9_.]+)\s*;')
+    $declPkg = if ($pm.Success) { $pm.Groups[1].Value } else { '' }
+    return [pscustomobject]@{
+        Module  = $Module
+        Rel     = $Rel
+        PathPkg = $pathPkg
+        PathFqn = ($pathPkg + '.' + $base)
+        DeclPkg = $declPkg
+        DeclFqn = $(if ($declPkg -ne '') { $declPkg + '.' + $base } else { '' })
+    }
+}
+
+function Get-PackageMismatch {
+    param([object[]]$Sources)
+    if ($null -eq $Sources) { return @() }
+    return @($Sources | Where-Object { $_.DeclPkg -cne $_.PathPkg })
+}
+
+function Get-ReflectiveLiterals {
+    param([string]$Module, [string]$Rel, [string]$Code)
+    $found = New-Object System.Collections.Generic.List[object]
+
+    # shape 1: Class.forName("<fqn>")
+    foreach ($m in [regex]::Matches($Code, 'Class\s*\.\s*forName\s*\(\s*"([^"]+)"')) {
+        $found.Add([pscustomobject]@{ Module = $Module; Rel = $Rel; Shape = 'forName'; Raw = $m.Groups[1].Value; Fqn = $m.Groups[1].Value })
+    }
+
+    # shape 1b: one-hop indirect form, e.g. CewsMod:
+    #     final String probe = "dev.ryanhcode.sable.companion.math.Pose3dc";
+    #     ... Class.forName(probe, false, loader);
+    # The optional-dependency probe is written this way (the variable is reused across four
+    # class loaders), so a scanner that only sees a literal INSIDE forName( would report
+    # "no optional probe at all" -- measured in the first version of this check, whose
+    # anti-vacuity guard (Y4) is what caught it.
+    $varLiterals = @{}
+    foreach ($m in [regex]::Matches($Code, '(?:final\s+)?String\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"]+)"')) {
+        $varLiterals[$m.Groups[1].Value] = $m.Groups[2].Value
+    }
+    foreach ($m in [regex]::Matches($Code, 'Class\s*\.\s*forName\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*[,)]')) {
+        $varName = $m.Groups[1].Value
+        if (-not $varLiterals.ContainsKey($varName)) { continue }
+        $lit = $varLiterals[$varName]
+        $dup = $false
+        foreach ($f in $found) { if ($f.Fqn -ceq $lit) { $dup = $true } }
+        if ($dup) { continue }
+        $found.Add([pscustomobject]@{ Module = $Module; Rel = $Rel; Shape = 'forName'; Raw = ($varName + ' = ' + $lit); Fqn = $lit })
+    }
+
+    # shape 2: prefix + "<sub.class>", prefix = <this class>.class.getPackageName() + "."
+    $pm = [regex]::Match($Code, '(?m)^\s*package\s+([A-Za-z0-9_.]+)\s*;')
+    $declPkg = if ($pm.Success) { $pm.Groups[1].Value } else { '' }
+    if (($declPkg -ne '') -and ($Code -match 'getPackageName\s*\(\s*\)')) {
+        foreach ($m in [regex]::Matches($Code, 'prefix\s*\+\s*"([A-Za-z0-9_.]+)"')) {
+            $found.Add([pscustomobject]@{ Module = $Module; Rel = $Rel; Shape = 'packagePrefixSuffix'; Raw = $m.Groups[1].Value; Fqn = ($declPkg + '.' + $m.Groups[1].Value) })
+        }
+    }
+
+    # shape 3: any other own-FQN class literal (last segment is a class name)
+    foreach ($m in [regex]::Matches($Code, '"(com\.hjmmd_8\.createoreexpansion\.[A-Za-z0-9_.$]+)"')) {
+        $lit = $m.Groups[1].Value
+        if ((($lit -split '\.')[-1]) -notmatch '^[A-Z]') { continue }
+        $dup = $false
+        foreach ($f in $found) { if ($f.Fqn -ceq $lit) { $dup = $true } }
+        if ($dup) { continue }
+        $found.Add([pscustomobject]@{ Module = $Module; Rel = $Rel; Shape = 'classFqnLiteral'; Raw = $lit; Fqn = $lit })
+    }
+
+    return $found.ToArray()
+}
+
+# Every class entry reachable from one jar: its own entries PLUS the entries of every
+# nested META-INF/jarjar/*.jar (JarJar puts those on the classpath at run time).
+# Returns string[]; the CALLER must wrap the call in @(...) -- PowerShell unrolls a
+# returned collection, so an empty result would otherwise come back as $null and the
+# "-contains" test below would die instead of reporting a missing class.
+function Get-JarClassSet {
+    param([string]$JarPath)
+    $list = New-Object System.Collections.Generic.List[string]
+    foreach ($e in @(Get-JarEntries $JarPath)) {
+        if ($e -like '*.class') { $list.Add($e); continue }
+        if ($e -match '^META-INF/jarjar/.+\.jar$') {
+            $nested = Expand-JarEntry -JarPath $JarPath -Entry $e
+            if ($nested) {
+                foreach ($ne in @(& $jarExe tf $nested)) {
+                    if ($ne -like '*.class') { $list.Add($ne) }
+                }
+            }
+        }
+    }
+    return $list.ToArray()
+}
+
+# The anti-vacuity guard used by every W8 / W6-d-style "at least N matches" assertion.
+# Returns $null when the pattern is live, else the failure text the caller prints.
+function Get-GuardProblem {
+    param([int]$Actual, [int]$Minimum, [string]$Label, [string]$Suspected)
+    if ($Actual -lt $Minimum) {
+        return ('pattern failure (expected >= ' + $Minimum + ', got ' + $Actual + ') -- ' + $Suspected)
+    }
+    return $null
+}
+
+function Test-ClassLiteralResolution {
+    param(
+        [object[]]$Sources,
+        [object[]]$Literals,
+        [hashtable]$JarClasses,          # module -> string[] of .class entry paths
+        [string[]]$OptionalNamespaces,   # allowed non-project probe namespaces, each ending with '.'
+        [int]$MinSites = 1
+    )
+    $problems = New-Object System.Collections.Generic.List[string]
+    $vacuity  = New-Object System.Collections.Generic.List[string]
+    $table    = New-Object System.Collections.Generic.List[object]
+    $counts   = @{ OWN = 0; CROSS = 0; OPTIONAL = 0 }
+    if ($null -eq $Sources)  { $Sources = @() }
+    if ($null -eq $Literals) { $Literals = @() }
+
+    foreach ($lit in $Literals) {
+        $owners = @()
+        foreach ($src in $Sources) {
+            if (($src.PathFqn -ceq $lit.Fqn) -or ($src.DeclFqn -ceq $lit.Fqn)) {
+                if ($owners -notcontains $src.Module) { $owners = $owners + $src.Module }
+            }
+        }
+        $ours  = $lit.Fqn.StartsWith('com.hjmmd_8.createoreexpansion.')
+        $entry = ($lit.Fqn -replace '\.', '/') + '.class'
+        $kind  = ''
+        if ($ours -and $owners.Count -eq 0) {
+            $kind = 'DANGLING'
+            $problems.Add('dangling literal: ' + $lit.Module + '/' + $lit.Rel + ' (' + $lit.Shape + ') names ' + $lit.Fqn + ' but no source file of any module declares that FQN, by directory or by package line -- this Class.forName can never succeed')
+        } elseif ($owners.Count -gt 0) {
+            if ($owners -contains $lit.Module) {
+                $kind = 'OWN'
+                $counts.OWN++
+                $present = ($JarClasses.ContainsKey($lit.Module)) -and ($JarClasses[$lit.Module] -contains $entry)
+                if (-not $present) {
+                    $why = @()
+                    foreach ($src in $Sources) {
+                        if ($src.PathFqn -ceq $lit.Fqn) {
+                            if ($src.DeclFqn -cne $lit.Fqn) {
+                                $why = $why + ('the file ' + $src.Module + '/' + $src.Rel + ' sits at the path that implies this FQN but declares package ' + $src.DeclPkg + ', so javac packaged it as ' + $src.DeclFqn + ' -- the calling code looks for the name the DIRECTORY implies')
+                            } else {
+                                $why = $why + ('the file ' + $src.Module + '/' + $src.Rel + ' exists but the built jar has no ' + $entry)
+                            }
+                        }
+                    }
+                    $problems.Add('own-class literal not in the same jar: ' + $lit.Module + '/' + $lit.Rel + ' (' + $lit.Shape + ') names ' + $lit.Fqn + ' and ' + $lit.Module + '.jar has no ' + $entry + $(if ($why.Count -gt 0) { ' -- ' + ($why -join '; ') } else { '' }))
+                }
+            } else {
+                $kind = 'CROSS'
+                $counts.CROSS++
+                $alive = @()
+                foreach ($o in $owners) {
+                    if (($JarClasses.ContainsKey($o)) -and ($JarClasses[$o] -contains $entry)) { $alive = $alive + $o }
+                }
+                if ($alive.Count -eq 0) {
+                    $problems.Add('cross-module literal is dead: ' + $lit.Module + '/' + $lit.Rel + ' (' + $lit.Shape + ') names ' + $lit.Fqn + ' owned by [' + ($owners -join ',') + '] but no owner jar contains ' + $entry + ' -- the class was renamed or deleted and the wake list still points at it')
+                }
+            }
+        } else {
+            $allowed = $false
+            foreach ($ns in $OptionalNamespaces) { if ($lit.Fqn.StartsWith($ns)) { $allowed = $true } }
+            if (-not $allowed) {
+                $kind = 'UNCLASSIFIED'
+                $problems.Add('unclassified literal: ' + $lit.Module + '/' + $lit.Rel + ' (' + $lit.Shape + ') probes ' + $lit.Fqn + ', which is neither a project class nor a namespace of the optional-probe table [' + ($OptionalNamespaces -join ',') + '] -- classify it here (with a reason) before shipping')
+            } else {
+                $kind = 'OPTIONAL'
+                $counts.OPTIONAL++
+                $inAny = @()
+                foreach ($m in $JarClasses.Keys) { if ($JarClasses[$m] -contains $entry) { $inAny = $inAny + $m } }
+                if ($inAny.Count -gt 0) {
+                    $problems.Add('optional probe target is packaged in our own jar: ' + $lit.Module + '/' + $lit.Rel + ' probes ' + $lit.Fqn + ' but [' + ($inAny -join ',') + '] contains ' + $entry + ' -- the probe can no longer detect that the third-party mod is absent')
+                }
+            }
+        }
+        $table.Add([pscustomobject]@{ Module = $lit.Module; Rel = $lit.Rel; Shape = $lit.Shape; Fqn = $lit.Fqn; Kind = $kind; Owners = ($owners -join ','); Entry = $entry })
+    }
+
+    # ---- anti-vacuity (Y3): the scanner and each classification must be seen ----
+    $g = Get-GuardProblem -Actual $Literals.Count -Minimum $MinSites -Label 'literal scanner' -Suspected 'Class.forName / getPackageName / prefix + "..." / own-FQN literals may all have been renamed, so this whole section audits nothing'
+    if ($g) { $vacuity.Add($g) }
+    foreach ($shape in @('forName', 'packagePrefixSuffix')) {
+        $n = @($Literals | Where-Object { $_.Shape -eq $shape }).Count
+        $g = Get-GuardProblem -Actual $n -Minimum 1 -Label ('literal shape ' + $shape) -Suspected 'that literal shape is no longer produced anywhere, so its half of the audit is vacuous'
+        if ($g) { $vacuity.Add($g) }
+    }
+    foreach ($kind in @('OWN', 'CROSS', 'OPTIONAL')) {
+        $g = Get-GuardProblem -Actual ([int]$counts[$kind]) -Minimum 1 -Label ('classification ' + $kind) -Suspected 'no literal of this kind was found; if that is a deliberate refactor, update this table, otherwise the scanner or the sources drifted'
+        if ($g) { $vacuity.Add($g) }
+    }
+
+    return [pscustomobject]@{ Table = $table.ToArray(); Problems = $problems.ToArray(); Vacuity = $vacuity.ToArray(); Counts = $counts }
+}
+
+# ===========================================================================
+# W8 synthetic self-test (see the -SelfTest parameter).  Same functions, fake data.
+# ===========================================================================
+if ($SelfTest) {
+    Write-Host 'W8 self-test: synthetic fixtures through the real functions'
+    Write-Host ''
+    $P = 'com.hjmmd_8.createoreexpansion.'
+    function New-Fake { param([string]$Module, [string]$Rel, [string]$Code) return (New-SourceRecord -Module $Module -Rel $Rel -Code $Code) }
+    function New-Lit  { param([string]$Module, [string]$Rel, [string]$Shape, [string]$Fqn) return [pscustomobject]@{ Module = $Module; Rel = $Rel; Shape = $Shape; Raw = $Fqn; Fqn = $Fqn } }
+    # NOTE: every call site wraps this in @(...).  A function's output is UNROLLED by
+    # PowerShell, so "return @()" would come back as $null and "return @(x)" as a bare
+    # string -- both were real failures of the first version of this self-test (the
+    # empty case died with "You cannot call a method on a null-valued expression",
+    # and the single-element case accidentally passed because String.Contains matched).
+    function New-Set  { param([string[]]$Entries) return @($Entries) }
+
+    $jadeEntry  = 'com/hjmmd_8/createoreexpansion/compat/jade/WaveJadePlugin.class'
+    $jeiEntry   = 'com/hjmmd_8/createoreexpansion/compat/jei/WaveJadePlugin.class'
+    $coeRtEntry = 'com/hjmmd_8/createoreexpansion/common/registry/coe/CoeRecipeTypes.class'
+    $sableEntry = 'dev/ryanhcode/sable/companion/math/Pose3dc.class'
+    $optNs      = @('dev.ryanhcode.sable.')
+
+    # S1 GREEN: the healthy post-W6-d shape (file at compat/jade, package compat/jade, jar agrees)
+    $s1Src = @(New-Fake 'coe' 'compat\jade\WaveJadePlugin.java' "package $($P)compat.jade;`nclass WaveJadePlugin {}")
+    $s1Lit = @(New-Lit 'coe' 'CreateOreExpansion.java' 'forName' ($P + 'compat.jade.WaveJadePlugin'))
+    $s1Jar = @{ 'coe' = (@(New-Set @($jadeEntry))); 'core' = (@(New-Set @())) }
+
+    # S2 RED: the W6-d incident -- file stays at compat/jade, package line still compat.jei,
+    #        jar was built from that source and therefore holds compat/jei/...class
+    $s2Src = @(New-Fake 'coe' 'compat\jade\WaveJadePlugin.java' "package $($P)compat.jei;`nclass WaveJadePlugin {}")
+    $s2Jar = @{ 'coe' = (@(New-Set @($jeiEntry))); 'core' = (@(New-Set @())) }
+
+    # S3 RED: dangling project FQN (no source file declares it)
+    $s3Lit = @(New-Lit 'coe' 'CreateOreExpansion.java' 'forName' ($P + 'compat.jade.WaveJadePluginGone'))
+
+    # S4 GREEN: core -> :coe wake-list literal, allowed to fail in core's own jar
+    $s4Src = @(
+        (New-Fake 'core' 'common\registry\LayerBootstrap.java' "package $($P)common.registry;`nclass LayerBootstrap {}"),
+        (New-Fake 'coe' 'common\registry\coe\CoeRecipeTypes.java' "package $($P)common.registry.coe;`nclass CoeRecipeTypes {}")
+    )
+    $s4Lit = @(
+        (New-Lit 'core' 'common\registry\LayerBootstrap.java' 'packagesuffix' ($P + 'common.registry.coe.CoeRecipeTypes')),
+        (New-Lit 'coe' 'CreateOreExpansion.java' 'forName' ($P + 'common.registry.coe.CoeRecipeTypes'))
+    )
+    $s4Jar = @{ 'core' = (@(New-Set @())); 'coe' = (@(New-Set @($coeRtEntry))) }
+
+    # S5 RED: cross-module literal whose owner jar does not contain the class
+    $s5Jar = @{ 'core' = (@(New-Set @())); 'coe' = (@(New-Set @())) }
+
+    # S6 GREEN: third-party probe, allowed namespace, not packaged by us
+    $s6Lit = @(New-Lit 'cews' 'common\registry\cews\CewsMod.java' 'forName' 'dev.ryanhcode.sable.companion.math.Pose3dc')
+    $s6Jar = @{ 'cews' = (@(New-Set @())) }
+
+    # S6b GREEN: the same probe as it is really written (one-hop String variable) must be
+    # found by Get-ReflectiveLiterals -- the first version of that function missed it and
+    # Y4's anti-vacuity guard turned red on the real tree, which is how the gap was found.
+    $s6bCode = @(
+        ('package ' + $P + 'common.registry.cews;'),
+        'class CewsMod {',
+        '  void f() {',
+        '    final String probe = "dev.ryanhcode.sable.companion.math.Pose3dc";',
+        '    try { Class.forName(probe, false, getClass().getClassLoader()); } catch (Throwable ignored) {}',
+        '  }',
+        '}'
+    ) -join "`n"
+    $s6bLit = @(Get-ReflectiveLiterals -Module 'cews' -Rel 'CewsMod.java' -Code $s6bCode)
+
+    # S7 RED: same probe, empty optional table -> unclassified
+    # S8 RED: the probe target IS packaged in one of our jars
+    $s8Jar = @{ 'cews' = (@(New-Set @($sableEntry))) }
+
+    # package/path mismatch helper
+    $m1 = @(Get-PackageMismatch $s1Src)
+    $m2 = @(Get-PackageMismatch $s2Src)
+
+    # the guard helper itself
+    $gRed   = Get-GuardProblem -Actual 0 -Minimum 1 -Label 'X' -Suspected 'y'
+    $gGreen = Get-GuardProblem -Actual 7 -Minimum 1 -Label 'X' -Suspected 'y'
+
+    $cases = @(
+        @{ Name = 'S1 green  own literal present in own jar';  Expect = 0; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals $s1Lit -JarClasses $s1Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+        @{ Name = 'S2 red    W6-d incident (package != dir)';  Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s2Src -Literals $s1Lit -JarClasses $s2Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+        @{ Name = 'S2b red   Y1 package/path mismatch';        Expect = 1; Get = { $m2.Count } }
+        @{ Name = 'S2c green Y1 healthy tree';                 Expect = 0; Get = { $m1.Count } }
+        @{ Name = 'S3 red    dangling own FQN literal';        Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals $s3Lit -JarClasses $s1Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+        @{ Name = 'S4 green  cross-module literal, owner jar has it'; Expect = 0; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals $s4Lit -JarClasses $s4Jar -OptionalNamespaces $optNs -MinSites 2).Problems.Count } }
+        @{ Name = 'S5 red    cross-module literal dead';       Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals @($s4Lit[0]) -JarClasses $s5Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+        @{ Name = 'S6 green  optional probe, allowed ns';      Expect = 0; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+        @{ Name = 'S7 red    optional probe, unclassified ns'; Expect = 1; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces @() -MinSites 1).Problems.Count } }
+        @{ Name = 'S8 red    optional probe packaged by us';   Expect = 1; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s8Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+        @{ Name = 'S9 red    scanner vacuity (0 sites)';       Expect = 6; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals @() -JarClasses $s1Jar -OptionalNamespaces $optNs -MinSites 6).Vacuity.Count } }
+        @{ Name = 'S10 red   shape vacuity (no prefix form)';  Expect = 3; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces $optNs -MinSites 1).Vacuity.Count } }
+        @{ Name = 'S11 red   guard helper fires on 0';         Expect = 1; Get = { @($gRed).Count } }
+        @{ Name = 'S12 green guard helper passes on >= N';     Expect = 0; Get = { @($gGreen | Where-Object { $_ -ne $null }).Count } }
+        @{ Name = 'S13 green one-hop String probe is scanned'; Expect = 1; Get = { @($s6bLit).Count } }
+        @{ Name = 'S14 green one-hop probe classify OPTIONAL'; Expect = 0; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6bLit -JarClasses $s6Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+    )
+    $fail = 0
+    foreach ($c in $cases) {
+        $got = & $c.Get
+        $ok = ([int]$got -eq [int]$c.Expect)
+        if (-not $ok) { $fail++ }
+        Write-Host ('  {0}  {1,-46} expected={2} got={3}' -f $(if ($ok) { 'SELFTEST PASS' } else { 'SELFTEST FAIL' }), $c.Name, $c.Expect, $got)
+    }
+    Write-Host ''
+    Write-Host ('W8 SELFTEST RESULT: ' + $(if ($fail -eq 0) { 'ALL FIXTURES AS EXPECTED' } else { ($fail.ToString() + ' FIXTURE(S) MISMATCHED') }))
+    if ($fail -ne 0) { exit 1 }
+    exit 0
+}
+
+
 Write-Host 'module self-sufficiency audit (P7b): jars + sources, static, read-only'
 Write-Host ''
 
@@ -522,6 +920,14 @@ if ($missing.Count -gt 0) {
 # ---------------------------------------------------------------------------
 # B. per module jar
 # ---------------------------------------------------------------------------
+# W8 (2026-09-30) anti-vacuity accumulators.  Every "grep a pattern, then judge the
+# matches" section below must prove the pattern was LIVE, otherwise a rename of the
+# annotation / the call site turns the whole section into "0 matches -> PASS" -- the
+# exact shape this script exists to catch.  These totals are checked after the loops.
+$script:jeiSrcTotal = 0
+$script:ebsWithModidTotal = 0
+$script:payloadTypesByModule = @{}
+
 foreach ($name in $modules.Keys) {
     $jarPath = Join-Path $repoRoot $modules[$name].jar
     $expectId = $modules[$name].modId
@@ -587,6 +993,15 @@ foreach ($name in $modules.Keys) {
     Write-Check $classResolves ($name + ' B2d every class named by the mixin config exists in the same jar') `
         $(if ($classResolves) { 'all named classes present' } else { 'missing: ' + ($classProblems -join ', ') })
 
+    # B2e (W8) -- anti-vacuity for B2c/B2d: every [[mixins]] block names exactly one
+    # config.  Without this, a renamed `config = "..."` key would make $configNames empty,
+    # B2c and B2d would loop ZERO times and both would print PASS while the mixin config
+    # was in fact undeclared -- the P7a hole with the declaration renamed instead of missing.
+    Write-Check ($configNames.Count -eq $mixinsBlocks) `
+        ($name + ' B2e every [[mixins]] block names exactly one config (pattern liveness)') `
+        ("mixinsBlocks=" + $mixinsBlocks + " configNames=" + $configNames.Count + `
+         $(if ($configNames.Count -ne $mixinsBlocks) { ' -> pattern failure: the `config = "..."` key no longer parses, so B2c/B2d would inspect nothing' } else { ' (B2c/B2d really inspect every declared config)' }))
+
     # B3 / B6 -- one javap -v pass over every class of the jar
     $classEntries = @($entries | Where-Object { $_ -like 'com/hjmmd_8/*.class' })
     $classNames = @($classEntries | ForEach-Object { ($_ -replace '\.class$', '') -replace '/', '.' })
@@ -616,6 +1031,7 @@ foreach ($name in $modules.Keys) {
     Write-Check ($jeiClasses.Count -eq $jeiSrcCount) ($name + ' B3 packaged @JeiPlugin count == source-declared count (javap -v)') `
         ("jar=" + $jeiClasses.Count + " source=" + $jeiSrcCount + " -> " + `
          $(if ($jeiClasses.Count -gt 0) { (($jeiClasses | ForEach-Object { ($_ -split '!/')[-1] }) -join ', ') } else { '(none declared, none packaged)' }))
+    $script:jeiSrcTotal = $script:jeiSrcTotal + $jeiSrcCount
 
     # B4 -- language self-sufficiency
     foreach ($locale in $langLocales) {
@@ -666,6 +1082,7 @@ foreach ($name in $modules.Keys) {
     }
     Write-Check ($ebsMismatch.Count -eq 0) ($name + ' B6 every @EventBusSubscriber modid == this jar modId') `
         ("withModid=" + $ebsClasses.Count + " withoutModid=" + $ebsNoModid + " mismatches=" + $ebsMismatch.Count + $(if ($ebsMismatch.Count -gt 0) { ' [' + ($ebsMismatch -join '; ') + ']' } else { '' }))
+    $script:ebsWithModidTotal = $script:ebsWithModidTotal + $ebsClasses.Count
 
     # B7 -- shared data pack set, carried byte for byte (P7c).
     # core/src/main/resources/data/** is the home of the hand-written data files whose ids are
@@ -701,6 +1118,27 @@ foreach ($name in $modules.Keys) {
 }
 
 # ---------------------------------------------------------------------------
+# B8/B9 (W8) -- the two annotation patterns B3 and B6 match must be LIVE.
+#   B8: the source-side `@JeiPlugin` regex must have matched at least once across all
+#       modules.  B3 compares jar count with source count; if the regex silently stops
+#       matching (a rename to @JeiPluginX, a change in how the annotation is written),
+#       BOTH sides read 0 for a module whose plugin actually shipped differently -- and
+#       the module that still has a plugin would then be reported as "0 == 0 PASS".
+#   B9: the javap-side EventBusSubscriber descriptor must have been seen at least once
+#       in some module jar.  This is also what makes core's C2 ("no subscriber") a REAL
+#       zero: C2's emptiness is evidence only if the same parser can find one elsewhere.
+# ---------------------------------------------------------------------------
+$gB8 = Get-GuardProblem -Actual $script:jeiSrcTotal -Minimum 1 -Label 'B8 @JeiPlugin source pattern' `
+    -Suspected 'the source-side @JeiPlugin match is dead, so B3 compared 0 with 0'
+Write-Check ($null -eq $gB8) 'B8 the @JeiPlugin source pattern is live (B3 is not 0 vs 0)' `
+    $(if ($gB8) { $gB8 } else { 'sourceDeclaredTotal=' + $script:jeiSrcTotal + ' across ' + $modules.Count + ' module sources' })
+
+$gB9 = Get-GuardProblem -Actual $script:ebsWithModidTotal -Minimum 1 -Label 'B9 @EventBusSubscriber descriptor pattern' `
+    -Suspected 'javap found no compiled class carrying Lnet/neoforged/fml/common/EventBusSubscriber; modid=, so B6 and C2 both judge nothing'
+Write-Check ($null -eq $gB9) 'B9 the @EventBusSubscriber pattern is live (B6 and C2 are not vacuous)' `
+    $(if ($gB9) { $gB9 } else { 'withModidTotal=' + $script:ebsWithModidTotal + ' across the module jars' })
+
+# ---------------------------------------------------------------------------
 # C. the library jar must not carry @EventBusSubscriber
 # ---------------------------------------------------------------------------
 Write-Host ("[C] core library jar (" + $coreJar + ")")
@@ -710,6 +1148,19 @@ $coreModIds = @()
 if ($coreToml) { $coreModIds = @(Get-DeclaredModIds $coreToml) }
 Write-Check ($coreModIds.Count -eq 0) 'core C1 [[mods]] is empty (it is a library, not a mod)' `
     ("tomlPresent=" + [bool]$coreToml + " ids=[" + ($coreModIds -join ',') + "]")
+
+# C1a (W8) -- C1 as written passes when the jar has NO META-INF/neoforge.mods.toml at
+# all, which is exactly this jar's shape (measured: tomlPresent=False).  "no mods table"
+# is only evidence of "not a mod" together with the POSITIVE declaration that makes it a
+# library: FMLModType: GAMELIBRARY in the manifest (core/build.gradle).  Without this,
+# deleting the manifest attribute -- which is what makes core a GAME-layer automatic
+# module instead of a mod file -- would leave C1 green and the misclassification silent.
+$coreManifest = Get-JarEntryText $corePath 'META-INF/MANIFEST.MF'
+$coreManifestOk = ($coreManifest -ne $null) -and ($coreManifest -match '(?m)^\s*FMLModType\s*:\s*GAMELIBRARY\s*$')
+Write-Check $coreManifestOk 'core C1a the manifest declares FMLModType: GAMELIBRARY (the positive half of "not a mod")' `
+    $(if ($coreManifest -eq $null) { 'META-INF/MANIFEST.MF is missing from the library jar' } `
+      elseif (-not $coreManifestOk) { 'manifest present but FMLModType: GAMELIBRARY is not declared' } `
+      else { 'FMLModType: GAMELIBRARY [manifestEntries=' + (@(($coreManifest -split "`n") | Where-Object { $_ -match '^\S+:' }).Count) + ']' })
 
 $coreClassEntries = @($coreEntries | Where-Object { $_ -like 'com/hjmmd_8/*.class' })
 $coreClassNames = @($coreClassEntries | ForEach-Object { ($_ -replace '\.class$', '') -replace '/', '.' })
@@ -724,6 +1175,13 @@ foreach ($cls in $coreRecords.Keys) {
 }
 Write-Check ($coreSubscribers.Count -eq 0) 'core C2 no @EventBusSubscriber (it has no ModContainer)' `
     ("classesScanned=" + $coreClassNames.Count + " withAnnotation=" + $coreSubscribers.Count + $(if ($coreSubscribers.Count -gt 0) { ' [' + ($coreSubscribers -join ', ') + ']' } else { '' }))
+
+# C2b (W8) -- anti-vacuity for C2: "0 subscribers in core" is evidence only if the very
+# same parser CAN see the annotation somewhere.  B9 already proved that; this check
+# states the dependency explicitly for the core-side reader, so a rename of the javap
+# descriptor can never be read as "core is clean".
+Write-Check ($null -eq $gB9) 'core C2b the annotation parser is live for this run (so C2 zero is a real zero)' `
+    $(if ($gB9) { $gB9 } else { 'withModidTotal=' + $script:ebsWithModidTotal + ' seen in the module jars by the same javap pass' })
 Write-Host ''
 
 # ---------------------------------------------------------------------------
@@ -776,6 +1234,14 @@ foreach ($name in $modules.Keys) {
     Write-Check ($ensureHits.Count -ge 1) ($name + ' D1 references LayerBootstrap.ensureAttached(') `
         ("sites=" + $ensureHits.Count + " [" + ($ensureHits -join ', ') + "]")
 
+    # D0 (W8) -- anti-vacuity for the whole D group: the per-module source walk must have
+    # produced at least one file.  A wrong/empty src root (or a filter typo) would make D2
+    # ("no forbidden name found") and D4 ("no Layer* register") pass while reading nothing.
+    $gD0 = Get-GuardProblem -Actual $files.Count -Minimum 1 -Label ($name + ' D0 source walk') `
+        -Suspected ('the module source walk returned no .java file under ' + $modules[$name].src + ', so D1-D5 inspect nothing')
+    Write-Check ($null -eq $gD0) ($name + ' D0 the module source walk is live (D1-D5 are not vacuous)') `
+        $(if ($gD0) { $gD0 } else { 'javaFiles=' + $files.Count + ' under ' + $modules[$name].src })
+
     $forbiddenTotal = 0
     $forbiddenDetail = @()
     foreach ($needle in $sharedWiringNames) {
@@ -794,6 +1260,10 @@ foreach ($name in $modules.Keys) {
     }
     Write-Check $payloadOk ($name + ' D3 every payload this module registers is declared inside this module') `
         $(if ($payloadTypes.Count -eq 0) { 'no registerPayloads sites in this module' } else { 'types=[' + (($payloadTypes.Keys | Sort-Object) -join ',') + '] ' + ($payloadDetail -join '; ') })
+    foreach ($t in $payloadTypes.Keys) {
+        if (-not $script:payloadTypesByModule.ContainsKey($t)) { $script:payloadTypesByModule[$t] = @() }
+        $script:payloadTypesByModule[$t] = $script:payloadTypesByModule[$t] + $name
+    }
 
     Write-Check ($layerRegisterSites.Count -eq 0) ($name + ' D4 no module touches a core Layer* register directly') `
         $(if ($layerRegisterSites.Count -eq 0) { '0 LayerXxx.register* sites' } else { $layerRegisterSites -join '; ' })
@@ -801,6 +1271,32 @@ foreach ($name in $modules.Keys) {
     Write-Host ("        info  D5 module-owned DeferredRegister-style .register( sites: " + $deferredRegisterSites.Count + `
         $(if ($deferredRegisterSites.Count -gt 0) { ' [' + ($deferredRegisterSites -join '; ') + ']' } else { '' }))
 }
+
+# ---------------------------------------------------------------------------
+# D6/D7 (W8) -- anti-vacuity for D3, plus the duplicate-registration invariant.
+#   D6: the registerPayloads regex must have matched at least once across the modules.
+#       Per module the answer may honestly be "no sites here" (that is today's
+#       transmutation), but if the regex broke, EVERY module answers that and D3 passes
+#       for all three -- an assertion whose subject became invisible.
+#   D7: the same payload type must never be registered by two modules.  The payload id
+#       is the channel name, and NetworkRegistry throws on a second registration of the
+#       same id (the reason the shared one lives in core's LayerBootstrap); two modules
+#       each believing they own it is the "cannot register payload" crash, and it is
+#       invisible per-module because each module's own D3 passes.
+# ---------------------------------------------------------------------------
+$payloadSiteTotal = @($script:payloadTypesByModule.Keys).Count
+$gD6 = Get-GuardProblem -Actual $payloadSiteTotal -Minimum 1 -Label 'D6 registerPayloads pattern' `
+    -Suspected 'the registerPayloads match is dead, so D3 answers "no sites in this module" for every module'
+Write-Check ($null -eq $gD6) 'D6 the registerPayloads pattern is live (D3 is not "no sites" everywhere)' `
+    $(if ($gD6) { $gD6 } else { 'distinctPayloadTypes=' + $payloadSiteTotal + ' [' + (($script:payloadTypesByModule.Keys | Sort-Object) -join ',') + ']' })
+
+$payloadDupes = @()
+foreach ($t in $script:payloadTypesByModule.Keys) {
+    $mods = @($script:payloadTypesByModule[$t] | Sort-Object -Unique)
+    if ($mods.Count -gt 1) { $payloadDupes = $payloadDupes + ($t + ' -> ' + ($mods -join '+')) }
+}
+Write-Check ($payloadDupes.Count -eq 0) 'D7 no payload type is registered from two modules (one payload id = one channel)' `
+    $(if ($payloadDupes.Count -eq 0) { 'no duplicate payload owner across ' + $modules.Count + ' modules' } else { 'duplicates: ' + ($payloadDupes -join '; ') })
 Write-Host ''
 
 # ---------------------------------------------------------------------------
@@ -812,6 +1308,7 @@ Write-Host ''
 #    data files travel in that module's jar, and nothing is left behind in the root tree.
 # ---------------------------------------------------------------------------
 Write-Host '[E] hand-written data/** home assertions'
+$script:ownDataFileTotal = 0
 foreach ($name in $modules.Keys) {
     $jarPath = Join-Path $repoRoot $modules[$name].jar
     $entries = @(Get-JarEntries $jarPath)
@@ -835,6 +1332,7 @@ foreach ($name in $modules.Keys) {
         ($name + ' E1 every hand-written data/** file of this module is packaged in its own jar') `
         ("ownHome=" + $ownDataRel + " ownFiles=" + $ownFiles.Count + " missing=" + $ownMissing.Count + " hashMismatch=" + $ownMismatch.Count + `
          $(if ($ownMissing.Count -gt 0) { ' missing=[' + (($ownMissing | Select-Object -First 8) -join ', ') + $(if ($ownMissing.Count -gt 8) { ', ...' } else { '' }) + ']' } else { '' }))
+    $script:ownDataFileTotal = $script:ownDataFileTotal + $ownFiles.Count
 }
 
 $rootDataRel = 'src\main\resources\data'
@@ -846,6 +1344,16 @@ if (Test-Path -LiteralPath $rootData) {
 Write-Check ($stranded.Count -eq 0) 'E2 no hand-written data/** file is stranded in the root integration layer' `
     ("rootHome=" + $rootDataRel + " files=" + $stranded.Count + `
      $(if ($stranded.Count -gt 0) { ' -> move each one to core/src/main/resources/data (vanilla/external or cross-layer ids) or to the module that owns its ids: [' + (($stranded | ForEach-Object { $_.FullName.Substring($rootData.Length + 1) }) -join ', ') + ']' } else { ' (root does not publish, so a file left here reaches no shipped jar)' }))
+
+# E1b (W8) -- anti-vacuity for E1: the per-module walk must have found at least one file
+# in total.  E1 asserts "what I found is packaged"; if a filter/directory rename made it
+# find nothing in ANY module, all three E1 lines read "missing=0 hashMismatch=0" and the
+# per-layer data half of P7c becomes unaudited while staying green.  (Per module the
+# answer may honestly be zero -- transmutation has no hand-written data file today.)
+$gE1b = Get-GuardProblem -Actual $script:ownDataFileTotal -Minimum 1 -Label 'E1b hand-written data walk' `
+    -Suspected 'no hand-written data/**/*.json was found in ANY module tree, so E1 judged nothing'
+Write-Check ($null -eq $gE1b) 'E1b the hand-written data walk is live (E1 is not vacuous)' `
+    $(if ($gE1b) { $gE1b } else { 'ownDataFilesTotal=' + $script:ownDataFileTotal + ' across the module trees' })
 Write-Host ''
 
 # ---------------------------------------------------------------------------
@@ -954,6 +1462,18 @@ Write-Host '[G] cross-layer hand-written block tags split per layer (P7d)'
 
 $tagSourceRel = 'src\main\resources\data\createoreexpansion\tags\block'
 $sharedHomeAbs = Join-Path $repoRoot 'core\src\main\resources\data'
+
+# G0 (W8) -- anti-vacuity for the whole G group: the split-tag table must not be empty and
+# every entry must carry a non-empty pre-split list.  With an empty table, G1/G2/G3 all loop
+# zero times and report PASS ("leftover=[]", "splitTags=2 both checked" is the honest count
+# today) while the cross-layer tag split -- the P7d defect -- would be unaudited.
+$splitTagProblems = @()
+if (@($splitTags.Keys).Count -lt 1) { $splitTagProblems = $splitTagProblems + 'the splitTags table is empty' }
+foreach ($tagName in $splitTags.Keys) {
+    if (@($splitTags[$tagName].full).Count -lt 1) { $splitTagProblems = $splitTagProblems + ($tagName + ': full list is empty') }
+}
+Write-Check ($splitTagProblems.Count -eq 0) 'G0 the split-tag table is live (G1-G3 are not vacuous)' `
+    $(if ($splitTagProblems.Count -eq 0) { 'splitTags=' + @($splitTags.Keys).Count + ' [' + (@($splitTags.Keys) -join ',') + '] preSplitElements=' + (@($splitTags.Keys | ForEach-Object { @($splitTags[$_].full).Count }) -join '+') } else { $splitTagProblems -join '; ' })
 
 $leftover = @()
 foreach ($tagName in $splitTags.Keys) {
@@ -1144,6 +1664,86 @@ Write-Check ($x2Problems.Count -eq 0) 'X2 WaveRecipeCapabilities.all() expands t
         'order=' + ($waveExpansion -join ' -> ') + ' (frozen; weights=' + ($orderNames -join ',') + '; registrations=' + $registrations.Count + ')'
     } else {
         'got=' + ($waveExpansion -join ',') + ' expected=' + ($expectedWaveOrder -join ',') + ' :: ' + ($x2Problems -join '; ')
+    })
+Write-Host ''
+
+# ---------------------------------------------------------------------------
+# Y. reflective class-name literals vs the packaged classes (W8; see the function
+#    block at the top of this file for the incident this closes).
+#
+#    $optionalProbeReasons is the ONLY hand-maintained table here, and it is a table of
+#    NAMESPACES of third-party mods whose absence our probes are designed to detect --
+#    not a list of accepted violations.  A new third-party probe therefore turns Y2 red
+#    until it is classified here with a reason.
+# ---------------------------------------------------------------------------
+Write-Host '[Y] reflective class-name literals vs the packaged classes (W8)'
+
+$optionalProbeReasons = [ordered]@{
+    'dev.ryanhcode.sable.' = 'Sable (aeronautics companion): CewsMod.detectSableByClass probes dev.ryanhcode.sable.companion.math.Pose3dc; "not installed" MUST make the probe fail, so this class must never be inside our jars'
+}
+# Optional integrations that are NOT probed this way need no entry here: Jade / JEI /
+# Curios optionality goes through ModList.isLoaded plus a compat/** class that is only
+# touched after that test (and B3/B6 above cover the class side).  If one of them ever
+# starts using Class.forName("..."), add its namespace here with the reason.
+
+$literalRoots = [ordered]@{
+    'root'          = (Join-Path $repoRoot 'src\main\java\com\hjmmd_8\createoreexpansion')
+    'core'          = (Join-Path $repoRoot 'core\src\main\java\com\hjmmd_8\createoreexpansion')
+    'coe'           = (Join-Path $repoRoot 'coe\src\main\java\com\hjmmd_8\createoreexpansion')
+    'cews'          = (Join-Path $repoRoot 'cews\src\main\java\com\hjmmd_8\createoreexpansion')
+    'transmutation' = (Join-Path $repoRoot 'transmutation\src\main\java\com\hjmmd_8\createoreexpansion')
+}
+
+$srcIndex = New-Object System.Collections.Generic.List[object]
+$literals = New-Object System.Collections.Generic.List[object]
+foreach ($lroot in $literalRoots.Keys) {
+    $lrootPath = $literalRoots[$lroot]
+    if (-not (Test-Path -LiteralPath $lrootPath)) { continue }
+    foreach ($lf in (Get-ChildItem -LiteralPath $lrootPath -Recurse -File -Filter '*.java' | Sort-Object FullName)) {
+        $lrel = $lf.FullName.Substring($lrootPath.Length).TrimStart('\', '/')
+        $lcode = Get-SourceCode $lf.FullName
+        $srcIndex.Add((New-SourceRecord -Module $lroot -Rel $lrel -Code $lcode))
+        foreach ($l in (Get-ReflectiveLiterals -Module $lroot -Rel $lrel -Code $lcode)) { $literals.Add($l) }
+    }
+}
+
+$jarClasses = @{}
+foreach ($mName in $modules.Keys) { $jarClasses[$mName] = @(Get-JarClassSet -JarPath (Join-Path $repoRoot $modules[$mName].jar)) }
+$jarClasses['core'] = @(Get-JarClassSet -JarPath $corePath)
+
+# Y1 -- the package line must match the directory.  This is the mechanism behind the
+# WaveJadePlugin incident: javac emits into the DECLARED package, so the class lands in a
+# package the calling code never asks for, and every other gate stays green.
+$pkgMismatch = @(Get-PackageMismatch -Sources $srcIndex.ToArray())
+Write-Check ($pkgMismatch.Count -eq 0) 'Y1 every source file declares the package its directory implies' `
+    $(if ($pkgMismatch.Count -eq 0) {
+        'filesChecked=' + $srcIndex.Count + ' across 5 roots (declared package == path-derived package)'
+    } else {
+        'mismatches=' + $pkgMismatch.Count + ' [' + (($pkgMismatch | ForEach-Object { $_.Module + '/' + $_.Rel + ' declares ' + $_.DeclPkg + ' but sits under ' + $_.PathPkg }) -join '; ') + ']'
+    })
+
+$yResult = Test-ClassLiteralResolution -Sources $srcIndex.ToArray() -Literals $literals.ToArray() `
+    -JarClasses $jarClasses -OptionalNamespaces @($optionalProbeReasons.Keys) -MinSites 5
+
+Write-Host ('        classification table (' + $yResult.Table.Count + ' literal site(s)):')
+foreach ($row in $yResult.Table) {
+    Write-Host ("          {0,-6} {1,-12} {2,-6} {3,-20} {4}" -f $row.Module, $row.Rel, $row.Kind, $row.Shape, $row.Fqn)
+}
+
+Write-Check ($yResult.Problems.Count -eq 0) 'Y2/Y3 every reflective class-name literal resolves to a packaged class of the right jar' `
+    $(if ($yResult.Problems.Count -eq 0) {
+        'OWN=' + $yResult.Counts.OWN + ' (in the caller jar) CROSS=' + $yResult.Counts.CROSS + ' (in the owner jar, absence allowed) OPTIONAL=' + $yResult.Counts.OPTIONAL + ' (target absent as designed)'
+    } else {
+        'problems=' + $yResult.Problems.Count + ' :: ' + ($yResult.Problems -join ' ;; ')
+    })
+
+$gY4 = $null
+if ($yResult.Vacuity.Count -gt 0) { $gY4 = ($yResult.Vacuity -join ' ;; ') }
+Write-Check ($yResult.Vacuity.Count -eq 0) 'Y4 the literal scanner is live and each classification is seen (anti-vacuity)' `
+    $(if ($null -eq $gY4) {
+        'sites=' + $literals.Count + ' shapes=' + (@($literals | Group-Object Shape | ForEach-Object { $_.Name + ':' + $_.Count }) -join ',') + ' kinds=OWN:' + $yResult.Counts.OWN + ',CROSS:' + $yResult.Counts.CROSS + ',OPTIONAL:' + $yResult.Counts.OPTIONAL
+    } else {
+        $gY4
     })
 Write-Host ''
 
