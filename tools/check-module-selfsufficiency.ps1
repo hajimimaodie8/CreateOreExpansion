@@ -41,7 +41,7 @@
 #         transmutation mechanism), so ">=1" would demand a plugin that has no reason to
 #         exist.  Comparing source-declared vs jar-packaged keeps the original failure mode
 #         (a plugin whose class did not ship -- the P7a shape) AND catches a stray plugin,
-#         with the same one check per module (66 checks in total, unchanged).
+#         with the same one check per module (was 66 in total; W6-c added X2, so it is 67).
 #      B4 assets/createoreexpansion/lang/en_us.json and zh_cn.json exist inside the jar,
 #         parse as JSON, and their key set AND values are identical to the root's generated
 #         lang file.  (P7b: each module also carries a full copy of the root language file,
@@ -109,14 +109,18 @@
 #      assertions pin the distribution:
 #      F1 src/generated/resources/data/**/recipe/** holds no file at all (same durable shape
 #         as E2: the root output is not a shipped artifact).
-#      F2 the per-module generated recipe counts are exactly coe=61 / cews=160 /
-#         transmutation=0 and their sum is 221.  Adding or removing a generated recipe turns
-#         the gate red on purpose; update this table together with the recipe.
+#      F2 the per-module generated recipe counts are exactly coe=221 / cews=0 /
+#         transmutation=0 and their sum is 221 (W6-c: the 160 tool-charging recipes are :coe's
+#         now, because their recipe type and the three stress chargers moved into the first
+#         layer).  Adding or removing a generated recipe turns the gate red on purpose;
+#         update this table together with the recipe.
 #      F3 every generated recipe file of a module is packaged in THAT module's jar,
 #         byte-identical (SHA-256).
 #      F4 none of a module's generated recipes appears in another module's jar: the explicit
-#         per-provider layer binding must not leak across layers.
-#   G. cross-layer hand-written block tags, split per layer (P7d).
+#         per-provider layer binding must not leak across layers.  W6-c sharpened what that
+#         means: "the 160 tool-charging recipes must never appear in cews.jar" is exactly this
+#         leak (a stale "cews" layer binding in LayerRecipeRouter would put all 160 there).
+#   G. hand-written block tags, split per layer (P7d).
 #      data/createoreexpansion/tags/block/jade_sapphire_light.json (17 COE + 1 CEWS) and
 #      machines_heavy.json (1 COE + 2 CEWS) used to be carried WHOLE by every module jar (they
 #      lived in the shared home).  TagLoader (L45-59) accumulates every copy of the same
@@ -124,12 +128,24 @@
 #      contain and TagLoader drops the WHOLE tag with an ERROR (L84-115) -- a fake
 #      self-sufficiency.  The fix is the P4f shape: the same path split into one file per
 #      layer, each holding only that layer's entries, so the union at runtime is unchanged.
+#      W6-c: jade_sapphire_light is no longer split -- the single CEWS element
+#      (jade_stress_charger) moved into :coe with the chargers, so the COE half now carries the
+#      whole 18-element pre-split set (charger at index 4) and the cews half file is gone.  A
+#      layer with no half must not carry the file at all.
 #      G1 neither split tag remains in the shared home (that is what made every jar carry the
 #         whole file).
-#      G2 both halves exist, and the union of their values is element-for-element the
-#         pre-split set (nothing added, nothing removed); each half is pinned in order.
+#      G2 every expected half exists, and the union of their values is element-for-element the
+#         pre-split set (nothing added, nothing removed); each half is pinned in order, and a
+#         layer with no half is asserted NOT to carry the file.
 #      G3 a module jar carries exactly its own half of each split tag and never the other
 #         layer's half.
+#   X2. the "which recipe types a wave may process, in which order" list is frozen.
+#      WaveRecipeCapabilities.all() decides the order in which a stellar wave picks its recipe;
+#      it is player-visible and invisible to every other gate (a reordered .add(...) compiles,
+#      passes runData and passes every layering/package assertion -- W6-b2 hit exactly this).
+#      This check rebuilds the expansion from the sources (LayerOrder declaration order, then
+#      per-weight .add(...) argument order, deduplicated by recipe-type id) and compares it
+#      element for element with a fixed 6-entry table.
 #
 # KNOWN GAP (do not mistake this script for proof of runtime behaviour)
 #   Everything here is static jar/source inspection.  It cannot prove that Mixin really
@@ -172,22 +188,26 @@ $javapExe = Resolve-JdkTool 'javap'
 # the same day its Gradle project starts producing a jar that is shipped alone;
 # a module missing from this table is simply not audited (exit stays 0).
 # genRecipes is the number of datagen-produced recipes (P7d) this module must
-# carry under <module>/src/generated/resources/data/**/recipe/**: 61 COE
-# dismantling (4 vanilla sets x 9 + 5 mod sets x 5) and 160 CEWS tool-charging
-# (32 chargeable items x 5 levels).  See assertion F2.
+# carry under <module>/src/generated/resources/data/**/recipe/**.
+# W6-c (2026-09-29) turned the old 61 (COE) + 160 (CEWS) split into a single
+# 221-strong COE set: the 160 tool-charging recipes (32 chargeable items x 5
+# levels) are produced by :coe now, because their recipe type
+# (createoreexpansion:charging) and the three stress chargers moved into the
+# first layer.  cews must therefore hold ZERO of them -- "the 160 must never
+# appear in cews.jar" is the new, sharper shape of assertion F4.
 # ---------------------------------------------------------------------------
 $modules = [ordered]@{
     'coe' = @{
         jar        = 'coe\build\libs\createoreexpansion-1.0.0.jar'
         modId      = 'createoreexpansion'
         src        = 'coe\src\main\java'
-        genRecipes = 61
+        genRecipes = 221
     }
     'cews' = @{
         jar        = 'cews\build\libs\cews-1.0.0.jar'
         modId      = 'cews'
         src        = 'cews\src\main\java'
-        genRecipes = 160
+        genRecipes = 0
     }
     'transmutation' = @{
         jar        = 'transmutation\build\libs\transmutation-1.0.0.jar'
@@ -199,9 +219,17 @@ $modules = [ordered]@{
 
 $expectedGeneratedRecipes = 221
 
-# P7d: the two hand-written block tags that referenced BOTH layers.  Each layer owns a half at
-# the SAME data-pack path in its own jar; TagLoader merges the copies at runtime.  'full' is the
-# pre-split element list: the two halves must cover exactly it (G2).
+# P7d: the hand-written block tags that referenced BOTH layers.  Each layer owns a half at
+# the SAME data-pack path in its own jar; TagLoader merges the copies at runtime.  'full' is
+# the pre-split element list: the halves must cover exactly it (G2).
+#
+# W6-c (2026-09-29): jade_sapphire_light is no longer split.  Its only CEWS element was
+# createoreexpansion:jade_stress_charger, and that block moved into :coe with the chargers,
+# so the COE half now carries the whole pre-split set (18 elements, jade_stress_charger at
+# index 4 = right after raw_jade_block, exactly where it sat in the pre-split file) and the
+# CEWS half file was deleted.  A layer whose expected half is ABSENT must not carry the file
+# at all -- G2 and G3 both assert that, which is strictly stronger than the old "half exists
+# with 0 values" shape.
 $splitTags = [ordered]@{
     'jade_sapphire_light' = @{
         full = @(
@@ -229,6 +257,7 @@ $splitTags = [ordered]@{
             'createoreexpansion:jade_ore',
             'createoreexpansion:deepslate_jade_ore',
             'createoreexpansion:raw_jade_block',
+            'createoreexpansion:jade_stress_charger',
             'createoreexpansion:jade_small_bud',
             'createoreexpansion:jade_medium_bud',
             'createoreexpansion:jade_large_bud',
@@ -243,7 +272,6 @@ $splitTags = [ordered]@{
             'createoreexpansion:sapphire_cluster',
             'createoreexpansion:sapphire_budding_block'
         )
-        cews = @('createoreexpansion:jade_stress_charger')
     }
     'machines_heavy' = @{
         full = @(
@@ -815,9 +843,9 @@ foreach ($name in $modules.Keys) {
     $recipeDetail = $recipeDetail + ($name + '=' + $ownRecipes[$name].Count + '/' + $modules[$name].genRecipes)
 }
 $countsOk = $countsOk -and ($recipeTotal -eq $expectedGeneratedRecipes)
-Write-Check $countsOk 'F2 the three modules hold exactly the expected generated recipe counts (sum 221)' `
+Write-Check $countsOk 'F2 the modules hold exactly the expected generated recipe counts (sum 221)' `
     ("[" + ($recipeDetail -join '  ') + "] sum=" + $recipeTotal + " expectedSum=" + $expectedGeneratedRecipes + `
-     " (61 = COE dismantling 4x9+5x5, 160 = CEWS tool-charging 32x5)")
+     " (W6-c: 221 = COE dismantling 61 + COE tool-charging 160; cews must hold 0 of them)")
 
 # F3 -- each module packages its own generated recipes, byte for byte.
 foreach ($name in $modules.Keys) {
@@ -839,18 +867,25 @@ foreach ($name in $modules.Keys) {
          $(if ($missing.Count -gt 0) { ' missing=[' + (($missing | Select-Object -First 5) -join ', ') + $(if ($missing.Count -gt 5) { ', ...' } else { '' }) + ']' } else { '' }))
 }
 
-# F4 -- the explicit layer binding must not leak: no generated recipe in a foreign jar.
+# F4 -- the explicit layer binding must not leak: no generated recipe of this module turns up
+# in a foreign jar.  W6-c sharpened what this means for the 160 tool-charging recipes: they are
+# :coe's now, so "they must never appear in cews.jar" is exactly the leak this check catches
+# (a stale "cews" binding in LayerRecipeRouter would put all 160 there and turn this red).
 foreach ($name in $modules.Keys) {
     $leaks = @()
+    $chargingLeaks = @()
     foreach ($other in $modules.Keys) {
         if ($other -ceq $name) { continue }
         foreach ($f in $ownRecipes[$name]) {
             $entry = Get-DataJarEntry $f.FullName
-            if ($entry -and ($moduleEntries[$other] -contains $entry)) { $leaks = $leaks + ($entry + ' -> ' + $other + '.jar') }
+            if ($entry -and ($moduleEntries[$other] -contains $entry)) {
+                $leaks = $leaks + ($entry + ' -> ' + $other + '.jar')
+                if ($entry -match '/recipe/tool_charge/') { $chargingLeaks = $chargingLeaks + $entry }
+            }
         }
     }
     Write-Check ($leaks.Count -eq 0) ($name + ' F4 no generated recipe of this module appears in another module jar') `
-        ("ownGenerated=" + $ownRecipes[$name].Count + " leaked=" + $leaks.Count + $(if ($leaks.Count -gt 0) { ' [' + (($leaks | Select-Object -First 5) -join ', ') + ']' } else { '' }))
+        ("ownGenerated=" + $ownRecipes[$name].Count + " leaked=" + $leaks.Count + " toolChargingLeaked=" + $chargingLeaks.Count + $(if ($leaks.Count -gt 0) { ' [' + (($leaks | Select-Object -First 5) -join ', ') + ']' } else { '' }))
 }
 Write-Host ''
 
@@ -882,15 +917,24 @@ foreach ($tagName in $splitTags.Keys) {
     $spec = $splitTags[$tagName]
     $problems = @()
     $seen = @()
+    # W6-c: a layer with NO half (key absent, or an empty array) must not carry the file at
+    # all.  That covers the old split shape (both halves exist, each non-empty) and the new
+    # "the whole tag belongs to one layer" shape, and it is strictly stronger than the old
+    # "file must exist with 0 values" reading.
     foreach ($layer in @('coe', 'cews')) {
         $rel = 'data\createoreexpansion\tags\block\' + $tagName + '.json'
         $file = Join-Path $repoRoot ($layer + '\' + $tagSourceRel + '\' + $tagName + '.json')
+        $expected = @()
+        if ($spec.ContainsKey($layer)) { $expected = @($spec[$layer]) }
+        if ($expected.Count -eq 0) {
+            if (Test-Path -LiteralPath $file) { $problems = $problems + ($layer + ': carries a half this layer does not own') }
+            continue
+        }
         if (-not (Test-Path -LiteralPath $file)) { $problems = $problems + ($layer + ': file missing'); continue }
         $obj = $null
         try { $obj = (Get-Content -LiteralPath $file -Raw -Encoding UTF8) | ConvertFrom-Json } catch { $problems = $problems + ($layer + ': unparsable json'); continue }
         if ($obj.replace -ne $false) { $problems = $problems + ($layer + ': replace is not false') }
         $values = @($obj.values)
-        $expected = @($spec[$layer])
         if ($values.Count -ne $expected.Count) { $problems = $problems + ($layer + ': values=' + $values.Count + ' expected=' + $expected.Count) }
         for ($i = 0; $i -lt [Math]::Min($values.Count, $expected.Count); $i++) {
             if ([string]$values[$i] -cne [string]$expected[$i]) {
@@ -903,8 +947,8 @@ foreach ($tagName in $splitTags.Keys) {
     if ($seen.Count -ne $full.Count) { $problems = $problems + ('union=' + $seen.Count + ' presplit=' + $full.Count) }
     foreach ($v in $full) { if ($seen -notcontains $v) { $problems = $problems + ('lost ' + $v) } }
     foreach ($v in $seen) { if ($full -notcontains $v) { $problems = $problems + ('added ' + $v) } }
-    $coeCount = @($spec.coe).Count
-    $cewsCount = @($spec.cews).Count
+    $coeCount = if ($spec.ContainsKey('coe')) { @($spec.coe).Count } else { 0 }
+    $cewsCount = if ($spec.ContainsKey('cews')) { @($spec.cews).Count } else { 0 }
     Write-Check ($problems.Count -eq 0) ('G2 ' + $tagName + ' halves exist and their union is element-for-element the pre-split set') `
         $(if ($problems.Count -eq 0) { 'coe=' + $coeCount + ' cews=' + $cewsCount + ' union=' + $full.Count + ' presplit=' + $full.Count + ' lost=0 added=0' } else { $problems -join '; ' })
 }
@@ -917,7 +961,9 @@ foreach ($name in $modules.Keys) {
         $entry = 'data/createoreexpansion/tags/block/' + $tagName + '.json'
         $rel = 'data\createoreexpansion\tags\block\' + $tagName + '.json'
         $inJar = ($moduleEntries[$name] -contains $entry)
-        if ($spec.ContainsKey($name)) {
+        # W6-c: ownership is "this layer has a NON-EMPTY half", not merely "the key exists".
+        $owns = $spec.ContainsKey($name) -and (@($spec[$name]).Count -gt 0)
+        if ($owns) {
             $file = Join-Path $repoRoot ($name + '\' + $tagSourceRel + '\' + $tagName + '.json')
             if (-not (Test-Path -LiteralPath $file)) { $problems = $problems + ($tagName + ': own half source missing'); continue }
             if (-not $inJar) { $problems = $problems + ($tagName + ': own half not in jar'); continue }
@@ -931,6 +977,122 @@ foreach ($name in $modules.Keys) {
     Write-Check ($problems.Count -eq 0) ($name + ' G3 this jar carries exactly its own half of every split tag') `
         $(if ($problems.Count -eq 0) { 'splitTags=' + $splitTags.Count + ' both checked' } else { $problems -join '; ' })
 }
+Write-Host ''
+
+# ---------------------------------------------------------------------------
+# X2. the "which recipe types a wave may process, in which order" list is FROZEN (W6-c).
+#
+#     WaveRecipeCapabilities.all() drives the ORDER in which a stellar wave picks the recipe
+#     it will process.  That order is player-visible, and NONE of the other gates can see it:
+#     a re-ordered .add(...) still compiles, still passes runData, and still passes every
+#     layering / package assertion.  W6-b2 hit exactly this class of bug (a forwarding field
+#     pulled charging to numeric registry id 8 instead of 12; only a probe that printed the
+#     numeric ids caught it).
+#
+#     This check reconstructs the expansion from the SOURCE, the same way the runtime builds
+#     it, and compares it element for element with a frozen 6-entry table:
+#       order = LayerOrder enum declaration order (weight),
+#       then, inside each weight, the .add(...) argument order as written,
+#       deduplicated by recipe-type id (vanilla Set.add), nulls/ids ignored.
+#     Anything that changes the list -- reordering the enum, reordering an .add(...), moving a
+#     type to another weight, dropping one, or adding an addOther(...) tail -- turns this red.
+# ---------------------------------------------------------------------------
+Write-Host '[X2] wave-recipe capability order is frozen (source reconstruction vs fixed table)'
+
+$waveCapsRel  = 'core\src\main\java\com\hjmmd_8\createoreexpansion\common\registry\WaveRecipeCapabilities.java'
+$waveCapsPath = Join-Path $repoRoot $waveCapsRel
+$expectedWaveOrder = @('transmuting', 'lightning', 'lightning_block', 'grinding', 'dismantling', 'charging')
+
+$x2Problems = @()
+$orderNames = @()
+$fieldIds = @{}
+$registrations = @()
+
+if (-not (Test-Path -LiteralPath $waveCapsPath)) {
+    $x2Problems = $x2Problems + ('missing ' + $waveCapsRel)
+} else {
+    $caps = Get-SourceCode $waveCapsPath
+    $enumMatch = [regex]::Match($caps, 'enum\s+LayerOrder\s*\{([\s\S]*?)\}')
+    if (-not $enumMatch.Success) {
+        $x2Problems = $x2Problems + 'cannot parse the LayerOrder enum'
+    } else {
+        foreach ($em in [regex]::Matches($enumMatch.Groups[1].Value, '(?m)^\s*([A-Z][A-Z0-9_]*)\s*,?\s*$')) {
+            $orderNames = $orderNames + $em.Groups[1].Value
+        }
+        if ($orderNames.Count -eq 0) { $x2Problems = $x2Problems + 'LayerOrder enum lists no constants' }
+    }
+}
+
+$waveSrcRoots = @(
+    (Join-Path $repoRoot 'src\main\java\com\hjmmd_8\createoreexpansion'),
+    (Join-Path $repoRoot 'core\src\main\java\com\hjmmd_8\createoreexpansion'),
+    (Join-Path $repoRoot 'coe\src\main\java\com\hjmmd_8\createoreexpansion'),
+    (Join-Path $repoRoot 'cews\src\main\java\com\hjmmd_8\createoreexpansion'),
+    (Join-Path $repoRoot 'transmutation\src\main\java\com\hjmmd_8\createoreexpansion')
+)
+foreach ($root in $waveSrcRoots) {
+    if (-not (Test-Path -LiteralPath $root)) { continue }
+    foreach ($file in @(Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.java' | Sort-Object FullName)) {
+        $code = Get-SourceCode $file.FullName
+        # recipe-type constants: public static final LayerRecipeType NAME = LayerRecipeType.processing|serializer("ID", ...)
+        foreach ($fm in [regex]::Matches($code, 'static\s+final\s+LayerRecipeType\s+([A-Za-z0-9_]+)\s*=\s*LayerRecipeType\s*\.\s*(?:processing|serializer)\s*\(\s*"([A-Za-z0-9_]+)"')) {
+            $fieldIds[$fm.Groups[1].Value] = $fm.Groups[2].Value.ToLowerInvariant()
+        }
+        # registration chains: addOrdered(LayerOrder.X) followed by one or more .add(f1, f2, ...)
+        foreach ($rm in [regex]::Matches($code, 'addOrdered\s*\(\s*(?:[A-Za-z0-9_.]*\.)?LayerOrder\s*\.\s*([A-Za-z0-9_]+)\s*\)')) {
+            $orderName = $rm.Groups[1].Value
+            $pos = $rm.Index + $rm.Length
+            while ($true) {
+                $add = [regex]::Match($code.Substring($pos), '^\s*\.\s*add\s*\(([^)]*)\)')
+                if (-not $add.Success) { break }
+                $fields = @($add.Groups[1].Value -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+                $registrations = $registrations + @{ Order = $orderName; Fields = $fields }
+                $pos = $pos + $add.Length
+            }
+        }
+        # addOther(...) appends to the UNWEIGHTED tail of all(); it is not part of the frozen
+        # table, so a call to it means this check can no longer prove the whole sequence.
+        # The declaration itself ("public static void addOther(...)") is not a call.
+        if ([regex]::IsMatch($code, '(?<!void )addOther\s*\(')) {
+            $x2Problems = $x2Problems + ('unexpected addOther(...) registration in ' + $file.Name + ' -- the frozen tail of all() cannot be checked')
+        }
+    }
+}
+if ($registrations.Count -eq 0) { $x2Problems = $x2Problems + 'no WaveRecipeCapabilities.addOrdered(...) registration found in any source root' }
+
+$waveExpansion = @()
+foreach ($orderName in $orderNames) {
+    $bucket = @()
+    foreach ($reg in $registrations) {
+        if ($reg.Order -ne $orderName) { continue }
+        foreach ($fieldName in $reg.Fields) {
+            if (-not $fieldIds.ContainsKey($fieldName)) {
+                $x2Problems = $x2Problems + ('registration names an unknown recipe-type field: ' + $fieldName)
+                continue
+            }
+            $typeId = $fieldIds[$fieldName]
+            if ($bucket -notcontains $typeId) { $bucket = $bucket + $typeId }
+        }
+    }
+    $waveExpansion = $waveExpansion + $bucket
+}
+
+if ($waveExpansion.Count -ne $expectedWaveOrder.Count) {
+    $x2Problems = $x2Problems + ('expansion has ' + $waveExpansion.Count + ' entries, expected ' + $expectedWaveOrder.Count)
+} else {
+    for ($i = 0; $i -lt $expectedWaveOrder.Count; $i++) {
+        if ([string]$waveExpansion[$i] -cne [string]$expectedWaveOrder[$i]) {
+            $x2Problems = $x2Problems + ('order[' + $i + ']=' + $waveExpansion[$i] + ' expected=' + $expectedWaveOrder[$i])
+        }
+    }
+}
+
+Write-Check ($x2Problems.Count -eq 0) 'X2 WaveRecipeCapabilities.all() expands to the frozen order' `
+    $(if ($x2Problems.Count -eq 0) {
+        'order=' + ($waveExpansion -join ' -> ') + ' (frozen; weights=' + ($orderNames -join ',') + '; registrations=' + $registrations.Count + ')'
+    } else {
+        'got=' + ($waveExpansion -join ',') + ' expected=' + ($expectedWaveOrder -join ',') + ' :: ' + ($x2Problems -join '; ')
+    })
 Write-Host ''
 
 # ---------------------------------------------------------------------------

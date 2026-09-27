@@ -21,7 +21,8 @@ license = "${mod_license}"
 #   mod_authors=hjmmd_8, Leaf / description=An expansion for create mod,add more ore block and more.
 # 展开后的值与根模板里那几行字面量逐字节相同；
 # 依赖集合与顺序也相同（neoforge / minecraft / create required、jei / curios optional、
-# createaddition required、createoreexpansion optional + AFTER）。
+# createaddition required、createoreexpansion **required** + AFTER）。
+# W6-c 更正一处过时口径：这条模块间依赖原为 optional，现为 required（理由见文件末尾那段）。
 [[mods]]
 modId = "${mod_id}"
 version = "${mod_version}"
@@ -33,7 +34,7 @@ description = '''${mod_description}'''
 # P7b 起 mixin 配置跟着类走：本工程 7 个 mixin 类 + 1 个配置插件**全部**住在 :coe，
 # 所以 [[mixins]] 声明与 createoreexpansion.mixins.json 都在 :coe
 # （coe/src/main/templates/META-INF/neoforge.mods.toml + coe/src/main/resources/）。
-# CEWS 的 138 个文件里**一个 mixin 类都没有**（实测：cews/src/main/java 下无 mixin/ 包），
+# CEWS 的文件里**一个 mixin 类都没有**（实测：cews/src/main/java 下无 mixin/ 包），
 # 所以本模块既不声明 config、也不带 *.mixins.json —— 刻意不造空配置：
 # 声明一个不存在（或指向别层）的 config 会让 MixinConfig.create 在加载期抛
 # IllegalArgumentException，而"在这里再声明一次同一个 config"等于把它注册两遍。
@@ -82,16 +83,21 @@ versionRange = "[1.5.11,)"
 ordering = "NONE"
 side = "BOTH"
 
-# ── 模块间依赖：cews → createoreexpansion 是 **optional** ────────────────────────────
-# CEWS 单向依赖 COE（材料：星辉石/蓝宝石/翡翠部件），但**不是硬依赖** —— 未装 COE 时
-# 相关联动降级，本模块自身仍可加载（AGENTS.md「CEWS 单向依赖 COE」口径）。
+# ── 模块间依赖：cews → createoreexpansion 是 **required**（W6-c 起）───────────────────
+# CEWS 单向依赖 COE（材料：星辉石/蓝宝石/翡翠部件；W6-c 之后还依赖波引擎本身：
+# 两个能量波实体类型、三台应力充能器、energy field、wave/api、charging 配方类型全在 :coe）。
+# **这条依赖从 optional 改成 required 是本轮依赖矩阵的裁定**，理由是 W5 的实测结论：
+# "optional"是一句假话——CEWS 的机器/波实体真的需要 COE 的类，单装 cews.jar 的后果是
+# **NoClassDefFoundError**（构造期崩，玩家看不懂）。改成 required 之后 FML 在**加载期**
+# 就拒绝，报人话：`Missing or unsupported mandatory dependencies: Mod cews requires
+# createoreexpansion 1.0.0 or above`。这正是"改对了"的标志（与 transmutation 那条同形）。
 # createoreexpansion 由**另一个**嵌套 mod 文件（:coe 的 jar）声明 —— FML 的依赖图按
 # mod id 建，不按文件，所以跨文件声明照样生效。
 # 反过来 CEWS 不声明 transmutation：本层必须能在没有 TRANS 的情况下安装
 # （tools/check-layering.ps1 的 CEWS->TRANS 禁止方向）。
 [[dependencies."${mod_id}"]]
 modId = "createoreexpansion"
-type = "optional"
+type = "required"
 versionRange = "[1.0.0,)"
 ordering = "AFTER"
 side = "BOTH"

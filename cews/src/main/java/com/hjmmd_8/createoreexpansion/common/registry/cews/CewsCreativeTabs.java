@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.cews;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks;
 
 /**
  * <b>CEWS（能量波阵学）自己的创造模式标签页</b>（P3c：从 {@code common/AllCreativeModeTabs} 拆出）。
@@ -18,6 +19,9 @@ import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
  *
  * <p><b>本类不做注册动作</b>：创造页注册表住在 {@link LayerCreativeTab}（core），
  * 由根侧注入的登记动作按层顺序登记——这是"注册顺序不变"的前提。</p>
+ *
+ * <p><b>W6-c</b>：页图标（翡翠应力充能器）现在住在第一层的
+ * {@link CoeChargerBlocks}；读它是 {@code L2 → L1}，方向合法（CEWS 依赖矿物拓展）。</p>
  */
 public final class CewsCreativeTabs {
 
@@ -25,7 +29,7 @@ public final class CewsCreativeTabs {
     public static final LayerCreativeTab ENERGY_WAVE_STUDY = LayerCreativeTab.of(
         LayerCreativeTab.ENERGY_WAVE_STUDY_TAB_ID,
         com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(),
-        () -> CewsBlocks.JADE_STRESS_CHARGER.asStack());
+        () -> CoeChargerBlocks.JADE_STRESS_CHARGER.asStack());
 
     /** 本层页的声明顺序（由协调入口读取，顺序 = 拆分前的枚举顺序）。 */
     private static final List<LayerCreativeTab> TABS = List.of(ENERGY_WAVE_STUDY);

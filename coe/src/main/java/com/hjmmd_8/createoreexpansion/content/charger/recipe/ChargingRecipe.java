@@ -6,8 +6,8 @@ import java.util.function.Supplier;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRecipeTypes;
-import com.hjmmd_8.createoreexpansion.compat.jei.cews.ChargingAssemblySubCategory;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
+import com.hjmmd_8.createoreexpansion.compat.jei.subcategory.ChargingAssemblySubCategory;
 import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.mojang.serialization.MapCodec;
@@ -53,7 +53,7 @@ public class ChargingRecipe extends ProcessingRecipe<RecipeWrapper, ChargingReci
 	implements IAssemblyRecipe {
 
 	public ChargingRecipe(ChargingRecipeParams params) {
-		super(CewsRecipeTypes.CHARGING, params);
+		super(CoeRecipeTypes.CHARGING, params);
 	}
 
 	/** 配方要求的充能等级（1=α … 5=ω）。 */

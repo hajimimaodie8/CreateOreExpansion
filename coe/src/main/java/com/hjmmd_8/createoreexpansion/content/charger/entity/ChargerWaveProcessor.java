@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRecipeTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
@@ -141,7 +141,7 @@ public final class ChargerWaveProcessor {
 		if (stack.isEmpty())
 			return null;
 	@SuppressWarnings("unchecked")
-		RecipeType<ChargingRecipe> type = (RecipeType<ChargingRecipe>) (RecipeType<?>) CewsRecipeTypes.CHARGING.getType();
+		RecipeType<ChargingRecipe> type = (RecipeType<ChargingRecipe>) (RecipeType<?>) CoeRecipeTypes.CHARGING.getType();
 		ChargingRecipe best = null;
 		for (RecipeHolder<ChargingRecipe> holder : level.getRecipeManager()
 			.getAllRecipesFor(type)) {

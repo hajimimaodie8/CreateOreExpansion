@@ -1,9 +1,6 @@
 {
   "values": [
     "createoreexpansion:jade_casing",
-    "createoreexpansion:jade_stress_charger",
-    "createoreexpansion:sapphire_stress_charger",
-    "createoreexpansion:stellarstone_stress_charger",
     "createoreexpansion:energy_field_controller",
     "createoreexpansion:stellar_wave_transmuter",
     "createoreexpansion:sapphire_wave_regulator",

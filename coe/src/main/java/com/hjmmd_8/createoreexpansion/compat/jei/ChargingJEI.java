@@ -1,8 +1,9 @@
-package com.hjmmd_8.createoreexpansion.compat.jei.cews;
+package com.hjmmd_8.createoreexpansion.compat.jei;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hjmmd_8.createoreexpansion.compat.jei.category.ChargingCategory;
 import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
@@ -29,6 +30,13 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
  * <p><b>P7a</b>：本类整体从集成层（根工程 {@code compat/jei/ChargingJEI}）搬进 {@code :cews}，
  * 包名随之改为 {@code compat.jei.cews}（JPMS：同一个包不能跨两个 mod 文件）。
  * 插件 UID {@code createoreexpansion:charging_jei} <b>一字未改</b>。</p>
+ *
+ * <p><b>W6-c</b>：充能器是波<b>引擎</b>的一部分，随 67 个 L1 文件回到 {@code :coe}，
+ * 所以本类也回来 —— 包名从 {@code compat.jei.cews} 折进 {@code :coe} 已有的
+ * {@code compat.jei}（同包的 {@code CreateOreExpansionJEI} / {@code GrindingJEI} 就在那里），
+ * 不新建 {@code compat.jei.coe} 子包。UID 仍未改；{@code :cews} 的 {@code compat.jei.cews}
+ * 里只剩 {@code CewsJeiPlugin}（UID {@code cews_jei}）与 {@code StellarWaveTransmuterCategory}。
+ * 后果：只装 {@code coe.jar} 时充能配方的 JEI 分类**在场**（以前不在）。</p>
  */
 @JeiPlugin
 public class ChargingJEI implements IModPlugin {

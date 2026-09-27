@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.compat.jei.cews.animation;
+package com.hjmmd_8.createoreexpansion.compat.jei.animation;
 
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;

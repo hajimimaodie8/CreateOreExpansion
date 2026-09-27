@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.data.lang;
 
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
@@ -135,9 +136,10 @@ public class EnglishLangProvider extends LanguageProvider {
         add(CoeBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
         // NOTE: this used to read "Jade Create Charger" while the goggle entry for the same
         // machine read "Jade Stress Charger"; both now use the same wording.
-        add(CewsBlocks.JADE_STRESS_CHARGER.get(), "Jade Stress Charger");
-        add(CewsBlocks.SAPPHIRE_STRESS_CHARGER.get(), "Sapphire Stress Charger");
-        add(CewsBlocks.STELLARSTONE_STRESS_CHARGER.get(), "Stellarstone Stress Charger");
+        // W6-c: the three stress chargers moved to the first layer's CoeChargerBlocks.
+        add(CoeChargerBlocks.JADE_STRESS_CHARGER.get(), "Jade Stress Charger");
+        add(CoeChargerBlocks.SAPPHIRE_STRESS_CHARGER.get(), "Sapphire Stress Charger");
+        add(CoeChargerBlocks.STELLARSTONE_STRESS_CHARGER.get(), "Stellarstone Stress Charger");
         add(CewsBlocks.STELLAR_WAVE_TRANSMUTER.get(), "Stellar Wave Transmuter");
         add(CewsBlocks.ENERGY_FIELD_CONTROLLER.get(), "Energy Field Controller");
         add(CewsBlocks.STELLARSTONE_WAVE_REGULATOR.get(), "Stellarstone Wave Regulator");

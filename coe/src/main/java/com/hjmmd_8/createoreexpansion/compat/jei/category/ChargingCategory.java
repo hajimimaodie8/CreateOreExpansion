@@ -1,11 +1,11 @@
-package com.hjmmd_8.createoreexpansion.compat.jei.cews;
+package com.hjmmd_8.createoreexpansion.compat.jei.category;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.compat.jei.cews.animation.AnimatedJadeCharger;
-import com.hjmmd_8.createoreexpansion.compat.jei.cews.animation.AnimatedSapphireCharger;
+import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedJadeCharger;
+import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedSapphireCharger;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;

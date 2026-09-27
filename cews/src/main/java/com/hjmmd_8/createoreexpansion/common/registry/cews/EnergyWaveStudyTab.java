@@ -5,6 +5,7 @@ import java.util.function.Supplier;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks;
 
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
@@ -99,9 +100,10 @@ public final class EnergyWaveStudyTab {
 	 */
 	public static final List<Supplier<ItemStack>> CONTENTS = List.of(
 		// —— 应力充能器：三条矿物线各一台（翡翠 1~3 级 / 蓝宝石 1~5 级 / 星辉石 1~5 级手动档）——
-		CewsBlocks.JADE_STRESS_CHARGER::asStack,
-		CewsBlocks.SAPPHIRE_STRESS_CHARGER::asStack,
-		CewsBlocks.STELLARSTONE_STRESS_CHARGER::asStack,
+		// W6-c：这三条登记的类是第一层的 CoeChargerBlocks（读它是 L2 → L1，允许方向）。
+		CoeChargerBlocks.JADE_STRESS_CHARGER::asStack,
+		CoeChargerBlocks.SAPPHIRE_STRESS_CHARGER::asStack,
+		CoeChargerBlocks.STELLARSTONE_STRESS_CHARGER::asStack,
 		// —— 能量场控制器：能量场（加速/偏转/赋能）的场源 ——
 		CewsBlocks.ENERGY_FIELD_CONTROLLER::asStack,
 		// —— 星辉波变器：把普通波转成全能波（加工波变态）/ 点燃成攻击波（攻击波变态）——

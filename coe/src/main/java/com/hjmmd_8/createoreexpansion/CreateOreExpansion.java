@@ -13,6 +13,9 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.AllEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllFanProcessingTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.AllModPotions;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
@@ -42,7 +45,8 @@ import net.neoforged.neoforge.registries.RegisterEvent;
  * Gradle 构图期的 {@code Circular dependency between the following tasks}）。所以下列
  * 跨层 / 跨 hub 的注册触发全部搬出本类：</p>
  * <ul>
- *   <li>{@code AllEntityTypes.register} → {@code CewsMod} 构造器（CEWS 层自己的东西）；</li>
+ *   <li>{@code AllEntityTypes.register} → {@code CewsMod} 构造器（CEWS 层自己的东西）；
+ *       <b>W6-c 起又搬回本类</b>——两个波实体类型随波引擎进 {@code :coe}；</li>
  *   <li>{@code AllModPotions.register} + {@code AllModPotions::registerBrewingRecipes} +
  *       {@code AllFanProcessingTypes.init()} → {@code TransmutationMod} 构造器与其自己的
  *       {@code RegisterEvent} 监听器（TRANS 层自己的东西）；
@@ -74,7 +78,10 @@ import net.neoforged.neoforge.registries.RegisterEvent;
  *   <li>命名空间常量 / {@code modLoc} / 日志器 → {@link CoeCore}（共享库，命名空间 {@code createoreexpansion}）；
  *       而<b>它们原先的注册触发</b>（配置 / 数据组件 / 实体类型 / 风扇加工类型 / 旋转载荷）
  *       在 P3d 反过来<b>搬回到本类构造器</b>——库没有生命周期，那本就是 mod 的职责；</li>
- *   <li>CEWS 的机器、页签内容、能量场载荷、Jade 波插件、Sable 桥接 → {@code CewsMod}；</li>
+ *   <li>CEWS 的机器、页签内容、Sable 桥接 → {@code CewsMod}；
+ *       <b>W6-c 起下列东西回到本类</b>：两个能量波实体类型（{@code AllEntityTypes}）、
+ *       三台应力充能器的方块/方块实体登记（{@code common.registry.coe.charger}）、
+ *       能量场载荷的挂载点、以及 Jade 波插件（{@code compat.jei.WaveJadePlugin}）的加载点；</li>
  *   <li>TRANS 的物品 / 药水 / 风扇加工类型 → 曾经搬去 {@code TransmutationMod}，
  *       <b>W6-b2 起全部回到本类</b>：嬗化的 16 个 Java 文件 + 24 个资源文件整块搬进 {@code :coe}，
  *       {@code TransmutationMod} 只剩空壳（{@code :transmutation} 的 mod id 保留，作为"以后加新配方"
@@ -165,11 +172,21 @@ public class CreateOreExpansion {
         // P7a：创造页注册表的挂载与页的登记都在本构造器开头（LayerBootstrap + LayerCreativeTab.registerAll）。
 
         // 按层显式触发类初始化（顺序与拆分前逐层一致）。
-        // CEWS 的方块与物品由它自己的 @Mod 构造器触发（见 CewsMod）；嬗化（原 TRANS 层）的
+        // W6-c：能量波<b>引擎</b>（波实体类型 + 三台应力充能器的方块/方块实体 + 波引擎的
+        // 机器命中登记表）已随 67 个 L1 文件进本层，所以它们的类初始化触发点也从 CewsMod
+        // 搬回这里。触发点的位置刻意排在 Coe 的那三条之后（与拆分前的相对顺序一致：
+        // CoeBlocks → CoeBlockEntityTypes → AllTiers → …），保证条目进注册表的先后不变。
+        // ⚠ 只在这里触发一次：AllEntityTypes 的 DeferredRegister 挂两次总线会在 RegisterEvent
+        //   上重复注册；CoeChargerBlocks / CoeChargerBlockEntityTypes 只做类初始化 + 槽位注入。
+        AllEntityTypes.register(modEventBus);
+        // 剩下的 CEWS 机器（差波器/调级器/波速调节器/星辉波变器/能量场控制器/机壳/查询仪）
+        // 仍由 :cews 自己的 @Mod 构造器触发（见 CewsMod）；嬗化（原 TRANS 层）的
         // 流体 / 效果 / 物品由<b>本构造器</b>触发（W6-b2：内容已进 :coe，见上面的注释块）。
         CoeBlocks.register();
         CoeBlockEntityTypes.register();
         AllTiers.register();
+        CoeChargerBlocks.register();
+        CoeChargerBlockEntityTypes.register();
 
         // Curios 可选联动（凝能佩/凝能之佩）：Curios 已从 required 降为 optional，因此
         // ① mods.toml 里 type=optional；② 所有 Curios API 调用只存在于 compat.curios 下的
@@ -202,6 +219,12 @@ public class CreateOreExpansion {
 
         // 技能设置开关（"创造模式释放技能是否消耗能量"）的 C2S/S2C 包：服务端权威 + 存进存档
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.integration.skiller.SkillSettingsPayload::registerPayloads);
+        // W6-c：能量场（加速/偏转/赋能）同步载荷的挂载点从 CewsMod 搬到这里 —— 载荷类
+        // EnergyFieldSyncPayload 随能量场子系统（content.energyfield 包）进了 :coe，
+        // 而 check-module-selfsufficiency 的 D3 要求"模块只挂载属于自己模块的 payload"。
+        // 方向与语义都没变：RegisterPayloadHandlersEvent 是发往每个 mod 容器的，
+        // 挂哪条总线都能注册；区别只是"谁在场谁负责"——只装 coe.jar 时场同步依旧成立。
+        modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload::registerPayloads);
         // 技能内核（Skiller）接线：注册上下文工厂 / 技能资源 / 技能条目，并接上迁移闸门
         com.hjmmd_8.createoreexpansion.integration.skiller.SkillerIntegration.register(modEventBus);
 
@@ -254,12 +277,19 @@ public class CreateOreExpansion {
      * 避免"标注 optional 仍硬编码调用导致崩溃"——见 compat.jade.BasinLiveJadePlugin 注释）。
      *
      * <p><b>归属判定</b>：{@code BasinLiveJadePlugin} 接管的是<b>工作盆</b>的物品行实时化
-     * （矿物拓展加工线），所以留在 COE；另一个 Jade 插件 {@code WaveJadePlugin}
-     * （能量波/波情显示）随 CEWS 模块走。</p>
+     * （矿物拓展加工线）；{@code WaveJadePlugin}（能量波/波情显示）在 W6-c 之后也住本层
+     * —— 它显示的是两个<b>波实体</b>，而波实体随波引擎进了 {@code :coe}（见类注释"两处反射桥接"）。</p>
      *
-     * <p><b>P3w</b>：与 {@link #bootstrapCurios()} 同一理由留在本类——它只是一个
+     * <p><b>P3w</b>：与 {@link #bootstrapCurios()} 同一理由留在本类——它只是两个
      * {@code Class.forName} 字面量（不产生编译边），而 Jade 插件的发现由 NeoForge 的
-     * {@code @WailaPlugin} 扫描负责，与本构造器的时序无关；搬到根侧只会多绕一次跨 mod 调用。</p>
+     * {@code @WailaPlugin} 扫描负责，与本构造器的时序无关；搬到别处只会多绕一次跨 mod 调用。</p>
+     *
+     * <p><b>W6-c</b>：这一句原先在 {@code CewsMod#bootstrapJade()}（那时 {@code WaveJadePlugin}
+     * 住 {@code compat.jei.cews}）。类随波引擎进 {@code :coe} 之后，加载方也必须跟着走——
+     * 否则只装 {@code coe.jar} 时没有任何人会去触发它（{:cews} 不在场），
+     * 波实体就没有 Jade 提示。这与 P7a 对 {@code CurioMedallionBridge} /
+     * {@code BasinLiveJadePlugin} 的处理<b>完全同形</b>。类名换成了新的包
+     * {@code compat.jei}（折进本层已有的包，不新建 {@code compat.jei.coe}）。</p>
      */
     private static void bootstrapJade() {
         if (ModList.get().isLoaded("jade")) {
@@ -268,6 +298,12 @@ public class CreateOreExpansion {
                 CoeCore.LOGGER.info("[Jade] 工作盆物品行实时化插件已加载（COE）");
             } catch (Throwable t) {
                 CoeCore.LOGGER.warn("[Jade] 工作盆物品行实时化插件加载失败（不影响游戏运行）", t);
+            }
+            try {
+                Class.forName("com.hjmmd_8.createoreexpansion.compat.jei.WaveJadePlugin");
+                CoeCore.LOGGER.info("[Jade] 能量波信息显示插件已加载（随波引擎进 COE）");
+            } catch (Throwable t) {
+                CoeCore.LOGGER.warn("[Jade] 能量波信息显示插件加载失败（不影响游戏运行）", t);
             }
         }
     }

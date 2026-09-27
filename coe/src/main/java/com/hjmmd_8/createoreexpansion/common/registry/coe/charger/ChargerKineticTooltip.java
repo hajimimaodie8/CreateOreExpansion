@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.common.registry.cews;
+package com.hjmmd_8.createoreexpansion.common.registry.coe.charger;
 
 import java.util.List;
 
@@ -32,6 +32,12 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
  * 都是 CEWS 的机器）⇒ 库知道了内容模块。搬进 CEWS 包后由 {@code CewsRegistrate} 自己
  * <b>串联</b>（见 {@link #withChargers(CreateRegistrate)}），库侧只剩通用的描述/动能两级。
  * 本类的显示逻辑一行未改。</p>
+ *
+ * <p><b>W6-c：包名由 {@code common.registry.cews} 改成
+ * {@code common.registry.coe.charger}</b>，串联点由 {@code CewsRegistrate} 改成
+ * {@code CoeRegistrate}——充能器（两台本类认的机器）随第一层发货，它的物品悬停提示必须跟着走，
+ * 否则单装 {@code cews.jar} 之外的组合（只装 {@code coe.jar}）会少一段应力提示。
+ * 上段"搬进 CEWS 包"是 P3o 的历史口径，W6-c 之后正确的归属是"跟着它认的机器"。</p>
  */
 public class ChargerKineticTooltip implements TooltipModifier {
 
@@ -62,7 +68,7 @@ public class ChargerKineticTooltip implements TooltipModifier {
 	 * 工厂、再 {@code andThen} 同一段本类 modifier；{@code TooltipModifier.mapNull(...)}
 	 * 把"非充能器物品返回 null"折叠成恒等，与旧的 {@code if (chargers)} 分支语义相同。</p>
 	 *
-	 * @param registrate 本层 Registrate（**须已由共享库装过通用两级**，见 {@code CewsRegistrate} 静态块）
+	 * @param registrate 本层 Registrate（**须已由共享库装过通用两级**，见 {@code CoeRegistrate} 静态块）
 	 */
 	public static void withChargers(CreateRegistrate registrate) {
 		java.util.function.Function<Item, TooltipModifier> base = registrate.getTooltipModifierFactory();

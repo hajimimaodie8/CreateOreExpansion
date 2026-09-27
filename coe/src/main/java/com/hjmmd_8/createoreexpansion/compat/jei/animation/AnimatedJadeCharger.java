@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.compat.jei.cews.animation;
+package com.hjmmd_8.createoreexpansion.compat.jei.animation;
 
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
@@ -47,7 +47,7 @@ public class AnimatedJadeCharger extends AnimatedKinetics {
 	private static final int POP = 6;
 
 	/** 方块状态档位（MODE）：1=α、2=β、3=γ。由
-	 * {@link com.hjmmd_8.createoreexpansion.compat.jei.cews.ChargingAssemblySubCategory}
+	 * {@link com.hjmmd_8.createoreexpansion.compat.jei.subcategory.ChargingAssemblySubCategory}
 	 * 按配方充能档位设置，默认 3（γ，蓝色）。 */
 	public int mode = 3;
 

@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.ChargerKineticTooltip;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 
 /**
@@ -34,8 +35,13 @@ public final class CoeRegistrate {
         // P7a：这里不再需要"请求登记创造页"——登记动作已由
         // CreateOreExpansion 构造器里的 LayerCreativeTab.registerAll(CoeCreativeTabs.tabs()) 直接完成，
         // 而 defaultCreativeTab 只要 ResourceKey（由 id 算出，不依赖 holder），顺序无所谓。
-        // 通用两级提示（描述行 + 动能统计）。充能器专用提示归 CEWS，本层不接。
+        // 通用两级提示（描述行 + 动能统计）。
         RegistrateTooltips.install(REGISTRATE);
+        // W6-c：充能器专用提示（三台应力充能器的自定义应力区间行）随充能器进本层 ——
+        // 填充方 ChargerKineticTooltip 现在住 common.registry.coe.charger，方向同层。
+        // 拆分前这一句在 CewsRegistrate 的静态块里（P3o 定）；它必须与"充能器登记在哪个
+        // Registrate 上"一致，否则那三台机器的物品悬停会丢掉自定义区间行（静默）。
+        ChargerKineticTooltip.withChargers(REGISTRATE);
         // COE 的默认创造页 = 基础页（矿物拓展）——本层自己的常量，不再绕 SHARED 聚合入口
         REGISTRATE.defaultCreativeTab(CoeCreativeTabs.BASE_TAB.key());
     }

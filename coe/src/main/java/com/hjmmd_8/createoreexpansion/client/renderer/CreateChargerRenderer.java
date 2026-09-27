@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.client.renderer.cews;
+package com.hjmmd_8.createoreexpansion.client.renderer;
 
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.content.charger.block.AbstractCreateChargerBlock;
@@ -18,6 +18,11 @@ import net.minecraft.world.level.block.state.BlockState;
 /**
  * 应力充能器渲染（翡翠/星辉石共用）：传动轴（沿 FACING）+ 发射头（shutter，顶面朝 FACING，与传动轴同一轴线）。
  * 面向抽象基类 {@link AbstractCreateChargerBlockEntity}，子类方块实体无需各自渲染器。
+ *
+ * <p><b>W6-c：包名由 {@code client.renderer.cews} 折进 {@code :coe} 已有的
+ * {@code client.renderer}</b>（同包的 {@code GrinderRenderer} 就在那里）。理由是归属：
+ * 充能器是第一层的机器，它的渲染器必须随 {@code coe.jar} 发货——P7a 的洞正是
+ * "实体/方块实体注册在 A，渲染器在 B"，单装 B 缺失时是硬崩或静默缺失。</p>
  */
 public class CreateChargerRenderer extends KineticBlockEntityRenderer<AbstractCreateChargerBlockEntity> {
 

@@ -3,7 +3,6 @@ package com.hjmmd_8.createoreexpansion.common.registry.cews;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerBootstrap;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
-import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandlers;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrationSink;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.TransmuterHitHandler;
@@ -25,8 +24,10 @@ import net.neoforged.fml.common.Mod;
  *       P3w 起还多一条：原先挂在 {@code CreateOreExpansion} 构造器里的
  *       {@code AllEntityTypes.register(modEventBus)}（实体类型注册表属于 CEWS）；</li>
  *   <li>{@link EnergyWaveStudyTab} 的页签内容构建（{@code onBuildContents}，清单只有一处）；</li>
- *   <li>{@link EnergyFieldSyncPayload} 能量场同步载荷；</li>
- *   <li>可选桥接：<b>Jade 的波实体提示插件</b> 与 <b>Sable 物理结构桥接</b>（判据与日志文案原样搬运）。</li>
+ *   <li>可选桥接：<b>Jade 的波实体提示插件</b> 与 <b>Sable 物理结构桥接</b>（判据与日志文案原样搬运）。
+ *       <b>W6-c</b>：Jade 波实体插件（{@code WaveJadePlugin}）随能量波引擎进了 {@code :coe}，
+ *       它的反射加载点也随之搬到 {@code CreateOreExpansion#bootstrapJade()}（P7a 同形手法）；
+ *       本类只剩 Sable 桥接。能量场同步载荷（{@code EnergyFieldSyncPayload}）的挂载点同样搬走。</li>
  * </ul>
  *
  * <p><b>P7a：hub 的注册触发已不存在</b>。{@code CreateOreExpansion} 搬进 Gradle 子模块 {@code :coe}
@@ -68,12 +69,10 @@ public class CewsMod {
         // P7a：本层自己的创造页（登记动作从"根侧注入"改成"每层自持"）。
         LayerCreativeTab.registerAll(CewsCreativeTabs.tabs());
 
-        // P3w：原先在 CreateOreExpansion 构造器里的 `AllEntityTypes.register(modEventBus)`
-        // 搬到这里 —— 它是 CEWS 层自己的注册表，而 :coe 已经看不到根工程的这个包。
-        // （P7a 更正一条旧注释：这里曾写"hub 的五个注册触发由 FML 在 FMLConstructModEvent 上触发"，
-        //   并强调"本层不许 import IntegrationBootstrap"。那段机制已随四个 hub 聚合入口一起删除，
-        //   现在共享接线走 core 的 LayerBootstrap —— 它是 core，任何层都可以安全 import。）
-        AllEntityTypes.register(modEventBus);
+        // W6-c：原先在这里的 `AllEntityTypes.register(modEventBus)`（P3w 从
+        // CreateOreExpansion 搬来）已搬回 :coe —— 两个能量波实体类型是波引擎的一部分，
+        // 随 :coe 发货；触发点必须与类同文件，否则只装 coe.jar 时实体类型根本不进注册表。
+        // 现在的落点见 CreateOreExpansion 构造器里的 W6-c 注释块。
 
         CewsRegistrate.REGISTRATE.registerEventListeners(modEventBus);
 
@@ -85,34 +84,14 @@ public class CewsMod {
         CewsBlockEntityTypes.register();
         CewsItems.register();
 
-        // 能量场（加速/偏转/赋能）同步载荷
-        modEventBus.addListener(EnergyFieldSyncPayload::registerPayloads);
+        // W6-c：能量场同步载荷的挂载点已随 EnergyFieldSyncPayload（content.energyfield 包）
+        // 一起搬进 :coe 的 CreateOreExpansion 构造器 —— 见那里的注释。
 
-        bootstrapJade();
         String sableCriterion = bootstrapSable();
 
         CoeCore.LOGGER.info("[CEWS] mod 初始化完成（mod id={}，注册命名空间={}）：能量波阵学机器已注册{}",
             MOD_ID, CoeCore.REGISTRY_NAMESPACE,
             sableCriterion == null ? "" : "，Sable 结构桥接判据=" + sableCriterion);
-    }
-
-    /**
-     * Jade 可选集成：仅当 Jade 已安装时才反射加载插件类（未安装时绝不触碰 Jade 类，
-     * 避免"标注 optional 仍硬编码调用导致崩溃"——见 compat.jade.WaveJadePlugin 注释）。
-     *
-     * <p><b>归属判定</b>：{@code WaveJadePlugin} 显示的是能量波实体/波情等 CEWS 内容，
-     * 所以随 CEWS 模块走。另一个 Jade 插件 {@code BasinLiveJadePlugin}（工作盆物品行实时化）
-     * 属于矿物拓展的加工线，留在 COE。</p>
-     */
-    private static void bootstrapJade() {
-        if (ModList.get().isLoaded("jade")) {
-            try {
-                Class.forName("com.hjmmd_8.createoreexpansion.compat.jei.cews.WaveJadePlugin");
-                CoeCore.LOGGER.info("[Jade] 能量波信息显示插件已加载（CEWS）");
-            } catch (Throwable t) {
-                CoeCore.LOGGER.warn("[Jade] 能量波信息显示插件加载失败（不影响游戏运行）", t);
-            }
-        }
     }
 
     /**

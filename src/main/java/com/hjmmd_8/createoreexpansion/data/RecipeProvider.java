@@ -2,8 +2,8 @@ package com.hjmmd_8.createoreexpansion.data;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRecipeRouter;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRecipeProvider;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeProvider;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargingRecipeProvider;
 
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.AdvancementHolder;
@@ -92,9 +92,12 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
 
     @Override
     protected void buildRecipes(RecipeOutput output) {
-        // 层顺序 = 拆分前逐字相同：COE（拆磨：原版 4 组 + 本模组 5 组）→ CEWS（工具充能）
+        // 层顺序 = 拆分前逐字相同：拆磨（原版 4 组 + 本模组 5 组）→ 工具充能。
+        // W6-c：第二段不再是"另一个模块的东西"——160 条工具充能配方的 type
+        // （createoreexpansion:charging）随充能器进了 :coe，所以它的层名也从 "cews" 改成 "coe"，
+        // 产物从 cews/src/generated 移到 coe/src/generated（配方 id 与文件名一字未改）。
         CoeRecipeProvider.generate(bind(output, "coe"));
-        CewsRecipeProvider.generate(bind(output, "cews"));
+        CoeChargingRecipeProvider.generate(bind(output, "coe"));
     }
 
     /**

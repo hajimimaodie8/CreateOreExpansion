@@ -1,7 +1,7 @@
-package com.hjmmd_8.createoreexpansion.compat.jei.cews;
+package com.hjmmd_8.createoreexpansion.compat.jei.subcategory;
 
-import com.hjmmd_8.createoreexpansion.compat.jei.cews.animation.AnimatedJadeCharger;
-import com.hjmmd_8.createoreexpansion.compat.jei.cews.animation.AnimatedSapphireCharger;
+import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedJadeCharger;
+import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedSapphireCharger;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.mojang.blaze3d.vertex.PoseStack;

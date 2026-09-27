@@ -86,6 +86,13 @@ public final class LayerBootstrap {
      * 逐字不变，实测见 {@code build/patch/w6b2-EVIDENCE.txt}）。
      * <b>顺序语义依旧承重</b>：{@code cews.CewsRecipeTypes}（{@code charging}）必须留在最后。</p>
      *
+     * <p><b>W6-c 起只剩一条</b>：{@code charging} 随三台应力充能器回到第一层，声明在
+     * {@code CoeRecipeTypes} 的<b>最后一个字段</b>，{@code CewsRecipeTypes} 整个类删除。
+     * 于是"三个内容模块各有一个配方类型声明类"这件事不再成立，唤醒名单自然缩到一条；
+     * 数值注册 id 仍是 {@code 7..12}（transmuting → … → charging），顺序口径一个字没变。
+     * <b>不要把已删除的类名加回来</b>：{@code Class.forName} 会永远失败并只打一行 debug 日志，
+     * 那种"看着在管什么、其实什么都不管"的条目正是 {@code check-layering} 里被清掉过的那类死规则。</p>
+     *
      * <p>字段初始化器在静态块之前执行（文本顺序），且本类是纯静态工具、没有静态块，
      * 所以这里不会踩到"类初始化未完成就取字段"的坑。</p>
      */
@@ -147,12 +154,15 @@ public final class LayerBootstrap {
      * 见 {@link #LAYER_RECIPE_TYPE_CLASSES}）。<b>不要把它加回来</b>：那会让
      * {@code transmuting} 被"提前"唤醒一次，虽然条目顺序不变（同一张 {@code DeferredRegister}
      * 按 id 去重），但名单与 {@code WaveRecipeCapabilities} 的口径就不再一一对应了。</p>
+     *
+     * <p><b>W6-c</b>：{@code cews.CewsRecipeTypes} 同样从名单里删掉（那个类已随
+     * {@code CHARGING} 进 {@code CoeRecipeTypes} 而整体删除，见
+     * {@link #LAYER_RECIPE_TYPE_CLASSES}）。</p>
      */
     private static String[] layerRecipeTypeClassNames() {
         String prefix = LayerBootstrap.class.getPackageName() + ".";
         return new String[] {
-            prefix + "coe.CoeRecipeTypes",
-            prefix + "cews.CewsRecipeTypes"
+            prefix + "coe.CoeRecipeTypes"
         };
     }
 

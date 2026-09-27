@@ -84,6 +84,12 @@ versionRange = "[9.5.1,)"
 ordering = "NONE"
 side = "BOTH"
 
+# ── CC&A（Create Crafts & Additions）：**required**（W6-c 复核确认，声明本身未改）───
+# 这是依赖矩阵里"第一层对 CA 是 required"的那一条（与 cews / transmutation 两份模板里
+# 同样的 required 声明共同构成"谁在场都不能少"的门）。W6-c 把充能器与波引擎搬进本层之后
+# 这条依赖的依据更强：波充能链（特斯拉线圈充能 / 变器加工机目录）与雷击线都在本层。
+# FML 的 required 判定是**全局**的（ModSorter 把所有 mod 文件的依赖收进同一张图），
+# 所以只装 coe.jar 时这条照样生效。
 [[dependencies."${mod_id}"]]
 modId = "createaddition"
 type = "required"

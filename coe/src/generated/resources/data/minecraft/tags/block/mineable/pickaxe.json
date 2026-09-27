@@ -37,6 +37,9 @@
     "createoreexpansion:stellarstone_medium_bud",
     "createoreexpansion:stellarstone_large_bud",
     "createoreexpansion:stellarstone_cluster",
-    "createoreexpansion:stellarstone_budding_block"
+    "createoreexpansion:stellarstone_budding_block",
+    "createoreexpansion:jade_stress_charger",
+    "createoreexpansion:sapphire_stress_charger",
+    "createoreexpansion:stellarstone_stress_charger"
   ]
 }

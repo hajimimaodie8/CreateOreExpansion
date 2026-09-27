@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.common.registry.cews;
+package com.hjmmd_8.createoreexpansion.common.registry.coe.charger;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
@@ -11,7 +11,12 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
- * 实体类型注册。
+ * <b>能量波实体类型注册（第一层侧）</b>。
+ *
+ * <p><b>W6-c：包名由 {@code common.registry.cews} 改成
+ * {@code common.registry.coe.charger}</b>——波实体是能量波引擎的一部分，随 {@code :coe} 发货；
+ * 而 {@code common.registry.cews} 这个 Java 包现在由第二层独占（一个包不能同时属于两个 mod 文件，
+ * JPMS 启动期 {@code ResolutionException}）。注册 id、命名空间、实体定义一个字都没改。</p>
  */
 public final class AllEntityTypes {
 

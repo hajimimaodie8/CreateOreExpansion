@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.AllEntityTypes;
 
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;

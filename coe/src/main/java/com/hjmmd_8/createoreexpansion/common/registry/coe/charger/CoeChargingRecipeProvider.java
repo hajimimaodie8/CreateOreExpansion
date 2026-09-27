@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.common.registry.cews;
+package com.hjmmd_8.createoreexpansion.common.registry.coe.charger;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.charger.ChargingRecipeTools;
@@ -10,24 +10,30 @@ import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.world.level.ItemLike;
 
 /**
- * <b>CEWS（能量波阵学）自己的配方生成动作</b>（P3c：从 {@code data/RecipeProvider} 拆出）。
+ * <b>工具充能配方的生成动作（第一层侧）</b>（W6-c；原 {@code CewsRecipeProvider}，P3c 从
+ * {@code data/RecipeProvider} 拆出）。
  *
- * <p>本层负责<b>工具充能配方</b>（{@code createoreexpansion:tool_charge/...}）：
- * 翡翠/蓝宝石/星辉石应力充能器的能量波给能量工具/凝能佩充能。
- * 物品来源为 {@link ChargingRecipeTools}（在 {@code CoeItems} 注册处统一挂接，单一数据源），
+ * <p><b>归属为什么是第一层</b>：这 160 条配方（32 个可充能物品 × 5 个充能等级）的
+ * {@code type} 是 {@code createoreexpansion:charging}，而充能器那三台机器与
+ * {@code CHARGING} 配方类型现在都在 {@code :coe}（Recipe Type 的层归属跟着"谁能加工它"走：
+ * 充能器是第一层，所以类型也是）。留一份在 {@code :cews} 就是 P7d 那条禁令的镜像——
+ * 生成物落进了一个它的配方类型不存在的 jar。</p>
+ *
+ * <p><b>类名</b>：{@code CewsRecipeProvider} → {@code CoeChargingRecipeProvider}
+ * （方案 §8.1 ③ 的命名）。改名只发生在本类与它的唯一调用点
+ * （{@code data/RecipeProvider#buildRecipes}）；产物路径、配方 id、顺序都逐字不变。</p>
+ *
+ * <p>物品来源为 {@link ChargingRecipeTools}（在 {@code CoeItems} 注册处统一挂接，单一数据源），
  * 每个物品 × <b>5 个充能等级</b>各一条配方（α/β/γ/ε/ω = level 1~5），
  * 等级由配方 JSON 的 {@code level} 字段区分，统一放在 {@code tool_charge/} 下，
  * 文件名后缀 _low/_high/_gamma/_epsilon/_omega 仅保证 id 唯一。</p>
  *
  * <p><b>调用方</b>：{@code data/RecipeProvider}（SHARED 层的协调入口）。它按拆分前
- * {@code buildRecipes} 的逐条顺序调用本类（COE 拆磨在前、本类在后），
- * 所以配方生成顺序与拆分前逐字相同。</p>
- *
- * <p><b>跨层引用说明</b>：本类 import 了 COE 的 {@code CoeItems}（触发其类初始化，把可充能物品
- * 登记进 {@link ChargingRecipeTools}）——方向是 <b>CEWS → COE</b>，正是分层约定允许的方向
- * （拆分前这段代码也在同一个 {@code RecipeProvider} 里，位置一字未动）。</p>
+ * {@code buildRecipes} 的逐条顺序调用本类（拆磨在前、本类在后），
+ * 所以配方生成顺序与拆分前逐字相同；W6-c 起层名从 {@code "cews"} 改成 {@code "coe"}
+ * （{@code LayerRecipeRouter} 的绑定参数），产物照旧落模块目录。</p>
  */
-public final class CewsRecipeProvider {
+public final class CoeChargingRecipeProvider {
 
     /** 本层的全部工具充能配方，调用时机与拆分前的 {@code toolCharging(output)} 相同。 */
     public static void generate(RecipeOutput output) {
@@ -55,5 +61,5 @@ public final class CewsRecipeProvider {
             .build(output);
     }
 
-    private CewsRecipeProvider() {}
+    private CoeChargingRecipeProvider() {}
 }

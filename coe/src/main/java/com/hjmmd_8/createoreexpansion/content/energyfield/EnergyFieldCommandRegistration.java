@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 
@@ -41,11 +42,16 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * 但它让本类在源码上引用了第二层的 {@code @Mod} 入口类
  * （{@code common.registry.cews.CewsMod}），而本类属第一层
  * （{@code content/energyfield/**}，W6-c 搬进 {@code :coe}）⇒ 一条 {@code L1 → L2} 禁止边。
- * 注解取值与注入行为逐字不变（同一串字符）。<b>W6-c 把本类收进 {@code :coe} 之后，
- * 这个字面量必须随之改成 {@code "createoreexpansion"}</b>——否则"住在 coe 文件里却标 cews 的 id"
- * 会静默不注入（AGENTS 红线："类的 modid == 它所在 mod 文件的 id"）。</p>
+ * 注解取值与注入行为逐字不变（同一串字符）。</p>
+ *
+ * <p><b>W6-c：本类已收进 {@code :coe}，modid 改成 {@link CoeCore#MOD_ID}</b>
+ * （不再是 {@code "cews"} 字面量）。判据是 AGENTS 红线"类的 modid == 它所在 mod 文件的 id"：
+ * 本类现在住在 {@code createoreexpansion} 那个 mod 文件里，标 {@code cews} 会静默不注入
+ * ——无警告、无报错、编译全绿，症状是"能量场调试命令不注册 + 登录/换维度不再补发场快照"。
+ * 用 {@code CoeCore.MOD_ID} 而不用字面量：它是 core 里的编译期常量（JLS 15.29），
+ * 可继续出现在注解里，且不会与 mod id 的真实值漂移。</p>
  */
-@EventBusSubscriber(modid = "cews")
+@EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class EnergyFieldCommandRegistration {
 
 	@SubscribeEvent

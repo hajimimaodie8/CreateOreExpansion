@@ -1,15 +1,10 @@
 package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
-import com.hjmmd_8.createoreexpansion.client.renderer.cews.CreateChargerRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.cews.FieldControllerRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.EnergyWaveDisperserRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.OctaEnergyWaveDifferencerRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.SixFaceDisperserRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.WaveGateRenderer;
-import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
-import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlockEntity;
-import com.hjmmd_8.createoreexpansion.content.charger.block.StellarstoneStressChargerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.EnergyFieldControllerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterBlockEntity;
 import com.hjmmd_8.createoreexpansion.client.renderer.cews.StellarWaveTransmuterRenderer;
@@ -26,34 +21,19 @@ import com.hjmmd_8.createoreexpansion.common.*;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 
 /**
- * <b>CEWS（能量波阵学）</b>方块实体注册：三种应力充能器、能量场控制器、星辉波变器、
- * 能量调级器 ×3、波速调节器 ×3、波差器家族 ×3，以及能量波实体所使用的渲染器接线。<br>
+ * <b>CEWS（能量波阵学）</b>方块实体注册：能量场控制器、星辉波变器、
+ * 能量调级器 ×3、波速调节器 ×3、波差器家族 ×3，以及它们的渲染器接线。<br>
  * 归属清单权威出处：{@code markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md} §3.2。
  * 本次拆分是<b>纯搬运</b>，{@code validBlocks} 引用同层 {@code CewsBlocks} 的条目（同一对象）。
+ *
+ * <p><b>W6-c：三台应力充能器的方块实体不在这里。</b>它们随波引擎进了第一层
+ * （{@code common.registry.coe.charger.CoeChargerBlockEntityTypes}），理由见那个类的类注释。</p>
  */
 public final class CewsBlockEntityTypes {
 
-	public static final BlockEntityEntry<JadeStressChargerBlockEntity> JADE_STRESS_CHARGER = CewsRegistrate.REGISTRATE
-		.blockEntity("jade_stress_charger", JadeStressChargerBlockEntity::new)
-		.validBlocks(CewsBlocks.JADE_STRESS_CHARGER)
-		.renderer(() -> CreateChargerRenderer::new)
-		.register();
-
-	/** 蓝宝石应力充能器方块实体（双模式：普通连续发射 / 储存簇射；渲染与翡翠共用 CreateChargerRenderer） */
-	public static final BlockEntityEntry<SapphireStressChargerBlockEntity> SAPPHIRE_STRESS_CHARGER =
-		CewsRegistrate.REGISTRATE
-			.blockEntity("sapphire_stress_charger", SapphireStressChargerBlockEntity::new)
-			.validBlocks(CewsBlocks.SAPPHIRE_STRESS_CHARGER)
-			.renderer(() -> CreateChargerRenderer::new)
-			.register();
-
-	/** 星辉石应力充能器方块实体（手动发射等级 + 双模式；渲染与翡翠/蓝宝石共用 CreateChargerRenderer） */
-	public static final BlockEntityEntry<StellarstoneStressChargerBlockEntity> STELLARSTONE_STRESS_CHARGER =
-		CewsRegistrate.REGISTRATE
-			.blockEntity("stellarstone_stress_charger", StellarstoneStressChargerBlockEntity::new)
-			.validBlocks(CewsBlocks.STELLARSTONE_STRESS_CHARGER)
-			.renderer(() -> CreateChargerRenderer::new)
-			.register();
+	// W6-c：三台应力充能器的方块实体登记（JADE/SAPPHIRE/STELLARSTONE_STRESS_CHARGER）已按层
+	// 拆到第一层的 common.registry.coe.charger.CoeChargerBlockEntityTypes —— 充能器随 :coe 发货，
+	// 而一个 Java 包不能同时属于两个 mod 文件。本类只剩"机器"那 11 条。
 
 	/** 能量场控制器方块实体（应力 → 场强档位；渲染：FACING 反面底部传动轴） */
 	public static final BlockEntityEntry<EnergyFieldControllerBlockEntity> ENERGY_FIELD_CONTROLLER =
@@ -139,19 +119,8 @@ public final class CewsBlockEntityTypes {
 			.renderer(() -> OctaEnergyWaveDifferencerRenderer::new)
 			.register();
 
-	/**
-	 * <b>W6-a：把 3 台充能器的方块实体槽位注入第一层表</b>（方向 L2 → L1，见
-	 * {@code content/charger/block/ChargerBlockSlots}）。三台充能器的 Block 属第一层，
-	 * 它们的 {@code IBE#getBlockEntityType()} 只认那张表。
-	 *
-	 * <p>用 {@code Supplier} 而不是直接 {@code .get()}：本类静态初始化期 DeferredHolder
-	 * 尚未绑定，取值必须延迟到真正被读的那一刻（{@code getBlockEntityType()} 只在运行期被调）。</p>
-	 */
-	static {
-		ChargerBlockSlots.installJadeBlockEntity(() -> JADE_STRESS_CHARGER.get());
-		ChargerBlockSlots.installSapphireBlockEntity(() -> SAPPHIRE_STRESS_CHARGER.get());
-		ChargerBlockSlots.installStellarstoneBlockEntity(() -> STELLARSTONE_STRESS_CHARGER.get());
-	}
+	// W6-c：原先在这里的"把 3 台充能器的方块实体槽位注入第一层表 ChargerBlockSlots"静态块
+	// 已随那三条登记一起搬到 common.registry.coe.charger.CoeChargerBlockEntityTypes。
 
 /** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
 	public static void register() {

@@ -153,14 +153,17 @@ function Get-FileLayer {
     if ($r -match '^content/wave/api/')    { return 'COE' }
     if ($r -match '^content/energyfield/') { return 'COE' }
     # L1 files that still sit on a CEWS-looking path today; W6-c gives them a
-    # COE package (common/registry/coe/charger, compat/jei/charging, client/coe).
-    if ($r -match '^common/registry/cews/(AllEntityTypes|CewsRecipeProvider|CewsRecipeTypes|ChargerKineticTooltip)\.java$') { return 'COE' }
-    if ($r -match '^client/renderer/cews/(CreateChargerRenderer|EmptyEntityRenderer)\.java$')                             { return 'COE' }
-    if ($r -match '^compat/jei/cews/(ChargingAssemblySubCategory|ChargingCategory|ChargingJEI|WaveJadePlugin)\.java$')     { return 'COE' }
-    if ($r -match '^compat/jei/cews/animation/')               { return 'COE' }
+    # COE package (common/registry/coe/charger, compat/jei/*, client/renderer, client/).
+    # W6-c (2026-09-29): the move is DONE, so these rules now name the NEW paths.
+    # The old-path forms were deleted together with the move (a rule that matches no
+    # file is the "looks like it manages something, manages nothing" shape).
+    # NOTE: common/registry/coe/charger/** needs no rule of its own -- the generic
+    # `^common/registry/coe/` test above already returns COE for it.
+    if ($r -match '^client/renderer/CreateChargerRenderer\.java$') { return 'COE' }
+    if ($r -match '^compat/jei/(ChargingJEI|WaveJadePlugin)\.java$') { return 'COE' }
     # CewsClientSetup is split by W6-c; its L1 half (the two wave-entity renderer
-    # registrations) is the part that must ship with L1 (P7a: NPE without it).
-    if ($r -match '^client/cews/CewsClientSetup')              { return 'COE' }
+    # registrations) moved into the existing :coe package `client`.
+    if ($r -match '^client/WaveEntityRendererRegistration\.java$') { return 'COE' }
     # ---- L2 (CEWS): the machines ----------------------------------------
     if ($r -match '^common/registry/cews/')                    { return 'CEWS' }
     if ($r -match '^content/wave/(block|frame|gauge|regulation)/') { return 'CEWS' }
@@ -255,19 +258,16 @@ function Get-TargetLayer {
     }
     $rest = $fqn.Substring($prefix.Length)
     if ($rest -match '^common\.registry\.coe\.')            { return 'COE' }
-    # W6-a (2026-09-29): the SAME target classification as Get-FileLayer, spelled
-    # with package names.  The two functions must be kept in step: every file that
-    # changes layer above needs its matching rule here, otherwise an import is
-    # still judged by the stale rule and the file-granular exceptions above would
-    # be invisible to the import pass.  See Get-FileLayer for the rationale.
+    # W6-c (2026-09-29): the move is DONE; these rules name the NEW package names of
+    # the files that changed package (the old-path forms are gone).  Keep in step with
+    # Get-FileLayer above -- that is the whole point of the pair.
+    if ($rest -match '^common\.registry\.coe\.charger(\.|$)') { return 'COE' }
+    if ($rest -match '^client\.renderer\.CreateChargerRenderer(\.|$)') { return 'COE' }
+    if ($rest -match '^compat\.jei\.(ChargingJEI|WaveJadePlugin)(\.|$)') { return 'COE' }
+    if ($rest -match '^client\.WaveEntityRendererRegistration(\.|$)') { return 'COE' }
     if ($rest -match '^content\.charger\.')     { return 'COE' }
     if ($rest -match '^content\.wave\.api\.')   { return 'COE' }
     if ($rest -match '^content\.energyfield\.') { return 'COE' }
-    if ($rest -match '^common\.registry\.cews\.(AllEntityTypes|CewsRecipeProvider|CewsRecipeTypes|ChargerKineticTooltip)(\.|$)') { return 'COE' }
-    if ($rest -match '^client\.renderer\.cews\.(CreateChargerRenderer|EmptyEntityRenderer)(\.|$)') { return 'COE' }
-    if ($rest -match '^compat\.jei\.cews\.(ChargingAssemblySubCategory|ChargingCategory|ChargingJEI|WaveJadePlugin)(\.|$)') { return 'COE' }
-    if ($rest -match '^compat\.jei\.cews\.animation(\.|$)') { return 'COE' }
-    if ($rest -match '^client\.cews\.CewsClientSetup(\.|$)') { return 'COE' }
     if ($rest -match '^common\.registry\.cews\.')           { return 'CEWS' }
     if ($rest -match '^content\.wave\.(block|frame|gauge|regulation)\.') { return 'CEWS' }
     if ($rest -match '^content\.machine\.')                 { return 'CEWS' }

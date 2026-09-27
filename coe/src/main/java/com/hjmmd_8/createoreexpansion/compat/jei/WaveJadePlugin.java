@@ -1,4 +1,4 @@
-package com.hjmmd_8.createoreexpansion.compat.jei.cews;
+package com.hjmmd_8.createoreexpansion.compat.jei;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;

@@ -35,6 +35,12 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
  * P12 还原包名时由它们继承老包名 {@code compat.jei}；{@code :cews} 的 ChargingJEI 留在
  * {@code compat.jei.cews}，{@code :transmutation} 的插件留在 {@code compat.jei.transmutation}。
  * 插件 UID {@code createoreexpansion:grinding_jei} <b>一字未改</b>。</p>
+ *
+ * <p><b>W6-c 更正</b>：充能器随波引擎回到 {@code :coe}，所以 {@code ChargingJEI} 也回来了 ——
+ * 它现在与本类<b>同住 {@code compat.jei}</b>（旧的 {@code compat.jei.cews} 那一份不再存在），
+ * 上面那句"留在 {@code compat.jei.cews}"因此过时。三个 COE 插件
+ * （{@code core_jei} / {@code grinding_jei} / {@code charging_jei}）+ 嬗化的
+ * {@code transmutation_jei} 共用一个包。</p>
  */
 @JeiPlugin
 public class GrindingJEI implements IModPlugin {

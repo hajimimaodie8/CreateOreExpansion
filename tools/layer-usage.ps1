@@ -95,14 +95,17 @@ function Get-FileLayer {
     if ($r -match '^content/wave/api/')    { return 'COE' }
     if ($r -match '^content/energyfield/') { return 'COE' }
     # L1 files that still sit on a CEWS-looking path today; W6-c gives them a
-    # COE package (common/registry/coe/charger, compat/jei/charging, client/coe).
-    if ($r -match '^common/registry/cews/(AllEntityTypes|CewsRecipeProvider|CewsRecipeTypes|ChargerKineticTooltip)\.java$') { return 'COE' }
-    if ($r -match '^client/renderer/cews/(CreateChargerRenderer|EmptyEntityRenderer)\.java$')                             { return 'COE' }
-    if ($r -match '^compat/jei/cews/(ChargingAssemblySubCategory|ChargingCategory|ChargingJEI|WaveJadePlugin)\.java$')     { return 'COE' }
-    if ($r -match '^compat/jei/cews/animation/')               { return 'COE' }
+    # COE package (common/registry/coe/charger, compat/jei/*, client/renderer, client/).
+    # W6-c (2026-09-29): the move is DONE, so these rules now name the NEW paths.
+    # The old-path forms were deleted together with the move (a rule that matches no
+    # file is the "looks like it manages something, manages nothing" shape).
+    # NOTE: common/registry/coe/charger/** needs no rule of its own -- the generic
+    # `^common/registry/coe/` test above already returns COE for it.
+    if ($r -match '^client/renderer/CreateChargerRenderer\.java$') { return 'COE' }
+    if ($r -match '^compat/jei/(ChargingJEI|WaveJadePlugin)\.java$') { return 'COE' }
     # CewsClientSetup is split by W6-c; its L1 half (the two wave-entity renderer
-    # registrations) is the part that must ship with L1 (P7a: NPE without it).
-    if ($r -match '^client/cews/CewsClientSetup')              { return 'COE' }
+    # registrations) moved into the existing :coe package `client`.
+    if ($r -match '^client/WaveEntityRendererRegistration\.java$') { return 'COE' }
     # ---- L2 (CEWS): the machines ----------------------------------------
     if ($r -match '^common/registry/cews/')                    { return 'CEWS' }
     if ($r -match '^content/wave/(block|frame|gauge|regulation)/') { return 'CEWS' }

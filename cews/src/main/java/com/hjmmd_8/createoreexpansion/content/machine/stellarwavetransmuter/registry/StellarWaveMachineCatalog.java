@@ -184,13 +184,13 @@ public final class StellarWaveMachineCatalog {
 		// （充电配方同样是 ProcessingRecipe 族，会进全库池；类型门打开后必须有机器提供该类型，
 		//  否则"变体波给工具充能"这类老玩法会因没有携带者而被挡掉）
 		registerMachine(
-			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.JADE_STRESS_CHARGER.get(),
+			com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks.JADE_STRESS_CHARGER.get(),
 			waveType("charging"));
 		registerMachine(
-			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.SAPPHIRE_STRESS_CHARGER.get(),
+			com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks.SAPPHIRE_STRESS_CHARGER.get(),
 			waveType("charging"));
 		registerMachine(
-			com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks.STELLARSTONE_STRESS_CHARGER.get(),
+			com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks.STELLARSTONE_STRESS_CHARGER.get(),
 			waveType("charging"));
 	}
 
