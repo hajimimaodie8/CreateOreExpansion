@@ -6,13 +6,14 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandler;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandlers;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;
-import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineActions;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveSubLevelCollisions;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 
 import net.createmod.catnip.levelWrappers.SchematicLevel;
 
@@ -39,8 +40,9 @@ import net.neoforged.neoforge.items.IItemHandler;
  * <ul>
  *   <li>本类 = 实体骨架：字段、tick 主循环（飞行/寿命/粒子/生物/掉落物/波波碰撞）、
  *       主世界方块遍历分发、NBT、访问器；</li>
- *   <li>{@link WaveMachineActions} = 主世界/结构共用的机器执行器（调级器/波速调节器/
- *       四面差波器/六面差波器的单次命中判定）；</li>
+ *   <li>机器方块（调级器 / 波速调节器 / 三种差波器 / 星辉波变器）的命中判定 = <b>第二层</b>
+ *       的处理器，经 {@link WaveMachineHandler} 契约与 {@link WaveMachineHandlers} 登记表回调
+ *       （W6-a：原先住第一层的 {@code WaveMachineActions} 已并入那些处理器）；</li>
  *   <li>{@link WaveSubLevelCollisions} = Sable 物理结构（sub-level）碰撞协调；</li>
  *   <li>{@link WaveContraptionCollisions} = Create contraption 碰撞协调。</li>
  * </ul>
@@ -135,8 +137,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/**
 	 * 调级器增强步数（本次延迟升级一次提升几级）：翡翠/蓝宝石恒为 1；
 	 * 星辉石调级器按授予时的本机转速可为 2（单次 +2，等级仍封顶于
-	 * {@link WaveLevels#MAX_LEVEL}）。由 {@link WaveMachineActions} 在授予
-	 * 延迟升级时从调级器 BE 机型参数（{@code getBoostStepForSpeed()}）写入。
+	 * {@link WaveLevels#MAX_LEVEL}）。由机器侧的调级器处置器（W6-a 起住第二层，
+	 * 经 {@link WaveMachineHandler} 契约回调）在授予延迟升级时从调级器 BE 机型参数
+	 * （{@code getBoostStepForSpeed()}）写入。
 	 */
 	protected int boostStep = 1;
 
@@ -153,8 +156,6 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	private ChargerWaveProcessor processor;
 
-	/** 主世界/结构共用的机器执行器（调级器/波速/差波器命中判定）。 */
-	private final WaveMachineActions actions;
 	/** Sable 物理结构碰撞协调。 */
 	private final WaveSubLevelCollisions subLevelCollisions;
 	/** Create contraption 碰撞协调。 */
@@ -164,7 +165,6 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		super(type, level);
 		this.processor = new ChargerWaveProcessor(level, 1);
 		this.renderColor = getWaveColor();
-		this.actions = new WaveMachineActions(this);
 		this.subLevelCollisions = new WaveSubLevelCollisions(this);
 		this.contraptionCollisions = new WaveContraptionCollisions(this);
 	}
@@ -348,7 +348,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 随机极性电荷（放电闪光 + 1 秒冷却；CC&A 未安装时静默跳过）。每 tick 探测，防高速波漏检。
 		if (charge == null && level() instanceof net.minecraft.server.level.ServerLevel) {
 			try {
-				com.hjmmd_8.createoreexpansion.compat.createaddition.TeslaCoilWaveCharger.chargeNearbyCoil(this);
+				WaveMachineIntegrationPoints.chargeNearbyCoil(this);
 			} catch (Throwable ignored) {
 				// 联动异常：波照常飞行
 			}
@@ -474,7 +474,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * <p><b>两阶段判定</b>（主世界优先，结构补充，互不劫持）：</p>
 	 * <ol>
 	 *   <li><b>主世界判定</b>：遍历波碰撞盒覆盖的主世界方块（机器/地形），命中即处理；
-	 *       各机器的单次命中判定委托 {@link WaveMachineActions}；</li>
+	 *       各机器的单次命中判定委托给登记表里的第二层处理器
+	 *       （{@link WaveMachineHandlers} ← {@link WaveMachineHandler}）；</li>
 	 *   <li><b>动态结构判定</b>：主世界无命中（波在空旷处或结构区域——结构方块已从主世界
 	 *       搬入 Sable 虚拟子世界 / contraption 数据内，主世界读不到）时，依次尝试
 	 *       contraption（{@link WaveContraptionCollisions}）与 Sable sub-level
@@ -483,7 +484,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	/** 方块命中解析：分支链已迁到 {@link com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver}。 */
 	private void handleBlockCollisions() {
-		WaveHitResolver.resolve(this, actions, contraptionCollisions, subLevelCollisions);
+		WaveHitResolver.resolve(this, contraptionCollisions, subLevelCollisions);
 	}
 
 	/**
@@ -694,8 +695,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 	// ========== 受控访问：主运动方向 / 出生点 / 渲染色 / 速度修正 ==========
 	// 这几个字段原本靠"同包 protected 直连"，供 charger/wave/ 下的助手类
-	// （WaveMachineActions / WaveContraptionCollisions / WaveSubLevelCollisions /
-	// StellarWaveTransmuterPass）读写；搬包后跨包直连非法，故一律改走下面的访问器。
+	// （WaveHitResolver / WaveContraptionCollisions / WaveSubLevelCollisions）与
+	// 第二层的机器处理器（经 WaveMachineHandler 契约）读写；搬包后跨包直连非法，
+	// 故一律改走下面的访问器。
 	//
 	// 波等级：助手类继续用既有的 {@link #getWaveLevel()}（读 SynchedEntityData 的 WAVE_LEVEL）。
 	// 服务端上它与上面的 {@code waveLevel} 字段恒等——构造、{@link #setWaveLevel(int)}、读档

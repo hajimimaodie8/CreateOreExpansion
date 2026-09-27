@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.craft;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 
 import net.minecraft.resources.ResourceLocation;
 
@@ -86,7 +86,7 @@ public final class WaveCandidateOrdering {
 	public static int speedBandRank(Candidate candidate, int waveSpeedMode) {
 		int required;
 		try {
-			required = StellarWaveMachineIntegrations.recipeSpeedMode(candidate.recipe);
+			required = WaveMachineIntegrationPoints.recipeSpeedMode(candidate.recipe);
 		} catch (Throwable ignored) {
 			return 1; // 读取异常：按兜底处理，绝不让联动异常影响排序
 		}

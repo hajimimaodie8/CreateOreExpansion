@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.charger.block;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 import com.simibubi.create.foundation.block.IBE;
 
 import net.minecraft.core.BlockPos;
@@ -37,7 +36,7 @@ public class SapphireStressChargerBlock extends AbstractCreateChargerBlock imple
 
 	@Override
 	public BlockEntityType<? extends SapphireStressChargerBlockEntity> getBlockEntityType() {
-		return CewsBlockEntityTypes.SAPPHIRE_STRESS_CHARGER.get();
+		return ChargerBlockSlots.sapphireBlockEntity();
 	}
 
 	/**

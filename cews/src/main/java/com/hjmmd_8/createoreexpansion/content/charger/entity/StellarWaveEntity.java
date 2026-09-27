@@ -8,7 +8,6 @@ import java.util.Map;
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.Candidate;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveTransmuterPass;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveAuxResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftConsumption;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftExecutor;
@@ -23,8 +22,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadRelease
 import com.hjmmd_8.createoreexpansion.content.charger.wave.BorrowedChargingSource;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
@@ -369,7 +367,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	/** 波当前转速档（Vintage 口径：0 停转 / 1 低 / 2 中 / 3 高；未装 Vintage 返回 0 = 无档位概念）。 */
 	private int waveSpeedMode() {
-		return StellarWaveMachineIntegrations.speedModeFor(carriedRpm);
+		return WaveMachineIntegrationPoints.speedModeFor(carriedRpm);
 	}
 
 	/** 设定变器当时的读取半径（穿波瞬间由变器写入；供"命中后就地补料"用）。 */
@@ -579,13 +577,13 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 			types.addAll(recipeTypes);
 		} else {
 			for (ResourceLocation machineId : attributes)
-				for (IRecipeTypeInfo t : StellarWaveMachineRegistry.typesFor(machineId))
+				for (IRecipeTypeInfo t : WaveMachineIntegrationPoints.typesFor(machineId))
 					if (!types.contains(t))
 						types.add(t);
 		}
 		if (payloadEnergy > 0) {
 			try {
-				for (IRecipeTypeInfo extra : StellarWaveMachineIntegrations.energyExtraRecipeTypes(true))
+				for (IRecipeTypeInfo extra : WaveMachineIntegrationPoints.energyExtraRecipeTypes(true))
 					if (!types.contains(extra))
 						types.add(extra);
 			} catch (Throwable ignored) {
@@ -716,7 +714,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		// 的类型门里摘掉：同一件物品只由"雷"加工一遍，不再由波再来一遍（用户 2026-09 指出的重复执行）。
 		if (strikeOwnsTypes) {
 			try {
-				ids.removeAll(StellarWaveMachineIntegrations.strikeHandledTypeIds());
+				ids.removeAll(WaveMachineIntegrationPoints.strikeHandledTypeIds());
 			} catch (Throwable ignored) {
 				// 排除失败：按不排除处理（宁可留旧行为，也不要因异常吃掉整张类型表）
 			}
@@ -1214,7 +1212,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	/** 按注册表 id 找回配方类型档案（读档恢复用；找不到的类型跳过，不影响其它字段）。 */
 	private static IRecipeTypeInfo recipeTypeById(ResourceLocation id) {
-		for (IRecipeTypeInfo type : StellarWaveMachineRegistry.allRecipeTypes())
+		for (IRecipeTypeInfo type : WaveMachineIntegrationPoints.allRecipeTypes())
 			if (type != null && id.equals(type.getId()))
 				return type;
 		return null;

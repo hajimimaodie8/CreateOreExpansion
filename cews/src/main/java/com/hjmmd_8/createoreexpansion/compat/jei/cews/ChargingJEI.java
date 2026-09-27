@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.compat.jei.cews;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
+import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
 
@@ -45,12 +45,14 @@ public class ChargingJEI implements IModPlugin {
 	private void loadCategories() {
 		allCategories.clear();
 
-		// 全部充能等级共用一个分类：配方按卡片内等级徽章区分
+		// 全部充能等级共用一个分类：配方按卡片内等级徽章区分。
+		// W6-a：机器来自第一层自己的槽位表（ChargerBlockSlots），由登记方注入；
+		// 未注入时 catalyst/itemIcon 供应商返回 null 的原对象即"没有这台机器"，与被注入时逐字同物。
 		allCategories.add(builder(ChargingRecipe.class)
 			.addAllRecipesIf(recipe -> recipe.value() instanceof ChargingRecipe)
-			.catalyst(CewsBlocks.JADE_STRESS_CHARGER::get)
-			.catalyst(CewsBlocks.SAPPHIRE_STRESS_CHARGER::get)
-			.itemIcon(CewsBlocks.JADE_STRESS_CHARGER.get())
+			.catalyst(ChargerBlockSlots::jadeBlock)
+			.catalyst(ChargerBlockSlots::sapphireBlock)
+			.itemIcon(ChargerBlockSlots.jadeBlock())
 			.emptyBackground(177, 70)
 			.build(CoeCore.modLoc("charging"), ChargingCategory::new));
 	}

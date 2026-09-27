@@ -5,7 +5,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.registry.StellarWaveMachineRegistry;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 import com.hjmmd_8.createoreexpansion.util.RadiusScan;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
 
@@ -131,7 +131,7 @@ public final class WavePayloadRelease {
 			BlockEntity be = level.getBlockEntity(pos);
 			if (be instanceof BasinBlockEntity)
 				return false; // 工作盆：余料进盆是明确的 bug（2026-09 实测反馈）
-			return !StellarWaveMachineRegistry.isMachinery(level, pos);
+			return !WaveMachineIntegrationPoints.isMachinery(level, pos);
 		} catch (Throwable ignored) {
 			return false; // 判定异常：保守按"不可存"处理
 		}

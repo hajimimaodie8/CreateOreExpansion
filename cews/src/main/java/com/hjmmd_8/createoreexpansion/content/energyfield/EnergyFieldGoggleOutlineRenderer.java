@@ -5,7 +5,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsMod;
 import com.hjmmd_8.createoreexpansion.client.render.types.AllRenderTypes;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -39,14 +38,20 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *   <li><b>淡出完成</b>：alpha 收敛到 0 后才从状态表移除，渲染自然消失。</li>
  * </ul>
  *
- * <p><b>P3z：modid 改成 {@link CewsMod#MOD_ID}</b>（与
+ * <p><b>P3z：modid 改成 {@code CewsMod.MOD_ID}</b>（与
  * {@link EnergyFieldCommandRegistration} 同款、同理由的镜像形态修复）。本类随 CEWS 搬进
  * {@code :cews} 后住在 cews 那个 mod 文件里，而原先标的是 {@code CoeCore.MOD_ID}
  * （= createoreexpansion）—— 搬完就既不被 cews 容器注入、也不在根文件的扫描数据里，
  * 会<b>静默失效</b>（护目镜指示框整体不再绘制，无警告无报错）。改标本文件的 id 即恢复
  * "类的 modid == 它所在 mod 文件的 id"这条不变量。本类只订阅 game 总线事件，语义不变。</p>
+ *
+ * <p><b>W6-a：modid 由 {@code CewsMod.MOD_ID} 改成字面量 {@code "cews"}</b>——
+ * 注解取值与注入行为逐字不变（同一串编译期常量），只是源码上不再引用第二层的
+ * {@code common.registry.cews.CewsMod}（本类属第一层 {@code content/energyfield/**}）。
+ * <b>W6-c 把本类收进 {@code :coe} 之后，这个字面量必须改成 {@code "createoreexpansion"}</b>
+ * （理由同上一段的不变量）。</p>
  */
-@EventBusSubscriber(modid = CewsMod.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = "cews", value = Dist.CLIENT)
 public final class EnergyFieldGoggleOutlineRenderer {
 
 	/** 加速场 = 天蓝；偏转场 = 品红。 */

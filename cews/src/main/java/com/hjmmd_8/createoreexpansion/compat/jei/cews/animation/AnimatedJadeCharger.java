@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.compat.jei.cews.animation;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
+import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
 import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlock;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
@@ -53,7 +53,7 @@ public class AnimatedJadeCharger extends AnimatedKinetics {
 
 	/** 机身方块状态（本机 = 翡翠充能器；蓝宝石子类覆写换机型）。 */
 	protected BlockState machineState() {
-		return CewsBlocks.JADE_STRESS_CHARGER.getDefaultState()
+		return ChargerBlockSlots.jadeDefaultState()
 			.setValue(JadeStressChargerBlock.FACING, Direction.DOWN)
 			.setValue(JadeStressChargerBlock.MODE, mode);
 	}

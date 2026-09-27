@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.charger.block;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 import com.simibubi.create.foundation.block.IBE;
 
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -24,6 +23,6 @@ public class JadeStressChargerBlock extends AbstractCreateChargerBlock implement
 
 	@Override
 	public BlockEntityType<? extends JadeStressChargerBlockEntity> getBlockEntityType() {
-		return CewsBlockEntityTypes.JADE_STRESS_CHARGER.get();
+		return ChargerBlockSlots.jadeBlockEntity();
 	}
 }

@@ -9,7 +9,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.Energy
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.EnergySource;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidRef;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidSource;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
 
 import net.minecraft.core.BlockPos;
@@ -291,7 +291,7 @@ public final class WaveAuxResolver {
 		}
 		// 对外不可抽的储能：只认 CC&amp;A 特斯拉线圈（内部只读反射；非线圈/未安装返回 0）
 		try {
-			return StellarWaveMachineIntegrations.teslaCoilEnergy(level, pos);
+			return WaveMachineIntegrationPoints.teslaCoilEnergy(level, pos);
 		} catch (Throwable ignored) {
 			return 0;
 		}
@@ -316,7 +316,7 @@ public final class WaveAuxResolver {
 			// 单个储能异常：继续尝试线圈路径
 		}
 		try {
-			return StellarWaveMachineIntegrations.consumeTeslaCoil(level, pos, need);
+			return WaveMachineIntegrationPoints.consumeTeslaCoil(level, pos, need);
 		} catch (Throwable ignored) {
 			return 0;
 		}

@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
+import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
 import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerMovementBehaviour;
 import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlock;
 import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlock;
@@ -802,6 +803,24 @@ public final class CewsBlocks {
 			// （运行时判定三支都认：物品标签 ∪ 方块标签 ∪ 注册名约定，见 SeriesTraits#isStellarstone）。
 			.transform(SeriesTraits.addStellarstoneTraits())
 			.register();
+
+	/**
+	 * <b>W6-a：把 3 台充能器的方块槽位注入第一层表</b>（方向 L2 → L1，见
+	 * {@code content/charger/block/ChargerBlockSlots}）。充能器那 3 条登记属第一层
+	 * （W6-c 会连同它们的方块实体登记一起拆到第一层），第一层的
+	 * {@code ChargingRecipe} / {@code ChargingJEI} / JEI 动画只认那张表，
+	 * 故这里在类初始化末尾注入。
+	 *
+	 * <p>用 {@code Supplier} 而不是直接 {@code .get()}：本类静态初始化期 DeferredHolder
+	 * 尚未绑定，取值必须延迟到真正被读的那一刻（读数方都在运行期）。</p>
+	 */
+	static {
+		ChargerBlockSlots.installJadeBlock(() -> JADE_STRESS_CHARGER.get());
+		ChargerBlockSlots.installSapphireBlock(() -> SAPPHIRE_STRESS_CHARGER.get());
+		ChargerBlockSlots.installStellarstoneBlock(() -> STELLARSTONE_STRESS_CHARGER.get());
+		ChargerBlockSlots.installJadeDefaultState(() -> JADE_STRESS_CHARGER.getDefaultState());
+		ChargerBlockSlots.installSapphireDefaultState(() -> SAPPHIRE_STRESS_CHARGER.getDefaultState());
+	}
 
 /** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
 	public static void register() {

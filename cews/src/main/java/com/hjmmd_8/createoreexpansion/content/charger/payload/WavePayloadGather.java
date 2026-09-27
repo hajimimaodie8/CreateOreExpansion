@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 import com.hjmmd_8.createoreexpansion.util.RadiusScan;
 
 import net.minecraft.core.BlockPos;
@@ -247,7 +248,7 @@ public final class WavePayloadGather {
 			} else if (!simulate) {
 				// 特斯拉线圈（CC&A）对外 canExtract=false：走其内部接口抽取；有上限时按剩余额度截断
 				// （consumeTeslaCoil 内部自带钳制，max = Integer.MAX_VALUE 等价于旧的"全抽"）
-				int got = com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations
+				int got = WaveMachineIntegrationPoints
 					.consumeTeslaCoil(level, pos, room < 0 ? Integer.MAX_VALUE : room);
 				energy[0] += got;
 				if (got > 0)
@@ -281,7 +282,7 @@ public final class WavePayloadGather {
 		int configured = com.hjmmd_8.createoreexpansion.common.AllConfig.waveMaxPayloadEnergyFe;
 		if (configured >= 0)
 			return configured;
-		int caMax = com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations
+		int caMax = WaveMachineIntegrationPoints
 			.maxStrikeChargingEnergyFe(level);
 		return caMax > 0 ? caMax : -1;
 	}

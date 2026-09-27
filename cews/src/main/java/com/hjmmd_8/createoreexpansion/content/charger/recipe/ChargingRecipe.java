@@ -6,9 +6,9 @@ import java.util.function.Supplier;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.cews.ChargingAssemblySubCategory;
+import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.mojang.serialization.MapCodec;
 import com.simibubi.create.compat.jei.category.sequencedAssembly.SequencedAssemblySubCategory;
@@ -175,11 +175,14 @@ public class ChargingRecipe extends ProcessingRecipe<RecipeWrapper, ChargingReci
 	@Override
 	public void addRequiredMachines(Set<ItemLike> list) {
 		// 按配方等级分流所需机器（JEI/装配显示）：
-		// 1~3 级（α/β/γ）由翡翠充能器产出；4/5 级（ε/ω）只有蓝宝石充能器能产出
-		if (getLevel() <= WaveLevels.JADE_MAX)
-			list.add(CewsBlocks.JADE_STRESS_CHARGER.get());
-		else
-			list.add(CewsBlocks.SAPPHIRE_STRESS_CHARGER.get());
+		// 1~3 级（α/β/γ）由翡翠充能器产出；4/5 级（ε/ω）只有蓝宝石充能器能产出。
+		// W6-a：机器改从第一层自己的槽位表取（登记方注入，见 ChargerBlockSlots）——
+		// 未注入 = 本环境没有充能器登记，此时与原实现"机器不存在"等价，不加任何条目。
+		ItemLike machine = getLevel() <= WaveLevels.JADE_MAX
+			? ChargerBlockSlots.jadeMachine()
+			: ChargerBlockSlots.sapphireMachine();
+		if (machine != null)
+			list.add(machine);
 	}
 
 	@Override

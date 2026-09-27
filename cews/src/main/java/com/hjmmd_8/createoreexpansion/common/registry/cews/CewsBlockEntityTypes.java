@@ -6,6 +6,7 @@ import com.hjmmd_8.createoreexpansion.client.renderer.wave.EnergyWaveDisperserRe
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.OctaEnergyWaveDifferencerRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.SixFaceDisperserRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.wave.WaveGateRenderer;
+import com.hjmmd_8.createoreexpansion.content.charger.block.ChargerBlockSlots;
 import com.hjmmd_8.createoreexpansion.content.charger.block.JadeStressChargerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.block.SapphireStressChargerBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.block.StellarstoneStressChargerBlockEntity;
@@ -138,10 +139,23 @@ public final class CewsBlockEntityTypes {
 			.renderer(() -> OctaEnergyWaveDifferencerRenderer::new)
 			.register();
 
+	/**
+	 * <b>W6-a：把 3 台充能器的方块实体槽位注入第一层表</b>（方向 L2 → L1，见
+	 * {@code content/charger/block/ChargerBlockSlots}）。三台充能器的 Block 属第一层，
+	 * 它们的 {@code IBE#getBlockEntityType()} 只认那张表。
+	 *
+	 * <p>用 {@code Supplier} 而不是直接 {@code .get()}：本类静态初始化期 DeferredHolder
+	 * 尚未绑定，取值必须延迟到真正被读的那一刻（{@code getBlockEntityType()} 只在运行期被调）。</p>
+	 */
+	static {
+		ChargerBlockSlots.installJadeBlockEntity(() -> JADE_STRESS_CHARGER.get());
+		ChargerBlockSlots.installSapphireBlockEntity(() -> SAPPHIRE_STRESS_CHARGER.get());
+		ChargerBlockSlots.installStellarstoneBlockEntity(() -> STELLARSTONE_STRESS_CHARGER.get());
+	}
+
 /** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
 	public static void register() {
 	}
-
 	private CewsBlockEntityTypes() {
 	}
 }

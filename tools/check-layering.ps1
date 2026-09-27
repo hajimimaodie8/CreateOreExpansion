@@ -127,9 +127,48 @@ function Get-FileLayer {
     if ($r -match '^core/') { return 'CORE' }
     # explicit module paths -- must be tested BEFORE the generic "common/" SHARED rule
     if ($r -match '^common/registry/coe/')            { return 'COE' }
-    if ($r -match '^common/registry/cews/')           { return 'CEWS' }
+    # ---------------------------------------------------------------------
+    # W6-a (2026-09-29): TARGET classification.
+    #
+    # Every file is now judged by the layer it WILL belong to after the W6-c
+    # move, NOT by the Gradle module that happens to hold it today.  No file
+    # has moved yet, so the rules below deliberately name the CURRENT package
+    # paths of future L1 files (file-granular wherever one package will end up
+    # split across two layers).  Authority for every single decision:
+    # build/patch/w6-restructure-PLAN.md section 1.2.
+    #
+    # L1 (COE) = the wave ENGINE (wave entities, the three stress chargers,
+    # the energy field) + the transmutation mechanism;
+    # L2 (CEWS) = the wave MACHINES (wave gates / dispersers / stellar wave
+    # transmuter / energy field controller / wave query gauge).
+    # The point of this change is exactly to make the tool SEE the boundary
+    # that W6-c will physically move along -- see the plan's section 2.1/2.2.
+    # ---------------------------------------------------------------------
+    # ---- L1 (COE): wave engine + three stress chargers + energy field ----
+    # content/charger/** is L1 in full (charger blocks + wave engine helpers).
+    if ($r -match '^content/charger/')     { return 'COE' }
+    if ($r -match '^content/wave/api/')    { return 'COE' }
+    if ($r -match '^content/energyfield/') { return 'COE' }
+    # L1 files that still sit on a CEWS-looking path today; W6-c gives them a
+    # COE package (common/registry/coe/charger, compat/jei/charging, client/coe).
+    if ($r -match '^common/registry/cews/(AllEntityTypes|CewsRecipeProvider|CewsRecipeTypes|ChargerKineticTooltip)\.java$') { return 'COE' }
+    if ($r -match '^client/renderer/cews/(CreateChargerRenderer|EmptyEntityRenderer)\.java$')                             { return 'COE' }
+    if ($r -match '^compat/jei/cews/(ChargingAssemblySubCategory|ChargingCategory|ChargingJEI|WaveJadePlugin)\.java$')     { return 'COE' }
+    if ($r -match '^compat/jei/cews/animation/')               { return 'COE' }
+    # CewsClientSetup is split by W6-c; its L1 half (the two wave-entity renderer
+    # registrations) is the part that must ship with L1 (P7a: NPE without it).
+    if ($r -match '^client/cews/CewsClientSetup')              { return 'COE' }
+    # ---- L2 (CEWS): the machines ----------------------------------------
+    if ($r -match '^common/registry/cews/')                    { return 'CEWS' }
+    if ($r -match '^content/wave/(block|frame|gauge|regulation)/') { return 'CEWS' }
+    if ($r -match '^content/machine/')                         { return 'CEWS' }
+    if ($r -match '^client/renderer/(cews|wave)/')             { return 'CEWS' }
+    if ($r -match '^client/cews/')                             { return 'CEWS' }
+    if ($r -match '^compat/jei/cews/')                         { return 'CEWS' }
+    if ($r -match '^compat/(optical|vintageimprovements)/')    { return 'CEWS' }
+    if ($r -match '^compat/createaddition/(TeslaCoilWaveCharger|CreateAdditionTransmuterSupport)') { return 'CEWS' }
+    # ---- the third layer (TRANS): unchanged by W6-a ----------------------
     if ($r -match '^common/registry/transmutation/')  { return 'TRANS' }
-    if ($r -match '^content/(charger|wave|machine|energyfield)/') { return 'CEWS' }
     if ($r -match '^content/(transmuting|transmutation)/')        { return 'TRANS' }
     # P12 (2026-09-28): the P3r/P3z rules below are rewritten to recognise the PRE-SPLIT
     # package names.  The split had renamed packages only so that these path rules would
@@ -203,9 +242,26 @@ function Get-TargetLayer {
     }
     $rest = $fqn.Substring($prefix.Length)
     if ($rest -match '^common\.registry\.coe\.')            { return 'COE' }
+    # W6-a (2026-09-29): the SAME target classification as Get-FileLayer, spelled
+    # with package names.  The two functions must be kept in step: every file that
+    # changes layer above needs its matching rule here, otherwise an import is
+    # still judged by the stale rule and the file-granular exceptions above would
+    # be invisible to the import pass.  See Get-FileLayer for the rationale.
+    if ($rest -match '^content\.charger\.')     { return 'COE' }
+    if ($rest -match '^content\.wave\.api\.')   { return 'COE' }
+    if ($rest -match '^content\.energyfield\.') { return 'COE' }
+    if ($rest -match '^common\.registry\.cews\.(AllEntityTypes|CewsRecipeProvider|CewsRecipeTypes|ChargerKineticTooltip)(\.|$)') { return 'COE' }
+    if ($rest -match '^client\.renderer\.cews\.(CreateChargerRenderer|EmptyEntityRenderer)(\.|$)') { return 'COE' }
+    if ($rest -match '^compat\.jei\.cews\.(ChargingAssemblySubCategory|ChargingCategory|ChargingJEI|WaveJadePlugin)(\.|$)') { return 'COE' }
+    if ($rest -match '^compat\.jei\.cews\.animation(\.|$)') { return 'COE' }
+    if ($rest -match '^client\.cews\.CewsClientSetup(\.|$)') { return 'COE' }
     if ($rest -match '^common\.registry\.cews\.')           { return 'CEWS' }
+    if ($rest -match '^content\.wave\.(block|frame|gauge|regulation)\.') { return 'CEWS' }
+    if ($rest -match '^content\.machine\.')                 { return 'CEWS' }
+    if ($rest -match '^client\.renderer\.(cews|wave)\.')    { return 'CEWS' }
+    if ($rest -match '^client\.cews\.')                     { return 'CEWS' }
+    if ($rest -match '^compat\.jei\.cews\.')                { return 'CEWS' }
     if ($rest -match '^common\.registry\.transmutation\.')  { return 'TRANS' }
-    if ($rest -match '^content\.(charger|wave|machine|energyfield)\.') { return 'CEWS' }
     if ($rest -match '^content\.(transmuting|transmutation)\.')        { return 'TRANS' }
     # skill system == COE (see Get-FileLayer); only the tool/renderer sub-packages, not all of client.
     # P12: the pre-split package names are back, so these rules mirror Get-FileLayer again.

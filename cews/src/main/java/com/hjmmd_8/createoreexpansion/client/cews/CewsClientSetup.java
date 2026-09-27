@@ -4,7 +4,6 @@ import com.hjmmd_8.createoreexpansion.client.renderer.cews.EmptyEntityRenderer;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.common.machine.MachineRotateClient;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.AllEntityTypes;
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsMod;
 
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.neoforged.api.distmarker.Dist;
@@ -45,8 +44,13 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
  * <p>Ctrl+扳手旋转的客户端拦截逻辑住 core（{@code common.machine.MachineRotateClient}），
  * 但 core 在发布形态里没有 {@code ModContainer}，它不能带 {@code @EventBusSubscriber}。
  * 客户端专属的薄入口就是安装点：本类与 {@code :coe} 的对应类各调一次，幂等。</p>
+ * <p><b>W6-a：modid 由 {@code CewsMod.MOD_ID} 改成字面量 {@code "cews"}</b>——
+ * 注解取值与注入行为逐字不变（同一串编译期常量），但源码上不再引用第二层的
+ * {@code common.registry.cews.CewsMod}。本类被 W6-c 一分为二：L1 半边
+ * （下面两行波实体渲染器注册）随 {@code :coe} 走，届时这个字面量要改成
+ * {@code "createoreexpansion"}；L2 半边留在 {@code :cews}。</p>
  */
-@EventBusSubscriber(modid = CewsMod.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = "cews", value = Dist.CLIENT)
 public final class CewsClientSetup {
 
     private CewsClientSetup() {}

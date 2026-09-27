@@ -11,7 +11,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxRef
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.EnergyDraw;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidRef;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.family.WaveRecipeFamilies;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 import com.simibubi.create.content.processing.basin.BasinBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
 import com.simibubi.create.content.processing.recipe.ProcessingOutput;
@@ -467,7 +467,7 @@ public final class WaveCandidateEvaluator {
 		// （邻域储能优先 → 载荷电量兜底），合计不足才淘汰。仅在配方确实要电时才做邻域扫描。
 		int energyRequired = 0;
 		try {
-			energyRequired = StellarWaveMachineIntegrations.recipeEnergyRequired(recipe);
+			energyRequired = WaveMachineIntegrationPoints.recipeEnergyRequired(recipe);
 		} catch (Throwable ignored) {
 			// 联动读取异常：按无电量需求处理
 		}

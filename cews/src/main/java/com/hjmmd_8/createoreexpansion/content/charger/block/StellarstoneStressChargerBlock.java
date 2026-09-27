@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.content.charger.block;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlockEntityTypes;
 import com.simibubi.create.foundation.block.IBE;
 
 import net.minecraft.core.BlockPos;
@@ -38,7 +37,7 @@ public class StellarstoneStressChargerBlock extends AbstractCreateChargerBlock
 
 	@Override
 	public BlockEntityType<? extends StellarstoneStressChargerBlockEntity> getBlockEntityType() {
-		return CewsBlockEntityTypes.STELLARSTONE_STRESS_CHARGER.get();
+		return ChargerBlockSlots.stellarstoneBlockEntity();
 	}
 
 	/**

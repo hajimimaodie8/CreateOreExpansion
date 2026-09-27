@@ -3,7 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.craft;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults.DebugLog;
-import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrations;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
 
@@ -141,7 +141,7 @@ public final class WaveCraftExecutor {
 			host.finishAndDiscard();
 			return true;
 		}
-		StellarWaveMachineIntegrations.ensureRegistered();
+		WaveMachineIntegrationPoints.ensureRegistered();
 
 		// 记录"最近加工过的方块"：余料处置（配置 wave.payloadRelease=NEAREST_CONTAINER）以它为圆心，
 		// 在变器读取半径内找最近的可存容器（见 releasePayload）
@@ -202,7 +202,7 @@ public final class WaveCraftExecutor {
 		ItemStack input = item.getItem();
 		if (input.isEmpty())
 			return false;
-		StellarWaveMachineIntegrations.ensureRegistered();
+		WaveMachineIntegrationPoints.ensureRegistered();
 
 		// 强化避雷针释放机会：本次命中最多引一道雷（2026-09 审计修复）。
 		// 旧实现逐件掉落物都调一次：一次 sweep 命中多件时会把引雷额度全烧光、在多处各落一道雷，

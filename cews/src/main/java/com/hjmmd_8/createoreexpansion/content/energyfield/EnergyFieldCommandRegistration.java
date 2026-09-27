@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsMod;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 
@@ -27,7 +26,7 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * 数据经 {@link EnergyFieldSyncPayload} 从服务端同步。故本类只负责命令注册与
  * 登录/换维度时的补发同步。</p>
  *
- * <p><b>P3z：modid 改成 {@link CewsMod#MOD_ID}</b>（镜像形态的错配修复）。
+ * <p><b>P3z：modid 改成 {@code CewsMod.MOD_ID}</b>（镜像形态的错配修复）。
  * 本类随 CEWS 搬进 Gradle 子模块 {@code :cews}，于是它住在 <b>cews 那个 mod 文件</b>里，
  * 而 FML 的 {@code @EventBusSubscriber} 自动注入是"按 mod 文件"作用域的：
  * {@code FMLModContainer.constructMod()} 只喂本文件的扫描结果、并只挂
@@ -36,8 +35,17 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
  * 也不在根文件的扫描数据里（{@code IntegrationBootstrap} 的补挂遍历够不着）
  * —— 会<b>静默失效</b>、无任何警告。改标自己文件的 id 后由 FML 直接注入，dev 与生产同一路径。
  * 本类只订阅 game 总线事件（命令注册 / 玩家登录），modid 只决定"哪个容器的总线"，语义不变。</p>
+ *
+ * <p><b>W6-a：modid 由 {@code CewsMod.MOD_ID} 改成字面量 {@code "cews"}</b>。
+ * {@code CewsMod.MOD_ID} 是另一个类里的编译期常量（javac 直接内联，运行期逐字等价），
+ * 但它让本类在源码上引用了第二层的 {@code @Mod} 入口类
+ * （{@code common.registry.cews.CewsMod}），而本类属第一层
+ * （{@code content/energyfield/**}，W6-c 搬进 {@code :coe}）⇒ 一条 {@code L1 → L2} 禁止边。
+ * 注解取值与注入行为逐字不变（同一串字符）。<b>W6-c 把本类收进 {@code :coe} 之后，
+ * 这个字面量必须随之改成 {@code "createoreexpansion"}</b>——否则"住在 coe 文件里却标 cews 的 id"
+ * 会静默不注入（AGENTS 红线："类的 modid == 它所在 mod 文件的 id"）。</p>
  */
-@EventBusSubscriber(modid = CewsMod.MOD_ID)
+@EventBusSubscriber(modid = "cews")
 public final class EnergyFieldCommandRegistration {
 
 	@SubscribeEvent

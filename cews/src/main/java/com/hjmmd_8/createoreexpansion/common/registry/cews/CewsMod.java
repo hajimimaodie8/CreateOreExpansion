@@ -4,6 +4,12 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerBootstrap;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldSyncPayload;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandlers;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrationSink;
+import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.TransmuterHitHandler;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
+import com.hjmmd_8.createoreexpansion.content.wave.block.DisperserHitHandler;
+import com.hjmmd_8.createoreexpansion.content.wave.block.WaveGateHitHandler;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
@@ -48,6 +54,16 @@ public class CewsMod {
         // （Ctrl+扳手；原先只有 :coe 注册它 ⇒ 单装 cews.jar 时 CEWS 机器上完全没反应）、
         // 按固定顺序唤醒三层配方类型声明类。本模块第一个构造时由本行完成，否则直接返回。
         LayerBootstrap.ensureAttached(modEventBus);
+
+        // W6-a：把"加工机联动"登记进第一层（波引擎侧）的登记表。方向恒为 L2 → L1，
+        // 登记动作幂等（只是赋一个引用），且早于任何一次波飞行。
+        WaveMachineIntegrationPoints.install(StellarWaveMachineIntegrationSink.INSTANCE);
+
+        // W6-a：把"机器方块命中处置"按判定优先级登记进第一层的登记表（顺序 = 原 if 链顺序：
+        // 波闸 → 差波器家族 → 星辉波变器；换序会改玩法）。方向仍是 L2 → L1。
+        WaveMachineHandlers.register(WaveGateHitHandler.INSTANCE);
+        WaveMachineHandlers.register(DisperserHitHandler.INSTANCE);
+        WaveMachineHandlers.register(TransmuterHitHandler.INSTANCE);
 
         // P7a：本层自己的创造页（登记动作从"根侧注入"改成"每层自持"）。
         LayerCreativeTab.registerAll(CewsCreativeTabs.tabs());
