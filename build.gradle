@@ -224,6 +224,157 @@ neoForge {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// W3：发布形态（published form）运行配置 —— 「三个发布的模块 jar 一起装」的统一测试台
+// ═══════════════════════════════════════════════════════════════════════════════
+// 目的：把 :coe / :cews / :transmutation 三个**发布 jar** 一起放进 <gameDir>/mods/，一次启动
+// 验掉六轮以来唯一没有任何静态关卡覆盖的部分：JPMS 包重叠 / GAME-PLUGIN 分层 /
+// 三份同名嵌套 core 的去重 / mixin 是否真注入 / 数据包是否干净加载 / 配置是否真注册 /
+// 四个入口是否都被识别。
+//
+// 为什么不能直接把 jar 丢进 run/mods/（本轮的关键冲突）：
+//   dev 的 neoForge.mods{}（本文件上面那段）把根工程 + core + :coe + :cews + :transmutation
+//   绑成**四个 dev mod 文件**（-Dfml.modFolders）。FML 4.0.42 的 UserdevLocator 先 claim
+//   modFolders 里的每个路径，再对 java.class.path 上每个含 META-INF/neoforge.mods.toml 的根
+//   做一次补扫（DevEnvUtils.findFileSystemRootsOfFileOnClasspath），**未被 claim 的也照样当
+//   mod 文件**。所以再往 run/mods/ 放一份 jar ⇒ 同一个 mod id 两个文件 ⇒
+//   fml.modloadingissue.duplicate_mod 硬崩 —— 假警报，什么也证明不了。
+//
+// 本配置的机制（每条都有 MDG / FML 源码出处，见 build/patch/w3-EVIDENCE.txt）：
+//   ① loadedMods.set([]) —— RunModel#getLoadedMods() 是**每个 run 独立**的 SetProperty
+//      （MDG dsl/RunModel.java:153，convention 才是"全工程 mods{}"），MDG 用它生成
+//      -Dfml.modFolders（internal/ModDevRunWorkflow.java:432 → RunUtils#getGradleModFoldersProvider）。
+//      置空 ⇒ 没有任何目录被 claim。
+//   ② sourceSet = 一个**空** source set —— run 的 java.class.path 由
+//      run.getSourceSet().runtimeClasspath 决定（ModDevRunWorkflow.java:421）。沿用 main 会让
+//      build/resources/main（它含本工程展开后的 META-INF/neoforge.mods.toml）留在 classpath
+//      上，被 ① 放出来的补扫重新发现成第二个 coe_integration ⇒ 又是 duplicate_mod。
+//      空 source set 的输出目录不存在 ⇒ 补扫在本工程上 0 命中。
+//      它**仍然必须**拿到 Minecraft/NeoForge 类：1.21.1 的 versionCapabilities 是
+//      modLocatorRework=true + needsNeoForgeInMinecraftJar=true，MC 与 NeoForge 合并躺在
+//      neoforge-21.1.228-merged.jar 里、**只经 java.class.path 可见**（legacyClasspath 里
+//      只有 game libraries + client-extra），所以用公开 API
+//      neoForge.addModdingDependenciesTo(...)（dsl/ModDevExtension.java:156）把
+//      modDevRuntimeDependencies 接到本源集上。
+//   ③ gameDirectory 放在 build/ 下：.gitignore 的 run/ 是**没有锚定**的裸模式，不覆盖
+//      run-published/，那样会留下未跟踪目录；build/ 整体被忽略 ⇒ 天然干净。
+//   ④ 本段**不碰**上面任何一条 mod 绑定，也不改 processResources / jar：只多一个空 source set
+//      与两个 run 任务。产物条目集与逐条目哈希前后不变（build/patch/w3-jar-hashes-*.txt）。
+// 准备脚本（幂等）：tools\prepare-run-published.ps1
+sourceSets {
+    // 空 source set：唯一用途是给下面两个 run 提供一个「不是 main」的 runtimeClasspath 容器。
+    // 故意不登记任何 srcDir / resources ⇒ 它的输出目录都不存在。
+    publishedRuntime
+}
+
+neoForge {
+    // 把 MDG 的 Minecraft/NeoForge 运行时依赖接到本源集（公开 API，见上面 ②）。
+    addModdingDependenciesTo(sourceSets.publishedRuntime)
+
+    runs {
+        // 发布形态 · 服务端（本轮核心证据）：三个模块 jar 全装 + --nogui
+        publishedServer {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            gameDirectory.set(project.file('build/published-run'))
+            sourceSet.set(sourceSets.publishedRuntime)
+            loadedMods.set([])
+            // MDG 生成的 log4j2.xml 用 sys:forge.logging.marker.<name> 控制 marker，
+            // 默认 DENY；不打开的话 "Found mod file ..."（LogMarkers.SCAN）不会落进日志，
+            // 而那一行正是"加载的是 jar 不是 dev classes"的原始证据。
+            systemProperty 'forge.logging.marker.scan', 'ACCEPT'
+        }
+        // 发布形态 · 客户端：同一条配置的客户端变体（起得来 / 进得了主菜单即算过）。
+        publishedClient {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            gameDirectory.set(project.file('build/published-run-client'))
+            sourceSet.set(sourceSets.publishedRuntime)
+            loadedMods.set([])
+            systemProperty 'forge.logging.marker.scan', 'ACCEPT'
+        }
+    }
+}
+
+// ── W3 附：发布形态测试台的类路径补偿（Registrate）────────────────────────────────
+// Create 的 **:slim 分类器把 JarJar 嵌套件整个剥掉了**（实测 create-1.21.1-6.0.10-280-slim.jar
+// 的 META-INF/jarjar/ 条目 = 0、com/tterrag/registrate/** = 0），所以 dev 里 Create 靠的是
+// **类路径上那份独立的 Registrate**（root 的 implementation("com.tterrag.registrate:Registrate")）。
+// 正式发布的 Create 件是把 Registrate 放进自己的 META-INF/jarjar/（清单里带
+// `FMLModType: GAMELIBRARY`，由 JarInJarDependencyLocator 当 GAME 层库加载）。
+// 本机缓存里只有 slim 件（无网 / 本轮不许下载），所以发布形态测试台必须把这一份补回类路径，
+// 否则 Create.<clinit> 直接 NoClassDefFoundError: com/tterrag/registrate/AbstractRegistrate。
+// 实测（build/patch/w3-runtime-cp-all.txt，122 项）：dev 运行时类路径上"非 mod 且非
+// MC/FML 基础设施"、又带 FMLModType 的**只有 Registrate 一个**，所以这里是唯一需要补的。
+// 它**不是 mod 文件**（无 META-INF/neoforge.mods.toml），进 mods/ 也不会被当 mod 读；
+// 补在类路径上不削弱「本模组的 mod 文件只来自 <gameDir>/mods」这个结论。
+dependencies {
+    publishedRuntimeRuntimeOnly("com.tterrag.registrate:Registrate:${registrate_version}")
+}
+
+// ── W3 附：列出 dev 运行时类路径上的「第三方真 mod jar」 ──────────────────────────
+// 发布形态测试台要往 <gameDir>/mods 里补必需的第三方 mod（Create / Flywheel / Ponder /
+// JEI / Curios / CC&A / …）。那份清单必须与 dev 实际加载的**同一批** jar，不能手抄
+// （手抄必然漂移）。本任务只解析 configurations.runtimeClasspath，挑出带
+// META-INF/neoforge.mods.toml 且 modId **不含本模组五个 id** 的 jar，逐行写
+// 「绝对路径<TAB>modId 列表」。它**不参与** jar / processResources，对产物零影响。
+// 本模组自己那五个 id 必须排除：createoreexpansion / cews / transmutation 由模块发布 jar 提供，
+// coe_integration 属于根工程（发布形态里不装），skiller 是 jarJar 嵌套件（不该另有一份平铺 jar，
+// 否则 JarSelector 会看到两个路径不同的候选）。
+// 注意 configuration cache：动作闭包里**不许**引用脚本对象（configurations / logger / layout …），
+// 所以类路径先取成局部 Configuration 再捕获；日志走 task 自己的 logger。
+def w3DevRuntimeCp = configurations.runtimeClasspath
+tasks.register('w3ThirdPartyModJars') { t ->
+    t.group = 'coe'
+    t.description = 'W3: list third-party mod jars (META-INF/neoforge.mods.toml present) on the dev runtime classpath'
+    def outFile = layout.buildDirectory.file('patch/w3-third-party-mod-jars.txt')
+    t.inputs.files(w3DevRuntimeCp)
+    t.outputs.file(outFile)
+    t.doLast {
+        // 本工程自己的五个 id（平铺 jar 一份都不许有：三个由模块发布 jar 提供，
+        // coe_integration 属根工程、发布形态不装，skiller 是 jarJar 嵌套件）。
+        def ours = ['createoreexpansion', 'cews', 'transmutation', 'coe_integration', 'skiller'] as Set
+        // 游戏/加载器本体（neoforge-<v>.jar 等）由 MDG 的 modDevRuntimeDependencies 直接挂在
+        // java.class.path 上、FML 自己会发现它 —— 放进 mods/ 只会多一份重复。
+        def system = ['neoforge', 'minecraft'] as Set
+        def lines = []
+        w3DevRuntimeCp.files.each { f ->
+            if (!f.name.toLowerCase().endsWith('.jar')) {
+                return
+            }
+            def text = null
+            def zf = new java.util.zip.ZipFile(f)
+            try {
+                def entry = zf.getEntry('META-INF/neoforge.mods.toml')
+                if (entry == null) {
+                    return
+                }
+                zf.getInputStream(entry).withStream { is ->
+                    text = is.getText('UTF-8')
+                }
+            } finally {
+                zf.close()
+            }
+            // 只取**第一个 [[mods]] 段**里的 modId —— 后面那些 modId 全是 [[dependencies]] 的
+            // 依赖项（把 create 的 flywheel/ponder/sodium… 当成"本 jar 的 mod"就全错了）。
+            def m = (text =~ /(?ms)^\[\[mods\]\].*?^\s*modId\s*=\s*"([^"]+)"/)
+            if (!m.find()) {
+                return
+            }
+            def primary = m.group(1)
+            if (ours.contains(primary) || system.contains(primary)) {
+                return
+            }
+            lines << (f.absolutePath + '\t' + primary)
+        }
+        def target = outFile.get().asFile
+        target.parentFile.mkdirs()
+        target.setText(lines.sort().join('\n') + '\n', 'UTF-8')
+        t.logger.lifecycle("W3: ${lines.size()} third-party mod jar(s) -> ${target}")
+    }
+}
+
 // Sets up a dependency configuration called 'localRuntime'.
 // This configuration should be used instead of 'runtimeOnly' to declare
 // a dependency that will be present for runtime testing but that is

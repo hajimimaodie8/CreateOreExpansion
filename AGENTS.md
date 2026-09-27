@@ -115,6 +115,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 - `tools/check-package-heritage.ps1` —— 包名血统断言（基准 `fbf33cdf~1`）：非被迫改名（老包名空着却没回去）非 0 即 exit 1，无白名单。
 - `tools/check-skill-render-coverage.ps1` —— 策略渲染覆盖关卡（注册调用数 == 带渲染器的策略数 / 漏注册渲染器 = 预览静默消失 / 两个 outline 渲染器都得有槽位门）。改渲染器必跑。
 - `build/patch/*` 取证脚本（被 git 忽略，按需重生成）：`ChargerBandCheck.java` / `BandCheck.java`（转速分档逐整数比对）、`dump_light_squares.ps1` / `rasterize_top_face.ps1`（贴图取证）、`p3?-EVIDENCE.txt`（拆模块各阶段取证）。
+- `tools/prepare-run-published.ps1` —— **发布形态测试台**：清空 `<gameDir>/mods` → 装三个模块**发布 jar** + 必需第三方（清单由 Gradle 任务 `w3ThirdPartyModJars` 生成，取自缓存、**不下载**）→ 写 `eula.txt`/`server.properties`/sha256 清单。配套 run = 根 `build.gradle` 的 `publishedServer`/`publishedClient`（不绑 sourceSet + `loadedMods` 置空 ⇒ **只从 `mods/` 加载**，机理与源码出处见该段头注释）；作业单 `build/patch/w3-user-checklist.md`。
 
 ## 🌊 波系统与变器：现行口径（要点；细则见「长文档索引」）
 
@@ -154,9 +155,7 @@ cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build
 
 - **系列特性登记口径**（用户 2026-09-15 定稿）：common/SeriesTraits 是唯一入口——方块 .transform(SeriesTraits.addStellarstoneTraits()/addThunderiteTraits())、物品链上 .tag(AllModItemTags.STELLARSTONE_ITEMS/THUNDERITE_ITEMS)（Java 没有扩展方法，物品侧写不出 .addXxx()）；判定 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定（限定本模组命名空间）。**四个系列标签由 datagen 生成，手写文件禁止同名**（同名会让 processResources 报 duplicate 直接失败）。两个系列（含方块物品）免疫嬗乱销毁，该判定在 TransmutationDisorderEffect#canTransmutationDestroy 里调 SeriesTraits——方块物品进不了物品标签，故不能用标签覆盖。
 - **机器交互四条统一规则**（用户 2026-09-15 定稿）：① 空手右键某个面 = 开/关该面开口；② 空手右键指示灯 = 只切那盏灯对应的开口；③ 扳手右键 = 有特殊模式的机器只切模式、没模式的机器照旧切开口；④ 旋转必须 **Ctrl + 扳手右键**。
-  实现三件套：契约 **`common/machine/MachineInteraction`**（原 `content/machine/CewsMachine`，P2 改名并从 CEWS 挪到共享层；`hasModeSwitch()`；`onWrenched` 默认"吞掉但不旋转"，防 Create 默认旋转在没按 Ctrl 时生效；`rotateAsCreate()` 直接复用 `IWrenchable` 默认旋转、不复制逻辑；`onEmptyHandPortToggle`）、载荷 **`common/machine/MachineRotatePayload`**（服务端校验：本模组机器 + 无模式 + 手持扳手 + 距离）、客户端 `client/MachineRotateClient`（Ctrl 判定后取消本地交互并发包）。
-  **为什么 Ctrl 必须在客户端判定**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
-  副作用更正：`StellarWaveTransmuterBlock` 曾**没实现 `IWrenchable`**（`onWrenched` 无 `@Override`）→ 扳手不分发、切模式不生效；**这是基准 `fbf33cdf~1` 之前（P2 机器交互契约那轮）就修好的**，不记在本次模块分区的账上；规则本身现仍生效。
+  实现三件套（契约 `common/machine/MachineInteraction` / 载荷 `common/machine/MachineRotatePayload` / 客户端 `client/MachineRotateClient`）的逐条细节、来由与 `IWrenchable` 副作用更正 → `markdown_output/机器交互实现细节（AGENTS迁入）.md`（2026-09-28 为腾本文件预算原样迁出）。**Ctrl 的判定必须在客户端**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
 - **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文漏了 **17 条**（雷鸣合金整条材料线 11 条 + 能量场控制器 + 蓝宝石充能器/两个调节器 + 嬗变液方块与流体），英文客户端在这些条目上显示原始键名——已在 `d869e2d2` 补齐，英文名沿用「与 Stellarstone 同构」的规律。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
   ```powershell
   $en = Get-Content src\generated\resources\assets\createoreexpansion\lang\en_us.json -Raw -Encoding UTF8 | ConvertFrom-Json
