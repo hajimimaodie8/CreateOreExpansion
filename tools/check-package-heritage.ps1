@@ -106,10 +106,12 @@ try {
     $curMod = @{}
     $curPkg = @{}
     $curCls = @{}
+    $filesPerRoot = [ordered]@{}
     foreach ($rootName in $roots.Keys) {
         $rootPath = Join-Path $repoRoot $roots[$rootName]
         if (-not (Test-Path -LiteralPath $rootPath)) { throw "source root not found: $rootPath" }
         $rootAbs = (Resolve-Path -LiteralPath $rootPath).Path
+        $filesPerRoot[$rootName] = 0
         foreach ($f in (Get-ChildItem -LiteralPath $rootAbs -Recurse -File -Filter *.java)) {
             $jarRel = $f.FullName.Substring($rootAbs.Length).TrimStart('\', '/') -replace '\\', '/'
             if (-not $jarRel.StartsWith($prefix)) { continue }
@@ -118,10 +120,22 @@ try {
             if ($curMod.ContainsKey($jarRel)) { throw "same class path in two roots: $jarRel" }
             $curMod[$jarRel] = $rootName
             $curPkg[$jarRel] = $s.Pkg
+            $filesPerRoot[$rootName] = $filesPerRoot[$rootName] + 1
             if (-not $curCls.ContainsKey($s.Cls)) { $curCls[$s.Cls] = New-Object System.Collections.Generic.List[string] }
             $curCls[$s.Cls].Add($jarRel)
         }
     }
+
+    # W8-b (2026-09-30): a root that exists but contributes no class is the silent-escape
+    # shape this repository has hit four times in check-layering (P3d-beta/P3w/P3y/P3z):
+    # the run still completes, every baseline class of that root is then classified as
+    # GONE, the accounting line still balances, and the script exits 0.  A "class gone"
+    # verdict for a whole module is never a real answer, so it fails here instead.
+    $emptyHeritageRoots = @()
+    foreach ($rootName in $roots.Keys) {
+        if ([int]$filesPerRoot[$rootName] -lt 1) { $emptyHeritageRoots = $emptyHeritageRoots + ($rootName + ' (' + $roots[$rootName] + ')') }
+    }
+    if ($emptyHeritageRoots.Count -gt 0) { throw ('source root(s) contributed no class: ' + ($emptyHeritageRoots -join ', ') + ' -- the classification below would report them all as GONE and still exit 0') }
 
     # which modules claim each package, right now
     $pkgOwners = @{}

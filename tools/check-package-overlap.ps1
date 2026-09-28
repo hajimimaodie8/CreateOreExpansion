@@ -61,12 +61,14 @@ $roots = [ordered]@{
 $byPackage = @{}
 $filesPerRoot = [ordered]@{}
 $pkgsPerRoot = [ordered]@{}
+$missingRoots = @()
 
 foreach ($rootName in $roots.Keys) {
     $rootPath = Join-Path $repoRoot $roots[$rootName]
     $filesPerRoot[$rootName] = 0
     if (-not (Test-Path -LiteralPath $rootPath)) {
         Write-Host ("MISSING ROOT: {0} -> {1}" -f $rootName, $roots[$rootName])
+        $missingRoots = $missingRoots + $rootName
         continue
     }
     $pkgSet = New-Object 'System.Collections.Generic.HashSet[string]'
@@ -92,6 +94,17 @@ foreach ($rootName in $roots.Keys) {
     $pkgsPerRoot[$rootName] = $pkgSet.Count
 }
 
+# ---------------------------------------------------------------------------
+# W8-b (2026-09-30): A ROOT THAT IS MISSING OR EMPTY MUST FAIL, NOT SKIP.
+#   Before this, a renamed/moved root printed "MISSING ROOT: ..." and carried on; the
+#   overlap set then simply did not contain that root's packages, so the audit printed
+#   "OK: 0 packages are claimed by more than one root" and exited 0 -- the exact
+#   silent-escape shape check-layering.ps1 hit four times (P3d-beta core / P3w coe /
+#   P3y transmutation / P3z cews) and that this script's own header warns about.
+#   A root with 0 .java files is the same hole in a different disguise (the directory
+#   survives a bulk move), so it fails too.
+# ---------------------------------------------------------------------------
+
 Write-Host 'package-overlap audit: five java source roots, grouped by file directory -> package'
 Write-Host ''
 foreach ($rootName in $roots.Keys) {
@@ -99,6 +112,22 @@ foreach ($rootName in $roots.Keys) {
         $rootName, $roots[$rootName], $filesPerRoot[$rootName], $pkgsPerRoot[$rootName])
 }
 Write-Host ''
+
+# W8-b: the negative result below is only meaningful when every root was really read.
+$badRoots = @($missingRoots)
+foreach ($rootName in $roots.Keys) {
+    if ($missingRoots -notcontains $rootName -and [int]$filesPerRoot[$rootName] -lt 1) { $badRoots = $badRoots + $rootName }
+}
+if ($badRoots.Count -gt 0) {
+    Write-Host ("VIOLATION: {0} source root(s) missing or empty -- the overlap set below would be" -f $badRoots.Count)
+    Write-Host '           silently incomplete, so "0 overlaps" would be a false negative:'
+    foreach ($r in $badRoots) { Write-Host ("  {0,-14} {1}  files={2}" -f $r, $roots[$r], $filesPerRoot[$r]) }
+    Write-Host ''
+    Write-Host 'FIX: point the $roots table at the tree that actually holds that module''s sources,'
+    Write-Host '     or restore the files.  Do NOT delete the entry: a root missing from this table'
+    Write-Host '     is what makes a real JPMS collision invisible.'
+    exit 1
+}
 
 if ($Verbose) {
     Write-Host 'all packages by root:'

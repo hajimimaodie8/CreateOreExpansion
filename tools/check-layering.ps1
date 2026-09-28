@@ -37,6 +37,37 @@
 # paths (they are COE now, because that is the module they ship in), which is the same
 # "target classification" W6-a introduced for the wave engine.
 #
+# W8-b (2026-09-30) adds the missing half of this tool: PHYSICAL MODULE vs JUDGED LAYER.
+#   Everything above decides a file's layer from its PATH, so a file that lands under a
+#   SHARED prefix (common/**, compat/**, client/**, data/**, util/**, integration/**) is
+#   never judged as a source at all -- its outgoing edges are unconstrained, no matter
+#   which Gradle module it physically ships in.  Two consequences, both silent:
+#     (1) a file placed in the WRONG module still looks fine, because only its package
+#         path is read (a CEWS machine dropped into coe/src/main/java becomes a coe-owned
+#         file that no gate notices, and cews.jar then simply misses it);
+#     (2) a SHARED-path file inside :coe may import :transmutation without ever tripping
+#         the COE -> TRANS rule, because the rule was applied to "SHARED".
+#   The fix is two new assertion groups, both derived, neither a whitelist:
+#     M1  each module's tree may only contain layers from $moduleAllowedLayers (see the
+#         table for the architecture basis of each set), and each of the five roots must
+#         contribute at least one file -- the "layer count 0 and still exit 0" escape
+#         this tool has hit four times (P3d-beta core / P3w coe / P3y transmutation /
+#         P3z cews) is now a hard failure instead of a plausible-looking number.
+#     M2  a SHARED-path file is judged by the MODULE it ships in for direction purposes:
+#         :coe -> COE, :cews -> CEWS, :transmutation -> TRANS, core -> CORE, and the root
+#         tree (the integration layer, which ships in no module jar) stays unconstrained.
+#         Measured before landing: 22 SHARED-path files live in content modules and this
+#         rule produced 0 new violations, so it is a pure strengthening.
+#   SHARED / CORE handling, stated explicitly:
+#     * SHARED is allowed in every content module.  It means "infrastructure that is not
+#       layer-owned", and each module legitimately holds some (the @Mod entry, registries
+#       for its own layer's shared plumbing).  It is NOT allowed to be an escape hatch --
+#       that is what M2 closes.
+#     * CORE is decided by the `^core/` prefix alone, so "core contains only CORE" is a
+#       TAUTOLOGY (the table entry is documentation, not a detector).  The real core-side
+#       guards stay where they were: the CORE -> COE/CEWS/TRANS direction rule above,
+#       plus tools\check-package-overlap.ps1 for the JPMS package rule.
+#
 # Layer of a FILE is decided purely by its path (see Get-FileLayer).
 # Layer of an IMPORT / fully-qualified reference is decided by its package (see Get-TargetLayer),
 # with CORE membership decided by which classes actually live under core/src/main/java.
@@ -99,15 +130,49 @@ $prefix      = 'com.hjmmd_8.createoreexpansion.'
 # compat/jei/cews/**, client/renderer/cews/**), so CEWS stays 133 and no rule was added.
 # ---------------------------------------------------------------------------
 $roots = @(
-    @{ Path = $pkgRoot;      Prefix = '' },
-    @{ Path = $corePkgRoot;  Prefix = 'core\' },
-    @{ Path = $coePkgRoot;   Prefix = '' },
-    @{ Path = $transPkgRoot; Prefix = '' },
-    @{ Path = $cewsPkgRoot;  Prefix = '' }
+    @{ Module = 'root';          Path = $pkgRoot;      Prefix = '' },
+    @{ Module = 'core';          Path = $corePkgRoot;  Prefix = 'core\' },
+    @{ Module = 'coe';           Path = $coePkgRoot;   Prefix = '' },
+    @{ Module = 'transmutation'; Path = $transPkgRoot; Prefix = '' },
+    @{ Module = 'cews';          Path = $cewsPkgRoot;  Prefix = '' }
 )
 
 foreach ($root in $roots) {
     if (-not (Test-Path $root.Path)) { throw "package root not found: $($root.Path)" }
+}
+
+# ---------------------------------------------------------------------------
+# W8-b: the physical-module assertion tables (see the W8-b note in the header).
+#
+# $moduleAllowedLayers -- the ONLY basis is the architecture, and each set is written
+# out with its reason so a later reader can check the claim instead of trusting it:
+#   root          = integration layer.  It is NOT a shipped artifact (the three module
+#                   jars are), so a layer-owned file left here reaches no module jar --
+#                   exactly the data-side hole E2/F1 already pin.  Today it holds 7
+#                   dev-only files, every one of them on a SHARED path.
+#   core          = the JarJar-nested shared library.  Decided by the `^core/` prefix,
+#                   so this set is documentation (see header).
+#   coe           = layer 1: mineral line + wave engine + transmutation mechanism + the
+#                   skill system.  SHARED allowed (its @Mod entry, its own registries).
+#   cews          = layer 2: wave machines.  SHARED allowed for the same reason.
+#   transmutation = layer 3: the empty @Mod shell today.  SHARED allowed for the same
+#                   reason.
+# $moduleOwnLayer -- the layer a SHARED-path file in that module is judged as for the
+# direction rules (M2).  '' means "do not constrain" (the integration layer only).
+# ---------------------------------------------------------------------------
+$moduleAllowedLayers = [ordered]@{
+    'root'          = @('SHARED')
+    'core'          = @('CORE')
+    'coe'           = @('COE', 'SHARED')
+    'cews'          = @('CEWS', 'SHARED')
+    'transmutation' = @('TRANS', 'SHARED')
+}
+$moduleOwnLayer = @{
+    'root'          = ''
+    'core'          = 'CORE'
+    'coe'           = 'COE'
+    'cews'          = 'CEWS'
+    'transmutation' = 'TRANS'
 }
 
 # ---------------------------------------------------------------------------
@@ -351,9 +416,53 @@ function Get-CodeOnly {
 # Rel uses the platform separator, plus the root's Prefix when that root owns a whole
 # layer (core), so Get-FileLayer can tell them apart before looking at packages.
 $entries = New-Object System.Collections.ArrayList
+$filesPerModule = [ordered]@{}
 foreach ($root in $roots) {
+    $filesPerModule[$root.Module] = 0
     foreach ($f in (Get-ChildItem -Recurse -Path $root.Path -Filter *.java | Sort-Object FullName)) {
-        [void]$entries.Add(@{ Path = $f.FullName; Rel = $root.Prefix + $f.FullName.Substring($root.Path.Length + 1) })
+        [void]$entries.Add(@{
+            Module = $root.Module
+            Path   = $f.FullName
+            Rel    = $root.Prefix + $f.FullName.Substring($root.Path.Length + 1)
+        })
+        $filesPerModule[$root.Module] = $filesPerModule[$root.Module] + 1
+    }
+}
+
+# ---------------------------------------------------------------------------
+# M1 (W8-b): each module contributes at least one file and only contains layers it is
+# allowed to contain.  See the two tables above and the header note.
+# ---------------------------------------------------------------------------
+$moduleProblems = New-Object System.Collections.ArrayList
+$moduleLayers   = @{}
+foreach ($m in $moduleAllowedLayers.Keys) {
+    $moduleLayers[$m] = @{}
+}
+foreach ($e in $entries) {
+    $l = Get-FileLayer $e.Rel
+    if (-not $moduleLayers[$e.Module].ContainsKey($l)) { $moduleLayers[$e.Module][$l] = 0 }
+    $moduleLayers[$e.Module][$l]++
+}
+
+$emptyModules = @()
+foreach ($m in $moduleAllowedLayers.Keys) {
+    if ([int]$filesPerModule[$m] -lt 1) { $emptyModules = $emptyModules + $m }
+}
+if ($emptyModules.Count -gt 0) {
+    [void]$moduleProblems.Add('module(s) contributed no .java file at all: [' + ($emptyModules -join ',') + '] -- that module is not audited, and its layer counts read 0 while the tool still exits 0')
+}
+
+foreach ($m in $moduleAllowedLayers.Keys) {
+    $unexpected = @()
+    foreach ($l in @($moduleLayers[$m].Keys)) {
+        if ($moduleAllowedLayers[$m] -notcontains $l) {
+            $unexpected = $unexpected + ($l + '=' + $moduleLayers[$m][$l])
+        }
+    }
+    if ($unexpected.Count -gt 0) {
+        $sample = @($entries | Where-Object { $_.Module -eq $m -and ($moduleAllowedLayers[$m] -notcontains (Get-FileLayer $_.Rel)) } |
+            Select-Object -First 5 | ForEach-Object { $_.Rel })
+        [void]$moduleProblems.Add('module ' + $m + ' contains layer(s) it may not contain: [' + ($unexpected -join ',') + '] (allowed: [' + ($moduleAllowedLayers[$m] -join ',') + ']) e.g. [' + ($sample -join '; ') + '] -- the file ships in the wrong Gradle module; check-layering would still judge it by its path, so nothing else notices')
     }
 }
 
@@ -367,14 +476,22 @@ foreach ($e in $entries) {
 }
 
 $violations = New-Object System.Collections.ArrayList
+$moduleEdges = New-Object System.Collections.ArrayList
 $stats = @{ 'COE' = 0; 'CEWS' = 0; 'TRANS' = 0; 'SHARED' = 0; 'CORE' = 0 }
 $edgeStats = @{}
 
 foreach ($e in $entries) {
     $rel = $e.Rel
-    $from = Get-FileLayer $rel
-    $stats[$from]++
-    if ($from -eq 'SHARED') { continue }        # SHARED never judged as a source
+    # W8-b (M2): the PATH decides the layer, but a SHARED path carries no layer at all --
+    # so for direction purposes such a file is judged by the MODULE it ships in.  Without
+    # this, a `common/**` file inside :coe could import :transmutation and both the
+    # "SHARED is never a source" rule and the COE -> TRANS rule would stay silent.
+    $fromPath = Get-FileLayer $rel
+    $from = $fromPath
+    if ($fromPath -eq 'SHARED') { $from = $moduleOwnLayer[$e.Module] }
+    $stats[$fromPath]++
+    if ($from -eq 'SHARED' -or $from -eq '') { continue }        # the integration layer is unconstrained
+    $moduleJudge = ($fromPath -ne $from)
 
     $lines = [System.IO.File]::ReadAllLines($e.Path, [System.Text.Encoding]::UTF8)
     $code = Get-CodeOnly $lines
@@ -422,6 +539,11 @@ foreach ($e in $entries) {
             $edge = "$from -> $to"
             if (-not $edgeStats.ContainsKey($edge)) { $edgeStats[$edge] = 0 }
             $edgeStats[$edge]++
+            if ($moduleJudge) {
+                # W8-b (M2): reported separately, with the MODULE named, because the file's
+                # PATH says SHARED -- that is exactly why it escaped until now.
+                [void]$moduleEdges.Add(("{0} [{1}, path-judged SHARED]{2} -> {3}{4}   ({5})" -f $rel, $e.Module, (":$lineNo"), $to, $tag, $fqn))
+            }
             [void]$violations.Add(("{0}:{1} -> {2}{3}   ({4})" -f $rel, $lineNo, $to, $tag, $fqn))
         }
     }
@@ -430,19 +552,43 @@ foreach ($e in $entries) {
 Write-Host 'layering check: src/main/java + core/src/main/java + coe/src/main/java + transmutation/src/main/java + cews/src/main/java'
 Write-Host ('  files by layer : COE={0}  CEWS={1}  TRANS={2}  SHARED={3}  CORE(library)={4}' -f $stats['COE'], $stats['CEWS'], $stats['TRANS'], $stats['SHARED'], $stats['CORE'])
 Write-Host '  forbidden edge directions checked : COE->CEWS, COE->TRANS, TRANS->CEWS, CEWS->TRANS, CORE->COE/CEWS/TRANS'
+Write-Host '  W8-b: a SHARED-path file is additionally judged by the MODULE it ships in (M2)'
+foreach ($m in $moduleAllowedLayers.Keys) {
+    $lset = @($moduleLayers[$m].Keys | Sort-Object)
+    Write-Host ('  module {0,-14} files={1,-4} layers={{ {2} }}  allowed={{ {3} }}' -f `
+        $m, $filesPerModule[$m], ($lset -join ', '), ($moduleAllowedLayers[$m] -join ', '))
+}
 if ($NoFqn) { Write-Host '  (fully-qualified-reference pass disabled by -NoFqn)' }
 
-if ($violations.Count -eq 0) {
-    Write-Host 'OK: no forbidden cross-layer dependency found.'
+# ---------------------------------------------------------------------------
+# M1 / M2 (W8-b) verdicts.  M1 problems are their own list because they are a different
+# kind of statement ("this file is in the wrong module") from a direction violation.
+# ---------------------------------------------------------------------------
+if ($moduleProblems.Count -gt 0) {
+    Write-Host ''
+    Write-Host ('MODULE/LAYER MISMATCHES ({0}):' -f $moduleProblems.Count)
+    foreach ($p in $moduleProblems) { Write-Host ('  ' + $p) }
+}
+
+if ($moduleEdges.Count -gt 0) {
+    Write-Host ''
+    Write-Host ('MODULE-LEVEL DIRECTION VIOLATIONS ({0}) -- file sits on a SHARED path, so the old rule saw nothing:' -f $moduleEdges.Count)
+    foreach ($v in ($moduleEdges | Sort-Object)) { Write-Host ('  ' + $v) }
+}
+
+if ($violations.Count -eq 0 -and $moduleProblems.Count -eq 0) {
+    Write-Host 'OK: no forbidden cross-layer dependency found (M1 module/layer sets OK, M2 module-level edges 0).'
     exit 0
 }
 
-Write-Host ''
-Write-Host ('VIOLATIONS ({0}):' -f $violations.Count)
-foreach ($v in ($violations | Sort-Object)) { Write-Host ('  ' + $v) }
-Write-Host ''
-Write-Host 'by direction:'
-foreach ($k in ($edgeStats.Keys | Sort-Object)) { Write-Host ('  {0} : {1}' -f $k, $edgeStats[$k]) }
+if ($violations.Count -gt 0) {
+    Write-Host ''
+    Write-Host ('VIOLATIONS ({0}):' -f $violations.Count)
+    foreach ($v in ($violations | Sort-Object)) { Write-Host ('  ' + $v) }
+    Write-Host ''
+    Write-Host 'by direction:'
+    foreach ($k in ($edgeStats.Keys | Sort-Object)) { Write-Host ('  {0} : {1}' -f $k, $edgeStats[$k]) }
+}
 if ($whitelist.Count -eq 0) { Write-Host 'whitelist: (empty)' }
 else { Write-Host ('whitelist entries: ' + $whitelist.Count) }
 exit 1

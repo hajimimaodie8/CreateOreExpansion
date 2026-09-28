@@ -59,14 +59,31 @@ function Read-Text([string]$path) {
 
 # Structural matching must never be fooled by comments: a commented-out
 # `StrategyRenderers.register(...)` line, or a javadoc example of one, is NOT a
-# registration.  So every regex below runs on comment-stripped source.  (Block
-# comments are removed first, then line comments; this is a source-level parser,
-# not a Java parser -- it is deliberately simpler than the thing it guards.)
+# registration.  So every regex below runs on comment-stripped source.
+#
+# W8-b (2026-09-30): the strip used to be two sequential regex passes --
+#   $text = [regex]::Replace($text, '/\*.*?\*/', '')    # block comments FIRST
+#   $text = [regex]::Replace($text, '//[^\r\n]*', '')   # line comments SECOND
+# -- and that order fails in the quiet direction.  If a LINE comment contains "/*"
+# (an ordinary thing to write, e.g. "// see strategy/**"), the block pass pairs that
+# "/*" with the NEXT "*/" anywhere later in the file and deletes everything between,
+# real code included.  The mirror order is no better: a "//" inside a block comment
+# makes the line pass delete the "*/" that closes it, leaving an unterminated "/*"
+# that can pair with a LATER "*/".  This is the SAME defect W6-d fixed in
+# tools\check-module-selfsufficiency.ps1 (Get-SourceCode), found by the same survey.
+# The replacement is ONE left-to-right pass with an alternation, i.e. the exact
+# semantics "strip whichever comment starts first":
+#     (?s:/\*.*?\*/)   a block comment, closed at its FIRST "*/"
+#     (?m://.*$)       a line comment, to the end of the line
+# .NET scans left to right and takes the LEFTMOST match, so neither order problem can
+# occur.  This is a STRICTENING: the visible-text set is a superset of what either
+# sequential order produced for real code.
+# Remaining, documented imprecision (unchanged): a "//" inside a STRING literal still
+# cuts the rest of that line.  Closing that needs a real tokenizer; a buggy tokenizer
+# is a much worse failure mode than this known, one-line-bounded one.
 function Get-Code([string]$path) {
     $text = Read-Text $path
-    $text = [regex]::Replace($text, '/\*.*?\*/', '',
-        [System.Text.RegularExpressions.RegexOptions]::Singleline)
-    $text = [regex]::Replace($text, '//[^\r\n]*', '')
+    $text = [regex]::Replace($text, '(?s:/\*.*?\*/)|(?m://.*$)', '')
     return $text
 }
 

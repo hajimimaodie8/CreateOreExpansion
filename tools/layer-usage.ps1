@@ -211,6 +211,20 @@ $roots = @(
 foreach ($root in $roots) {
     if (-not (Test-Path $root.Path)) { throw "package root not found: $($root.Path)" }
 }
+# W8-b (2026-09-30): a root that EXISTS but holds no .java file is the same escape as a
+# missing root, and this report is the tool the whole split was steered by -- it printed
+# "COE=0 / CEWS=0 / TRANS=0" while exiting 0 four times during P3d-beta/P3w/P3y/P3z.
+# The four content roots and the core library root are therefore hard-checked here.
+$emptyRoots = @()
+foreach ($root in $roots) {
+    $n = @(Get-ChildItem -Recurse -Path $root.Path -Filter *.java).Count
+    if ($n -lt 1) { $emptyRoots = $emptyRoots + $root.Path }
+}
+if (-not (Test-Path (Join-Path $Repo 'core\src\main\java\com\hjmmd_8\createoreexpansion'))) { $emptyRoots = $emptyRoots + 'core\src\main\java (MISSING)' }
+elseif (@(Get-ChildItem -Recurse -Path (Join-Path $Repo 'core\src\main\java\com\hjmmd_8\createoreexpansion') -Filter *.java).Count -lt 1) { $emptyRoots = $emptyRoots + 'core\src\main\java (0 files)' }
+if ($emptyRoots.Count -gt 0) {
+    throw ('source root(s) with no .java file: ' + ($emptyRoots -join ' | ') + ' -- every per-layer count below would read 0 and this report would still exit 0')
+}
 
 # ---------------------------------------------------------------------------
 # P3l: the library tree is a SECOND source root, and `core` compiles against

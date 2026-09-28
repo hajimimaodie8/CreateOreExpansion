@@ -151,6 +151,21 @@
 #      per-weight .add(...) argument order, deduplicated by recipe-type id) and compares it
 #      element for element with a fixed 6-entry table.
 #
+# W8-b (2026-09-30) -- ANTI-VACUITY COMPLETION + THE CROSS-LAYER PROBE TABLE
+#   Every assertion in this script is of the shape "find a pattern, then judge the
+#   matches".  Such an assertion passes for two different reasons -- the tree is clean,
+#   or the pattern stopped matching -- and the second one is invisible.  W8 added the
+#   general guard (Get-GuardProblem) plus guards for the sections that had none; W8-b
+#   finished the survey and added the four that were still missing:
+#     B2f  the mixin config's `mixins` list really parses (without it B2d loops zero times)
+#     D2b  the D2 forbidden-needle names are still live, proven against core LayerBootstrap
+#     D4b  the D4 Layer* register regex is still live, proven against core LayerBootstrap
+#     Y1b  each of the five literal source roots contributed at least one .java file
+#   and split the single CROSS classification into CROSS-INJAR (the target travels inside
+#   the referring jar, so it can never fail) / CROSS-LAYER-PROBE (it genuinely cannot be
+#   reached, so it must be registered in $crossLayerProbeReasons with a reason) /
+#   CROSS-DEAD (always red).  See the Y section below for the two-way guard.
+#
 # KNOWN GAP (do not mistake this script for proof of runtime behaviour)
 #   Everything here is static jar/source inspection.  It cannot prove that Mixin really
 #   applied a config, that JEI really assembled a category, or that the game boots with
@@ -530,12 +545,27 @@ function Get-LangMap {
 #         OWN          the class is declared by a source file of the SAME module that
 #                      contains the literal -> the literal must resolve inside that
 #                      module's own jar.  Failure here = the WaveJadePlugin incident.
-#         CROSS        the class is declared by another module of this project.
-#                      Failing at run time is ALLOWED here and is by design ("one layer
-#                      is absent" is a supported install), but the class must really
-#                      exist in the OWNER's jar -- a literal naming a class that no
-#                      jar contains is the "deleted class left in the wake list" shape
-#                      (W6-d removed one such entry by hand).
+#         CROSS        the class is declared by another module of this project.  W8-b
+#                      (2026-09-30) SPLIT this one bucket into three, because "CROSS"
+#                      as a single PASS was hiding the actual question -- see the
+#                      CROSS-INJAR / CROSS-LAYER-PROBE note below:
+#           CROSS-INJAR        the class is reachable from the REFERRING jar itself
+#                              (its own entries or a nested META-INF/jarjar/*.jar).
+#                              The literal cannot fail for absence, so nothing has to
+#                              be allowed: it is a plain, always-resolvable reference.
+#                              Measured instance: :cews -> core's SableSubLevelBridge,
+#                              which travels INSIDE cews.jar's nested core library.
+#           CROSS-LAYER-PROBE  the class is NOT reachable from the referring jar.  The
+#                              failure is then a deliberate "is that layer installed?"
+#                              probe, and it must be registered in
+#                              $crossLayerProbeReasons with a reason.  Unregistered =
+#                              RED; registered but unused = RED; empty table = RED.
+#                              (This is not a whitelist for violations: every entry is
+#                              a REFERENCE, not a broken edge, and the two-way guard
+#                              above keeps the table in step with the tree.)
+#           CROSS-DEAD         no owner jar contains the class -> always RED: the
+#                              "deleted class left in the wake list" shape (W6-d
+#                              removed one such entry by hand).
 #         OPTIONAL     a non-project namespace, i.e. a probe whose whole purpose is to
 #                      detect that a third-party mod is NOT installed.  It must match
 #                      an entry of $optionalProbeReasons (namespace -> why it may fail)
@@ -549,6 +579,11 @@ function Get-LangMap {
 #       when its .class entry is in the jar OR inside one of the jar's nested
 #       META-INF/jarjar/*.jar entries (that is exactly how :cews reaches core's
 #       SableSubLevelBridge, and how :coe reaches its own mixins).
+#
+#   Y1b the SOURCE WALK behind Y1/Y2 is live: each of the five roots must contribute at
+#       least one .java file.  Without it a renamed/emptied root makes Y1 report
+#       "filesChecked=<fewer>" and still PASS, and Y2 simply stops seeing that root's
+#       literals.
 #
 #   Y3  the literal SCANNER is live (anti-vacuity, see Get-GuardProblem): the three
 #       shapes must each be seen at least once and the three classifications must each
@@ -685,12 +720,14 @@ function Test-ClassLiteralResolution {
         [object[]]$Literals,
         [hashtable]$JarClasses,          # module -> string[] of .class entry paths
         [string[]]$OptionalNamespaces,   # allowed non-project probe namespaces, each ending with '.'
+        [System.Collections.Specialized.OrderedDictionary]$CrossLayerProbeReasons = $null,
         [int]$MinSites = 1
     )
     $problems = New-Object System.Collections.Generic.List[string]
     $vacuity  = New-Object System.Collections.Generic.List[string]
     $table    = New-Object System.Collections.Generic.List[object]
-    $counts   = @{ OWN = 0; CROSS = 0; OPTIONAL = 0 }
+    $counts   = @{ OWN = 0; CROSSINJAR = 0; CROSSPROBE = 0; CROSSDEAD = 0; OPTIONAL = 0 }
+    $probeUse = @{}
     if ($null -eq $Sources)  { $Sources = @() }
     if ($null -eq $Literals) { $Literals = @() }
 
@@ -726,14 +763,34 @@ function Test-ClassLiteralResolution {
                     $problems.Add('own-class literal not in the same jar: ' + $lit.Module + '/' + $lit.Rel + ' (' + $lit.Shape + ') names ' + $lit.Fqn + ' and ' + $lit.Module + '.jar has no ' + $entry + $(if ($why.Count -gt 0) { ' -- ' + ($why -join '; ') } else { '' }))
                 }
             } else {
-                $kind = 'CROSS'
-                $counts.CROSS++
+                # W8-b (task 2): CROSS is THREE different situations, and "CROSS = PASS"
+                # was answering none of them.  The question that decides which one it is:
+                # can the REFERRING jar reach the class at all?  (own entries + nested
+                # META-INF/jarjar jars -- the same reachability the game has.)
+                $selfReach = ($JarClasses.ContainsKey($lit.Module)) -and ($JarClasses[$lit.Module] -contains $entry)
                 $alive = @()
                 foreach ($o in $owners) {
                     if (($JarClasses.ContainsKey($o)) -and ($JarClasses[$o] -contains $entry)) { $alive = $alive + $o }
                 }
                 if ($alive.Count -eq 0) {
+                    $kind = 'CROSS-DEAD'
+                    $counts.CROSSDEAD++
                     $problems.Add('cross-module literal is dead: ' + $lit.Module + '/' + $lit.Rel + ' (' + $lit.Shape + ') names ' + $lit.Fqn + ' owned by [' + ($owners -join ',') + '] but no owner jar contains ' + $entry + ' -- the class was renamed or deleted and the wake list still points at it')
+                } elseif ($selfReach) {
+                    # The reference is always resolvable in this jar set.  Nothing needs to
+                    # be "allowed": report it as what it is, a same-classpath reference that
+                    # only LOOKS cross-module because the owner is a different source root.
+                    $kind = 'CROSS-INJAR'
+                    $counts.CROSSINJAR++
+                } else {
+                    $kind = 'CROSS-LAYER-PROBE'
+                    $counts.CROSSPROBE++
+                    $registered = ($null -ne $CrossLayerProbeReasons) -and $CrossLayerProbeReasons.Contains($lit.Fqn)
+                    if ($registered) {
+                        $probeUse[$lit.Fqn] = $true
+                    } else {
+                        $problems.Add('unregistered cross-layer probe: ' + $lit.Module + '/' + $lit.Rel + ' (' + $lit.Shape + ') names ' + $lit.Fqn + ', declared by [' + ($owners -join ',') + '] but NOT reachable from ' + $lit.Module + '.jar (no own entry, no nested jarjar entry). A reference that cannot resolve is only acceptable when it is a deliberate presence probe, so either it is a mistake or it belongs in $crossLayerProbeReasons with a reason')
+                    }
                 }
             }
         } else {
@@ -763,9 +820,35 @@ function Test-ClassLiteralResolution {
         $g = Get-GuardProblem -Actual $n -Minimum 1 -Label ('literal shape ' + $shape) -Suspected 'that literal shape is no longer produced anywhere, so its half of the audit is vacuous'
         if ($g) { $vacuity.Add($g) }
     }
-    foreach ($kind in @('OWN', 'CROSS', 'OPTIONAL')) {
+    # W8-b: the guarded set is "every literal that is a PROJECT class reference", i.e.
+    # OWN + the two reachable/unreachable CROSS kinds.  A CROSS-DEAD literal is not a
+    # classification at all (it is a defect), so it is not required to be seen.
+    $projectKinds = [int]$counts.OWN + [int]$counts.CROSSINJAR + [int]$counts.CROSSPROBE
+    $g = Get-GuardProblem -Actual $projectKinds -Minimum 1 -Label 'project-class literal classification' -Suspected 'no project-class literal was classified at all (OWN / CROSS-INJAR / CROSS-LAYER-PROBE all zero)'
+    if ($g) { $vacuity.Add($g) }
+    foreach ($kind in @('OWN', 'OPTIONAL')) {
         $g = Get-GuardProblem -Actual ([int]$counts[$kind]) -Minimum 1 -Label ('classification ' + $kind) -Suspected 'no literal of this kind was found; if that is a deliberate refactor, update this table, otherwise the scanner or the sources drifted'
         if ($g) { $vacuity.Add($g) }
+    }
+    # W8-b: the two-way guard on the deliberate cross-layer probe table.  This is the
+    # anti-vacuity discipline the table must carry, and it is deliberately strict in
+    # BOTH directions:
+    #   * an un-reachable cross literal with no entry  -> already a problem above,
+    #   * an entry no literal uses                     -> problem here (a stale reason
+    #                                                     hides the next real one),
+    #   * an empty table                               -> problem here (then the whole
+    #     CROSS-LAYER-PROBE classification above is unreachable code).
+    if ($null -eq $CrossLayerProbeReasons) {
+        $g = Get-GuardProblem -Actual 0 -Minimum 1 -Label 'cross-layer probe table' -Suspected 'the deliberate cross-layer probe table was not passed in, so the CROSS-LAYER-PROBE classification cannot be judged'
+        if ($g) { $vacuity.Add($g) }
+    } else {
+        $g = Get-GuardProblem -Actual $CrossLayerProbeReasons.Count -Minimum 1 -Label 'cross-layer probe table' -Suspected 'the deliberate cross-layer probe table is empty: delete this guard line together with the table in the same commit, or the CROSS-LAYER-PROBE half of the audit is vacuous'
+        if ($g) { $vacuity.Add($g) }
+        foreach ($k in $CrossLayerProbeReasons.Keys) {
+            if (-not $probeUse.ContainsKey($k)) {
+                $problems.Add('stale cross-layer probe reason: $crossLayerProbeReasons registers ' + $k + ' but no literal of any module names it any more -- remove the entry (a reason for a reference that does not exist hides the next real one)')
+            }
+        }
     }
 
     return [pscustomobject]@{ Table = $table.ToArray(); Problems = $problems.ToArray(); Vacuity = $vacuity.ToArray(); Counts = $counts }
@@ -791,7 +874,19 @@ if ($SelfTest) {
     $jeiEntry   = 'com/hjmmd_8/createoreexpansion/compat/jei/WaveJadePlugin.class'
     $coeRtEntry = 'com/hjmmd_8/createoreexpansion/common/registry/coe/CoeRecipeTypes.class'
     $sableEntry = 'dev/ryanhcode/sable/companion/math/Pose3dc.class'
+    $sableBridgeEntry = 'com/hjmmd_8/createoreexpansion/compat/sable/SableSubLevelBridge.class'
     $optNs      = @('dev.ryanhcode.sable.')
+
+    # W8-b: the three table shapes the cross-layer-probe guard distinguishes.  An EMPTY
+    # table adds a VACUITY (the classification is unreachable), a table entry no literal
+    # uses adds a PROBLEM (stale reason), and neither touches the literal verdicts.
+    $clpEmpty = [ordered]@{}
+    $clpUnused = [ordered]@{ ($P + 'nothing.UsesThis') = 'fixture: a table entry no literal names' }
+    $clpCoe = [ordered]@{ ($P + 'common.registry.coe.CoeRecipeTypes') = 'fixture: core wake-list presence probe for the :coe layer' }
+    $clpCoePlusStale = [ordered]@{
+        ($P + 'common.registry.coe.CoeRecipeTypes') = 'fixture: core wake-list presence probe for the :coe layer'
+        ($P + 'common.registry.transmutation.TransmutationRecipeTypes') = 'fixture: STALE entry -- no fixture literal names this'
+    }
 
     # S1 GREEN: the healthy post-W6-d shape (file at compat/jade, package compat/jade, jar agrees)
     $s1Src = @(New-Fake 'coe' 'compat\jade\WaveJadePlugin.java' "package $($P)compat.jade;`nclass WaveJadePlugin {}")
@@ -842,6 +937,25 @@ if ($SelfTest) {
     # S8 RED: the probe target IS packaged in one of our jars
     $s8Jar = @{ 'cews' = (@(New-Set @($sableEntry))) }
 
+    # S15 (W8-b) GREEN: CROSS-INJAR -- the target is declared by ANOTHER root (core) but
+    # travels inside the REFERRING jar (cews.jar nests core).  Nothing has to be allowed
+    # here: the reference always resolves, so it must classify as CROSS-INJAR, not as a
+    # "cross layer, failing is fine" probe.  This is the real shape of
+    # :cews -> compat.sable.SableSubLevelBridge.
+    $s15Src = @(
+        (New-Fake 'core' 'compat\sable\SableSubLevelBridge.java' "package $($P)compat.sable;`nclass SableSubLevelBridge {}"),
+        (New-Fake 'cews' 'common\registry\cews\CewsMod.java' "package $($P)common.registry.cews;`nclass CewsMod {}")
+    )
+    $s15Lit = @(New-Lit 'cews' 'common\registry\cews\CewsMod.java' 'forName' ($P + 'compat.sable.SableSubLevelBridge'))
+    $s15Jar = @{ 'cews' = (@(New-Set @($sableBridgeEntry))); 'core' = (@(New-Set @($sableBridgeEntry))) }
+
+    # S16 RED: un-reachable CROSS literal, empty probe table -> unregistered
+    # S17 GREEN: the same literal, registered in the probe table with a reason
+    # S18 RED: the table carries a STALE reason (an entry no literal names)
+    # S19 RED: an empty probe table is itself a vacuity (the CROSS-LAYER-PROBE half of
+    #          the audit becomes unreachable code), even when every literal is fine.
+    $s16Jar = @{ 'core' = (@(New-Set @())); 'coe' = (@(New-Set @($coeRtEntry))) }
+
     # package/path mismatch helper
     $m1 = @(Get-PackageMismatch $s1Src)
     $m2 = @(Get-PackageMismatch $s2Src)
@@ -851,22 +965,29 @@ if ($SelfTest) {
     $gGreen = Get-GuardProblem -Actual 7 -Minimum 1 -Label 'X' -Suspected 'y'
 
     $cases = @(
-        @{ Name = 'S1 green  own literal present in own jar';  Expect = 0; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals $s1Lit -JarClasses $s1Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
-        @{ Name = 'S2 red    W6-d incident (package != dir)';  Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s2Src -Literals $s1Lit -JarClasses $s2Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+        @{ Name = 'S1 green  own literal present in own jar';  Expect = 0; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals $s1Lit -JarClasses $s1Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S2 red    W6-d incident (package != dir)';  Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s2Src -Literals $s1Lit -JarClasses $s2Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
         @{ Name = 'S2b red   Y1 package/path mismatch';        Expect = 1; Get = { $m2.Count } }
         @{ Name = 'S2c green Y1 healthy tree';                 Expect = 0; Get = { $m1.Count } }
-        @{ Name = 'S3 red    dangling own FQN literal';        Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals $s3Lit -JarClasses $s1Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
-        @{ Name = 'S4 green  cross-module literal, owner jar has it'; Expect = 0; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals $s4Lit -JarClasses $s4Jar -OptionalNamespaces $optNs -MinSites 2).Problems.Count } }
-        @{ Name = 'S5 red    cross-module literal dead';       Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals @($s4Lit[0]) -JarClasses $s5Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
-        @{ Name = 'S6 green  optional probe, allowed ns';      Expect = 0; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
-        @{ Name = 'S7 red    optional probe, unclassified ns'; Expect = 1; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces @() -MinSites 1).Problems.Count } }
-        @{ Name = 'S8 red    optional probe packaged by us';   Expect = 1; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s8Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
-        @{ Name = 'S9 red    scanner vacuity (0 sites)';       Expect = 6; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals @() -JarClasses $s1Jar -OptionalNamespaces $optNs -MinSites 6).Vacuity.Count } }
-        @{ Name = 'S10 red   shape vacuity (no prefix form)';  Expect = 3; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces $optNs -MinSites 1).Vacuity.Count } }
+        @{ Name = 'S3 red    dangling own FQN literal';        Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals $s3Lit -JarClasses $s1Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S4 green  cross literal, owner jar has it + registered probe'; Expect = 0; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals $s4Lit -JarClasses $s4Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpCoe -MinSites 2).Problems.Count } }
+        @{ Name = 'S5 red    cross-module literal dead';       Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals @($s4Lit[0]) -JarClasses $s5Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S6 green  optional probe, allowed ns';      Expect = 0; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S7 red    optional probe, unclassified ns'; Expect = 1; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces @() -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S8 red    optional probe packaged by us';   Expect = 1; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s8Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S9 red    scanner vacuity (0 sites)';       Expect = 6; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals @() -JarClasses $s1Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpUnused -MinSites 6).Vacuity.Count } }
+        @{ Name = 'S10 red   shape vacuity (no prefix form)';  Expect = 3; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6Lit -JarClasses $s6Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpUnused -MinSites 1).Vacuity.Count } }
         @{ Name = 'S11 red   guard helper fires on 0';         Expect = 1; Get = { @($gRed).Count } }
         @{ Name = 'S12 green guard helper passes on >= N';     Expect = 0; Get = { @($gGreen | Where-Object { $_ -ne $null }).Count } }
         @{ Name = 'S13 green one-hop String probe is scanned'; Expect = 1; Get = { @($s6bLit).Count } }
-        @{ Name = 'S14 green one-hop probe classify OPTIONAL'; Expect = 0; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6bLit -JarClasses $s6Jar -OptionalNamespaces $optNs -MinSites 1).Problems.Count } }
+        @{ Name = 'S14 green one-hop probe classify OPTIONAL'; Expect = 0; Get = { (Test-ClassLiteralResolution -Sources @() -Literals $s6bLit -JarClasses $s6Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S15 green CROSS-INJAR: target inside the referring jar'; Expect = 0; Get = { (Test-ClassLiteralResolution -Sources $s15Src -Literals $s15Lit -JarClasses $s15Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S15b green CROSS-INJAR is its own kind';    Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s15Src -Literals $s15Lit -JarClasses $s15Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Counts.CROSSINJAR } }
+        @{ Name = 'S16 red   un-reachable cross literal, empty probe table'; Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals @($s4Lit[0]) -JarClasses $s16Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Problems.Count } }
+        @{ Name = 'S17 green same literal, registered with a reason'; Expect = 0; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals @($s4Lit[0]) -JarClasses $s16Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpCoe -MinSites 1).Problems.Count } }
+        @{ Name = 'S17b green kind is CROSS-LAYER-PROBE';      Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals @($s4Lit[0]) -JarClasses $s16Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpCoe -MinSites 1).Counts.CROSSPROBE } }
+        @{ Name = 'S18 red   stale probe reason (entry unused)'; Expect = 1; Get = { (Test-ClassLiteralResolution -Sources $s4Src -Literals @($s4Lit[0]) -JarClasses $s16Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpCoePlusStale -MinSites 1).Problems.Count } }
+        @{ Name = 'S19 red   empty probe table is a vacuity';  Expect = 3; Get = { (Test-ClassLiteralResolution -Sources $s1Src -Literals $s1Lit -JarClasses $s1Jar -OptionalNamespaces $optNs -CrossLayerProbeReasons $clpEmpty -MinSites 1).Vacuity.Count } }
     )
     $fail = 0
     foreach ($c in $cases) {
@@ -926,6 +1047,8 @@ if ($missing.Count -gt 0) {
 # exact shape this script exists to catch.  These totals are checked after the loops.
 $script:jeiSrcTotal = 0
 $script:ebsWithModidTotal = 0
+$script:mixinConfigMixinsTotal = 0
+$script:mixinConfigPluginTotal = 0
 $script:payloadTypesByModule = @{}
 
 foreach ($name in $modules.Keys) {
@@ -980,7 +1103,9 @@ foreach ($name in $modules.Keys) {
         $pkgPath = ([string]$cfg.package) -replace '\.', '/'
         $named = @()
         foreach ($m in @($cfg.mixins)) { if ($m) { $named = $named + [string]$m } }
+        $script:mixinConfigMixinsTotal = $script:mixinConfigMixinsTotal + $named.Count
         foreach ($m in @($cfg.client)) { if ($m) { $named = $named + [string]$m } }
+        if ($cfg.plugin) { $script:mixinConfigPluginTotal = $script:mixinConfigPluginTotal + 1 }
         foreach ($m in $named) {
             $entry = $pkgPath + '/' + ($m -replace '\.', '/') + '.class'
             if (-not ($entries -contains $entry)) { $classResolves = $false; $classProblems = $classProblems + $entry }
@@ -1137,6 +1262,17 @@ $gB9 = Get-GuardProblem -Actual $script:ebsWithModidTotal -Minimum 1 -Label 'B9 
     -Suspected 'javap found no compiled class carrying Lnet/neoforged/fml/common/EventBusSubscriber; modid=, so B6 and C2 both judge nothing'
 Write-Check ($null -eq $gB9) 'B9 the @EventBusSubscriber pattern is live (B6 and C2 are not vacuous)' `
     $(if ($gB9) { $gB9 } else { 'withModidTotal=' + $script:ebsWithModidTotal + ' across the module jars' })
+
+# B2f (W8-b) -- anti-vacuity for B2d.  B2d asserts "every class the mixin config names is
+# in the same jar"; with the `mixins` key renamed (or `mixins`/`client` dropped) the named
+# list is empty, the loop runs zero times and B2d prints PASS while the config really
+# points at nothing.  The count of mixin names extracted from the JSON is the liveness
+# proof: the real coe config names 4 mixins + 3 client mixins + 1 plugin.
+$gB2f = Get-GuardProblem -Actual $script:mixinConfigMixinsTotal `
+    -Minimum 1 -Label 'B2f mixin-config mixins[] list' `
+    -Suspected ('no class name was extracted from any mixin config `mixins` list (mixins=' + $script:mixinConfigMixinsTotal + ' plugins=' + $script:mixinConfigPluginTotal + '); the JSON key no longer parses, so B2d inspected nothing')
+Write-Check ($null -eq $gB2f) 'B2f the mixin-config mixins[] list parses (B2d is not "inspected nothing")' `
+    $(if ($gB2f) { $gB2f } else { 'namedMixins=' + $script:mixinConfigMixinsTotal + ' namedPlugins=' + $script:mixinConfigPluginTotal + ' across the module jars' })
 
 # ---------------------------------------------------------------------------
 # C. the library jar must not carry @EventBusSubscriber
@@ -1297,6 +1433,43 @@ foreach ($t in $script:payloadTypesByModule.Keys) {
 }
 Write-Check ($payloadDupes.Count -eq 0) 'D7 no payload type is registered from two modules (one payload id = one channel)' `
     $(if ($payloadDupes.Count -eq 0) { 'no duplicate payload owner across ' + $modules.Count + ' modules' } else { 'duplicates: ' + ($payloadDupes -join '; ') })
+
+# ---------------------------------------------------------------------------
+# D2b/D4b (W8-b) -- anti-vacuity for the two NEGATIVE assertions of group D.
+#   D2 ("no module touches the shared wiring") and D4 ("no module calls a core Layer*
+#       register") both PASS when their pattern matches nothing -- either because the
+#       tree is clean (the honest answer) or because the pattern itself stopped matching.
+#       Concretely: renaming `LayerRecipeType.registerOn` to `attachTo` in core would make
+#       BOTH lines green while auditing nothing at all, and no other assertion in this
+#       script or in check-layering.ps1 would notice.
+#   A negative assertion cannot be guarded by "at least one match in the tree under audit"
+#       (that would be the violation).  It is guarded by the file that is SUPPOSED to
+#       contain those needles: core's LayerBootstrap, whose only job is to own them.
+#       If the needles do not match THERE, the pattern is broken and D2/D4 are vacuous.
+# ---------------------------------------------------------------------------
+$layerBootstrapRel  = 'core\src\main\java\com\hjmmd_8\createoreexpansion\common\registry\LayerBootstrap.java'
+$layerBootstrapPath = Join-Path $repoRoot $layerBootstrapRel
+$lbMissingNeedles = @()
+$lbRegisterHits   = 0
+if (-not (Test-Path -LiteralPath $layerBootstrapPath)) {
+    $lbMissingNeedles = @($layerBootstrapRel + ' is MISSING')
+} else {
+    $lbCode = Get-SourceCode $layerBootstrapPath
+    foreach ($needle in $sharedWiringNames) {
+        if ($lbCode -notmatch [regex]::Escape($needle)) { $lbMissingNeedles = $lbMissingNeedles + $needle }
+    }
+    $lbRegisterHits = @([regex]::Matches($lbCode, '(?<![A-Za-z0-9_])Layer[A-Za-z0-9_]*\s*\.\s*register(?:On)?\s*\(')).Count
+}
+$gD2b = Get-GuardProblem -Actual ($sharedWiringNames.Count - $lbMissingNeedles.Count) `
+    -Minimum $sharedWiringNames.Count -Label 'D2b shared-wiring needles' `
+    -Suspected ('these needles no longer match core LayerBootstrap either: [' + ($lbMissingNeedles -join ',') + '] -- the name changed, so D2 would pass for every module by finding nothing')
+Write-Check ($null -eq $gD2b) 'D2b the shared-wiring needles are live in core LayerBootstrap (D2 is not "found nothing because it looks for nothing")' `
+    $(if ($gD2b) { $gD2b } else { 'needles=[' + ($sharedWiringNames -join ',') + '] all match ' + $layerBootstrapRel })
+
+$gD4b = Get-GuardProblem -Actual $lbRegisterHits -Minimum 1 -Label 'D4b Layer* register regex' `
+    -Suspected 'the D4 pattern (Layer[A-Za-z0-9_]* . register(On)?( ) does not match core LayerBootstrap any more, so D4 would pass for every module by finding nothing'
+Write-Check ($null -eq $gD4b) 'D4b the Layer* register pattern is live in core LayerBootstrap (D4 is not vacuous)' `
+    $(if ($gD4b) { $gD4b } else { 'registerSitesInCore=' + $lbRegisterHits + ' in ' + $layerBootstrapRel })
 Write-Host ''
 
 # ---------------------------------------------------------------------------
@@ -1686,6 +1859,21 @@ $optionalProbeReasons = [ordered]@{
 # touched after that test (and B3/B6 above cover the class side).  If one of them ever
 # starts using Class.forName("..."), add its namespace here with the reason.
 
+# W8-b (task 2): the DELIBERATE cross-layer probes.  An entry here means "this reference
+# is a presence probe, and failing is the designed outcome" -- it is NOT an exemption for
+# a broken edge.  Every entry needs all three facts, and the two-way guard in
+# Test-ClassLiteralResolution keeps the table honest:
+#   * SOME source file really declares the FQN (else it is DANGLING, always red),
+#   * the OWNER's jar really contains the class (else it is CROSS-DEAD, always red),
+#   * the REFERRING jar cannot reach it (own entries + nested jarjar), i.e. the reference
+#     genuinely can fail -- otherwise it is CROSS-INJAR and needs no entry at all.
+$crossLayerProbeReasons = [ordered]@{
+    'com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes' =
+        'core/LayerBootstrap#layerRecipeTypeClassNames + core/WaveRecipeCapabilities#layerClassNames wake this :coe class by name. core is the JarJar-nested LIBRARY that ships inside every module jar, so it can never statically know a layer (check-layering: CORE -> COE/CEWS/TRANS is forbidden) -- the reflective probe is the only way to force the layer static initialiser, and its ClassNotFoundException branch ("this layer is not installed") is the documented design (LayerBootstrap "never throws").'
+    'com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRecipeTypes' =
+        'core/WaveRecipeCapabilities#layerClassNames names it so the TRANS recipe type is registered before the COE one after :transmutation stopped being installable on its own (W6-b2 moved the mechanism into :coe). Same reason as the entry above: core must not statically reference a layer, and "absent" is swallowed by ensureInitialized().'
+}
+
 $literalRoots = [ordered]@{
     'root'          = (Join-Path $repoRoot 'src\main\java\com\hjmmd_8\createoreexpansion')
     'core'          = (Join-Path $repoRoot 'core\src\main\java\com\hjmmd_8\createoreexpansion')
@@ -1696,16 +1884,35 @@ $literalRoots = [ordered]@{
 
 $srcIndex = New-Object System.Collections.Generic.List[object]
 $literals = New-Object System.Collections.Generic.List[object]
+$literalRootCounts = [ordered]@{}
 foreach ($lroot in $literalRoots.Keys) {
     $lrootPath = $literalRoots[$lroot]
+    $literalRootCounts[$lroot] = 0
     if (-not (Test-Path -LiteralPath $lrootPath)) { continue }
     foreach ($lf in (Get-ChildItem -LiteralPath $lrootPath -Recurse -File -Filter '*.java' | Sort-Object FullName)) {
         $lrel = $lf.FullName.Substring($lrootPath.Length).TrimStart('\', '/')
         $lcode = Get-SourceCode $lf.FullName
         $srcIndex.Add((New-SourceRecord -Module $lroot -Rel $lrel -Code $lcode))
+        $literalRootCounts[$lroot] = $literalRootCounts[$lroot] + 1
         foreach ($l in (Get-ReflectiveLiterals -Module $lroot -Rel $lrel -Code $lcode)) { $literals.Add($l) }
     }
 }
+
+# Y1b (W8-b) -- anti-vacuity for the whole Y group: every one of the five roots must have
+# contributed at least one .java file.  Y1 ("declared package == path package") and the
+# literal scan both read THIS walk; a renamed root, a missing directory or a filter typo
+# would make Y1 report a smaller "filesChecked" and still PASS, and would silently stop
+# seeing that root's literals (a wave-list probe in root/ or core/ could then be wrong
+# while Y2 stays green).
+$emptyLiteralRoots = @()
+foreach ($lroot in $literalRoots.Keys) {
+    if ([int]$literalRootCounts[$lroot] -lt 1) { $emptyLiteralRoots = $emptyLiteralRoots + $lroot }
+}
+$gY1b = Get-GuardProblem -Actual (@($literalRoots.Keys).Count - $emptyLiteralRoots.Count) `
+    -Minimum (@($literalRoots.Keys).Count) -Label 'Y1b literal source roots' `
+    -Suspected ('these roots produced no .java file at all: [' + ($emptyLiteralRoots -join ',') + '] -- a missing or renamed root makes Y1 report fewer files and still PASS, and hides that root from the literal scan')
+Write-Check ($null -eq $gY1b) 'Y1b the five literal source roots all contributed sources (Y1/Y2 are not vacuous)' `
+    $(if ($gY1b) { $gY1b } else { (($literalRoots.Keys | ForEach-Object { $_ + '=' + $literalRootCounts[$_] }) -join ' ') })
 
 $jarClasses = @{}
 foreach ($mName in $modules.Keys) { $jarClasses[$mName] = @(Get-JarClassSet -JarPath (Join-Path $repoRoot $modules[$mName].jar)) }
@@ -1723,16 +1930,17 @@ Write-Check ($pkgMismatch.Count -eq 0) 'Y1 every source file declares the packag
     })
 
 $yResult = Test-ClassLiteralResolution -Sources $srcIndex.ToArray() -Literals $literals.ToArray() `
-    -JarClasses $jarClasses -OptionalNamespaces @($optionalProbeReasons.Keys) -MinSites 5
+    -JarClasses $jarClasses -OptionalNamespaces @($optionalProbeReasons.Keys) `
+    -CrossLayerProbeReasons $crossLayerProbeReasons -MinSites 5
 
 Write-Host ('        classification table (' + $yResult.Table.Count + ' literal site(s)):')
 foreach ($row in $yResult.Table) {
-    Write-Host ("          {0,-6} {1,-12} {2,-6} {3,-20} {4}" -f $row.Module, $row.Rel, $row.Kind, $row.Shape, $row.Fqn)
+    Write-Host ("          {0,-6} {1,-12} {2,-18} {3,-20} {4}" -f $row.Module, $row.Rel, $row.Kind, $row.Shape, $row.Fqn)
 }
 
 Write-Check ($yResult.Problems.Count -eq 0) 'Y2/Y3 every reflective class-name literal resolves to a packaged class of the right jar' `
     $(if ($yResult.Problems.Count -eq 0) {
-        'OWN=' + $yResult.Counts.OWN + ' (in the caller jar) CROSS=' + $yResult.Counts.CROSS + ' (in the owner jar, absence allowed) OPTIONAL=' + $yResult.Counts.OPTIONAL + ' (target absent as designed)'
+        'OWN=' + $yResult.Counts.OWN + ' (in the caller jar) CROSS-INJAR=' + $yResult.Counts.CROSSINJAR + ' (reachable through the caller jar''s nested jarjar) CROSS-LAYER-PROBE=' + $yResult.Counts.CROSSPROBE + ' (registered as deliberate, absence allowed) OPTIONAL=' + $yResult.Counts.OPTIONAL + ' (target absent as designed)'
     } else {
         'problems=' + $yResult.Problems.Count + ' :: ' + ($yResult.Problems -join ' ;; ')
     })
@@ -1741,7 +1949,7 @@ $gY4 = $null
 if ($yResult.Vacuity.Count -gt 0) { $gY4 = ($yResult.Vacuity -join ' ;; ') }
 Write-Check ($yResult.Vacuity.Count -eq 0) 'Y4 the literal scanner is live and each classification is seen (anti-vacuity)' `
     $(if ($null -eq $gY4) {
-        'sites=' + $literals.Count + ' shapes=' + (@($literals | Group-Object Shape | ForEach-Object { $_.Name + ':' + $_.Count }) -join ',') + ' kinds=OWN:' + $yResult.Counts.OWN + ',CROSS:' + $yResult.Counts.CROSS + ',OPTIONAL:' + $yResult.Counts.OPTIONAL
+        'sites=' + $literals.Count + ' shapes=' + (@($literals | Group-Object Shape | ForEach-Object { $_.Name + ':' + $_.Count }) -join ',') + ' kinds=OWN:' + $yResult.Counts.OWN + ',CROSS-INJAR:' + $yResult.Counts.CROSSINJAR + ',CROSS-LAYER-PROBE:' + $yResult.Counts.CROSSPROBE + ',OPTIONAL:' + $yResult.Counts.OPTIONAL + ' probeTable=' + $crossLayerProbeReasons.Count + ' registered-and-used'
     } else {
         $gY4
     })
