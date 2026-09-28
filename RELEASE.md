@@ -86,7 +86,8 @@
 - **资产归属关卡**（`tools/check-asset-attribution.ps1`）：已跑，**确认 `coe` 侧非法方向引用 = 0**（原欠账已闭合）。
 - **配置容器名与键集**（矩阵 **F2**：`PASS 6/0/0`）：只装 `coe` 与三层全装两种形态下容器名**都是** `createoreexpansion-common.toml`（`strays=0`），且**重构前那 16 个基线键一个不少地仍在生成**（`baseline-keys-still-present: 0 missing`）、也没有多出键。⇒ **老玩家的设置不会静默丢失。**
 - **依赖前置的加载期拒载**：只装 `cews`（A2）、只装 `transmutation`（A3）、只装 `cews`+`transmutation`（C3）、摘掉 `createaddition`（G1）—— **四种形态都在加载期被 FML 拒载**，并以结构化形式点名 `Mod ID: '<目标>', Requested by: '<请求方>'`。
-- **玩家最常用的两两组合**（矩阵 C1/C2）：`coe+cews` = `PASS 16/0/1`（`Done 5.784s`）、`coe+transmutation` = `PASS 15/0/1`（`Done 7.221s`）。
+- **玩家最常用的两两组合**（矩阵 C1/C2）：`coe+cews` = `PASS 16/0/1`（`Done 7.204s`）、`coe+transmutation` = `PASS 15/0/1`（`Done 6.397s`）。
+- **以上九条已全部在「从 HEAD 重新构建的 jar」上复跑过一遍**（`build/patch/r23-matrix-HEAD.log`：**9/9 PASS、0 FAIL**，用时 264.8 s）：A1 20/0、A2 10/0、A3 7/0、B 20/0、C1 16/0、C2 15/0、C3 6/0、F2 6/0、G1 5/0。⚠ 更早那一批跑在一台与 HEAD 略有差异的旧构建上（`prepare-run-published` 当时警告过 `cews.jar` 比 `CewsBlocks.java` 旧）——**以本次为准**。
 
 ### 只有静态证据 / 需人在场（**尚未真跑**）
 - 矩阵的 **D1/D2（存档读入降级）、E1/E2（客户端单装）、F1（网络载荷对端缺失）** —— 这五项**本质上需要人在场**（看机器是否真能干活、看客户端菜单与按 `E`、真人连接）。
