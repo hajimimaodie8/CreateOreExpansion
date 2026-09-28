@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.data.lang;
 
-import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
@@ -43,7 +42,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add(CoeItems.JADE_AXE.get(), "翡翠斧");
         add(CoeItems.JADE_SHOVEL.get(), "翡翠铲");
         add(CoeItems.JADE_HOE.get(), "翡翠锄");
-        add(CewsBlocks.JADE_CASING.get(), "翡翠机壳");
+        // W9：机壳归 COE（用户裁定），登记类从 CewsBlocks 改指 CoeBlocks——lang 键名不变。
+        add(CoeBlocks.JADE_CASING.get(), "翡翠机壳");
         add(CoeItems.TOPAZ_INGOT.get(), "黄玉锭");
         add(CoeItems.RAW_TOPAZ.get(), "粗黄玉");
         add(CoeItems.TOPAZ_NUGGET.get(), "黄玉粒");
@@ -58,8 +58,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add(CoeItems.TOPAZ_AXE.get(), "黄玉斧");
         add(CoeItems.TOPAZ_SHOVEL.get(), "黄玉铲");
         add(CoeItems.TOPAZ_HOE.get(), "黄玉锄");
-        add(CewsBlocks.SAPPHIRE_CASING.get(), "蓝宝石机壳");
-        add(CewsBlocks.STELLARSTONE_CASING.get(), "星辉石机壳");
+        add(CoeBlocks.SAPPHIRE_CASING.get(), "蓝宝石机壳");
+        add(CoeBlocks.STELLARSTONE_CASING.get(), "星辉石机壳");
         add(CoeItems.SAPPHIRE_INGOT.get(), "蓝宝石锭");
         add(CoeItems.RAW_SAPPHIRE.get(), "粗蓝宝石");
         add(CoeItems.SAPPHIRE_NUGGET.get(), "蓝宝石粒");

@@ -124,9 +124,11 @@ public class EnglishLangProvider extends LanguageProvider {
         add(CoeBlocks.END_STELLARSTONE_ORE.get(), "End Stellarstone Ore");
         add(CoeBlocks.RAW_STELLARSTONE_BLOCK.get(), "Raw Stellarstone Block");
         add(CoeBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
-        add(CewsBlocks.JADE_CASING.get(), "Jade Casing");
-        add(CewsBlocks.SAPPHIRE_CASING.get(), "Sapphire Casing");
-        add(CewsBlocks.STELLARSTONE_CASING.get(), "Stellarstone Casing");
+        // W9：the three casings belong to COE (user ruling) -- the registering class moved from
+        // CewsBlocks to CoeBlocks, so these reads follow the registry, not the language keys.
+        add(CoeBlocks.JADE_CASING.get(), "Jade Casing");
+        add(CoeBlocks.SAPPHIRE_CASING.get(), "Sapphire Casing");
+        add(CoeBlocks.STELLARSTONE_CASING.get(), "Stellarstone Casing");
         // Stellarstone growable crystal
         add(CoeBlocks.STELLARSTONE_BUDDING_BLOCK.get(), "Stellarstone Crystal Budding Block");
         add(CoeBlocks.STELLARSTONE_SMALL_BUD.get(), "Small Stellarstone Crystal Bud");

@@ -1,6 +1,5 @@
 {
   "values": [
-    "createoreexpansion:jade_casing",
     "createoreexpansion:energy_field_controller",
     "createoreexpansion:stellar_wave_transmuter",
     "createoreexpansion:sapphire_wave_regulator",
@@ -11,8 +10,6 @@
     "createoreexpansion:stellarstone_speed_regulator",
     "createoreexpansion:energy_wave_disperser",
     "createoreexpansion:six_face_disperser",
-    "createoreexpansion:octa_energy_wave_differencer",
-    "createoreexpansion:sapphire_casing",
-    "createoreexpansion:stellarstone_casing"
+    "createoreexpansion:octa_energy_wave_differencer"
   ]
 }

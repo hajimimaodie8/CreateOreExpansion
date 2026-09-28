@@ -60,16 +60,20 @@ import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
  * <b>先摘再放</b>；同理"从基础页剔除"那半边现在摘不到东西，只剩兜底语义。
  * 此坑与发布形态/几个 mod 文件无关——dev 里同一份监听器顺序、同一个事件，照崩。</p>
  *
- * <p><b>清单口径</b>（用户 2026-09-14 裁定后）：收"能量波系统的机器 + 这一线的机壳 + 波情查询仪"。
+ * <p><b>清单口径</b>（用户 2026-09-14 裁定，W9 2026-09-28 修订）：收"能量波系统的机器 + 波情查询仪"。
  * <b>不含</b>矿物/宝石/水晶芽/工具/技能类物品（属矿物拓展模块）；
- * <b>不含</b>强化避雷针（用户明确：它属于矿物拓展——雷击加工本身也加工矿物类配方）。</p>
+ * <b>不含</b>强化避雷针（用户明确：它属于矿物拓展——雷击加工本身也加工矿物类配方）；
+ * <b>不含</b>三种机壳（W9 用户裁定「三个机壳归属于 COE，而不归属于 CEWS」⇒ 归矿物页）。</p>
  *
  * <p><b>⚠ 本清单 ≠ "CEWS 页里有什么"（2026-09-27 实测更正）</b>：{@code CewsRegistrate}
  * 自持本页（其 {@code defaultCreativeTab} 就是本页），所以<b>凡经它注册的条目都由 Registrate
- * 自动进本页</b>，与本清单无关。实测 CEWS 页 <b>20 项</b> = 本清单 17 项 + 3 项不在清单里的
+ * 自动进本页</b>，与本清单无关。实测（W9 改动前）CEWS 页 <b>20 项</b> = 本清单 17 项 + 3 项不在清单里的
  * （{@code stellarstone_casing} / {@code energy_mechanism} / {@code incomplete_energy_mechanism}，
  * 按注册顺序排在本页最前）。本清单实际只决定<b>那 17 项的展示顺序</b>（见 {@link #onBuildContents}）。
- * 那 3 项该不该在本页属<b>玩法面、待用户裁定</b>——尤其两个能量机构，既有口径是
+ * W9 之后：{@code stellarstone_casing} 随三个机壳离开本页（去矿物页），
+ * 所以本页 = 本清单 15 项 + 2 项不在清单里的（{@code energy_mechanism} /
+ * {@code incomplete_energy_mechanism}）= <b>17 项</b>。
+ * 那两个能量机构该不该在本页属<b>玩法面、待用户裁定</b>——既有口径是
  * "材料不是机器、留矿物页"，分区之后它们已经实际落在本页。</p>
  */
 public final class EnergyWaveStudyTab {
@@ -80,23 +84,23 @@ public final class EnergyWaveStudyTab {
 	private EnergyWaveStudyTab() {}
 
 	/**
-	 * <b>CEWS 板块的完整物品清单</b>（唯一处）：能量波系统的机器 + 机壳 + 波情查询仪。
+	 * <b>CEWS 板块的完整物品清单</b>（唯一处）：能量波系统的机器 + 波情查询仪。
 	 *
 	 * <p>顺序即标签页内的展示顺序：充能器（三种）→ 能量场控制器 → 波变器 → 调级器（三种）→
-	 * 波速调节器（三种）→ 差波器（三种面数）→ 机壳（本清单收两种）→ 波情查询仪。</p>
+	 * 波速调节器（三种）→ 差波器（三种面数）→ 波情查询仪。<b>15 项</b>。</p>
 	 *
-	 * <p><b>两条用户裁定（2026-09-14）</b>：① <b>强化避雷针留在矿物拓展</b>——雷击加工本身
-	 * 也加工矿物类配方，波只是"引雷手段"之一；② <b>机壳随本模块</b>（用户要求）。</p>
+	 * <p><b>三条用户裁定</b>：① <b>强化避雷针留在矿物拓展</b>（2026-09-14）——雷击加工本身
+	 * 也加工矿物类配方，波只是"引雷手段"之一；② <b>机壳原先随本模块</b>（2026-09-14）——
+	 * 该条已被 W9（2026-09-28）的用户裁定<b>取代</b>：「三个机壳归属于 COE，而不归属于 CEWS」；
+	 * ③ <b>三个机壳归 COE</b>（2026-09-28）——三条机壳登记搬回
+	 * {@code common.registry.coe.CoeBlocks}，因此它们出现在<b>矿物页</b>，本清单不收。</p>
 	 *
-	 * <p><b>关于"三种机壳"（2026-09-27 更正——原文是代码里的假话）</b>：注册表里有
+	 * <p><b>关于"三种机壳"（2026-09-27 更正 + W9 落地）</b>：注册表里有
 	 * <b>三种</b>机壳方块，都是 {@code CasingBlock}：{@code jade_casing}、{@code sapphire_casing}
-	 * （本清单收这两种）与 <b>{@code stellarstone_casing}</b>
-	 * （{@code CewsBlocks#STELLARSTONE_CASING}，见 {@code CewsBlocks.java}）。
-	 * 原文写"<i>星辉石机壳没有方块，{@code stellarstone_casing} 只是机器用的材质贴图</i>"，
-	 * 那是把"贴图"当成了"没有方块"——该方块<b>一直存在</b>，且因 Registrate 自持本页
-	 * （见类注释"本清单 ≠ CEWS 页里有什么"）它已经在 CEWS 页里，只是<b>不在本清单</b>。
-	 * <b>"机壳三种、本清单只收两种"是待用户裁定的现状，不是设计</b>：
-	 * 收不收第三种只改这里一行，同时决定它排在"机壳"那一段的第几位。</p>
+	 * 与 {@code stellarstone_casing}。原文写"<i>星辉石机壳没有方块，
+	 * {@code stellarstone_casing} 只是机器用的材质贴图</i>"是把"贴图"当成了"没有方块"——
+	 * 该方块<b>一直存在</b>。W9 起三者<b>全部</b>住 {@code CoeBlocks}（{@code CoeRegistrate.REGISTRATE}），
+	 * 默认进基础页；本清单与它们再无关系。</p>
 	 */
 	public static final List<Supplier<ItemStack>> CONTENTS = List.of(
 		// —— 应力充能器：三条矿物线各一台（翡翠 1~3 级 / 蓝宝石 1~5 级 / 星辉石 1~5 级手动档）——
@@ -120,9 +124,11 @@ public final class EnergyWaveStudyTab {
 		CewsBlocks.ENERGY_WAVE_DISPERSER::asStack,
 		CewsBlocks.SIX_FACE_DISPERSER::asStack,
 		CewsBlocks.OCTA_ENERGY_WAVE_DIFFERENCER::asStack,
-		// —— 机壳：本模块机器的外壳建材（也是 Create 机壳标签成员，可用来包轴/齿轮）——
-		CewsBlocks.JADE_CASING::asStack,
-		CewsBlocks.SAPPHIRE_CASING::asStack,
+		// —— W9：机壳不再进本清单 ——
+		// 三条机壳（jade_casing / sapphire_casing / stellarstone_casing）按用户裁定
+		// （2026-09-28「三个机壳归属于 COE」）搬回第一层的 CoeBlocks，由 CoeRegistrate 注册 ⇒
+		// Registrate 自动把它们放进**矿物页**（CoeCreativeTabs.BASE_TAB）。
+		// 因此本清单不再收它们：收了就等于"从矿物页摘掉、塞回 CEWS 页"，与裁定相反。
 		// —— 波情查询仪：右键报最近一只波的五要素（波速/波级/波载荷/波型/剩余寿命）——
 		CewsItems.WAVE_QUERY_GAUGE::asStack);
 

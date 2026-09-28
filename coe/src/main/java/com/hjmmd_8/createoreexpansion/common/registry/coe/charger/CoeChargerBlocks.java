@@ -31,7 +31,7 @@ import net.neoforged.neoforge.client.model.generators.VariantBlockStateBuilder;
  * {@code ChargingJEI} / JEI 动画全都直接读它们，单装 {@code coe.jar} 时这三台机器必须存在。
  * 一个 Java 包不能同时属于两个 mod 文件（JPMS {@code ResolutionException}），
  * 所以 {@code CewsBlocks} 被按层拆成两半：这一半随 {@code :coe} 走，
- * 机器那 14 条（机壳 / 能量场控制器 / 星辉波变器 / 调级器 ×3 / 波速调节器 ×3 / 差波器 ×3）留在
+ * 机器那 11 条（能量场控制器 / 星辉波变器 / 调级器 ×3 / 波速调节器 ×3 / 差波器 ×3）留在
  * {@code CewsBlocks}。</p>
  *
  * <p><b>纯搬运</b>：三条登记的链式调用、注册 id、datagen 变体生成、物品模型父级与

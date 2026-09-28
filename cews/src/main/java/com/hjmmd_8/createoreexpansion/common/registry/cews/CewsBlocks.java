@@ -16,10 +16,8 @@ import com.hjmmd_8.createoreexpansion.common.*;
 import com.simibubi.create.api.behaviour.interaction.MovingInteractionBehaviour;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 import com.simibubi.create.api.stress.BlockStressValues;
-import com.simibubi.create.content.decoration.encasing.CasingBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
 import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock;
-import com.simibubi.create.foundation.data.BuilderTransformers;
 import com.simibubi.create.foundation.data.SharedProperties;
 import com.simibubi.create.foundation.data.TagGen;
 import com.tterrag.registrate.util.entry.BlockEntry;
@@ -58,29 +56,32 @@ import java.util.function.Supplier;
 
 /**
  * <b>CEWS（能量波阵学）</b>方块注册：能量场控制器、星辉波变器、
- * 能量调级器 ×3、波速调节器 ×3、波差器家族 ×3（四面 / 六面 / 八面）与机壳 ×3
- * （翡翠 / 蓝宝石 / 星辉石；后者是 P1 复核发现的<b>第三个</b>机壳方块，方案文档 §3.2 当时只记了两种）。<br>
+ * 能量调级器 ×3、波速调节器 ×3 与波差器家族 ×3（四面 / 六面 / 八面）。<br>
  * 归属清单权威出处：{@code markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md} §3.2。
  * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，P2a 已删除 {@code AllBlocks} 外观类，引用直接指向本层。
  *
  * <p><b>W6-c：三种应力充能器不再在这里。</b>它们随"波引擎"进了第一层
  * （{@code common.registry.coe.charger.CoeChargerBlocks}）——充能器不是"波机器"，
- * 而是波引擎的发射端；一个 Java 包又不能同时属于两个 mod 文件，所以按层拆成两个类。
- * 本类现在只登记<b>机器</b>；机壳（{@code JADE/SAPPHIRE/STELLARSTONE_CASING}）
- * 按用户裁定留在这里（"机壳是机器建材，不随充能器"）。</p>
+ * 而是波引擎的发射端；一个 Java 包又不能同时属于两个 mod 文件，所以按层拆成两个类。</p>
+ *
+ * <p><b>W9（2026-09-28）：三种机壳也不再在这里。</b>用户裁定「三个机壳归属于 COE，而不归属于 CEWS」，
+ * 于是 {@code JADE_CASING / SAPPHIRE_CASING / STELLARSTONE_CASING} 整条搬回第一层的
+ * {@code common.registry.coe.CoeBlocks}（它们拆分前本就住 {@code AllBlocks}，与 COE 方块同处一类）。
+ * 本类现在只登记<b>机器</b>那 11 条。</p>
  */
 public final class CewsBlocks {
 
-	public static final BlockEntry<CasingBlock> JADE_CASING = CewsRegistrate.REGISTRATE
-			.block("jade_casing", CasingBlock::new)
-			.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
-			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.JADE_CASING))
-			.register();
+	// W9（用户裁定 2026-09-28）：三个机壳（JADE_CASING / SAPPHIRE_CASING / STELLARSTONE_CASING）
+	// 已整条搬回第一层的 common.registry.coe.CoeBlocks —— "三个机壳归属于 COE，而不归属于 CEWS"。
+	// 它们原先就住拆分前的 AllBlocks（与原 COE 方块同处一类），W6-c 的 U3 按"对应机壳"
+	// 把它们留在了本类；本轮按用户裁定纠正。Registrate 也一并换成 CoeRegistrate.REGISTRATE，
+	// 否则 blockstate / model / loot / lang 会落进 cews 的生成物而物品在 coe 的 jar 里
+	// （W6-b2 的 X7 实证：那种镜像缺陷单装时静默失效）。
 
 	// W6-c：三台应力充能器的方块登记（JADE_STRESS_CHARGER / SAPPHIRE_STRESS_CHARGER /
 	// STELLARSTONE_STRESS_CHARGER）已按层拆到第一层的
 	// common.registry.coe.charger.CoeChargerBlocks —— 充能器随 :coe 发货，而一个 Java 包
-	// 不能同时属于两个 mod 文件。本类只剩"机器"那 14 条（机壳 ×3 / 能量场控制器 /
+	// 不能同时属于两个 mod 文件。本类只剩"机器"那 11 条（能量场控制器 /
 	// 星辉波变器 / 调级器 ×3 / 波速调节器 ×3 / 差波器 ×3）。
 
 	/** 能量场控制器（Energy Field Controller）：六向应力机器，应力输入 → 场强档位（配对/极性/机壳扩展规则见 BE 注释）。 */
@@ -644,21 +645,9 @@ public final class CewsBlocks {
 		.build()
 		.register();
 
-	public static final BlockEntry<CasingBlock> SAPPHIRE_CASING = CewsRegistrate.REGISTRATE
-		.block("sapphire_casing", CasingBlock::new)
-			.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE))
-			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.SAPPHIRE_CASING))
-			.register();
-
-	public static final BlockEntry<CasingBlock> STELLARSTONE_CASING = CewsRegistrate.REGISTRATE
-		.block("stellarstone_casing", CasingBlock::new)
-			.properties(p -> p.mapColor(MapColor.TERRACOTTA_PINK))
-			.transform(BuilderTransformers.casing(() -> AllSpriteShifts.STELLARSTONE_CASING))
-			// 星辉石系列特性（掉落物不落虚空 / 岩浆与嬗化液中不销毁并发光…）：登记进系列方块标签。
-			// 本方块的物品由上面 casing 变换器注册，拿不到 ItemBuilder 去挂物品标签，故走方块标签这一支
-			// （运行时判定三支都认：物品标签 ∪ 方块标签 ∪ 注册名约定，见 SeriesTraits#isStellarstone）。
-			.transform(SeriesTraits.addStellarstoneTraits())
-			.register();
+	// W9：原先在这里的三条机壳登记（JADE_CASING / SAPPHIRE_CASING / STELLARSTONE_CASING）
+	// 已整条搬回第一层的 common.registry.coe.CoeBlocks —— 用户裁定"三个机壳归 COE"。
+	// 本类不再有 CasingBlock / BuilderTransformers 的消费者，两个 import 也已删除。
 
 	// W6-c：原先在这里的"把 3 台充能器的方块槽位注入第一层表 ChargerBlockSlots"静态块
 	// 已随那三条登记一起搬到 common.registry.coe.charger.CoeChargerBlocks ——

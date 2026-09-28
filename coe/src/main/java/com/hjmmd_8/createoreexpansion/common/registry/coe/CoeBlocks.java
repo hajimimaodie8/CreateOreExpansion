@@ -50,12 +50,14 @@ import net.neoforged.neoforge.common.Tags;
 import java.util.function.Supplier;
 
 /**
- * <b>COE（矿物拓展）</b>方块注册：矿石 / 宝石块 / 粗矿块 / 雷鸣合金块、动力角磨床、强化避雷针，
- * 以及四种宝石的可生长水晶（芽 / 簇 / 芽床）。<br>
+ * <b>COE（矿物拓展）</b>方块注册：矿石 / 宝石块 / 粗矿块 / 雷鸣合金块、三种机壳、
+ * 动力角磨床、强化避雷针，以及四种宝石的可生长水晶（芽 / 簇 / 芽床）。<br>
  * 与 {@code CewsBlocks}、{@code CewsBlockEntityTypes} 的分区见
  * {@code markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md} §3.2。
  * <p>本次拆分是<b>纯搬运</b>：注册 id / 贴图路径 / 数值 / 链式调用一字未改，
  * P2a 已删除 {@code AllBlocks} 外观类，全仓引用点直接指向本层，注册 id 与行为零变化。</p>
+ * <p><b>W9（2026-09-28）</b>：{@code JADE_CASING / SAPPHIRE_CASING / STELLARSTONE_CASING}
+ * 三条从 {@code CewsBlocks} 搬进本类（用户裁定"三个机壳归 COE"）——见下方机壳那一组的注释。</p>
  */
 public final class CoeBlocks {
 
@@ -336,6 +338,46 @@ public final class CoeBlocks {
 		.item()
 		.tag(AllGemTags.SANCTSTONE.itemStorageBlocks)
 		.build()
+		.register();
+
+	// ========== 机壳（Casing）：翡翠 / 蓝宝石 / 星辉石 ==========
+	// W9（用户裁定 2026-09-28）：「三个机壳归属于 COE，而不归属于 CEWS」。
+	// 这三条原先住在 common/registry/cews/CewsBlocks（W6-c 的 U3 按"对应机壳"把它们留在了 L2），
+	// 现整条搬回本层。落点选本类而不是新建包，理由三条：
+	//   ① 本类就是它们的**拆分前原址**——`CasingBlock` 与 `BuilderTransformers` 两个 import 从
+	//      P3z 起就一直是本类里的未用残留（本轮的插入把它们重新用上，不是新加依赖）；
+	//   ② 一个 Java 包不能同时属于两个 mod 文件，新建包只会多一个 JPMS 风险点；
+	//   ③ 第一层不能 import 第二层，而机壳的 CTM sprite shift（AllSpriteShifts#*_CASING）住 core，
+	//      机壳登记在本层时方向天然合法。
+	// 位置 = **拆分前 JADE_CASING 在原 AllBlocks 里的槽位**（紧接 SANCTSTONE_BLOCK，
+	// 见 9678b5ce 的 AllBlocks.java:344），三种机壳按 翡翠 → 蓝宝石 → 星辉石 成组，
+	// 与拆分前 create:casing 标签里的出现顺序一致。
+	// ⚠ 唯一可观察的副作用：三条现在由 CoeRegistrate 注册 ⇒ Registrate 会把它们按注册顺序
+	// 放进**矿物页**（CoeCreativeTabs.BASE_TAB），插入点之后的既有矿物页条目展示位次不变。
+
+	/** 翡翠机壳（{@code createoreexpansion:jade_casing}，Create 机壳标签成员，可包轴/齿轮）。 */
+	public static final BlockEntry<CasingBlock> JADE_CASING = CoeRegistrate.REGISTRATE
+		.block("jade_casing", CasingBlock::new)
+		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
+		.transform(BuilderTransformers.casing(() -> AllSpriteShifts.JADE_CASING))
+		.register();
+
+	/** 蓝宝石机壳（{@code createoreexpansion:sapphire_casing}）。 */
+	public static final BlockEntry<CasingBlock> SAPPHIRE_CASING = CoeRegistrate.REGISTRATE
+		.block("sapphire_casing", CasingBlock::new)
+		.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE))
+		.transform(BuilderTransformers.casing(() -> AllSpriteShifts.SAPPHIRE_CASING))
+		.register();
+
+	/** 星辉石机壳（{@code createoreexpansion:stellarstone_casing}）：带星辉石系列特性。 */
+	public static final BlockEntry<CasingBlock> STELLARSTONE_CASING = CoeRegistrate.REGISTRATE
+		.block("stellarstone_casing", CasingBlock::new)
+		.properties(p -> p.mapColor(MapColor.TERRACOTTA_PINK))
+		.transform(BuilderTransformers.casing(() -> AllSpriteShifts.STELLARSTONE_CASING))
+		// 星辉石系列特性（掉落物不落虚空 / 岩浆与嬗化液中不销毁并发光…）：登记进系列方块标签。
+		// 本方块的物品由上面 casing 变换器注册，拿不到 ItemBuilder 去挂物品标签，故走方块标签这一支
+		// （运行时判定三支都认：物品标签 ∪ 方块标签 ∪ 注册名约定，见 SeriesTraits#isStellarstone）。
+		.transform(SeriesTraits.addStellarstoneTraits())
 		.register();
 
 	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
