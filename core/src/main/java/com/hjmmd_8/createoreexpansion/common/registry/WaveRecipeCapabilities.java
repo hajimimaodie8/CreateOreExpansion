@@ -118,7 +118,7 @@ public final class WaveRecipeCapabilities {
      * （本类与那三个类同在 {@code …common.registry} 下），因此行为零变化，
      * 而"core 不许认识任何层"这条纪律又能被工具机械核验。</p>
      *
-     * <p><b>W6-d（2026-09-30）</b>：删掉 {@code prefix + "cews.CewsRecipeTypes"} 这一项——
+     * <p><b>W6-d（2026-09-27）</b>：删掉 {@code prefix + "cews.CewsRecipeTypes"} 这一项——
      * 那个类已随 W6-c 整体删除（{@code CHARGING} 进了 {@code CoeRecipeTypes}），
      * 所以这条 {@code Class.forName} <b>永远失败</b>，被 {@link #ensureInitialized()} 里
      * 既有的 try/catch 静默吞掉。删掉一项<b>不改变任何行为</b>：它从来没能唤醒过任何东西，
