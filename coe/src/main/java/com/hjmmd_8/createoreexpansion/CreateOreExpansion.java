@@ -140,7 +140,7 @@ public class CreateOreExpansion {
         AllDataComponents.register(modEventBus);
 
         // ── W6-b2：嬗化线（原 :transmutation 层）的注册触发搬回本构造器 ──────────────────
-        // 用户 2026-09-29 裁定：嬗化全部内容（16 个 Java + 24 个资源文件）整块进 :coe，
+        // 用户 2026-09-27 裁定：嬗化全部内容（16 个 Java + 24 个资源文件）整块进 :coe，
         // TransmutationMod 空壳化；那六处注册触发必须落到"内容真正所在的那一层"，否则
         // 只装 coe.jar 时嬗变液 / 嬗乱 / 药水 / 风扇加工类型一个都不会注册
         // （W6-b 实测结论，见 build/patch/w6b-EVIDENCE.txt §5.1）。
