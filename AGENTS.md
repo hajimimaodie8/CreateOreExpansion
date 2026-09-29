@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-28（**W6 收口：依赖方向重排** —— 分层判据从「按功能板块」改成「**按谁需要谁**」：嬗化整块并入 `:coe`、CEWS 的 71 个第一层文件搬进 `:coe`、三台应力充能器与三种机壳同归 `:coe`（用户裁定）、第三层留空壳；撤掉 `TransmutationLink` 等窄契约并恢复箭矢嬗乱与星辉石在嬗化液中的联动。六次「全绿但坏掉」与全程复盘 → `markdown_output/分层重构（依赖方向重排）复盘.md`）。
+> 最后更新：2026-09-28（**W6 收口：依赖方向重排** —— 分层判据从「按功能板块」改成「**按谁需要谁**」：嬗化整块并入 `:coe`、CEWS 的 71 个第一层文件搬进 `:coe`、三台应力充能器与三种机壳同归 `:coe`（用户裁定）、第三层留空壳；撤掉 `TransmutationLink` 等窄契约并恢复箭矢嬗乱与星辉石在嬗化液中的联动。全程复盘 → `markdown_output/分层重构（依赖方向重排）复盘.md`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
@@ -103,9 +103,9 @@ javadoc 用平台编码（本机 GBK）读 UTF-8 源码 ⇒ 满屏乱码 + 假�
 - `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（**92 条**断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（有 mixin 类而 0 条声明 = 红，即 P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线、每个 jar 自带全部共享 `data/**`（`core` 真源）且根侧 `src/main/resources/data/**` 必须为空（P7c）、221 条生成配方按层分发（61/160/0）、跨层手写标签按层拆半（P7d）、**X2 冻结序断言**（配方类型展开序列 == 6 元素表，顺序是玩法不变量）、`javap` 完整性守护、`Class.forName` 字面量扫描（三种形态 + `OWN`/`CROSS`/`OPTIONAL` 分类）。**每条断言都配「至少 N 条」的反空转守护**——匹配 0 条必须变红而不是静默通过（它抓出过自己作者的 bug）。
 - `tools/check-package-heritage.ps1` —— 包名血统**报告**（基准 `fbf33cdf~1`，`-Base` 可覆盖）：列「被迫/非被迫」改名并计账，**exit 0**；非被迫要人工判（撒谎的包名 vs 刻意重构废弃了旧包）。
 - `tools/check-skill-render-coverage.ps1` —— 策略渲染覆盖关卡（注册调用数 == 带渲染器的策略数 / 漏注册渲染器 = 预览静默消失 / 两个 outline 渲染器都得有槽位门）。改渲染器必跑。
-- `tools/check-asset-attribution.ps1` —— **资产归属关卡**（只读，exit 0/1）：blockstates/models 里指向 `createoreexpansion:` 的 `parent`/`model`/`textures.*` 必须解析到本模块**或本模块声明 required 的**模块（**判据必须认识依赖方向**，零白名单；`cews → coe` 合法、`coe → cews` 非法）。附 A2/A3/A5 与 15 条反空转守护；**孤儿只报告不判红**，`*_connected` 单独分桶（CTM 运行期拼名）。
-- `tools/check-data-attribution.ps1` —— **跨层数据引用扫描**（**观测型，exit 0**）：唯一红源是 23 条反空转守护；报 11 类载体覆盖率、两路索引覆盖、跨模块引用表、`UNINDEXED` 明细。**实测跨模块数据引用 = 0 对**。**不许把 `UNINDEXED` 当失败**（那是索引漏项）。
-- `build/patch/w6d-run-matrix.ps1` —— **发布形态验收矩阵驱动**（14 用例；`-DryRun`/`-Tags`/`-OutFile`）。⚠ **不要用 `-LaunchMode Direct`**：对"必须到达 Done"的用例会给**假 FAIL**（C1 实测 Direct 下 `reached-Done=0`、gradle 下 `Done (5.784s)`）。需人做的 5 个用例 → `build/patch/human-cases-D-E-F1.md`。
+- `tools/check-asset-attribution.ps1` —— **资产归属关卡**（只读，exit 0/1）：blockstates/models 里指向 `createoreexpansion:` 的 `parent`/`model`/`textures.*` 必须解析到本模块**或本模块声明 required 的**模块（**判据必须认识依赖方向**，零白名单；`cews → coe` 合法、`coe → cews` 非法）。附 A2/A3/A5 与 15 条反空转守护；**孤儿只报告不判红**。
+- `tools/check-data-attribution.ps1` —— **跨层数据引用扫描**（**观测型，exit 0**）：唯一红源是 23 条反空转守护；报载体覆盖率、两路索引覆盖、跨模块引用表、`UNINDEXED` 明细。**实测跨模块数据引用 = 0 对**。
+- `build/patch/w6d-run-matrix.ps1` —— **发布形态验收矩阵驱动**（14 用例；`-DryRun` 看期望）。⚠ **不要用 `-LaunchMode Direct`**：对"必须到达 Done"的用例会给**假 FAIL**（C1 实测 Direct 下 `reached-Done=0`、gradle 下 `Done (5.784s)`）。需人做的 5 个用例 → `build/patch/human-cases-D-E-F1.md`。
 - `build/patch/*` 取证脚本（被 git 忽略，按需重生成）：`ChargerBandCheck.java` / `BandCheck.java`（转速分档逐整数比对）、`dump_light_squares.ps1` / `rasterize_top_face.ps1`（贴图取证）、`p3?-EVIDENCE.txt`（拆模块各阶段取证）。
 - `tools/prepare-run-published.ps1` —— **发布形态测试台**：清空 `<gameDir>/mods` → 装三个模块**发布 jar** + 必需第三方（清单由 Gradle 任务 `w3ThirdPartyModJars` 生成，取自缓存、**不下载**）→ 写 `eula.txt`/`server.properties`/sha256 清单。配套 run = 根 `build.gradle` 的 `publishedServer`/`publishedClient`（不绑 sourceSet + `loadedMods` 置空 ⇒ **只从 `mods/` 加载**，机理与源码出处见该段头注释）；作业单 `build/patch/w3-user-checklist.md`。
 
@@ -169,7 +169,7 @@ javadoc 用平台编码（本机 GBK）读 UTF-8 源码 ⇒ 满屏乱码 + 假�
 
 **CEWS 模块（能量波阵学）—— 拆包已完成；⚠ 边界与本文旧版相反**：CEWS = Create: Energy Wave Studies（机械动力：能量波阵学），独立内置 jar（mod id `cews`）。
 - **现行边界（W6-c/W9 之后）**：**第一层 COE** = 矿物/宝石/工具/技能 + **波引擎**（`content/charger/{wave,craft,entity,payload}/**`、`content/wave/api/**`、`content/energyfield/**`）+ **三台应力充能器** + **三种机壳** + **嬗化全部**；**第二层 CEWS** = **除充能器以外的波机器**（差波器 / 调级器 / 波速调节器 / 变器 / 场控制器 / 查询仪）。**依赖方向是唯一判据**：第一层需要的必须住第一层；靠窄契约反向补出来的全部撤掉了。
-- **创造页清单** = `common/registry/cews/EnergyWaveStudyTab#CONTENTS`（W9 后 **15 项**；**机壳已归 COE、改出现在矿物页**；强化避雷针按裁定留矿物页）。同步走 `BuildCreativeModeTabContentsEvent`：**先 `remove` 再 `accept`**（只 `accept` 会抛 `already exists in the tab's list`，dev/发布同崩）。**加减机器只改这份清单。**
+- **创造页清单** = `common/registry/cews/EnergyWaveStudyTab#CONTENTS`（**W12 后 12 项**；**机壳、三台应力充能器与两个能量构件都已归矿物页**，后者走同类的 `BASE_PAGE_ITEMS` 反向搬运；强化避雷针留矿物页）。同步走 `BuildCreativeModeTabContentsEvent`：**先 `remove` 再 `accept`**（只 `accept` 会抛 `already exists in the tab's list`，dev/发布同崩），且**该事件只在逻辑客户端触发**——服务端验不到。**加减机器只改这份清单。**
 - **第三层 `transmutation` 是空壳**（用户 2026-09-28 裁定）：mod 已注册（对 `createoreexpansion` required），**内容全部并入第一层**；**「善化」模块单独只属第一层**，善化系列的新加工配方（含今后的扩展）归第三层——**第三层只是对第一层「善化」的扩展**。空壳仍必须调 `LayerBootstrap.ensureAttached(modBus)`（构造器第一条语句）。
 - **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可分家），否则所有 id 全变、老存档报废；**配置键、语言键、数据包路径同理不许改**。英文名 `Create: Energy Wave Studies`（缩写不变），id 一律 `energy_wave_study`。
 - 耦合点与方案 → `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`；**拆包后的方向判据与六次「全绿但坏掉」→ `markdown_output/分层重构（依赖方向重排）复盘.md`**。
