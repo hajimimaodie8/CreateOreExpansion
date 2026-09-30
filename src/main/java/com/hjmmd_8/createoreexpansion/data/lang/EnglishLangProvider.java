@@ -31,6 +31,14 @@ public class EnglishLangProvider extends LanguageProvider {
         add("itemGroup.createoreexpansion.energy_wave_study", "Create: Energy Wave Studies");
         add("createoreexpansion.mod_name", "Create: Ore Expansion");
 
+        // ========== creative-page section banners ==========
+        // The three 162x18 banner textures (author-supplied art) bake no text: the label is drawn
+        // by the client renderer. Section rules, order and row bookkeeping live in
+        // common/registry/coe/CoeCreativeSections.
+        add("createoreexpansion.creative_section.ore", "Ores");
+        add("createoreexpansion.creative_section.machine", "Machines");
+        add("createoreexpansion.creative_section.gear", "Gear");
+
         // ========== 物品/方块 ==========
         add(CoeItems.JADE_INGOT.get(), "Jade Ingot");
         add(CoeItems.RAW_JADE.get(), "Raw Jade");

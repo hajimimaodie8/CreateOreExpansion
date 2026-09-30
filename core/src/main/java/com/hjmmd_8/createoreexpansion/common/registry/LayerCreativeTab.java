@@ -89,6 +89,22 @@ public final class LayerCreativeTab {
     private final ResourceKey<CreativeModeTab> before;
     private final Supplier<ItemStack> icon;
 
+    /**
+     * 可选的「页实现」工厂（{@code CreativeModeTab.Builder -> CreativeModeTab}），默认 {@code null}。
+     *
+     * <p><b>为什么是 {@link java.util.function.Function} 而不是某个具体类</b>：需要换实现的是
+     * {@code :coe} 的 {@code base_tab}（它要一个会在 {@code getDisplayItems()} 里补空行的子类，
+     * 见 {@code docs/共享经验-盔甲与材料集/08-创造页创造分区横幅…}），而本类住 core（SHARED 层）
+     * —— <b>core 不许 import 层专属类</b>。所以这里只持有一个纯 JDK 函数，由 {@code :coe}
+     * 通过 {@link #sectioned} 填进来（与 {@code CoeCore} 既有的注入手法一致）。</p>
+     *
+     * <p><b>为什么是「每页一个字段」而不是「core 里一个全局静态」</b>：每层都调一次全局注入
+     * 会互相覆盖（最后调的那层说了算），而 CEWS 的 {@code energy_wave_study} 页
+     * <b>必须保持原样</b>（它靠 {@code EnergyWaveStudyTab} 的 remove/accept 钉顺序）。</p>
+     */
+    @Nullable
+    private java.util.function.Function<CreativeModeTab.Builder, CreativeModeTab> tabFactory;
+
     /** 与拆分前同名的公开字段（`Translatable` 形态的标题键视图）。 */
     public final Translatable translatable;
 
@@ -116,20 +132,44 @@ public final class LayerCreativeTab {
     }
 
     /**
+     * 声明本页用<b>自定义的 {@code CreativeModeTab} 子类</b>来构建（默认不用）。
+     *
+     * <p>调用方给的是 {@code CreativeModeTab.Builder -> CreativeModeTab} 的构造器引用
+     * （例如 {@code CoeSectionedTab::new}），它会被转交给原版的
+     * {@code CreativeModeTab.Builder#withTabFactory}，由 {@code build()} 在最后一步调用
+     * （NeoForge 21.1.228 / 1.21.1：{@code CreativeModeTab$Builder} 有字段
+     * {@code tabFactory} 与公开方法 {@code withTabFactory}，本轮已用 {@code javap} 核实）。</p>
+     *
+     * <p><b>返回 {@code this} 以便链式声明</b>：{@code LayerCreativeTab.of(...).sectioned(CoeSectionedTab::new)}。</p>
+     */
+    public LayerCreativeTab sectioned(
+            java.util.function.Function<CreativeModeTab.Builder, CreativeModeTab> factory) {
+        this.tabFactory = factory;
+        return this;
+    }
+
+    /**
      * 把若干页按<b>给定顺序</b>登记进注册表（等价于拆分前遍历枚举 {@code values()} 的那段循环）。
      *
      * <p><b>P7a：调用方 = 每个层自己的 {@code @Mod} 构造器</b>（见上面那段注释），
      * 一页只登记一次；同一个 id 登记两次会抛
      * {@code IllegalStateException("Duplicate registration …")}。</p>
+     *
+     * <p><b>分区换实现只走 {@link #sectioned}</b>：没声明工厂的页（CEWS 那一页）走原来那条
+     * {@code CreativeModeTab.builder()...build()} 路径，行为与分区特性引入前逐字一致。</p>
      */
     public static void registerAll(List<LayerCreativeTab> tabs) {
         for (LayerCreativeTab tab : tabs) {
-            tab.holder = TABS.register(tab.id,
-                () -> CreativeModeTab.builder()
+            tab.holder = TABS.register(tab.id, () -> {
+                CreativeModeTab.Builder builder = CreativeModeTab.builder()
                     .title(Component.translatable(tab.titleTranslationKey))
                     .withTabsBefore(tab.before)
-                    .icon(tab.icon)
-                    .build());
+                    .icon(tab.icon);
+                if (tab.tabFactory != null) {
+                    builder.withTabFactory(tab.tabFactory);
+                }
+                return builder.build();
+            });
         }
     }
 

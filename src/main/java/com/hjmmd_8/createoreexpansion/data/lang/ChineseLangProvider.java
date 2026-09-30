@@ -28,6 +28,13 @@ public class ChineseLangProvider extends LanguageProvider {
         add("itemGroup.createoreexpansion.energy_wave_study", "机械动力：能量波阵学");
         add("createoreexpansion.mod_name", "机械动力：矿物拓展");
 
+        // ========== 创造页分区横幅的释词 ==========
+        // 三条 162×18 横幅（作者提供的素材）上不烘焙文字，释词由客户端渲染时画上去；
+        // 分区规则、顺序与行号记录见 common/registry/coe/CoeCreativeSections。
+        add("createoreexpansion.creative_section.ore", "矿物");
+        add("createoreexpansion.creative_section.machine", "机械");
+        add("createoreexpansion.creative_section.gear", "装备");
+
         // ========== 物品/方块 ==========
         add(CoeItems.JADE_INGOT.get(), "翡翠锭");
         add(CoeItems.RAW_JADE.get(), "粗翡翠");

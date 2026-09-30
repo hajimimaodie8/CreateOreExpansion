@@ -28,7 +28,11 @@ public final class CoeCreativeTabs {
         "base_tab",
         "itemGroup.createoreexpansion",
         LayerCreativeTab.tabKey(LayerCreativeTab.ENERGY_WAVE_STUDY_TAB_ID),
-        () -> CoeItems.JADE_INGOT.asStack());
+        () -> CoeItems.JADE_INGOT.asStack())
+        // 本页是「一页 + 三条分区横幅（矿物 / 机械 / 装备）」：用会补空行的子类构建。
+        // 只有本页声明工厂 —— CEWS 的 energy_wave_study 页必须保持原样（它靠自己那份
+        // remove/accept 清单钉顺序），core 的 LayerCreativeTab 因此按页区分，不会误伤。
+        .sectioned(CoeSectionedTab::new);
 
     /** 本层页的声明顺序（由协调入口读取，顺序 = 拆分前的枚举顺序）。 */
     private static final List<LayerCreativeTab> TABS = List.of(BASE_TAB);

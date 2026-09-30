@@ -196,6 +196,28 @@ TRANSMUTING → LIGHTNING → LIGHTNING_BLOCK → GRINDING → DISMANTLING → C
 
 **未收口**：技能在游戏内的实际触发（玩家交互，静态关卡覆盖不到）—— 验收清单见 `docs/技能换核验收清单.md`。
 
+### 6.4 W13 创造页分区横幅（2026-09-30）
+
+> 主题：把 COE 唯一那一个创造页 `base_tab` 从「146 项平铺」改成「**一页 + 三条分区横幅**」
+> （① 矿物 → ② 机械 → ③ 装备），横幅是作者提供的三张 162×18 贴图。
+> 支援文档（含 §8 分类表、§5 落地步骤、§6 坑）→ `docs/共享经验-盔甲与材料集/08-创造页分区横幅（矿物扩展落地指南）.md`；
+> **落地回执与实测数据在该文档 §11**。
+
+- 新增 `coe/.../common/registry/coe/CoeCreativeSections.java`（分区声明 + 判定 + 分桶 + `layout()` + `SECTION_ROWS`）
+- 新增 `coe/.../common/registry/coe/CoeSectionedTab.java`（覆写 `getDisplayItems()` 补空行的页子类）
+- 新增 `coe/.../client/creative/CoeCreativeSectionBanners.java`（`ScreenEvent.Render.Post`，
+  反射读 `selectedTab`/`scrollOffs`，自适应「整行空」判定，失败静默降级）
+- `core/.../LayerCreativeTab` 新增 `sectioned(Function)` 注入点（**core 零层引用**，只有本页声明工厂）
+- 三条语言键走 datagen 提供器（未手改 `src/generated/`）
+- **对支援文档 §8 的更正**：静态清点 146 → 实测全配置 **145**
+  （`incomplete_transmute_mechanism` 在 `TransmutationItems.java:47` 被 `.removeTab(...)`，
+  按设计不进创造页）；只装 coe.jar 时为 143（CEWS 的 2 个构件不在场）
+
+**验证（服务端探针，读游戏真实构建的列表）**：只装 coe.jar = 143（76/19/48）、coe+cews = 145（76/21/48）；
+首物品行 1/11/15、横幅行 0/10/14 且**三个横幅行都整行空**；两次都 `nonempty == buckets`（无丢失无重复）。
+探针用后整块删除（`grep TEMP-PROBE|halt(|stopServer(|System.exit(` 零命中）。九道关卡全绿。
+**未收口**：横幅的画法与接缝只能人眼在 `runClient` 里确认（指南 §7.4）。
+
 ---
 
 - （待追加）
