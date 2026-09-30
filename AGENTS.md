@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-30（**W13 盔甲 + skiller 升级**：四套盔甲（翠玉/宝石/星界/雷鸣）落地；技能内核拉上游最新并 rebase 我方补丁，**内置只保留在 `:coe`**。为腾预算把「PowerShell 编码坑」与「标签目录单数」两节原地迁进 `markdown_output/工程环境与工具链细节（AGENTS迁入）.md`）。
+> 最后更新：2026-09-30（**W13 盔甲 + 技能换核**：四套盔甲落地；skiller 拉上游最新、**内置只在 `:coe`**；**旧技能内核执行层已删净**（64→37 个文件，剩下的都是数据/契约）；两节已迁出腾预算 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
@@ -76,6 +76,7 @@ git status --short                                          # git add 之后再�
   - **根 → `:coe` 必须 `compileOnly(project(':coe'))` + `jarJar(compileOnly(project(':coe')))`**；**用 `implementation` 会让 dev 硬崩**（那个 jar 进 runtimeClasspath 后被 FML 当成第二个 `createoreexpansion` mod 文件 → `duplicate_mod`）。
   - **根必须保留 `jarJar(compileOnly(project(':core')))`**（P4e 改；写 `implementation` 会让带 `FMLModType` 的 core jar 进 dev classpath 抢包，`runData` 崩 `ResolutionException`）。
 - **`@EventBusSubscriber` 的作用域是「每个 mod 文件」，不是全局**：`AutomaticEventSubscriber.inject` 只喂本文件的扫描结果并按 `mod.getModId()==modid` 过滤 —— **「住在 A 文件里、却标 B 的 modid」的类会静默不注入，且没有任何警告**。现修法在 `common/hub/IntegrationBootstrap`（走 scan data、不加载类、自维护无名单）。**这项审计必须查两种形态、而且必须在文件搬完之后对搬完的树再跑一遍**：① **正向**（P3w 发现）＝根文件里的类标着某个层的 id；② **镜像**（P3y `TransmutationEventHandler`、P3z `content/energyfield/` 两个类实证）＝**子模块文件里的类标着别的 id**。判据永远是「**类的 modid == 它所在 mod 文件的 id**」——文件一搬，正向就可能变成镜像，两种形态都只静默失效（无警告、无报错、编译全绿）。
+- **订阅者类不许按「引用计数」判死**：它只被事件总线调用、grep 引用恒 0。我据此误删过 HIT/USE 两个技能触发点（**六关全绿而技能不触发**）；已加 `tools/check-event-subscribers.ps1`。
 - **jar 字节数只在同一个工作树里可比**：`.cache/` 曾被整片塞进发布 jar（`exclude("src/generated/**/.cache")` 从来没匹配过），在临时 worktree 里重建 HEAD 会少 21 KB，**差点被误判成回归**。现已 `exclude(".cache/**")` + `exclude("**/.cache/**")`。
 - **`content/` 包不得 import 任何可选模组类**（Curios 只允许出现在 `compat/curios`；条件加载走 `Class.forName` + `ModList.isLoaded`）。可选依赖在 `neoforge.mods.toml` 里**必须 optional**（`curios` 曾是 required，导致没装的玩家在加载阶段直接崩）。**CA（`createaddition`）是唯一例外：第 2、3 层对它是 required，第 4 层 optional。**
 - **改动分层 / 注册 / 搬运代码后必须跑分层断言并到 0 违规**（白名单保持为空）。工具见下一节。
@@ -157,7 +158,7 @@ git status --short                                          # git add 之后再�
 ## ⏸ 挂起事项（重要，动手前必读）
 
 **技能内核移植（2026-09-19 已开工，进行中）**：用 Leaf 的独立内核 **Skiller**（<https://github.com/lizhanyu-leaf/Skiller>，本地副本 `E:\mc\mcmod\_ref\Skiller`，MIT）替换本模组自研的技能框架。
-**现状**：9/9 技能已进内核，**旧框架一个没删**（回退路径 + 客户端预览仍靠旧渲染器）；**剩余** = 把 `client/tool/**` 渲染器适配成 `StrategyRenderer` 并注册进 `StrategyRenderers`（须先修上游 `schedule()` 判错对象的 bug），然后删旧框架 + 跑专用服务端验证。**决策全文 / 15 条已定事实 → `markdown_output/技能内核换核执行方案.md` 的 `## 从 AGENTS.md 迁入（2026-09-25）`**；地图 `build/patch/coe_skill_map.md`、契约 `build/patch/skiller_api_foundation.md`。
+**现状（2026-09-30 第 1–6 阶段收口）**：9/9 技能在新内核；**旧执行层已删净**（旧技能实现类、策略类、handler、旧释放入口 `SkillsComponent#releaseSkills/releaseSkillAt`、迁移闸门、整套技能属性修饰机制）。旧技能树 **64 → 37**，剩下的是**数据与契约**：14 个 `*Config(s)`（新内核的数值真源）、7 个上下文类型、以及 `DataSkill`（id 载体）/`MetadataSkill`（元数据壳）/`SkillItemStack`/`SkillsComponent`/`AllKeys`/tooltip。
 **必须记住的几条**（细则同上）：
 - **id 与翻译键零改动**：技能 id 一律 `createoreexpansion:xxx`，三个 `SkillType` 沿用 `excavation_skill`/`hit_skill`/`use_skill`，12 条中英 lang 键一条不改；旧数据组件 `createoreexpansion:skills` 与 NBT 格式原样保留（老存档天然兼容，不需要 DataFixer）。
 - **不要 Skiller 的「按 R 启用技能」总开关**：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手 `refresh(player)`，并 `setToggleKeysEnabled(false)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`。
