@@ -21,11 +21,25 @@ import com.mojang.datafixers.util.Pair;
  * <p>能量消耗统一以 {@link ItemSkill#getCost()} 为准，不在此类重复记录。</p>
  */
 public class DataSkill {
+    /**
+     * 技能注册 id —— <b>序列化的真源</b>（2026-09-30 技能换核第 4 阶段加入）。
+     *
+     * <p>此前 id 只能靠 {@code AllSkills.getId(skill)} 反查，因此数据层被迫持有技能实例
+     * （旧内核形状）。现在 id 直接存在这里：{@link #toString()} 与
+     * {@link #fromString(String)} 都只依赖它，技能执行与注册已全部在 Skiller 新内核，
+     * 本类退化为纯数据载体。</p>
+     */
+    public ResourceLocation id;
     public ItemSkill skill;
     public CompoundTag nbt;
     public SkillConfig config;
 
     public DataSkill(ItemSkill skill, SkillConfig config, CompoundTag nbt) {
+        this(AllSkills.getId(skill), skill, config, nbt);
+    }
+
+    public DataSkill(ResourceLocation id, ItemSkill skill, SkillConfig config, CompoundTag nbt) {
+        this.id = id;
         this.skill = skill;
         this.config = config;
         this.nbt = nbt;
@@ -46,12 +60,14 @@ public class DataSkill {
      */
     public DataSkill copy() {
         CompoundTag copiedNbt = nbt != null ? nbt.copy() : null;
-        return new DataSkill(skill, config, copiedNbt);
+        return new DataSkill(id, skill, config, copiedNbt);
     }
 
     public String toString() {
-        if (nbt == null) return AllSkills.getId(skill).toString();
-        return AllSkills.getId(skill).toString() + nbt.toString();
+        ResourceLocation key = id != null ? id : AllSkills.getId(skill);
+        if (key == null) return "";
+        if (nbt == null) return key.toString();
+        return key.toString() + nbt.toString();
     }
 
     /**
@@ -65,8 +81,8 @@ public class DataSkill {
         try {
             var pair = parse(string);
             ResourceLocation id = pair.getFirst();
+            if (id == null) return null;
             ItemSkill skill = AllSkills.get(id);
-            if (skill == null) return null;
 
             CompoundTag nbt = pair.getSecond();
 
@@ -75,7 +91,9 @@ public class DataSkill {
             int level = nbt.getInt("Level");
             SkillConfig config = registered != null ? registered.configForLevel(level) : null;
 
-            return new DataSkill(skill, config, nbt);
+            // 2026-09-30 第 4 阶段：id 是序列化真源，因此即使查不到技能实例
+            // （例如该技能尚未重新注册）也保留这条数据，不再整条丢弃。
+            return new DataSkill(id, skill, config, nbt);
         } catch (Exception ignored) {
         }
         return null;

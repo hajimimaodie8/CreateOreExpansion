@@ -156,38 +156,17 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 */
 	private void releaseSkillIfRequested(Player player, ItemStack bow, int slot) {
 		if (slot < 0) return;
-		SkillItemStack skillStack = SkillItemStack.of(bow);
-		SkillsComponent holder = skillStack.getSkillsHolder();
-		if (holder == null) return;
 
-		// 新内核（Skiller）路径：已经迁移过去的弓技能由它执行（耗能/冷却/写标记都在技能里）。
-		// 放在旧路径之前 —— 旧 AllKeys 是纯客户端对象、专用服务器上恒为"未按下"；
-		// 两条路径不会重复：迁移闸门让旧路径跳过已注册进新内核的技能。
+		// 新内核（Skiller）路径：弓技能的执行（耗能 / 冷却 / 写技能标记）全在技能实现里。
 		// 弓射击没有对应的 NeoForge 事件 → 用 noEvent + extraData 传弓（绝不能调 getEvent()）。
+		//
+		// 2026-09-30 第 4 阶段：旧内核分支（SkillsComponent.releaseSkillAt / applySkillBoost /
+		// data.skill.getCooldownSeconds）已整体删除 —— 它被迁移闸门全量拦截，属于死代码；
+		// 冷却与剩余能量提示现在都由新路径负责。
 		if (player instanceof ServerPlayer serverPlayer) {
 			CoeSkillRelease.release(serverPlayer, CoeSkillTypes.USE,
 					SkillContextEnvironment.noEvent(serverPlayer, serverPlayer.level())
 							.extraData(BowContextFactory.KEY_BOW, bow));
-		}
-
-		List<DataSkill> useSkills = holder.getDataSkills(SkillType.USE_SKILL);
-		if (slot >= useSkills.size()) return;
-		DataSkill data = useSkills.get(slot);
-
-		// 先按有效等级加载技能配置（一技能多等级 + 技能提升附魔），冷却与消耗随之更新
-		SkillsComponent.applySkillBoost(bow, data);
-
-		// 冷却：优先技能自身冷却；未定义时退回注册表
-		int cooldownTicks = data.skill.getCooldownSeconds() > 0
-				? data.skill.getCooldownSeconds() * 20
-				: SkillCooldowns.getTicks(bow);
-		if (!ToolSkillCooldown.isReady(player, bow))
-			return;
-
-		if (holder.releaseSkillAt(skillStack, SkillType.USE_SKILL, slot, new BowShootContext(player, bow))) {
-			ToolSkillCooldown.startTicks(player, bow, cooldownTicks);
-			// 消耗后的剩余能量提示由 SkillEnergySpend.tryConsume 内部统一发送
-			// （sendRemainingEnergyWithMedallion：护目镜限制 + 凝能佩行/工具行，佩用佩色）
 		}
 	}
 

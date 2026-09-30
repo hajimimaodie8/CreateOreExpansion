@@ -9,7 +9,6 @@ import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkillAoeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfigs;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.MetadataSkill;
@@ -296,11 +295,9 @@ public final class AllSkills {
             data.maxLevel = this.maxLevel;
             if (config != null) {
                 config.load(data);
-                // 将配置载入技能实例，保证 getCost() 等字段返回注册时的真实值；
-                // 元数据壳没有 IItemSkill#load，故只对旧式 ConfigSkill 生效。
-                if (!(built instanceof MetadataSkill)) {
-                    ConfigSkill.loadConfig(built, config, data);
-                }
+                // 2026-09-30 第 4 阶段：不再往技能实例里灌配置（那个旧式 ConfigSkill
+                // 通路已随旧执行层删除）。元数据壳的 cost/cooldown 只作展示兜底，
+                // 真正生效的消耗与冷却由新内核从同一份 SkillConfig 读取。
             }
             SKILL_DATA.put(id, data);
             return data;

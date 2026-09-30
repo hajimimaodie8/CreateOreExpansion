@@ -155,10 +155,12 @@ public class CoeSkillProvider implements SkillProvider {
      */
     @Nullable
     private static ISkillInstance<?> toInstance(DataSkill data) {
-        if (data == null || data.skill == null) {
+        if (data == null) {
             return null;
         }
-        ResourceLocation skillId = AllSkills.getId(data.skill);
+        // 2026-09-30 第 4 阶段：id 现在直接存在 DataSkill 上（序列化真源），
+        // 不再走「技能实例 → 反查 id」这条旧内核的迂回路径。
+        ResourceLocation skillId = data.id;
         if (skillId == null) {
             return null;
         }

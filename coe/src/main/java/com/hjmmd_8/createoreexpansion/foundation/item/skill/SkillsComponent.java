@@ -94,137 +94,21 @@ public class SkillsComponent implements OwnedBySkills {
     }
 
     /**
-     * 释放指定类型的技能。
+     * 按有效等级（基础等级 + 技能提升附魔，受技能满级限制）更新技能配置。
      *
-     * 流程：
-     * <ul>
-     *     <li>只释放 {@link ItemSkill#canRelease} 通过的技能（例如锄头的收割/种植按目标方块二选一）；</li>
-     *     <li>释放前做一次总能量预检查，不足则整体放弃；</li>
-     *     <li>能量扣减由各技能在真正生效前通过 {@link SkillEnergySpend#tryConsume} 自行完成
-     *     （消耗以 {@link ItemSkill#getCost()} 为准，与注册配置一致）。</li>
-     * </ul>
-     *
-     * @param skillStack 技能 ItemStack
-     * @param type 技能类型
-     * @param context 技能上下文
-     * @return true=至少有一个技能被释放
-     */
-    @Override
-    public boolean releaseSkills(SkillItemStack skillStack, SkillType type, Object context) {
-        List<DataSkill> skills = dataSkills.get(type);
-        if (skills == null || skills.isEmpty()) return false;
-
-        ItemStack stack = skillStack.itemStack();
-        Player player = resolvePlayer(context);
-
-        // 1. 过滤出满足释放条件的技能
-        List<DataSkill> toRelease = new ArrayList<>(skills.size());
-        for (DataSkill data : skills) {
-            // 已迁移到新内核（Skiller）的技能由新路径释放，旧框架必须跳过，否则双重生效
-            if (SkillMigrationGate.isMigrated(data.skill)) continue;
-            if (data.skill.canRelease(context, data)) {
-                toRelease.add(data);
-            }
-        }
-        if (toRelease.isEmpty()) return false;
-
-        // 1.5 技能提升附魔：先提升技能等级（受技能满级限制），再按提升后的等级计算消耗与效果
-        for (DataSkill data : toRelease) {
-            applySkillBoost(stack, data);
-        }
-
-        // 2. 能量预检查：能量不足以下一次（最低消耗的）技能释放时整体放弃。
-        //    无论创造模式与否都消耗能量（与 SkillEnergySpend.tryConsume 一致），故不做创造豁免，
-        //    否则低能量提示会被调用方的剩余能量提示覆盖。
-        int minCost = toRelease.stream()
-                .mapToInt(data -> SkillEnergySpend.compute(stack, data.skill))
-                .min()
-                .orElse(0);
-        if (!ToolEnergy.canAfford(stack, minCost)) {
-            if (player != null) ToolEnergy.sendLowEnergy(player, stack);
-            return false;
-        }
-
-        // 3. 释放技能（能量由技能内部在真正生效前消耗）
-        for (DataSkill data : toRelease) {
-            data.skill.release(context, data);
-        }
-        return true;
-    }
-
-    /**
-     * 按槽位释放指定类型的单个技能（剑类双技能：槽位 0=技能键一、槽位 1=技能键二）。
-     *
-     * 流程与 {@link #releaseSkills} 一致，但只释放指定槽位的技能，
-     * 且各自执行独立的能量预检查与冷却读取，两个技能互不影响。
-     *
-     * @param skillStack 技能 ItemStack
-     * @param type 技能类型
-     * @param slot 技能槽位（0=第一个技能，1=第二个技能）
-     * @param context 技能上下文
-     * @return true=该槽位技能被释放
-     */
-    public boolean releaseSkillAt(SkillItemStack skillStack, SkillType type, int slot, Object context) {
-        List<DataSkill> skills = dataSkills.get(type);
-        if (skills == null || skills.isEmpty() || slot < 0 || slot >= skills.size()) return false;
-
-        DataSkill data = skills.get(slot);
-        // 已迁移到新内核（Skiller）的技能由新路径释放，旧框架必须跳过，否则双重生效
-        if (SkillMigrationGate.isMigrated(data.skill)) return false;
-        if (!data.skill.canRelease(context, data)) return false;
-
-        ItemStack stack = skillStack.itemStack();
-        Player player = resolvePlayer(context);
-
-        // 技能提升附魔：先提升技能等级（受技能满级限制），再按提升后的等级计算消耗与效果
-        applySkillBoost(stack, data);
-
-        // 能量预检查：不足则整体放弃（提示由低能量逻辑统一处理）
-        if (!ToolEnergy.canAfford(stack, SkillEnergySpend.compute(stack, data.skill))) {
-            if (player != null) ToolEnergy.sendLowEnergy(player, stack);
-            return false;
-        }
-
-        // 释放（能量由技能内部在真正生效前消耗）
-        data.skill.release(context, data);
-        return true;
-    }
-
-    /**
-     * 按有效等级（基础等级 + 技能提升附魔，受技能满级限制）更新技能配置并加载到技能实例。
-     *
-     * <p>供技能释放与调用方（如弓箭技能的冷却读取）使用：先把配置更新到
-     * {@link DataSkill#config}，再通过 {@link ConfigSkill#loadConfig} 加载进技能实例，
-     * 保证 {@link ItemSkill#getCost()} / {@link ItemSkill#getCooldownSeconds()} 等
-     * 字段返回提升后等级的真实值。不写入物品 NBT。</p>
+     * <p>保留为静态工具：调用方（如工具/武器侧）需要按当前等级取配置时使用。
+     * 2026-09-30 第 4 阶段后，<b>技能执行本身不再经过本类</b>——释放由 Skiller 新内核的
+     * {@code CoeSkillRelease} 负责，本方法只剩「取该等级配置并记回 {@link DataSkill#config}」。</p>
      */
     public static void applySkillBoost(ItemStack stack, DataSkill data) {
-        AllSkills.RegisteredDataSkill registered = AllSkills.getData(AllSkills.getId(data.skill));
+        if (data == null) return;
+        AllSkills.RegisteredDataSkill registered = AllSkills.getData(data.id);
         if (registered == null) return;
         int effective = SkillEnergySpend.effectiveLevel(stack, data);
         SkillConfig levelConfig = registered.configForLevel(effective);
         if (levelConfig != null) {
             data.config = levelConfig;
-            // 同步加载进技能实例，等级提升对消耗/冷却等字段立即生效
-            ConfigSkill.loadConfig(data.skill, levelConfig, data);
         }
-    }
-
-    /**
-     * 从技能上下文中解析出玩家，用于判断创造模式与发送提示消息。
-     * 仅依赖技能上下文接口，不绑定具体事件类型。
-     */
-    private static Player resolvePlayer(Object context) {
-        if (context instanceof ExcavationSkillContext excavation) {
-            return excavation.entity() instanceof Player player ? player : null;
-        }
-        if (context instanceof UseItemContext<?> useContext) {
-            return useContext.getPlayer();
-        }
-        if (context instanceof HitSkillContext hitContext) {
-            return hitContext.player();
-        }
-        return null;
     }
 
     // ========== 实用查询方法 ==========

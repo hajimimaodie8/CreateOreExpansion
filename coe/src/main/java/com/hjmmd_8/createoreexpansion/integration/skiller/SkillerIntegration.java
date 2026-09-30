@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillMigrationGate;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowShootSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationContextFactory;
@@ -65,13 +64,14 @@ public final class SkillerIntegration {
     private static void onRegister(RegisterEvent event) {
         SkillerBuiltInRegistries.init();
 
-        // ── 一次性：Provider 与迁移闸门（与具体注册表无关，只做一次）──────────────
+        // ── 一次性：Provider（与具体注册表无关，只做一次）────────────────────
         if (!initialized) {
             initialized = true;
             // 技能候选来源：读取本模组旧组件并转成新内核的技能组件
             SkillProviders.register(new CoeSkillProvider());
-            // 迁移闸门：已在 skiller:skill 注册表里的技能，旧框架必须跳过（否则双重生效）
-            SkillMigrationGate.setCheck(id -> SkillerBuiltInRegistries.SKILLS.containsKey(id));
+            // 2026-09-30 第 4 阶段：迁移闸门（SkillMigrationGate）已删除 ——
+            // 旧框架的执行入口（SkillsComponent#releaseSkills/releaseSkillAt）与两个旧触发点
+            // 一并拔掉了，没有"旧路径可能重复执行"的窗口，闸门不再需要。
         }
 
         ResourceKey<? extends Registry<?>> registryKey = event.getRegistryKey();
