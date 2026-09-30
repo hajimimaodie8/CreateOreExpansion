@@ -79,7 +79,7 @@ git status --short                                          # git add 之后再�
 - **订阅者类不许按「引用计数」判死**：它只被事件总线调用、grep 引用恒 0。我据此误删过 HIT/USE 两个技能触发点（**六关全绿而技能不触发**）；已加 `tools/check-event-subscribers.ps1`。
 - **jar 字节数只在同一个工作树里可比**：`.cache/` 曾被整片塞进发布 jar（`exclude("src/generated/**/.cache")` 从来没匹配过），在临时 worktree 里重建 HEAD 会少 21 KB，**差点被误判成回归**。现已 `exclude(".cache/**")` + `exclude("**/.cache/**")`。
 - **`content/` 包不得 import 任何可选模组类**（Curios 只允许出现在 `compat/curios`；条件加载走 `Class.forName` + `ModList.isLoaded`）。可选依赖在 `neoforge.mods.toml` 里**必须 optional**（`curios` 曾是 required，导致没装的玩家在加载阶段直接崩）。**CA（`createaddition`）是唯一例外：第 2、3 层对它是 required，第 4 层 optional。**
-- **改动分层 / 注册 / 搬运代码后必须跑分层断言并到 0 违规**（白名单保持为空）。工具见下一节。
+- **改动分层 / 注册 / 搬运代码后必须跑分层断言并到 0 违规**（白名单保持为空）。**删类后另跑 `tools/check-stale-imports.ps1`**（javac 对失效 import 惰性、会静默放过）。工具见下一节。
 
 ## 🎨 美术资源的红线（用户 2026-09-14 明确要求，必须遵守）
 
@@ -99,8 +99,8 @@ git status --short                                          # git add 之后再�
 - `tools/check-layering.ps1` —— 分层方向断言（**扫五个根**：`src/main/java` + `core/` + `coe/` + `cews/` + `transmutation/` 各自的 `src/main/java`；层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CEWS→TRANS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运代码后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树做对比）。**每拆一层就要把该层加进两个脚本的 roots 表**——不加的后果是那一层计数变 0 而脚本照样 exit 0（P3d-β core / P3w coe / P3y transmutation / P3z cews 四次同一形状的静默逃逸）。
 - `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则（`Get-FileLayer` 函数体）必须逐字一致**（改一处要两处同改）。
 - `tools/check-package-overlap.ps1` —— **包重叠审计（JPMS）**：同包跨两模块 = 启动即 `ResolutionException`，三关全绿看不到；改包结构/拆层/加 `FMLModType` 后必跑到 0。
-- `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（**92 条**断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（有 mixin 类而 0 条声明 = 红，即 P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线、每个 jar 自带全部共享 `data/**`（`core` 真源）且根侧 `src/main/resources/data/**` 必须为空（P7c）、221 条生成配方按层分发（61/160/0）、跨层手写标签按层拆半（P7d）、**X2 冻结序断言**（配方类型展开序列 == 6 元素表，顺序是玩法不变量）、`javap` 完整性守护、`Class.forName` 字面量扫描（三种形态 + `OWN`/`CROSS`/`OPTIONAL` 分类）。**每条断言都配「至少 N 条」的反空转守护**——匹配 0 条必须变红而不是静默通过（它抓出过自己作者的 bug）。
-- `tools/check-package-heritage.ps1` —— 包名血统**报告**（基准 `fbf33cdf~1`，`-Base` 可覆盖）：列「被迫/非被迫」改名并计账，**exit 0**；非被迫要人工判（撒谎的包名 vs 刻意重构废弃了旧包）。
+- `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（**92 条**断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（有 mixin 类而 0 条声明 = 红，即 P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线、每个 jar 自带全部共享 `data/**`（`core` 真源）且根侧 `src/main/resources/data/**` 必须为空（P7c）、221 条生成配方按层分发（61/160/0）、跨层手写标签按层拆半（P7d）、**X2 冻结序断言**（配方类型展开序列 == 6 元素表，顺序是玩法不变量）、`javap` 完整性守护、`Class.forName` 字面量扫描（三种形态 + `OWN`/`CROSS`/`OPTIONAL` 分类）。**每条断言都配反空转守护**（匹配 0 条即红）。
+- `tools/check-package-heritage.ps1` —— 包名血统**报告**（基准 `fbf33cdf~1`，`-Base` 可覆盖）：列「被迫/非被迫」改名并计账，**exit 0**；非被迫的要人工判。
 - `tools/check-skill-render-coverage.ps1` —— 策略渲染覆盖关卡（注册调用数 == 带渲染器的策略数 / 漏注册渲染器 = 预览静默消失 / 两个 outline 渲染器都得有槽位门）。改渲染器必跑。
 - `tools/check-asset-attribution.ps1` —— **资产归属关卡**（只读，exit 0/1）：blockstates/models 里指向 `createoreexpansion:` 的 `parent`/`model`/`textures.*` 必须解析到本模块**或本模块声明 required 的**模块（**判据必须认识依赖方向**，零白名单；`cews → coe` 合法、`coe → cews` 非法）。附 A2/A3/A5 与 15 条反空转守护；**孤儿只报告不判红**。
 - `tools/check-data-attribution.ps1` —— **跨层数据引用扫描**（**观测型，exit 0**）：唯一红源是 23 条反空转守护；报载体覆盖率、两路索引覆盖、跨模块引用表、`UNINDEXED` 明细。**实测跨模块数据引用 = 0 对**。
