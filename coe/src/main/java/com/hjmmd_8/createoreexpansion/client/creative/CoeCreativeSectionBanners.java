@@ -14,6 +14,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
@@ -149,19 +150,22 @@ public final class CoeCreativeSectionBanners {
      * <b>首个可见行</b>——照抄原版 {@code CreativeModeInventoryScreen.ItemPickerMenu} 的两个
      * {@code protected} 方法（外部无法调用，故复刻公式）：
      * <pre>
-     * calculateRowCount()       = positiveCeilDiv(items.size(), 9) - 5
-     * getRowIndexForScroll(s)   = max((int)(s * rowCount + 0.5), 0)
+     * calculateRowCount()       = Mth.positiveCeilDiv(items.size(), 9) - 5
+     * getRowIndexForScroll(s)   = Math.max((int)(s * rowCount + 0.5), 0)
      * </pre>
+     *
+     * <p><b>与原版逐字同源</b>：本轮用 {@code javap -c} 读过这两个方法的字节码 ——
+     * {@code bipush 9} / {@code iconst_5} / {@code ldc2_w 0.5d} / {@code dadd} 后直接
+     * {@code Math.max(..., 0)}，即 <b>先乘后加 0.5 再截断</b>。</p>
      *
      * <p><b>最容易写错的一格</b>：{@code s = 0.75}、{@code rowCount = 3} 时
      * {@code 0.75 × 3 + 0.5 = 2.75}，{@code (int)} <b>截断成 2</b>，<b>不是</b> 3。
-     * 所以这里<b>不能</b>用 {@code Math.round}。</p>
+     * 所以这里<b>不能</b>用 {@code Math.round}（落地文档 §6.6 专门列了这条）。</p>
      */
     private static int firstVisibleRow(int itemCount, float scrollOffs) {
-        int rowCount = Math.max((itemCount + CoeCreativeSections.ITEMS_PER_ROW - 1)
-            / CoeCreativeSections.ITEMS_PER_ROW, 0) - VISIBLE_ROWS;
+        int rowCount = Mth.positiveCeilDiv(itemCount, CoeCreativeSections.ITEMS_PER_ROW) - VISIBLE_ROWS;
         if (rowCount <= 0) {
-            return 0;   // 不满 5 行时不能乘出负数
+            return 0;   // 不满 5 行时不能乘出负数（原版靠后面的 Math.max 兜，这里等价且更直白）
         }
         return Math.max((int) ((double) (scrollOffs * (float) rowCount) + 0.5), 0);
     }
