@@ -1,8 +1,9 @@
-﻿cews/src/main/java/com/hjmmd_8/createoreexpansion/client/cews/CewsClientSetup.java
+cews/src/main/java/com/hjmmd_8/createoreexpansion/client/cews/CewsClientSetup.java
 cews/src/main/java/com/hjmmd_8/createoreexpansion/client/cews/WaveQueryGaugeModelRegistration.java
 coe/src/main/java/com/hjmmd_8/createoreexpansion/client/ClientEvents.java
 coe/src/main/java/com/hjmmd_8/createoreexpansion/client/JadeTopazBowModelRegistration.java
 coe/src/main/java/com/hjmmd_8/createoreexpansion/client/WaveEntityRendererRegistration.java
+coe/src/main/java/com/hjmmd_8/createoreexpansion/client/creative/CoeCreativeSectionBanners.java
 coe/src/main/java/com/hjmmd_8/createoreexpansion/compat/jei/CreateOreExpansionJEI.java
 coe/src/main/java/com/hjmmd_8/createoreexpansion/content/energyfield/EnergyFieldCommandRegistration.java
 coe/src/main/java/com/hjmmd_8/createoreexpansion/content/energyfield/EnergyFieldGoggleOutlineRenderer.java
