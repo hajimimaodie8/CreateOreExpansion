@@ -55,7 +55,7 @@
 | **只装 `coe.jar`** | **已真验**（发布形态服务端：`PASS 20 / FAIL 0`，标签与配方解析缺陷均为 0） |
 | 只装 `cews.jar` | 被 FML 拒载（设计如此） |
 | 只装 `transmutation.jar` | 被 FML 拒载（设计如此） |
-| `coe` + `cews` | 静态与加载期证据齐；运行期整组待跑（见 §5） |
+| `coe` + `cews` | **已真验**（矩阵 **C1**：`PASS 16/0/1`，`Done 7.204s`；且含在 §5 末「从 HEAD 重建的 jar 上复跑 9/9」那一批内） |
 | 三层全装 | 已真验（服务端 7 项全过） |
 | **整包与模块 jar 混装** | **不要**（见 §0） |
 
@@ -68,7 +68,8 @@
 3. **`cews.jar` 里有 3 个空目录条目**（`data/createoreexpansion/recipe/` 那三层）：清理方案要么影响所有层的 stale 清理逻辑，要么给 jar 加 `exclude` —— 而后者在 cews 将来真有自己的配方时会**静默丢文件**。**风险大于收益，故保留不动**。
 4. ~~资产归属欠账~~ **已修复（2026-09-28）**：三台应力充能器的**手写模型与贴图**（71 个 = 模型 24 + 贴图 47）曾在模块搬家时滞留在第二层，后果是**只装 `coe.jar` 时能放下机器、但模型与贴图缺失**（玩家可见）。现已全部 `git mv` 进第一层，**字节不变**（贴图逐个比过 sha256）。
    **新增关卡** `tools/check-asset-attribution.ps1`（5 条断言）专守这一类：它检查「每个模块的资产引用必须能在自己模块的资源根里解析到」。**它已确认本条已修** —— `coe` 侧的非法方向未解析引用 = **0**。
-   ⚠ 该关卡的 A1 判据正在改为**依赖方向感知**（读各模块 `neoforge.mods.toml` 的 `required` 依赖）：现状它会把**合法的** `cews → coe` 引用也报成红。那一类引用是正当的 —— `cews` 已声明 `createoreexpansion` 为 required，玩家装 `cews.jar` 时必然也装了 `coe.jar`，那些贴图一定在场。
+   ✅ 该关卡的 A1 判据**已是依赖方向感知的**（读各模块 `neoforge.mods.toml` 里 `type = "required"` 的依赖，**零白名单**）。实测重跑（2026-09-30）：`checks run: 5, failed: 0`、`illegal-direction=0`、`dangling=0`、`legal-cross=107`，EXIT=0 —— 其中 `cews → coe` 需要的那 3 个贴图被正确判为**合法**（jar closure 报 `cews needs texture from coe distinct files=3`）。
+   ~~原文：该关卡的 A1 判据正在改为依赖方向感知…现状它会把合法的 `cews → coe` 引用也报成红。~~ **该描述已过期**（改动早已落地）：`cews` 声明 `createoreexpansion` 为 required，玩家装 `cews.jar` 时必然也装了 `coe.jar`，那些贴图一定在场 —— 这正是新判据据此判它合法的理由。
 5. **创造页归属已全部裁定完毕（用户 2026-09-28）**：
    - **已解决**：三种机壳按裁定归第一层 ⇒ 它们已从「能量波阵学」页移到**矿物页**。`cews` 侧那份 `stellarstone_blocks` 标签半边因此变空并被删除，而 `coe` 侧半边同时提供 `stellarstone_block` 与 `stellarstone_casing` ⇒ **并集语义完整保留**。
    - **已裁定（用户 2026-09-28）**：三台应力充能器与两个能量构件（`energy_mechanism` / `incomplete_energy_mechanism`）**全部归矿物页**。充能器本是 `CoeRegistrate` 注册（默认就在矿物页），本次撤销了原先"搬进能量波阵学页"的做法；两个能量构件由 `CewsRegistrate` 注册（默认在能量波阵学页），改由 `EnergyWaveStudyTab#BASE_PAGE_ITEMS` 在标签页构建时搬回矿物页——**刻意不动注册点**（Registrate 实例决定 datagen 判层，换实例会把模型/语言/战利品表搬到第一层，而注册 id 与语言键都不该动）。⇒ **能量波阵学页现在恰好 12 项，与清单逐项一致**（历史上它曾比清单多 3 项，而那正是创造页重复添加崩溃的土壤）。
