@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-30（**W13 盔甲 + 技能换核**：四套盔甲落地；skiller 拉上游最新、**内置只在 `:coe`**；**旧技能内核执行层已删净**（64→37 个文件，剩下的都是数据/契约）；两节已迁出腾预算 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md`）。
+> 最后更新：2026-09-30（**W13 盔甲 + 技能换核**：四套盔甲落地；skiller 拉上游最新、**内置只在 `:coe`**；**旧技能内核执行层已删净**（64→34，剩数据/契约）；两节已迁出腾预算 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
@@ -158,9 +158,9 @@ git status --short                                          # git add 之后再�
 ## ⏸ 挂起事项（重要，动手前必读）
 
 **技能内核移植（2026-09-19 已开工，进行中）**：用 Leaf 的独立内核 **Skiller**（<https://github.com/lizhanyu-leaf/Skiller>，本地副本 `E:\mc\mcmod\_ref\Skiller`，MIT）替换本模组自研的技能框架。
-**现状（2026-09-30 第 1–6 阶段收口）**：9/9 技能在新内核；**旧执行层已删净**（旧技能实现类、策略类、handler、旧释放入口 `SkillsComponent#releaseSkills/releaseSkillAt`、迁移闸门、整套技能属性修饰机制）。旧技能树 **64 → 37**，剩下的是**数据与契约**：14 个 `*Config(s)`（新内核的数值真源）、7 个上下文类型、以及 `DataSkill`（id 载体）/`MetadataSkill`（元数据壳）/`SkillItemStack`/`SkillsComponent`/`AllKeys`/tooltip。
+**现状（2026-09-30 第 1–8 阶段收口）**：9/9 技能在新内核；**旧执行层已删净**（旧技能实现类、策略类、handler、旧释放入口 `SkillsComponent#releaseSkills/releaseSkillAt`、迁移闸门、整套技能属性修饰机制）。旧技能树 **64 → 34**，剩下的是**数据与契约**：14 个 `*Config(s)`（新内核的数值真源）、7 个上下文类型、以及 `DataSkill`（id 载体）/`MetadataSkill`（元数据壳）/`SkillItemStack`/`SkillsComponent`/`AllKeys`/tooltip。
 **必须记住的几条**（细则同上）：
-- **id 与翻译键零改动**：技能 id 一律 `createoreexpansion:xxx`，三个 `SkillType` 沿用 `excavation_skill`/`hit_skill`/`use_skill`，12 条中英 lang 键一条不改；旧数据组件 `createoreexpansion:skills` 与 NBT 格式原样保留（老存档天然兼容，不需要 DataFixer）。
+- **id 与翻译键零改动**：技能 id 一律 `createoreexpansion:xxx`，三个 `SkillType` 沿用 `excavation_skill`/`hit_skill`/`use_skill`，12 条中英 lang 键一条不改；旧数据组件 `createoreexpansion:skills` 与 NBT 格式不变（`tools/check-save-format.ps1` + `check-skill-registry-parity.ps1` 守着；老存档兼容）。
 - **不要 Skiller 的「按 R 启用技能」总开关**：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手 `refresh(player)`，并 `setToggleKeysEnabled(false)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`。
 - **内置的是我方 fork 版**（`_ref/Skiller` 的 `coe-embed` 分支；上游对我方只读，push 403 ⇒ 分支只在本地）——**升级步骤 / 上游基线 `cebb47b` / 冲突口径 / 全量补丁 → `docs/skiller-embed/skiller-embed-README.md`**（补丁已实测可复现）。⚠ 留档别放 `build/`（`.gitignore:3` 忽略，`git add` 静默拒绝）。
 - **skiller 只由 `:coe` 内置**（2026-09-30 用户裁定）：根 `build.gradle` 用 `compileOnly` + `runtimeOnly`（后者**仅供 dev 的 runData/runClient**，缺它被 FML 拒载）。
