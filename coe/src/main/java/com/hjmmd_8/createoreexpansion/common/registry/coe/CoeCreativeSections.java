@@ -137,13 +137,19 @@ public final class CoeCreativeSections {
     private static final int ORE_CRYSTAL = 9;
     private static final int ORE_BUCKET = 10;
 
-    /** ② 机械的区内族序（§8 ② 的分组顺序；2026-09-30 追加波机器一族）。 */
+    /**
+     * ② 机械的区内族序（§8 ② 的分组顺序；2026-09-30 两处调整）。
+     *
+     * <p><b>2026-09-30 用户裁定</b>：① CEWS 的 12 台波机器搬入本区；② <b>10 个角磨轮排到本区最后</b>
+     * （"这些都是比较无关紧要的东西"）⇒ 顺序 = 处理机器 → 机壳 → <b>波机器</b> → 机器构件 → <b>角磨轮</b>。</p>
+     */
     private static final int MACHINE_MACHINE = 0;
     private static final int MACHINE_CASING = 1;
-    private static final int MACHINE_WHEEL = 2;
+    /** CEWS 的波机器家族（2026-09-30 用户裁定搬入本页）。 */
+    private static final int MACHINE_WAVE = 2;
     private static final int MACHINE_MECHANISM = 3;
-    /** CEWS 的波机器家族（2026-09-30 用户裁定搬入本页；排最后，便于以后继续往上累加）。 */
-    private static final int MACHINE_WAVE = 4;
+    /** 角磨轮：**本区最后**（用户 2026-09-30 裁定「比较无关紧要」）。 */
+    private static final int MACHINE_WHEEL = 4;
 
     /**
      * <b>CEWS 波机器的注册名后缀族</b>（2026-09-30 用户裁定「标签页只有一个」后，

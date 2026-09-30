@@ -203,6 +203,7 @@ $render = Read-Text $RENDER
 if ($null -eq $render) { Fail 'render-file' "missing $RENDER" }
 else {
     foreach ($need in @(
+        @{ id = 'render-hook';      pattern = 'ContainerScreenEvent\.Render\.Foreground'; why = 'the banner MUST be drawn in the container Foreground hook (after items, BEFORE the tooltip)' },
         @{ id = 'render-screen-guard'; pattern = 'instanceof CreativeModeInventoryScreen'; why = 'guard 1: only the creative screen' },
         @{ id = 'render-tab-guard';    pattern = 'OUR_TAB_ID\.equals\(selectedTabId\(\)\)'; why = 'guard 2: only our own tab (never draw on someone else''s page)' },
         @{ id = 'render-rows-guard';   pattern = 'rows\.isEmpty\(\)'; why = 'guard 3: only when this page has section records' },
@@ -212,6 +213,13 @@ else {
         @{ id = 'render-sprite';       pattern = 'blitSprite\(banner, x, y, BANNER_WIDTH, BANNER_HEIGHT\)'; why = 'blitSprite takes a SPRITE NAME, drawn 1:1 at 162x18' }
     )) {
         if ($render -notmatch $need.pattern) { Fail $need.id $need.why }
+    }
+    # 2026-09-30 user-reported defect: ScreenEvent.Render.Post fires AFTER renderWithTooltip,
+    # so the banner covered the hovered item's tooltip. Foreground fires before it. Never go back.
+    if ($render -match 'ScreenEvent\.Render\.Post') {
+        Fail 'render-tooltip-clobber' "ScreenEvent.Render.Post is fired AFTER the tooltip is drawn -- the banner would cover hovered tooltips again (this was a real reported defect). Use ContainerScreenEvent.Render.Foreground."
+    } else {
+        Write-Output "ok  [render-tooltip-clobber] not registered on ScreenEvent.Render.Post"
     }
     # reflection must stay limited to the two private fields that have no public accessor
     $fieldNames = [regex]::Matches($render, 'findField\([^,]+,\s*"([A-Za-z]+)"\)') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique

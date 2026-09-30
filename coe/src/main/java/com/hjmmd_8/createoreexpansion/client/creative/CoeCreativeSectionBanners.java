@@ -22,15 +22,25 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.client.event.ContainerScreenEvent;
 
 /**
  * <b>创造页「分区横幅」的客户端渲染</b>：在 {@code base_tab}（矿物拓展）的空行上叠加画三条横幅
  * + 释词。
  *
  * <p>横幅<b>不是物品</b>（不能进 {@code displayItems} —— 详见落地文档 §6.1），所以只能由渲染钩子
- * 画在最上层。挂点选 {@link ScreenEvent.Render.Post}：它由 NeoForge 在
- * {@code screen.renderWithTooltip(...)} <b>之后</b>立刻发出，此时格子底、物品、滚动条都画完了。</p>
+ * 画在最上层。挂点选 {@link ContainerScreenEvent.Render.Foreground}。</p>
+ *
+ * <h3>⚠ 为什么<b>不</b>用 {@code ScreenEvent.Render.Post}（2026-09-30 实测踩到）</h3>
+ * <p>落地文档 §5 步骤 6 建议的 {@code ScreenEvent.Render.Post} 由
+ * {@code ClientHooks#drawScreenInternal} 在 {@code screen.renderWithTooltip(...)} <b>之后</b>发出，
+ * 所以它是"整个屏幕之上"—— <b>连悬停提示（tooltip）也被它盖住</b>。
+ * 症状（用户实测报障）：把某台机器滚到最上面那一行、鼠标悬停时，
+ * <b>tooltip 向上伸出的部分被横幅吃掉</b>，看起来像"显示被页盖掉"。</p>
+ * <p>{@link ContainerScreenEvent.Render.Foreground} 由 {@code AbstractContainerScreen#render}
+ * 在<b>槽位与物品绘制之后</b>发出，而 {@code renderTooltip(...)} 是随后另一个方法
+ * （本轮用 {@code javap -c} 核过偏移：Background 事件 → 槽位循环 → <b>Foreground 事件</b> → tooltip）。
+ * 于是横幅仍在格子与物品之上，却<b>位于 tooltip 之下</b> —— 两个诉求同时满足。</p>
  *
  * <h3>为什么是「自适应判定」而不是「记录行号 − 1」</h3>
  * <p>分区记录（{@link CoeCreativeSections#SECTION_ROWS}）记的是<b>首物品行</b>，理论上横幅行 = 它 − 1。
@@ -41,7 +51,8 @@ import net.neoforged.neoforge.client.event.ScreenEvent;
  *
  * <h3>三个前置判断，顺序不能变</h3>
  * <ol>
- *     <li>是创造界面吗（{@link CreativeModeInventoryScreen}）；</li>
+ *     <li>是创造界面吗（{@link CreativeModeInventoryScreen}；本事件对<b>任何</b>容器界面都会发，
+ *         所以这一步是必需的过滤）；</li>
  *     <li>选中的是本模组的页吗（{@code createoreexpansion:base_tab}）；</li>
  *     <li>本页有分区记录吗（{@link CoeCreativeSections#SECTION_ROWS} 非空）。</li>
  * </ol>
@@ -92,11 +103,16 @@ public final class CoeCreativeSectionBanners {
     /** 反射字段缓存（{@code Optional.empty()} = 已查过、确实没有）。 */
     private static final Map<String, Optional<Field>> FIELD_CACHE = new ConcurrentHashMap<>();
 
+    /**
+     * 每帧在容器界面「前景」时机画横幅（见类注释：<b>不能在 tooltip 之后</b>）。
+     *
+     * <p>本事件对任何 {@code AbstractContainerScreen} 都会发，所以①那一步不是多余的。</p>
+     */
     @SubscribeEvent
-    public static void onScreenRender(ScreenEvent.Render.Post event) {
+    public static void onContainerForeground(ContainerScreenEvent.Render.Foreground event) {
         try {
             // ① 是创造界面吗
-            if (!(event.getScreen() instanceof CreativeModeInventoryScreen screen)) {
+            if (!(event.getContainerScreen() instanceof CreativeModeInventoryScreen screen)) {
                 return;
             }
             // ② 选中的是本模组的页吗
