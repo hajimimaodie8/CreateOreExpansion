@@ -215,7 +215,7 @@ index 5208e8b..ed76388 100644
   * @see EventBusSubscriber
   * @see ClientSkillCache
 diff --git a/src/main/java/com/leaf/skiller/client/ClientSkillCache.java b/src/main/java/com/leaf/skiller/client/ClientSkillCache.java
-index 828256f..ff9f448 100644
+index 828256f..e235d6d 100644
 --- a/src/main/java/com/leaf/skiller/client/ClientSkillCache.java
 +++ b/src/main/java/com/leaf/skiller/client/ClientSkillCache.java
 @@ -8,10 +8,14 @@ import com.leaf.skiller.content.skill.SkillComponent;
@@ -366,7 +366,7 @@ index 828256f..ff9f448 100644
       * <p>
       * Populated when a server sync request enables the system, cleared on disable.
       * 收到服务端同步请求启用时填充，禁用时清空。
-@@ -155,18 +274,42 @@ public class ClientSkillCache {
+@@ -155,18 +274,72 @@ public class ClientSkillCache {
          Minecraft mc = Minecraft.getInstance();
          if (mc.player == null) return;
  
@@ -378,33 +378,33 @@ index 828256f..ff9f448 100644
 -            // 避免第一次按下时对 null 拆箱。
 -            boolean previous = pressed.getOrDefault(idx, false);
 -            if (previous != state) {
+-                pressed.put(idx, state);
+-                PacketDistributor.sendToServer(new KeyPressedPacket(idx, state));
 +        // Monitor skill key state changes and send updates to server.
 +        // Only keys that actually have skills bound (derived from the SkillComponent)
 +        // are monitored, so no unnecessary key state changes are sent.
 +        // 监控技能键状态变化并向服务器发送更新。
 +        // 仅监控实际绑定了技能的按键（从 SkillComponent 派生），
 +        // 因此不会发送不必要的按键状态变化。
-+        for (int idx : cacheKeys) {
-+            // The monitored slot set comes from the skill component, so with an installed
-+            // key source the consumer owns the slot range; otherwise the built-in key array
-+            // defines it and out-of-range slots are ignored.
-+            // 受监控槽位来自技能组件：安装了按键来源时槽位范围由消费方决定；
-+            // 否则由内置按键数组决定，越界槽位直接忽略。
-+            final boolean state;
-+            if (keySource != null) {
-+                state = keySource.isDown(idx);
-+            } else {
-+                if (idx < 0 || idx >= AllKeys.SKILL_KEYS.length) continue;
-+                state = AllKeys.SKILL_KEYS[idx].isDown();
++        //
++        // BOOTSTRAP (do not remove): before the system is enabled, `cacheKeys` is EMPTY
++        // (it is filled by refresh(), which returns early while disabled). Sampling only
++        // `cacheKeys` therefore sends no packet at all -- and the server only enables the
++        // system in response to such a packet (PlayerPressedKeys#setKeyPressed ->
++        // SkillSyncRequestPacket(true)), so the client could never be enabled and every
++        // skill silently stopped working. While the slot set is unknown we therefore fall
++        // back to the full built-in key range, exactly like upstream did.
++        // 引导路径（勿删）：系统启用前 `cacheKeys` 是空的（它由 refresh() 填充，而后者在未启用时
++        // 直接返回）。只采样 `cacheKeys` 会导致一个包都发不出 —— 而服务端正是**收到该包才启用**
++        // （PlayerPressedKeys#setKeyPressed -> SkillSyncRequestPacket(true)），于是客户端永远无法启用，
++        // 所有技能静默失效。因此在槽位集合未知时回退到内置键位全范围，与上游一致。
++        if (cacheKeys.isEmpty()) {
++            for (int idx = 0; idx < AllKeys.SKILL_KEYS.length; idx++) {
++                syncKeySlot(idx);
 +            }
-+            // A key with no recorded state counts as "not pressed": read the map with an
-+            // explicit default instead of comparing a possibly null Boolean to a boolean,
-+            // which the compiler would silently turn into an unboxing NullPointerException.
-+            // 没有记录状态的按键视为"未按下"：读取时必须显式给出默认值，
-+            // 而不是拿可能为 null 的 Boolean 直接与 boolean 比较（编译器会静默拆箱并抛 NPE）。
-+            if (pressed.getOrDefault(idx, Boolean.FALSE) != state) {
-                 pressed.put(idx, state);
-                 PacketDistributor.sendToServer(new KeyPressedPacket(idx, state));
++        } else {
++            for (int idx : cacheKeys) {
++                syncKeySlot(idx);
              }
          }
 +
@@ -414,10 +414,42 @@ index 828256f..ff9f448 100644
 +        // 注（COE 嵌入）：开关键与 KeyCooldown 已被上游删除 —— 现在由
 +        // SkillSyncRequestPacket / SyncSkillComponentPacket 驱动，客户端已无开关键可闸。
 +        // 详见 setToggleKeysEnabled()。
++    }
++
++    /**
++     * Samples one skill slot and, when its state changed, tells the server about it.
++     * 采样一个技能槽位；状态变化时通知服务端。
++     *
++     * @param idx the skill slot index to sample (out-of-range slots are sent as "not pressed"
++     *            when no consumer key source is installed)
++     *            要采样的技能槽位索引（未安装消费方键位来源时，越界槽位按"未按下"处理）
++     */
++    private static void syncKeySlot(int idx) {
++        // The monitored slot set comes from the skill component, so with an installed
++        // key source the consumer owns the slot range; otherwise the built-in key array
++        // defines it and out-of-range slots are ignored.
++        // 受监控槽位来自技能组件：安装了按键来源时槽位范围由消费方决定；
++        // 否则由内置按键数组决定，越界槽位直接忽略。
++        final boolean state;
++        if (keySource != null) {
++            state = keySource.isDown(idx);
++        } else {
++            if (idx < 0 || idx >= AllKeys.SKILL_KEYS.length) return;
++            state = AllKeys.SKILL_KEYS[idx].isDown();
++        }
++        // A key with no recorded state counts as "not pressed": read the map with an
++        // explicit default instead of comparing a possibly null Boolean to a boolean,
++        // which the compiler would silently turn into an unboxing NullPointerException.
++        // 没有记录状态的按键视为"未按下"：读取时必须显式给出默认值，
++        // 而不是拿可能为 null 的 Boolean 直接与 boolean 比较（编译器会静默拆箱并抛 NPE）。
++        if (pressed.getOrDefault(idx, Boolean.FALSE) != state) {
++            pressed.put(idx, state);
++            PacketDistributor.sendToServer(new KeyPressedPacket(idx, state));
++        }
      }
  
      /**
-@@ -211,6 +354,11 @@ public class ClientSkillCache {
+@@ -211,6 +384,11 @@ public class ClientSkillCache {
              // Answer the server with the merged component; the server only
              // holds a placeholder until this arrives.
              // 将合并后的组件应答给服务端；在此到达之前服务端只有占位数据。
@@ -429,7 +461,7 @@ index 828256f..ff9f448 100644
              PacketDistributor.sendToServer(new SyncSkillComponentPacket(skills));
          } else {
              if (!enable) return;
-@@ -222,4 +370,147 @@ public class ClientSkillCache {
+@@ -222,4 +400,147 @@ public class ClientSkillCache {
              StrategyRenderers.disable();
          }
      }

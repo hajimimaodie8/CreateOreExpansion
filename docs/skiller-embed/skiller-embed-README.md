@@ -11,11 +11,11 @@
 | 上游仓库 | <https://github.com/lizhanyu-leaf/Skiller>（作者 Leaf，MIT） |
 | **本 jar 的上游基线** | `cebb47b1151c4954c0c59710216d9a64bfecd2f2`（`origin/master`，2026-09-29 21:26） |
 | 我方分支 | `coe-embed`，本地副本 `E:\mc\mcmod\_ref\Skiller`（**未推送**：上游仓库无写权限，403） |
-| 我方分支 HEAD | `67a23945258a8c29e1a60d5be9686c8ae499434e` |
+| 我方分支 HEAD | `5525381`（2026-09-30 修死锁，见 §4 末的「引导路径」陷阱） |
 | 是否已含上游全部提交 | **是**（`git rev-list --count coe-embed..origin/master` = 0） |
-| 产物 jar | `skiller-1.0.0.jar`，114,855 B，SHA256 `30006F8F347CCB24…` |
+| 产物 jar | `skiller-1.0.0.jar`，114,969 B，SHA256 `7609AC0F7969D214…` |
 | 内置位置 | **只有 `:coe`**（用户 2026-09-30 裁定）；`cews` / `transmutation` 不内置 |
-| 补丁可复现性 | **已实测**：`git clone` 上游 → `git checkout cebb47b` → `git apply skiller-coe-embed.patch` → 得到的树与 `coe-embed` **逐字节一致**（`0e27799cce1685c54f9302606b471fd88eae0a5a`） |
+| 补丁可复现性 | **已实测**：`git clone` 上游 → `git checkout cebb47b` → `git apply skiller-coe-embed.patch` → 得到的树与 `coe-embed` **逐字节一致**（`84b387db2fc34ca6958e6a150ca9bf323ca20680`） |
 
 > ⚠ **本地 fork 的 `master` 分支停在 `abe5688`**（早于上游那两个新提交，因为它是旧克隆）。
 > 重建时**不要**从它起步 —— 按 `origin/master`（= `cebb47b`）或下面「换机器重建」一节的做法。
@@ -29,6 +29,7 @@
 | `9e74158` | `ClientSkillCache` 按键状态比较补默认值，修 `Boolean` 拆箱 NPE |
 | `06aa4a9` | 新增 `SkillKeySource` 注入点与总开关闸开关，便于消费方使用自己的键位 |
 | `67a2394` | 同 `e0f1275` 的收口（rebase 后重放，含上游缺陷修补，见下） |
+| `5525381` | **修死锁**：`onKeyInput` 未启用时回退到内置键位全范围（此前四族技能全部静默失效） |
 
 **逐项内容**：
 
@@ -102,6 +103,20 @@ git -C E:\mc\mcmod\_ref\Skiller diff --output=docs\skiller-embed\skiller-coe-emb
 | 上游删除了我方依赖的 API（开关键、`KeyCooldown`） | **改成等价薄封装** | 让 COE 侧零改动编译，同时尊重上游新设计 |
 | 上游新增方法/字段 | **必须保留** | 解冲突时最容易被吃掉（本轮 `ServerSkillCache` 就吃过一次） |
 
+### ⚠ 「引导路径」陷阱（2026-09-30 踩过，**升级时最容易再次踩**）
+
+`ClientSkillCache#onKeyInput()` 里的循环**不能只遍历 `cacheKeys`**。
+
+- 上游写法：`for (idx = 0; idx < AllKeys.SKILL_KEYS.length; idx++)` —— 与启用状态**无关**地采样全部内置键位。
+- 我方改动：为「只监控已绑定技能的槽位」改成 `for (int idx : cacheKeys)`。
+- **后果（实测）**：`cacheKeys` 由 `refresh()` 填充，而 `refresh()` 开头是 `if (!enable) return;`；
+  `enable` 又只在收到服务端 `SkillSyncRequestPacket(true)` 后才为真 —— 而服务端**只有收到
+  `KeyPressedPacket` 才会启用**（`PlayerPressedKeys#setKeyPressed`）。于是形成循环依赖：
+  **首包发不出 → 不启用 → 不监控按键 → 一个包都不发**，**四族技能全部静默失效、无任何报错**。
+- **正确形态**：`cacheKeys` 为空（尚未启用）时**回退到内置键位全范围**；非空时才只采样已绑定槽位。
+  当前实现把每槽位采样体抽成 `syncKeySlot(int)`，由 `onKeyInput()` 分两路调用。
+- **判据**：只要看到「按键状态同步」与「启用状态」互相依赖，就停下来想一遍引导路径。
+
 **解冲突后的自检**（强烈建议每次升级都跑）：
 `docs/skiller-embed/skiller-api-diff.ps1` —— 逐文件比对上游，报出「上游有、我方缺失的 public static 方法」
 与「`@SubscribeEvent` 数量变少」。本轮它确认 11 个改动文件无一丢失上游方法。
@@ -114,7 +129,7 @@ git -C E:\mc\mcmod\_ref\Skiller diff --output=docs\skiller-embed\skiller-coe-emb
 | 文件 | 内容 |
 |---|---|
 | `skiller-embed-README.md` | 本文件（版本、改动、升级步骤、冲突口径） |
-| `skiller-coe-embed.patch` | 上游 `cebb47b` → 我方 `67a2394` 的完整补丁（62,070 B，12 文件 / +692 −74） |
+| `skiller-coe-embed.patch` | 上游 `cebb47b` → 我方 `5525381` 的完整补丁（63,993 B） |
 | `skiller-coe-embed-commits.txt` | 上述 5 笔提交的哈希与标题（逐行） |
 | `skiller-api-diff.ps1` | 升级自检脚本（找丢失的上游方法 / 变少的订阅者） |
 | `libs-maven/com/leaf/skiller/1.0.0/skiller-1.0.0.jar` | 我方构建产物（随仓库提交，发布时被 `:coe` 嵌进 jar） |
@@ -129,7 +144,7 @@ git clone https://github.com/lizhanyu-leaf/Skiller.git skiller-work
 cd skiller-work
 git checkout -B coe-embed cebb47b          # 我方补丁的上游基线
 git apply <本目录>\skiller-coe-embed.patch # 12 文件 / +692 -74
-.\gradlew.bat jar                          # 产物应与 114,855 B / SHA 30006F8F… 一致
+.\gradlew.bat jar                          # 产物应与 114,969 B / SHA 7609AC0F… 一致
 ```
 
 若重建后的 jar 哈希对上，就说明补丁留档完好；对不上则先看 `skiller-api-diff.ps1` 的输出。
