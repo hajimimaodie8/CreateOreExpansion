@@ -12,6 +12,9 @@
 - **四模块自由组合方案 / 各层依赖矩阵 / 发布策略** → `markdown_output/四模块自由组合（方案评判·风险·工作量）.md`，找 **`## 13. 各层依赖矩阵`**、**`## 15. P3 模块布局定稿`**。
 - **CEWS 拆分方案**（耦合点 12 条、模块边界判据、待定项、风险与验收）→ `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`（读全文）。
 - **变器配方判定与执行逻辑**（含「给桶注液不是配方」的完整取证）→ `markdown_output/变器配方判定与执行逻辑.md`，找 **`§0.2`**。
+- **两层各自的功能清点与变更史**（现在有什么 + 变更时间线，供「历史留存」会话逐轮追加；CEWS 那份 `## 4.` 是**边界**）→ `markdown_output/COE 层功能清点与变更史.md`、`…/CEWS 层功能清点与变更史.md`
+- **本次重构的教训**（六次「全绿但坏掉」、依赖方向判据、勘误）→ `markdown_output/分层重构（依赖方向重排）复盘.md`
+- **新会话交接提示词** → `markdown_output/新会话交接提示词.md`（COE）/ `…（CEWS）.md`；**工程环境与工具链细节** → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md`
 - **技能现状地图 / Skiller API 契约 / 各类取证脚本与日志** → `build/patch/coe_skill_map.md`、`build/patch/skiller_api_foundation.md`、`build/patch/p3?-EVIDENCE.txt`（`build/` 被 git 忽略，重生成即可）。
 
 ## 工程速览
@@ -40,7 +43,7 @@ git status --short                                          # git add 之后再�
 ```
 
 **2）javadoc 检查（本工程 javadoc 任务默认跑不通）**
-javadoc 用平台编码（本机 GBK）读 UTF-8 源码 ⇒ 满屏乱码 + 假告警，任务从建立起就是红的。跑法：`cmd /c ""%JAVA_HOME%\bin\javadoc.exe" @build\patch\javadoc_utf8.options -d build\patch\jd_out -Xdoclint:all,-missing -J-Duser.language=en -J-Duser.country=US > build\patch\jd.log 2>&1"`（**必须 `cmd /c` 直连**：PowerShell 的 `*>` 会把 stderr 包成 NativeCommandError 并按宽度折行、把绝对路径切碎、毁掉诊断行）；options 由 `.\gradlew.bat javadoc` 生成后需追加 `-encoding UTF-8 -docencoding UTF-8`。现状：仅剩 3 处错误且全在 `content/skill/*`。
+跑法、为什么必须 `cmd /c` 直连、以及现状（仅剩 3 处错误且全在 `content/skill/*`）→ `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 2.`。
 
 **3）PowerShell 与全库盘点（含会误判事实的编码坑）**
 - 全库文字盘点用 `Select-String`：**本仓 `grep` 会漏文件**（实测只扫出 71 行，实际更多）。
@@ -199,5 +202,4 @@ javadoc 用平台编码（本机 GBK）读 UTF-8 源码 ⇒ 满屏乱码 + 假�
 
 ## 已知环境限制
 
-- **Hindsight 记忆**：已配置（`C:\Users\Lenovo\.hindsight\coding-agent.json`，bank `coding-agent::createoreexpansion`）但**已关闭全部自动导入**（写入规则见上节）；配置改动**下一个新会话**才生效。
-- **`maven.neoforged.net` 可达**（2026-09-19 实测）：Skiller 参考工程可在本机构建 —— `cd E:\mc\mcmod\_ref\Skiller && .\gradlew.bat jar`（首次下载 neoform-runtime，几分钟；偶发 `Connection reset` 重跑一次）。内置用的 jar 由它产出。
+- Hindsight 记忆（已配置但**已按用户要求关闭全部自动导入**）、`maven.neoforged.net` 可达性与 Skiller 参考工程的构建方式 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 3.`。
