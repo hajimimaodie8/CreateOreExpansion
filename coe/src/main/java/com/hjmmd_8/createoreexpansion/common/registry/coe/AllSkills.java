@@ -14,14 +14,12 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.MetadataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * 技能注册表 —— 全模组技能的统一注册入口。
@@ -131,48 +129,19 @@ public final class AllSkills {
 
     // ========== 工具方法 ==========
     /**
-     * 创建技能构建器。
+     * 创建技能构建器（<b>唯一的注册入口</b>，2026-09-30 换核后只剩这一种形态）。
      *
-     * @param skillType    技能类（用于泛型推断与注册校验）
-     * @param strategyType 策略类（用于泛型推断与注册校验）
-     */
-    public static <T extends ItemSkill, S extends SkillStrategy<?>> SkillBuilder<T, S> skill(
-            ResourceLocation id, Class<T> skillType, Class<S> strategyType) {
-        return new SkillBuilder<>(id, skillType, strategyType);
-    }
-
-    public static <T extends ItemSkill, S extends SkillStrategy<?>> SkillBuilder<T, S> skill(
-            String id, Class<T> skillType, Class<S> strategyType) {
-        return new SkillBuilder<>(id, skillType, strategyType);
-    }
-
-    /**
-     * 创建技能构建器（<b>元数据壳版</b>，2026-09-30 起）。
-     *
-     * <p>技能执行已整体迁到 Skiller 新内核，旧自研实现类只剩「数据组件载体」用途。
-     * 本重载不再要求传入技能类 / 策略类，注册出来的条目由 {@link MetadataSkill} 承载，
-     * 只提供 id、类型与展示数值；<b>存档格式一字不变</b>
-     * （{@code skillId + NBT}，见 {@link DataSkill#toString()}）。</p>
+     * <p>技能执行已整体迁到 Skiller 新内核，旧自研实现类（{@code FellingSkill} 等）与其策略类
+     * 已全部删除，因此注册<b>不再需要传入技能类 / 策略类 / 工厂</b>：每条条目由
+     * {@link MetadataSkill} 承载，只提供 id、类型、配置与等级映射。
+     * <b>存档格式一字不变</b>（{@code skillId + NBT}，见 {@link DataSkill#toString()}）。</p>
      *
      * @param id   技能注册 id（{@code createoreexpansion:xxx}，必须与旧注册一字不差）
-     * @param type 技能类型（决定触发器）
+     * @param type 技能类型（决定触发器 / 上下文族）
      */
-    public static SkillBuilder<ItemSkill, SkillStrategy<?>> skill(String id, SkillType type) {
-        return buildMetadata(CoeCore.modLoc(id), type);
-    }
-
-    /**
-     * 元数据构建器的<b>唯一构造点</b>。
-     *
-     * <p>泛型参数在构造处无法用类字面量表达（{@code SkillStrategy<?>.class} 不合法），
-     * 因此这里用一次原始类型中转，把 {@code @SuppressWarnings("unchecked")} 收敛在这一个方法里，
-     * 不扩散到调用点。运行期无强转风险：{@link SkillBuilder} 的
-     * {@code skillType}/{@code strategyType} 只用于注册期类型校验，元数据模式下不参与执行。</p>
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static SkillBuilder<ItemSkill, SkillStrategy<?>> buildMetadata(ResourceLocation id, SkillType type) {
-        SkillBuilder raw = new SkillBuilder(id, ItemSkill.class, SkillStrategy.class);
-        return (SkillBuilder<ItemSkill, SkillStrategy<?>>) raw.metadata(type);
+    public static SkillBuilder<ItemSkill, Object> skill(String id, SkillType type) {
+        return new SkillBuilder<ItemSkill, Object>(CoeCore.modLoc(id), ItemSkill.class, Object.class)
+                .metadata(type);
     }
 
     public static ItemSkill get(ResourceLocation id) {
@@ -190,20 +159,16 @@ public final class AllSkills {
         return skill == null ? null : SKILL_IDS.get(skill);
     }
 
-    public static class SkillBuilder<T extends ItemSkill, S extends SkillStrategy<?>> {
+    public static class SkillBuilder<T extends ItemSkill, S> {
         private final ResourceLocation id;
         private final Class<T> skillType;
-        private final Class<S> strategyType;
         /**
-         * 元数据壳（2026-09-30 起的默认模式）。
+         * 元数据壳（2026-09-30 起<b>唯一</b>模式）。
          *
-         * <p>非 null 时 {@link #createSkill()} 直接返回它，<b>不再实例化任何旧技能实现类</b>。
-         * 技能执行已迁到 Skiller 新内核，旧实现类只剩数据组件载体用途。</p>
+         * <p>{@link #createSkill()} 直接返回它，不再实例化任何旧技能实现类 ——
+         * 技能执行已迁到 Skiller 新内核，本类只负责「注册 id + 类型 + 配置」。</p>
          */
         private MetadataSkill metadata;
-        private Function<S, T> factory;
-        private S strategy;
-        private T skill;
         private CompoundTag defaultNbt;
         private SkillConfig config;
         /** 等级 → 配置 映射（一技能多等级：addSkills(技能, 等级) 时按等级取实际配置） */
@@ -211,33 +176,23 @@ public final class AllSkills {
         /** 技能满级（技能提升附魔提升等级的上限；未声明默认 5） */
         private int maxLevel = 5;
 
-        public SkillBuilder(ResourceLocation id, Class<T> skillType, Class<S> strategyType) {
+        /**
+         * @param id            技能注册 id
+         * @param skillType     技能实例类型（恒为 {@link ItemSkill}，保留作注册期自检）
+         * @param ignoredType   历史遗留的策略类型参数，已无用途（换核后策略归新内核）
+         */
+        public SkillBuilder(ResourceLocation id, Class<T> skillType, Class<S> ignoredType) {
             this.id = id;
             this.skillType = skillType;
-            this.strategyType = strategyType;
-        }
-
-        public SkillBuilder(String id, Class<T> skillType, Class<S> strategyType) {
-            this(CoeCore.modLoc(id), skillType, strategyType);
-        }
-
-        public SkillBuilder<T, S> skill(Function<S, T> factory) {
-            this.factory = factory;
-            return this;
         }
 
         /**
-         * 切换到元数据壳模式：注册条目只承载 id + 类型，不再实例化旧技能实现类。
+         * 元数据壳模式：注册条目只承载 id + 类型，不实例化任何旧技能实现类。
          *
          * @param type 技能类型（决定触发器，与旧实现在新内核里声明的类型一致）
          */
         public SkillBuilder<T, S> metadata(SkillType type) {
             this.metadata = new MetadataSkill(this.id, type);
-            return this;
-        }
-
-        public SkillBuilder<T, S> strategy(Supplier<S> strategy) {
-            this.strategy = strategy.get();
             return this;
         }
 
@@ -280,13 +235,6 @@ public final class AllSkills {
 
         public RegisteredDataSkill register() {
             T built = createSkill();
-            // 注册时校验策略类型，防止配置错误（与声明类型不符）
-            if (strategy != null && !strategyType.isInstance(strategy)) {
-                throw new IllegalArgumentException(
-                        "Strategy type mismatch for skill " + id + ": expected "
-                                + strategyType.getSimpleName() + " but got "
-                                + strategy.getClass().getSimpleName());
-            }
             SKILLS.put(id, built);
             SKILL_IDS.put(built, id);
             RegisteredDataSkill data = (defaultNbt == null)
@@ -295,38 +243,31 @@ public final class AllSkills {
             data.maxLevel = this.maxLevel;
             if (config != null) {
                 config.load(data);
-                // 2026-09-30 第 4 阶段：不再往技能实例里灌配置（那个旧式 ConfigSkill
-                // 通路已随旧执行层删除）。元数据壳的 cost/cooldown 只作展示兜底，
-                // 真正生效的消耗与冷却由新内核从同一份 SkillConfig 读取。
+                // 2026-09-30 第 4 阶段：不再往技能实例里灌配置（旧式 ConfigSkill 通路
+                // 已随旧执行层删除）。真正生效的消耗与冷却由新内核从同一份 SkillConfig 读取。
             }
             SKILL_DATA.put(id, data);
             return data;
         }
 
         /**
-         * 产出该条目的技能实例。
+         * 产出该条目的技能实例 —— 换核后<b>只有元数据壳一条路径</b>。
          *
-         * <p>两条路径：<b>元数据模式</b>（{@link #metadata} 非空，2026-09-30 起所有条目）
-         * 只构造一个 {@link MetadataSkill}，不加载任何旧实现类；
-         * <b>旧式模式</b>（仍传了工厂）保留原行为，供尚未迁移的调用点使用。</p>
+         * <p>旧的「工厂 + 策略」分支已随之删除：所有条目都走 {@link #metadata(SkillType)}。</p>
          */
         private T createSkill() {
-            if (metadata != null) {
-                @SuppressWarnings("unchecked")
-                T asMeta = (T) metadata;
-                return asMeta;
+            if (metadata == null) {
+                throw new IllegalStateException("Skill " + id + " was registered without metadata(type)");
             }
-            if (factory == null) throw new NullPointerException("Factory cannot be null");
-            // 允许strategy为null，支持没有strategy的技能
-            if (skill == null) skill = factory.apply(strategy);
-            if (skill == null) throw new NullPointerException("Skill cannot be null");
-            if (!skillType.isInstance(skill)) {
+            if (!skillType.isInstance(metadata)) {
                 throw new IllegalArgumentException(
                         "Skill type mismatch for " + id + ": expected "
                                 + skillType.getSimpleName() + " but got "
-                                + skill.getClass().getSimpleName());
+                                + metadata.getClass().getSimpleName());
             }
-            return skill;
+            @SuppressWarnings("unchecked")
+            T asMeta = (T) metadata;
+            return asMeta;
         }
     }
 
