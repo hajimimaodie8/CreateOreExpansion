@@ -2,13 +2,11 @@ package com.hjmmd_8.createoreexpansion.foundation;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
-import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
-import com.hjmmd_8.createoreexpansion.content.skill.BowCurseSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.BowDisarmSkill;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.BowHitEffects;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 
 import net.minecraft.resources.ResourceLocation;
@@ -29,15 +27,26 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  *
  * <p>职责：</p>
  * <ul>
- *     <li>读取箭上携带的技能标记（发射时写入），命中生物实体后分发到对应技能效果；</li>
+ *     <li>读取箭上携带的技能标记（发射时写入），命中生物实体后分发到对应效果；</li>
  *     <li>所有命中（含普通箭）都会滚动一次基础概率效果（凋零/缓慢/转化紊乱+缴械）。</li>
  * </ul>
  *
- * <p>技能效果逻辑在各技能类（{@link BowCurseSkill} / {@link BowDisarmSkill}）内，
- * 此处只负责按技能 id 分发。</p>
+ * <p><b>分发已改成按 id 字符串</b>（2026-09-30 技能换核第 3 阶段）：原先用
+ * {@code skill instanceof BowCurseSkill} 判断，为此必须保留旧技能实现类；现在改为比较
+ * {@code createoreexpansion:bow_curse} / {@code :bow_disarm} 两个 id，
+ * 效果本体搬到 {@link BowHitEffects}，旧实现类因此可以整体删除。</p>
+ *
+ * <p><b>存档兼容</b>：箭上的标记键 {@link JadeTopazBowItem#TAG_SKILL} 与
+ * {@link JadeTopazBowItem#TAG_SKILL_LEVEL} 一字未动，老存档里的飞行中箭矢照旧生效；
+ * 等级仍经 {@link AllSkills#getData(ResourceLocation)} 取该等级的实际配置。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class JadeTopazBowEventHandler {
+
+	/** 凋零诅咒技能 id（原 {@code BowCurseSkill}）。 */
+	private static final ResourceLocation BOW_CURSE_ID = CoeCore.modLoc("bow_curse");
+	/** 缴械风暴技能 id（原 {@code BowDisarmSkill}）。 */
+	private static final ResourceLocation BOW_DISARM_ID = CoeCore.modLoc("bow_disarm");
 
 	@SubscribeEvent
 	public static void onProjectileImpact(ProjectileImpactEvent event) {
@@ -59,22 +68,25 @@ public class JadeTopazBowEventHandler {
 		String skillId = arrow.getPersistentData().getString(JadeTopazBowItem.TAG_SKILL);
 		if (skillId.isEmpty())
 			return;
+		ResourceLocation id = ResourceLocation.tryParse(skillId);
+		if (id == null)
+			return;
 		int level = arrow.getPersistentData().getInt(JadeTopazBowItem.TAG_SKILL_LEVEL);
-		ItemSkill skill = AllSkills.get(ResourceLocation.tryParse(skillId));
-		if (skill instanceof BowCurseSkill) {
-			BowCurseConfig config = configFor(skill, level, BowCurseConfig.class);
+
+		if (BOW_CURSE_ID.equals(id)) {
+			BowCurseConfig config = configFor(id, level, BowCurseConfig.class);
 			if (config != null)
-				BowCurseSkill.applyTo(player, target, config);
-		} else if (skill instanceof BowDisarmSkill) {
-			BowDisarmConfig config = configFor(skill, level, BowDisarmConfig.class);
+				BowHitEffects.applyCurse(player, target, config);
+		} else if (BOW_DISARM_ID.equals(id)) {
+			BowDisarmConfig config = configFor(id, level, BowDisarmConfig.class);
 			if (config != null)
-				BowDisarmSkill.applyTo(player, target, config);
+				BowHitEffects.applyDisarm(player, target, config);
 		}
 	}
 
 	/** 按技能 id 与等级取该等级的实际配置（一技能多等级；未知技能/无配置返回 null） */
-	private static <C extends SkillConfig> C configFor(ItemSkill skill, int level, Class<C> type) {
-		AllSkills.RegisteredDataSkill registered = AllSkills.getData(AllSkills.getId(skill));
+	private static <C extends SkillConfig> C configFor(ResourceLocation id, int level, Class<C> type) {
+		AllSkills.RegisteredDataSkill registered = AllSkills.getData(id);
 		if (registered == null)
 			return null;
 		SkillConfig config = registered.configForLevel(Math.max(1, level));
