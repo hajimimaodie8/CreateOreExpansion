@@ -42,6 +42,10 @@ run/
 /repo/
 !**/src/**/repo/
 /_create_src
+# markdown_output/：**已有文件已全部纳入跟踪**（2026-09-30 用 git add -f 提交，29 个文件）。
+# 这里保留忽略规则是**刻意的**：新增文档要显式 `git add -f markdown_output/<文件>` 才进库，
+# 避免 `git add -A` 把一次性脚本/临时产物顺手带进来。
+# 自检：`git ls-files markdown_output | Measure-Object` 应看到那批文件仍在库里。
 /markdown_output
 /.tmp-ca
 /net/
