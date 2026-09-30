@@ -384,15 +384,22 @@ configurations {
 }
 
 dependencies {
-    // ── Skiller 技能内核（内置 / JarJar 嵌套）────────────────────────────────────────────
+    // ── Skiller 技能内核（**只由第一层 :coe 内置**）─────────────────────────────────────
     // 本模组的「工具技能系统」自 2026-09 起改用 Leaf 的 Skiller 内核（MIT）。
-    // jarJar(...) 会把 skiller-1.0.0.jar 原样嵌进本模组的 META-INF/jarjar/，
-    // 玩家只装本模组一个 jar，NeoForge 会把嵌套 jar 当独立 mod（mod id: skiller）加载。
-    // 编译期同时可见（jarJar 继承 implementation），所以 content 层可以直接 import com.leaf.skiller.*。
+    // 用户 2026-09-30 裁定：**只有 COE 层内置 skiller**（技能本来就是第一层的东西），
+    // 于是根工程那行 jarJar(implementation(...)) 撤掉，换成下面两条：
+    //   · compileOnly：根侧装配代码仍能编译（dev 里根与 :coe 是同一批类）；
+    //   · runtimeOnly：**仅供 dev 的 runData / runClient** —— 实测去掉它会让
+    //     `createoreexpansion requires skiller` 直接拒载（:coe 的 jarJar 对 dev 运行期不可见，
+    //     jarJar 只作用于「打进 jar」那一侧）。runtimeOnly 不进 jarJar、不进发布产物。
+    // 发布侧由 :coe 自己嵌一份（coe/build.gradle 的 jarJar(implementation("com.leaf:skiller:1.0.0"))）：
+    // 只装 coe.jar 时 skiller 在它的 META-INF/jarjar/ 里（深度 1）；
+    // 装整包（开发用，不发）时 coe 嵌在根 jar 内、skiller 随之在深度 2 ——
+    // JarJarSelector 的 while 循环会继续读每一层新解出的 jar 的 metadata.json，两种形态都能发现。
+    // ⚠ 升级 skiller 只需改一处：coe/build.gradle（本处版本必须与它一致）。
     // jar 放在 libs-maven/（本地 maven 布局，随仓库提交），不依赖网络。
-    jarJar(implementation("com.leaf:skiller:1.0.0"))
-    // 开发环境（runClient/runData）需要 Skiller 作为一个真实 mod 在场：
-    // MDG 会把 jarJar 依赖一并放进运行时 classpath，无需额外声明。
+    compileOnly("com.leaf:skiller:1.0.0")
+    runtimeOnly("com.leaf:skiller:1.0.0")
     //
     // ── core 共享库（P3d：普通库，JarJar 嵌套，**没有 mod id**）──────────────────────
     // core **不是** mod：没有 `META-INF/neoforge.mods.toml`、没有 mod id，这里**不许**出现
