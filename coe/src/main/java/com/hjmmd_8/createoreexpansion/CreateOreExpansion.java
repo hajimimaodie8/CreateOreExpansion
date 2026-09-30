@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.common.AllGemTags;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllStructureProcessors;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllTiers;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeArmorMaterials;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerBootstrap;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
@@ -138,6 +139,14 @@ public class CreateOreExpansion {
         // 旋转载荷 → 配置），并且整块排在本类其余注册触发<b>之前</b>，
         // 保持它们相对既有注册触发顺序的先后关系不变。
         AllDataComponents.register(modEventBus);
+
+        // ── 双色盔甲（4 套）的「盔甲材质」注册 ───────────────────────────────────────
+        // 1.21.1 的 ArmorMaterial 住原版注册表 Registries.ARMOR_MATERIAL，不是 Registrate 管的
+        // Item/Block，所以走 DeferredRegister（与上一行的 AllDataComponents 同一手法）。
+        // 位置：必须在 CoeItems.register()（第 208 行附近）之前。它只构造 DeferredHolder、
+        // 注册条目要等 RegisterEvent 才发生，所以"物品构造期读 Holder"是安全的。
+        // ⚠ 只在这里触发一次：同一个 DeferredRegister 挂两次总线会在 RegisterEvent 上重复注册。
+        CoeArmorMaterials.register(modEventBus);
 
         // ── W6-b2：嬗化线（原 :transmutation 层）的注册触发搬回本构造器 ──────────────────
         // 用户 2026-09-27 裁定：嬗化全部内容（16 个 Java + 24 个资源文件）整块进 :coe，

@@ -1396,6 +1396,10 @@ public final class CoeItems {
 
 /** 触发本层注册类的类初始化：Registrate 的注册动作就是字段初始化，因此方法体为空。 */
 	public static void register() {
+		// 四套盔甲（翠玉 / 宝石 / 星界 / 雷鸣，4 套 × 4 件 = 16 件）在独立文件里声明
+		// （见 CoeArmorItems 的类注释：盔甲是完整子系统，单独成文件便于逐文件标注与后续套装效果层扩展）。
+		// 在这里显式触发，保证"物品注册的先后顺序"只有一条线索。
+		CoeArmorItems.register();
 	}
 
 	private CoeItems() {
