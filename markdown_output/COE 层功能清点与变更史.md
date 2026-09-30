@@ -171,9 +171,34 @@ TRANSMUTING → LIGHTNING → LIGHTNING_BLOCK → GRINDING → DISMANTLING → C
 
 格式：`- <提交号> <日期> <一句话>（验证：<跑过什么>）`
 
-- （待追加）
+### 6.3 W13 技能内核换核（2026-09-30，**旧技能树 64 → 34 个文件**）
+
+> 主题：把自研技能内核整体换成 Leaf 的 Skiller；硬约束 = `createoreexpansion:skills` 组件 id 与 NBT 键不变。
+> 逐阶段细节与格式验证证据 → `markdown_output/技能内核换核执行方案.md` 的 `## 换核实施记录（2026-09-30，第 1–8 阶段 + 3 笔修复/关卡）`。
+
+- `ce3b08fb` 09-30 只删唯一确认的死文件 `BreakBlockSpeedHandler`（验证：compileJava / runData / 三关卡）
+- `609de57b` 09-30 注册表改元数据壳 `MetadataSkill` + 删 11 个旧实现类（验证：同上；Skiller 自检 skill=10）
+- `b2a9a106` 09-30 删 4 个失去子类的策略/处理器（验证：同上）
+- `a4b35e44` 09-30 弓命中改按 id 分发（新增 `BowHitEffects`）+ 删 7 个箭矢旧类（验证：同上 + 策略渲染覆盖）
+- `bdb22e42` 09-30 拔掉旧内核最后执行路径（旧触发点 / `releaseSkills` / 迁移闸门 / `ConfigSkill`）+ `DataSkill` 加显式 id（验证：同上）
+- `03928470` 09-30 **修复回退**：误删的 HIT/USE 两个触发点按新内核重写恢复 + 新增事件订阅者基线关卡（验证：八关卡）
+- `14962e32` 09-30 退役 `ItemSkill` 的旧执行接口成员与 `SkillEnergySpend` 的旧口径方法（验证：compileJava / runData / 五关卡）
+- `66292211` 09-30 删整套技能属性修饰机制（6 文件；已取证其从未生效）（验证：同上）
+- `cac1ad9b` 09-30 删两个被新内核上下文取代的旧上下文类型（验证：同上）
+- `9d474448` 09-30 注册器收缩为纯元数据构建器 + 旧 `SkillStrategy` 退役（验证：compileJava / runData + 注册自检 skill=10 不变）
+- `85233d7b` 09-30 **新增失效 import 关卡**并清掉删类留下的 2 处死 import（验证：八关卡）
+- `0e2d1547` 09-30 **新增存档格式契约关卡**（10 条断言）+ 与基线逐字比对取证 + 换核实施记录（验证：八关卡）
+- `2a669e94` 09-30 **新增技能注册一致性关卡**（旧 id 表 vs 新内核注册清单 + 四触发族）+ AGENTS.md 状态更新（验证：九关卡）
+
+**新增关卡（本轮教训换来）**：`check-event-subscribers.ps1`（订阅者类只被事件总线调用、不许按引用计数判死）、
+`check-stale-imports.ps1`（javac 对失效 import 惰性）、`check-save-format.ps1`（存档格式硬约束）、
+`check-skill-registry-parity.ps1`（两处独立枚举必须一致）。
+
+**未收口**：技能在游戏内的实际触发（玩家交互，静态关卡覆盖不到）—— 验收清单见 `docs/技能换核验收清单.md`。
 
 ---
+
+- （待追加）
 
 ## 7. 把这份内容写进 Hindsight 记忆（给下一个会话的操作指引）
 
