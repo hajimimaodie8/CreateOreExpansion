@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-28（**W6 收口：依赖方向重排** —— 分层判据从「按功能板块」改成「**按谁需要谁**」：嬗化整块并入 `:coe`、CEWS 的 71 个第一层文件搬进 `:coe`、三台应力充能器与三种机壳同归 `:coe`（用户裁定）、第三层留空壳；撤掉 `TransmutationLink` 等窄契约并恢复箭矢嬗乱与星辉石在嬗化液中的联动。全程复盘 → `markdown_output/分层重构（依赖方向重排）复盘.md`）。
+> 最后更新：2026-09-30（**W13 盔甲 + skiller 升级**：四套盔甲（翠玉/宝石/星界/雷鸣）落地；技能内核拉上游最新并 rebase 我方补丁，**内置只保留在 `:coe`**。为腾预算把「PowerShell 编码坑」与「标签目录单数」两节原地迁进 `markdown_output/工程环境与工具链细节（AGENTS迁入）.md`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
@@ -46,11 +46,7 @@ git status --short                                          # git add 之后再�
 跑法、为什么必须 `cmd /c` 直连、以及现状（仅剩 3 处错误且全在 `content/skill/*`）→ `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 2.`。
 
 **3）PowerShell 与全库盘点（含会误判事实的编码坑）**
-- 全库文字盘点用 `Select-String`：**本仓 `grep` 会漏文件**（实测只扫出 71 行，实际更多）。
-- PS 5.1 读**无 BOM 的 UTF-8 `.ps1`** 会按 ANSI 解码：脚本里的中文注释可能吞掉引号 → ParserError。**一次性脚本一律写纯 ASCII**（中文用 `[regex]::Unescape('\uXXXX')`）。
-- 临时文件写 `%TEMP%` 或 `build/`（已忽略），别落进仓库——`git add -A` 会把它带进去。
-- **`.\gradlew ... 2>&1 | Select-Object` 会把 javac 的 GBK 诊断解成乱码**；要 `cmd /c "... > file 2>&1"` + `-Encoding Default`；**`Select-String` 匹配中文也必须显式 `-Encoding Default`**（曾因此把「@Mod 构造器已跑」误判成「没跑」）。
-- **改 Java / 文档一律只用 write/edit 工具**：用 `Get-Content | -replace | Set-Content` 改文件时 PS 5.1 按 ANSI 重写，曾把 `SkillerIntegration.java` 改到语法崩掉（48 个编译错误），只能 `git checkout --` 重做。
+五条最容易反复踩的：① 全库盘点用 `Select-String`（本仓 `grep` 漏文件）；② PS 5.1 按 ANSI 读无 BOM 的 UTF-8 `.ps1` ⇒ 中文注释吞引号，**一次性脚本一律纯 ASCII**；③ 临时文件写 `%TEMP%`/`build/`；④ 抓 javac 中文诊断必须 `cmd /c "... > f 2>&1"` + `-Encoding Default`；⑤ **改 Java/文档只用 write/edit 工具**（`Get-Content|Set-Content` 按 ANSI 重写会毁文件）。**逐条实例与正确命令 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 4.`**（2026-09-30 为腾预算迁出）。
 
 **4）构造期陷阱（2026-09-14 真实崩溃）**
 父类构造器会调用**可覆写**方法。`Entity` 的构造器就会调 `setPos(0,0,0)`（另有 `defineSynchedData` / `getBoundingBox` / `getFireImmuneTicks` / `getMaxAirSupply` / `getTeam` / `level()`），而覆写体在**字段初始化器之前**执行 → 碰任何对象字段都是 NPE。波实体曾在 `setPos` 里调 `wavePath.markLiveBreak()`，导致**开炮即服务端崩溃**（`run/crash-reports/crash-2026-09-14_09.47.56-server.txt`）。
@@ -67,9 +63,8 @@ git status --short                                          # git add 之后再�
 - **包重叠（JPMS）**：`runData`/`runClient` 覆盖不到——dev 里根与 core 是同一个 mod 文件，只有**真发布 jar 进游戏**才能验。
 - **可选依赖「没装也能加载」**：唯一取证方式是**把该模组从 dev 运行时依赖里临时去掉跑一次 `runData`**，日志里该类名 0 命中才算通过。
 
-**5.5）数据包标签目录是单数：`tags/item/`、`tags/block/`，写错就静默失效**
-写成 `tags/items/`（复数）= 一个"名叫 items 的注册表标签目录"，游戏不认识 ⇒ **整个文件被忽略且不报错**（实例：`transmutation_protected.json` 曾放错 ⇒ 龙蛋/下界之星/信标从没被保护）。`runData` 只校验 `src/generated/**` ⇒ 手写文件放错目录**没有任何关卡会报**。
-另：手写文件与 datagen 产出**同名会让 `processResources` 报 duplicate 而构建失败**（本仓造过一次）——两者只能留一个。
+**5.5）数据包标签目录是单数（`tags/item/`、`tags/block/`）；留档不能放 `build/`**
+两点都会**静默失效**：复数目录名的整个文件被忽略；`build/` 被 `.gitignore` 忽略 ⇒ 放那里的留档 `git add` 被静默拒绝。**细则与自检 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 5.`**（2026-09-30 从本文件原地迁出，为腾预算）。
 
 ## 🚩 红线（不许越，逐条都是踩过的坑）
 
@@ -166,7 +161,8 @@ git status --short                                          # git add 之后再�
 **必须记住的几条**（细则同上）：
 - **id 与翻译键零改动**：技能 id 一律 `createoreexpansion:xxx`，三个 `SkillType` 沿用 `excavation_skill`/`hit_skill`/`use_skill`，12 条中英 lang 键一条不改；旧数据组件 `createoreexpansion:skills` 与 NBT 格式原样保留（老存档天然兼容，不需要 DataFixer）。
 - **不要 Skiller 的「按 R 启用技能」总开关**：客户端进世界自动 `ClientSkillCache.enable(...)`、换主手 `refresh(player)`，并 `setToggleKeysEnabled(false)`；服务端释放走 `CoeSkillRelease` 直接读 `PlayerPressedKeys`。
-- **内置的是我方 fork 版**（`_ref/Skiller` 的 `coe-embed` 分支，补丁 `build/patch/skiller-coe-embed.patch`，**未 push**）——升级 Skiller 必须重放补丁。
+- **内置的是我方 fork 版**（`_ref/Skiller` 的 `coe-embed` 分支；上游对我方只读，push 403 ⇒ 分支只在本地）——**升级步骤 / 上游基线 `cebb47b` / 冲突口径 / 全量补丁 → `docs/skiller-embed/skiller-embed-README.md`**（补丁已实测可复现）。⚠ 留档别放 `build/`（`.gitignore:3` 忽略，`git add` 静默拒绝）。
+- **skiller 只由 `:coe` 内置**（2026-09-30 用户裁定）：根 `build.gradle` 用 `compileOnly` + `runtimeOnly`（后者**仅供 dev 的 runData/runClient**，缺它被 FML 拒载）。
 - **扣能时机易写歪**：`consumeResource` 必须先过 `CoeSkillSupport.willDoWork(...)`；**冷却类技能要在 `consumeResource` 与 `release` 两处同判**。
 - **拆任何一层的前后都要做 `@EventBusSubscriber` 的「文件/modid 错配」审计，两种形态都查**（见红线）。
 
