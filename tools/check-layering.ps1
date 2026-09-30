@@ -475,6 +475,63 @@ foreach ($e in $entries) {
     [void]$coreFqns.Add($fqn)
 }
 
+# ---------------------------------------------------------------------------
+# W12-b (2026-09-30): wildcard imports are now resolved EXPLICITLY.
+#
+# A correction to an earlier reading of this very code, kept because the mistake is
+# instructive: pass 1's name class is `[A-Za-z0-9_.]`, which cannot match `*`, so
+# `import ...common.*;` never matches pass 1 -- and that was briefly read as "this
+# gate is blind to wildcard imports".  It is NOT blind.  Pass 2 scans that same line
+# as a fully-qualified occurrence, and because the FQN pattern is greedy it swallows
+# the dot before `*`, yielding a bare-package FQN like `...content.wave.block.` whose
+# trailing dot happens to satisfy the `(\.|$)` alternatives in Get-TargetLayer.
+# MEASURED, not reasoned: with a deliberately injected COE -> CEWS wildcard import,
+# the pre-change gate exits 1.  So the old coverage was real -- but ACCIDENTAL, and
+# reported under the tag "fully-qualified, not an import" rather than as a wildcard.
+#
+# What this change therefore adds is narrower than a bug fix, but real:
+#   1. wildcard edges come from an explicit branch, not from a greedy-match accident
+#      that a future edit to the FQN pattern could silently remove;
+#   2. they are labelled as wildcard edges, so a reader can tell them apart;
+#   3. a wildcard expands to ONE target per layer present in the package, so a
+#      package spanning two layers is no longer judged by a single bare-package FQN;
+#   4. a wildcard naming neither a scanned package nor a scanned class is RED.
+# Verdicts on the current tree are unchanged (EXIT=0 before and after; the 8 wildcard
+# imports in this tree are all legal: 7 x `...createoreexpansion.common.*`, 1 x
+# `...foundation.item.skill.*`).
+#
+# Sibling tool note: tools/layer-usage.ps1 has always resolved wildcards explicitly
+# ("depends on EVERY class of that package"), so this gate was the divergent one; the
+# expansion below follows that tool's intent while judging layers through the same
+# Get-TargetLayer the named-import pass uses.
+#
+#   $classLayers   : fqn -> layer, for every scanned class.
+#   $packageLayers : package -> set of layers its classes live in.  A wildcard
+#                    expands to ONE target per layer present in the package.
+# ---------------------------------------------------------------------------
+$classLayers = @{}
+$packageLayers = @{}
+foreach ($e in $entries) {
+    $r = $e.Rel
+    if ($r -like 'core\*') { $r = $r.Substring(5) }
+    $fqn = $prefix + (($r -replace '\\', '.') -replace '\.java$', '')
+    # same trim-until-known-core walk Get-TargetLayer uses for nested classes
+    $layer = Get-TargetLayer $fqn
+    $classLayers[$fqn] = $layer
+    $dot = $fqn.LastIndexOf('.')
+    if ($dot -lt $prefix.Length) { continue }
+    $pkg = $fqn.Substring(0, $dot)
+    if (-not $packageLayers.ContainsKey($pkg)) {
+        $packageLayers[$pkg] = New-Object System.Collections.Generic.HashSet[string]
+    }
+    [void]$packageLayers[$pkg].Add($layer)
+}
+
+$wildImports  = 0   # wildcard imports seen by the STRICT regex below (anti-vacuity guard)
+$wildRawCount = 0   # same lines counted by a deliberately LOOSER, independent pattern
+$wildResolved = 0   # of those, how many resolved to at least one layer
+$guardProblems = New-Object System.Collections.ArrayList
+
 $violations = New-Object System.Collections.ArrayList
 $moduleEdges = New-Object System.Collections.ArrayList
 $stats = @{ 'COE' = 0; 'CEWS' = 0; 'TRANS' = 0; 'SHARED' = 0; 'CORE' = 0 }
@@ -502,11 +559,58 @@ foreach ($e in $entries) {
         $isImport = $false
         $targets = New-Object System.Collections.ArrayList
 
+        # A comment line is never an edge.  Pass 2 has always skipped these; the wildcard
+        # branch below must too, or a commented-out wildcard import would be reported as a
+        # live dependency -- a false positive of exactly the kind this repo has learned to
+        # ignore ("a permanently red gate gets ignored").
+        $isCommentLine = ($line.TrimStart() -match '^(\*|//|/\*)')
+
         # ---- pass 1: import declarations
         $m = [regex]::Match($line, '^\s*import\s+(static\s+)?(com\.hjmmd_8\.createoreexpansion\.[A-Za-z0-9_.]+)\s*;')
         if ($m.Success) {
             $isImport = $true
             [void]$targets.Add($m.Groups[2].Value)
+        }
+        elseif (-not $isCommentLine) {
+            # W12-b: `import <pkg>.*;` -- pass 1's name class contains no `*`, so the branch
+            # above cannot match it.  A wildcard is a real
+            # dependency on every layer present in the named package (or, for a static
+            # member wildcard, on the named class), so it is expanded into one target per
+            # layer and then judged by the ordinary Test-Forbidden path.
+            $mw = [regex]::Match($line, '^\s*import\s+(static\s+)?(com\.hjmmd_8\.createoreexpansion\.[A-Za-z0-9_.]+)\.\*\s*;')
+            if ($mw.Success) {
+                $isImport = $true
+                $wildImports++
+                $wildName = $mw.Groups[2].Value
+                $wildLayers = @()
+                if ($packageLayers.ContainsKey($wildName)) {
+                    $wildLayers = @($packageLayers[$wildName])
+                }
+                elseif ($classLayers.ContainsKey($wildName)) {
+                    # `import static a.b.SomeClass.*;` -- depends on that class's layer
+                    $wildLayers = @($classLayers[$wildName])
+                }
+                if ($wildLayers.Count -gt 0) {
+                    $wildResolved++
+                    foreach ($wl in $wildLayers) {
+                        [void]$targets.Add(@{ Fqn = ($wildName + '.*'); Layer = $wl; Wild = $true })
+                    }
+                }
+                else {
+                    # Names neither a scanned package nor a scanned class: this gate cannot
+                    # tell what it depends on, so it must not report "clean".
+                    [void]$guardProblems.Add(('{0}:{1} wildcard import {2}.* matches NO scanned package or class -- its layer cannot be resolved, so it cannot be proven legal' -f $rel, $lineNo, $wildName))
+                }
+            }
+        }
+
+        # W12-b: independent, deliberately LOOSER recount of this same line.  If the strict
+        # regex above ever stops matching (someone edits it, or the namespace moves) the two
+        # counts diverge and the guard goes RED, instead of the wildcard branch quietly going
+        # dead.  The pattern is looser ON PURPOSE: it must not share the strict regex's
+        # failure mode.  Comment lines are excluded so the two counts stay comparable.
+        if (-not $isCommentLine -and $line -match '^\s*import\s+(static\s+)?com\.hjmmd_8\.createoreexpansion\..*\.\*\s*;') {
+            $wildRawCount++
         }
 
         # ---- pass 2: fully-qualified references in code (skip comments and imports)
@@ -521,8 +625,12 @@ foreach ($e in $entries) {
             }
         }
 
-        foreach ($fqn in $targets) {
-            $to = Get-TargetLayer $fqn
+        foreach ($t in $targets) {
+            # $t is either a plain FQN string (named import / fully-qualified reference) or,
+            # for a wildcard import, a hashtable carrying one resolved layer (W12-b).
+            $isWild = $false
+            if ($t -is [hashtable]) { $fqn = $t.Fqn; $to = $t.Layer; $isWild = $true }
+            else { $fqn = $t; $to = Get-TargetLayer $fqn }
             if (-not (Test-Forbidden $from $to)) { continue }
             $key = "$rel`:$lineNo"
             $wlReason = $null
@@ -531,10 +639,18 @@ foreach ($e in $entries) {
             if ($wlReason) { continue }
 
             $tag = ''
-            if (-not $isImport) { $tag = ' [fully-qualified, not an import]' }
-            $simple = ($fqn -split '\.')[-1]
-            if ($isImport -and $code -notmatch ('(?<![\w.])' + [regex]::Escape($simple) + '(?![\w])')) {
-                $tag = ' [dead import: simple name never used in code]'
+            if ($isWild) {
+                # A wildcard edge is real but coarser than a named one, so it is labelled:
+                # the reader must be able to tell "this file wildcard-imports a package that
+                # spans a forbidden layer" from "this file names a forbidden class".
+                $tag = (' [wildcard import: names a package/class that resolves to layer {0}]' -f $to)
+            }
+            elseif (-not $isImport) { $tag = ' [fully-qualified, not an import]' }
+            else {
+                $simple = ($fqn -split '\.')[-1]
+                if ($code -notmatch ('(?<![\w.])' + [regex]::Escape($simple) + '(?![\w])')) {
+                    $tag = ' [dead import: simple name never used in code]'
+                }
             }
             $edge = "$from -> $to"
             if (-not $edgeStats.ContainsKey($edge)) { $edgeStats[$edge] = 0 }
@@ -576,8 +692,26 @@ if ($moduleEdges.Count -gt 0) {
     foreach ($v in ($moduleEdges | Sort-Object)) { Write-Host ('  ' + $v) }
 }
 
-if ($violations.Count -eq 0 -and $moduleProblems.Count -eq 0) {
-    Write-Host 'OK: no forbidden cross-layer dependency found (M1 module/layer sets OK, M2 module-level edges 0).'
+# ---------------------------------------------------------------------------
+# W12-b anti-vacuity guard (same discipline as tools/check-module-selfsufficiency.ps1:
+# a check that matches nothing must go RED, never pass by default).  If the tree HAS
+# wildcard imports but the resolver above resolved NONE of them, the new branch is dead
+# and this gate is blind again in exactly the way W12-b was written to remove.
+# ---------------------------------------------------------------------------
+if ($wildImports -gt 0 -and $wildResolved -eq 0) {
+    [void]$guardProblems.Add(('wildcard-import resolver is DEAD: the tree has {0} wildcard import(s) but 0 resolved -- each would have needed a key in $packageLayers/$classLayers, so the guard is not doing its job' -f $wildImports))
+}
+if ($wildRawCount -ne $wildImports) {
+    [void]$guardProblems.Add(('wildcard-import scan is INCOMPLETE: the loose pattern counted {0} wildcard import line(s) but the strict scanner matched {1} -- the two must agree, or the scan has a blind spot it cannot see' -f $wildRawCount, $wildImports))
+}
+if ($guardProblems.Count -gt 0) {
+    Write-Host ''
+    Write-Host ('GUARD PROBLEMS ({0}) -- the checker could not prove something it is supposed to prove:' -f $guardProblems.Count)
+    foreach ($p in $guardProblems) { Write-Host ('  ' + $p) }
+}
+
+if ($violations.Count -eq 0 -and $moduleProblems.Count -eq 0 -and $guardProblems.Count -eq 0) {
+    Write-Host ('OK: no forbidden cross-layer dependency found (M1 module/layer sets OK, M2 module-level edges 0; wildcard imports seen={0} resolved={1}).' -f $wildImports, $wildResolved)
     exit 0
 }
 
