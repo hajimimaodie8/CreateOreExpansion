@@ -47,8 +47,15 @@ $TAB      = 'coe/src/main/java/com/hjmmd_8/createoreexpansion/common/registry/co
 $TABS     = 'coe/src/main/java/com/hjmmd_8/createoreexpansion/common/registry/coe/CoeCreativeTabs.java'
 $RENDER   = 'coe/src/main/java/com/hjmmd_8/createoreexpansion/client/creative/CoeCreativeSectionBanners.java'
 $CORE     = 'core/src/main/java/com/hjmmd_8/createoreexpansion/common/registry/LayerCreativeTab.java'
-$CEWS     = 'cews/src/main/java/com/hjmmd_8/createoreexpansion/common/registry/cews/CewsCreativeTabs.java'
 $SPRITEDIR = 'coe/src/main/resources/assets/createoreexpansion/textures/gui/sprites'
+
+# 2026-09-30 (author's ruling "keep a single tab"): the CEWS creative tab and its pinning class
+# were DELETED, and the CEWS layer's items now default into this page's machine section.
+# These two paths must stay gone, and the CEWS registrate must point at the single tab.
+$CEWS_TAB_FILE = 'cews/src/main/java/com/hjmmd_8/createoreexpansion/common/registry/cews/CewsCreativeTabs.java'
+$CEWS_PIN_FILE = 'cews/src/main/java/com/hjmmd_8/createoreexpansion/common/registry/cews/EnergyWaveStudyTab.java'
+$CEWS_REG      = 'cews/src/main/java/com/hjmmd_8/createoreexpansion/common/registry/cews/CewsRegistrate.java'
+$CEWS_MOD      = 'cews/src/main/java/com/hjmmd_8/createoreexpansion/common/registry/cews/CewsMod.java'
 
 $sections = Read-Text $SECTIONS
 if ($null -eq $sections) { Fail 'sections-file' "missing $SECTIONS"; }
@@ -125,12 +132,54 @@ elseif ($tabsText -notmatch '\.sectioned\(CoeSectionedTab::new\)') {
     Fail 'tabs-sectioned' "CoeCreativeTabs.BASE_TAB must opt in with .sectioned(CoeSectionedTab::new)"
 } else { Write-Output "ok  [tabs-sectioned] base_tab opts in" }
 
-if ($null -ne (Read-Text $CEWS)) {
-    $cewsText = Read-Text $CEWS
-    if ($cewsText -match '\.sectioned\(') {
-        Fail 'cews-untouched' "the CEWS tab must NOT be sectioned -- its order is pinned by its own remove/accept list"
+if ($null -ne (Read-Text $TABS)) {
+    $tabsText = Read-Text $TABS
+    if ($tabsText -notmatch 'List<LayerCreativeTab> TABS = List\.of\(BASE_TAB\)') {
+        Fail 'single-tab' "CoeCreativeTabs must declare exactly one page (TABS = List.of(BASE_TAB)) -- the author keeps a single creative tab"
     } else {
-        Write-Output "ok  [cews-untouched] energy_wave_study is not sectioned"
+        Write-Output "ok  [single-tab] one page declared"
+    }
+    if ($tabsText -notmatch 'PALETTES_CREATIVE_TAB\.getKey\(\)') {
+        Fail 'anchor' "base_tab must anchor before Create's palettes page (it took over the removed CEWS tab's slot)"
+    } else {
+        Write-Output "ok  [anchor] base_tab anchors before Create's palettes page"
+    }
+}
+
+# --- 6b) the CEWS tab must stay DELETED, and its layer must feed this page ---------------
+foreach ($gone in @(
+    @{ id = 'cews-tab-gone'; path = $CEWS_TAB_FILE; why = 'the CEWS creative tab was deleted by author ruling -- a second tab contradicts it' },
+    @{ id = 'cews-tab-gone'; path = $CEWS_PIN_FILE; why = 'EnergyWaveStudyTab only existed to split items between two tabs; recreating it means two tabs again' }
+)) {
+    if (Test-Path (Join-Path $Repo $gone.path)) { Fail $gone.id "$($gone.path) exists: $($gone.why)" }
+}
+if (-not (Test-Path (Join-Path $Repo $CEWS_TAB_FILE)) -and -not (Test-Path (Join-Path $Repo $CEWS_PIN_FILE))) {
+    Write-Output "ok  [cews-tab-gone] CewsCreativeTabs + EnergyWaveStudyTab are absent"
+}
+$cewsReg = Read-Text $CEWS_REG
+if ($null -eq $cewsReg) { Fail 'cews-registrate' "missing $CEWS_REG" }
+elseif ($cewsReg -notmatch 'defaultCreativeTab\(CoeCreativeTabs\.BASE_TAB\.key\(\)\)') {
+    Fail 'cews-default-tab' "CewsRegistrate must default into CoeCreativeTabs.BASE_TAB (otherwise its machines land on no page at all)"
+} else {
+    Write-Output "ok  [cews-default-tab] CEWS items default into the single page"
+}
+$cewsMod = Read-Text $CEWS_MOD
+if ($null -ne $cewsMod -and $cewsMod -match 'registerAll\(CewsCreativeTabs') {
+    Fail 'cews-registration' "CewsMod must not register a CEWS tab any more"
+}
+
+# --- 6c) the CEWS wave machines must keep landing in the MACHINE section -----------------
+$waveSuffixes = @('_field_controller', '_wave_transmuter', '_wave_regulator',
+                  '_speed_regulator', '_disperser', '_differencer', '_query_gauge')
+if ($null -ne $sections) {
+    $missingRules = @()
+    foreach ($suffix in $waveSuffixes) {
+        if ($sections -notmatch [regex]::Escape('"' + $suffix + '"')) { $missingRules += $suffix }
+    }
+    if ($missingRules.Count -gt 0) {
+        Fail 'wave-machine-rules' ("machine section has no rule for: " + ($missingRules -join ', ') + " -- those 12 CEWS machines would fall into the banner-less fallback bucket")
+    } else {
+        Write-Output "ok  [wave-machine-rules] all 7 wave-machine suffix families routed to the machine section"
     }
 }
 

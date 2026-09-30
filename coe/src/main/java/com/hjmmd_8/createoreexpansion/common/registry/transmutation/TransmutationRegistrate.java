@@ -25,7 +25,7 @@ import com.simibubi.create.foundation.data.CreateRegistrate;
  * 注册 id 与拆分前逐字一致。</p>
  *
  * <p>默认创造页 = 基础页（矿物拓展）——与拆分前"所有条目都进 base_tab"一致；
- * 嬗变相关物品没有被 {@code EnergyWaveStudyTab.CONTENTS} 收进 CEWS 页。</p>
+ * 本层物品本来就都在那一页（2026-09-30 起该页是本模组唯一的创造页）。</p>
  */
 public final class TransmutationRegistrate {
 

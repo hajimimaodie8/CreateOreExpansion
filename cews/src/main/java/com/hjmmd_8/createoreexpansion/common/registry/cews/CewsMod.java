@@ -2,7 +2,6 @@ package com.hjmmd_8.createoreexpansion.common.registry.cews;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerBootstrap;
-import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandlers;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.StellarWaveMachineIntegrationSink;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.TransmuterHitHandler;
@@ -23,7 +22,8 @@ import net.neoforged.fml.common.Mod;
  *   <li>按层显式触发方块 → 方块实体 → 物品的类初始化（顺序与拆分前逐层一致）；
  *       P3w 起还多一条：原先挂在 {@code CreateOreExpansion} 构造器里的
  *       {@code AllEntityTypes.register(modEventBus)}（实体类型注册表属于 CEWS）；</li>
- *   <li>{@link EnergyWaveStudyTab} 的页签内容构建（{@code onBuildContents}，清单只有一处）；</li>
+ *   <li><b>2026-09-30 起本层不再有创造页</b>（用户裁定「标签页只有一个」）：{@code energy_wave_study}
+ *       页与其搬运逻辑 {@code EnergyWaveStudyTab} 一并删除，本层物品直接进矿物拓展页的「机械」分区；</li>
  *   <li>可选桥接：<b>Jade 的波实体提示插件</b> 与 <b>Sable 物理结构桥接</b>（判据与日志文案原样搬运）。
  *       <b>W6-c</b>：Jade 波实体插件（{@code WaveJadePlugin}）随能量波引擎进了 {@code :coe}，
  *       它的反射加载点也随之搬到 {@code CreateOreExpansion#bootstrapJade()}（P7a 同形手法）；
@@ -66,8 +66,11 @@ public class CewsMod {
         WaveMachineHandlers.register(DisperserHitHandler.INSTANCE);
         WaveMachineHandlers.register(TransmuterHitHandler.INSTANCE);
 
-        // P7a：本层自己的创造页（登记动作从"根侧注入"改成"每层自持"）。
-        LayerCreativeTab.registerAll(CewsCreativeTabs.tabs());
+        // P7a：本层自己的创造页登记 —— 2026-09-30 起**已删除**。
+        // 用户裁定「标签页只有一个」：CEWS 不再有独立页，本层物品由 CewsRegistrate 的
+        // defaultCreativeTab 直接进矿物拓展页（CoeCreativeTabs.BASE_TAB）的「机械」分区。
+        // 因此这里既没有 registerAll，也不再需要 EnergyWaveStudyTab 那套
+        // "往本页放清单 + 从基础页剔除"的搬运逻辑（它的唯一职责就是维护两个页的分工）。
 
         // W6-c：原先在这里的 `AllEntityTypes.register(modEventBus)`（P3w 从
         // CreateOreExpansion 搬来）已搬回 :coe —— 两个能量波实体类型是波引擎的一部分，
@@ -75,9 +78,6 @@ public class CewsMod {
         // 现在的落点见 CreateOreExpansion 构造器里的 W6-c 注释块。
 
         CewsRegistrate.REGISTRATE.registerEventListeners(modEventBus);
-
-        // 创造标签页：往 CEWS 页放清单、从基础页剔除（清单唯一处 = EnergyWaveStudyTab.CONTENTS）
-        modEventBus.addListener(EnergyWaveStudyTab::onBuildContents);
 
         // 按层显式触发类初始化。顺序必须保持"方块 → 方块实体"（与拆分前逐层一致）。
         CewsBlocks.register();

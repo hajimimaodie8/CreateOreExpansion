@@ -24,38 +24,26 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  *
  * <p><b>它从哪来</b>：原先是枚举 {@code common/AllCreativeModeTabs}：COE 的
  * {@code base_tab}（矿物拓展）与 CEWS 的 {@code energy_wave_study}（能量波阵学）两个枚举项
- * 住在同一个枚举里。P3c 把两个页各自搬进自己层的类
- * （{@code common/registry/coe/CoeCreativeTabs}、{@code .../cews/CewsCreativeTabs}），
- * 本类就是它们共用的那个载体与注册表。</p>
+ * 住在同一个枚举里。P3c 把两个页各自搬进自己层的类，本类就是它们共用的那个载体与注册表。</p>
+ *
+ * <p><b>2026-09-30（用户裁定「标签页只有一个」）：现在只剩一个页</b>
+ * （{@code base_tab}，声明在 {@code common/registry/coe/CoeCreativeTabs}）；
+ * CEWS 的页与其搬运逻辑已删除，本类仍是那一页的载体与注册表。</p>
  *
  * <p><b>为什么 DeferredRegister 只留一份（SHARED）</b>：与原 {@code AllCreativeModeTabs.TABS}
  * 完全一样——同名同命名空间（{@link CoeCore#REGISTRY_NAMESPACE}）的一张创造页注册表。
- * 两层各自建一张会让 {@code RegisterEvent} 多一条监听；一张表由谁挂总线（P7a 起 =
- * {@link LayerBootstrap#ensureAttached}，恰一次）与"谁先登记页"是两件事，后者只影响
- * {@code BuiltInRegistries.CREATIVE_MODE_TAB} 的枚举顺序。</p>
+ * 一张表由谁挂总线（P7a 起 = {@link LayerBootstrap#ensureAttached}，恰一次）与"谁先登记页"是两件事，
+ * 后者只影响 {@code BuiltInRegistries.CREATIVE_MODE_TAB} 的枚举顺序。</p>
  *
  * <p><b>{@link #tabKey(String)} 为什么是 static 工具而不是 {@code key()}</b>：{@code withTabsBefore}
  * 需要的是一个 {@link ResourceKey}，而 {@code ResourceKey} 必须在 <b>页的 holder 还不存在</b>时就能算出来
- * （COE 的页要排在 CEWS 的页前面，构建时那两个 holder 都还没被注册）。所以走"由 id 直接造 key"这条
- * 与拆分前相同的路径。</p>
+ * （创造页彼此排序时那些 holder 都还没被注册）。所以走"由 id 直接造 key"这条与拆分前相同的路径。</p>
  */
 public final class LayerCreativeTab {
 
     /** 创造页注册表（命名空间 = createoreexpansion，与拆分前同一张表）。 */
     private static final DeferredRegister<CreativeModeTab> TABS =
         DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CoeCore.REGISTRY_NAMESPACE);
-
-    /**
-     * <b>能量波阵学页 id</b>（{@code energy_wave_study}，P3q 从 {@code common/hub/EnergyWaveStudyTab} 下移）。
-     *
-     * <p><b>为什么这个字符串要住 core</b>：页的<b>声明</b>属于 CEWS
-     * （{@code common/registry/cews/CewsCreativeTabs}），但 COE 的 {@code base_tab} 要用它做
-     * {@code withTabsBefore} 的链（顺序 = 矿物拓展 → 能量波阵学 → Create 调色板），
-     * 而 COE <b>不许</b> import CEWS（禁止方向）。一个纯字符串常量是两层唯一都需要的东西，
-     * 所以它下移到共同的底层——这也是 P3q 清掉
-     * {@code CoeCreativeTabs → common/hub/EnergyWaveStudyTab} 那两条边的办法。</p>
-     */
-    public static final String ENERGY_WAVE_STUDY_TAB_ID = "energy_wave_study";
 
     /**
      * 由 id 构造标签页的 {@link ResourceKey}：<b>不依赖 holder</b>（登记期 holder 还没有）。
@@ -73,12 +61,12 @@ public final class LayerCreativeTab {
     // **根工程在场**；而 P7a 的终局是根工程降级为 dev-only、发布形态只有三个模块 jar，
     // 所以登记动作必须由每一层自己发起：
     //     :coe  → LayerCreativeTab.registerAll(CoeCreativeTabs.tabs())
-    //     :cews → LayerCreativeTab.registerAll(CewsCreativeTabs.tabs())
+    // 2026-09-30 起只剩 :coe 那一页（CEWS 的页已按用户裁定删除）。
     //
     // 谁先登记不影响玩家可见顺序：创造页的显示顺序是 withTabsBefore 图上的**拓扑排序**
-    // （CreativeModeTabRegistry.recalculateItemCreativeModeTabs → TopologicalSort），
+    // （CreativeModeTabRegistry.recalculateCreativeModeTabs → TopologicalSort），
     // 登记顺序只影响 BuiltInRegistries.CREATIVE_MODE_TAB 的枚举顺序（不进存档、不参与网络同步）。
-    // 每层的 tabs() 只含自己那一页，因此跨层不会撞 id
+    // 各层的 tabs() 只含自己那一页，因此跨层不会撞 id
     // （同 id 二次登记会抛 IllegalStateException("Duplicate registration …")）。
     //
     // key() 本来就不依赖 holder（见下），所以 Registrate 设 defaultCreativeTab 时不需要
@@ -94,13 +82,13 @@ public final class LayerCreativeTab {
      *
      * <p><b>为什么是 {@link java.util.function.Function} 而不是某个具体类</b>：需要换实现的是
      * {@code :coe} 的 {@code base_tab}（它要一个会在 {@code getDisplayItems()} 里补空行的子类，
-     * 见 {@code docs/共享经验-盔甲与材料集/08-创造页创造分区横幅…}），而本类住 core（SHARED 层）
+     * 见 {@code docs/共享经验-盔甲与材料集/08-创造页分区横幅…}），而本类住 core（SHARED 层）
      * —— <b>core 不许 import 层专属类</b>。所以这里只持有一个纯 JDK 函数，由 {@code :coe}
      * 通过 {@link #sectioned} 填进来（与 {@code CoeCore} 既有的注入手法一致）。</p>
      *
      * <p><b>为什么是「每页一个字段」而不是「core 里一个全局静态」</b>：每层都调一次全局注入
-     * 会互相覆盖（最后调的那层说了算），而 CEWS 的 {@code energy_wave_study} 页
-     * <b>必须保持原样</b>（它靠 {@code EnergyWaveStudyTab} 的 remove/accept 钉顺序）。</p>
+     * 会互相覆盖（最后调的那层说了算）。现在只剩一个页，字段形态仍然保留 ——
+     * 它是"哪一页要自定义实现"的唯一落点，将来再添页时无需改本类。</p>
      */
     @Nullable
     private java.util.function.Function<CreativeModeTab.Builder, CreativeModeTab> tabFactory;

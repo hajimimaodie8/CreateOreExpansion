@@ -26,8 +26,10 @@ public class EnglishLangProvider extends LanguageProvider {
     protected void addTranslations() {
         // ========== 创造标签页 ==========
         add("itemGroup.createoreexpansion", "Create: Ore Expansion");
-        // CEWS tab: "学" as a discipline is plural "Studies" in English (Media Studies / Wave Studies);
-        // singular "Study" reads like "a research report". Acronym CEWS is unchanged either way.
+        // CEWS tab: the tab itself was REMOVED on 2026-09-30 (author's ruling: keep a single
+        // creative tab -- the CEWS machines now live in the ore-expansion page's "Machines"
+        // section). This key is kept because it costs nothing and nothing references it;
+        // cleaning it up later means editing both providers plus all four src/generated copies.
         add("itemGroup.createoreexpansion.energy_wave_study", "Create: Energy Wave Studies");
         add("createoreexpansion.mod_name", "Create: Ore Expansion");
 

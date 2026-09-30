@@ -6,8 +6,8 @@
 
 ## 📚 长文档索引（要查细节，先按这里找「文件 + 标题」）
 
-- **技能换核**（15 条已定事实、技能系统现状速记、W5/W6 收尾清单）→ `markdown_output/技能内核换核执行方案.md`，找标题 **`## 从 AGENTS.md 迁入（2026-09-25）`** 的两节（`### A.` 已定事实 1–15、`### B.` 技能系统现状速记）；旧分析 `markdown_output/技能内核对比与迁移分析.md` 只作参考。
-- **模块拆分 P1–P3z**（时间线、决策表、逐条原文、P3h–P3z 取证索引）→ `markdown_output/模块拆分进度与决策链.md`，找标题 **`## 0. 一页时间线（TL;DR）`** 与 **`## 1. 从 AGENTS.md 迁入（2026-09-25）：原文逐条`**；**P3z 那一轮「根工程拆完 CEWS 之后是什么」的完整方案（3 个选项 + 各自代价 + 选择理由 + 遗留）在 `build/patch/p3z-EVIDENCE.txt` 第 0 节**（`build/` 被忽略，重跑该轮即可重生成）。
+- **技能换核**（已定事实、现状速记、收尾清单）→ `markdown_output/技能内核换核执行方案.md`，找 **`## 从 AGENTS.md 迁入（2026-09-25）`** 的两节（`### A.` / `### B.`）。
+- **模块拆分 P1–P3z**（时间线、决策表、逐条原文、取证索引）→ `markdown_output/模块拆分进度与决策链.md`，找 **`## 0. 一页时间线（TL;DR）`** 与 **`## 1. 从 AGENTS.md 迁入（2026-09-25）：原文逐条`**；P3z 那轮方案的完整取证在 `build/patch/p3z-EVIDENCE.txt` 第 0 节（`build/` 被忽略，可重生成）。
 - **变器应力闸门 / 转速分档 / 护目镜读数口径**（2026-09-24/25 定稿全部细则）→ `markdown_output/能量波三态与变器双模式（需求与进度）.md`，找标题 **`## 从 AGENTS.md 迁入（2026-09-25）：变器应力闸门 · 转速分档 · 护目镜读数口径`**。
 - **四模块自由组合方案 / 各层依赖矩阵 / 发布策略** → `markdown_output/四模块自由组合（方案评判·风险·工作量）.md`，找 **`## 13. 各层依赖矩阵`**、**`## 15. P3 模块布局定稿`**。
 - **CEWS 拆分方案**（耦合点 12 条、模块边界判据、待定项、风险与验收）→ `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`（读全文）。
@@ -59,7 +59,7 @@ git status --short                                          # git add 之后再�
 - **客户端渲染**：技能预览框、波口指示灯、护目镜档位提示、Jade/查询仪读数——只有进游戏才看得见（技能 W5 渲染器移植的验收条件就是「进游戏看预览是否还在」）。
 - **JEI**：`@JeiPlugin` 的类别装配与侧栏顺序在运行期才发生；UID 重复、类别漏装配只有加载时暴露。
 - **配置**：`runData` 时**根本不加载配置**；配置键名/容器名写错要到进游戏才暴露，**容器名一变（如 `coe_core-common.toml`）= 老玩家设置静默丢失**。
-- **创造页内容同步**：每层的 `XxxCreativeTabs` 各持一份手写 `TABS` 列表，**新增页忘了加进列表 = 静默不注册**（无编译错误、无警告）；`EnergyWaveStudyTab#CONTENTS` 同理。**每层 Registrate 自持创造页后**，清单"往新页放"半边 = **重复添加**（Registrate 已放好 ⇒ 抛 `already exists in the tab's list`；dev/发布同崩）⇒ 先 `remove` 再 `accept`（`remove` 无断言、幂等）。
+- **创造页内容同步**：现在**全模组只有一个页**（`base_tab`），成员由两个 Registrate 的 `defaultCreativeTab` 自动填入（`CoeRegistrate` + `CewsRegistrate`），**展示顺序由 `CoeCreativeSections` 的分区规则决定**（不再有手写清单）。加减内容只需两处：在哪一层的 Registrate 注册 + 分区判据族；`LayerCreativeTab.registerAll` 的 `TABS` 列表漏页 = **静默不注册**（无编译错误、无警告）。⚠ 别用 `accept(ItemStack.EMPTY)` 造空行——它抛 `The stack count must be 1`，空行只能在 `getDisplayItems()` 里补。
 - **包重叠（JPMS）**：`runData`/`runClient` 覆盖不到——dev 里根与 core 是同一个 mod 文件，只有**真发布 jar 进游戏**才能验。
 - **可选依赖「没装也能加载」**：唯一取证方式是**把该模组从 dev 运行时依赖里临时去掉跑一次 `runData`**，日志里该类名 0 命中才算通过。
 
@@ -96,10 +96,10 @@ git status --short                                          # git add 之后再�
 
 ## 🔧 工具（一行一个；细节都写在脚本头注释里）
 
-- `tools/check-layering.ps1` —— 分层方向断言（**扫五个根**：`src/main/java` + `core/` + `coe/` + `cews/` + `transmutation/` 各自的 `src/main/java`；层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CEWS→TRANS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运代码后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树做对比）。**每拆一层就要把该层加进两个脚本的 roots 表**——不加的后果是那一层计数变 0 而脚本照样 exit 0（P3d-β core / P3w coe / P3y transmutation / P3z cews 四次同一形状的静默逃逸）。
-- `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**它与 `check-layering.ps1` 的分层规则（`Get-FileLayer` 函数体）必须逐字一致**（改一处要两处同改）。
+- `tools/check-layering.ps1` —— 分层方向断言（**扫五个根**：`src/main/java` + `core/` + `coe/` + `cews/` + `transmutation/` 各自的 `src/main/java`；层 = COE/CEWS/TRANS/SHARED/**CORE**；禁止 `COE→CEWS`、`COE→TRANS`、`TRANS→CEWS`、`CEWS→TRANS`、`CORE→*`）。跑法：`powershell -NoProfile -ExecutionPolicy Bypass -File tools\check-layering.ps1`（**本机没有 `pwsh`**）。改动分层/注册/搬运后**必须跑到 0 违规**；也是「搬运是否干净」的体检工具（拿它跑 `git archive HEAD` 树对比）。**每拆一层要把该层加进两个脚本的 roots 表**——不加则那层计数变 0 而脚本照样 exit 0（四次同形状的静默逃逸）。
+- `tools/layer-usage.ps1` —— 依赖普查（每个文件被哪几层引用、哪些 SHARED 文件传递地不碰层专属代码）；产物 `build/patch/layer-usage.txt`、`core-candidates*.txt`、`core-packages.txt`、`package-usage.txt`。**与 `check-layering.ps1` 的分层规则必须逐字一致**（改一处两处同改）。
 - `tools/check-package-overlap.ps1` —— **包重叠审计（JPMS）**：同包跨两模块 = 启动即 `ResolutionException`，三关全绿看不到；改包结构/拆层/加 `FMLModType` 后必跑到 0。
-- `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（**92 条**断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（有 mixin 类而 0 条声明 = 红，即 P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线、每个 jar 自带全部共享 `data/**`（`core` 真源）且根侧 `src/main/resources/data/**` 必须为空（P7c）、221 条生成配方按层分发（61/160/0）、跨层手写标签按层拆半（P7d）、**X2 冻结序断言**（配方类型展开序列 == 6 元素表，顺序是玩法不变量）、`javap` 完整性守护、`Class.forName` 字面量扫描（三种形态 + `OWN`/`CROSS`/`OPTIONAL` 分类）。**每条断言都配反空转守护**（匹配 0 条即红）。
+- `tools/check-module-selfsufficiency.ps1` —— **模块 jar 自足性关卡**（**92 条**断言，只读，exit 0/1；跑法同其它工具）。断言：jar 内 `[[mixins]]` 条数 == `*.mixins.json` 个数**且** config 点名的类在同一 jar（= P7a 的洞）、`compat/jei/**` ≥1 个 `@JeiPlugin`（`javap -v` 复核）、jar 自带根 lang 的完整拷贝（逐键逐值比对）、`[[mods]]` 为空的 core 无 `@EventBusSubscriber`、模块侧不碰 `LayerBootstrap` 的共享接线、每个 jar 自带全部共享 `data/**`（`core` 真源）且根侧 `src/main/resources/data/**` 必须为空（P7c）、221 条生成配方按层分发（61/160/0）、跨层手写标签按层拆半（P7d）、**X2 冻结序断言**（配方类型展开序列 == 6 元素表，顺序是玩法不变量）、`javap` 完整性守护、`Class.forName` 字面量扫描（三种形态 + `OWN`/`CROSS`/`OPTIONAL` 分类）。**每条断言都配反空转守护**（匹配 0 条即红）。
 - `tools/check-package-heritage.ps1` —— 包名血统**报告**（基准 `fbf33cdf~1`，`-Base` 可覆盖）：列「被迫/非被迫」改名并计账，**exit 0**；非被迫的要人工判。
 - `tools/check-skill-render-coverage.ps1` —— 策略渲染覆盖关卡（注册调用数 == 带渲染器的策略数 / 漏注册渲染器 = 预览静默消失 / 两个 outline 渲染器都得有槽位门）。改渲染器必跑。
 - `tools/check-asset-attribution.ps1` —— **资产归属关卡**（只读，exit 0/1）：blockstates/models 里指向 `createoreexpansion:` 的 `parent`/`model`/`textures.*` 必须解析到本模块**或本模块声明 required 的**模块（**判据必须认识依赖方向**，零白名单；`cews → coe` 合法、`coe → cews` 非法）。附 A2/A3/A5 与 15 条反空转守护；**孤儿只报告不判红**。
@@ -169,7 +169,7 @@ git status --short                                          # git add 之后再�
 
 **CEWS 模块（能量波阵学）—— 拆包已完成；⚠ 边界与本文旧版相反**：CEWS = Create: Energy Wave Studies（机械动力：能量波阵学），独立内置 jar（mod id `cews`）。
 - **现行边界（W6-c/W9 之后）**：**第一层 COE** = 矿物/宝石/工具/技能 + **波引擎**（`content/charger/{wave,craft,entity,payload}/**`、`content/wave/api/**`、`content/energyfield/**`）+ **三台应力充能器** + **三种机壳** + **嬗化全部**；**第二层 CEWS** = **除充能器以外的波机器**（差波器 / 调级器 / 波速调节器 / 变器 / 场控制器 / 查询仪）。**依赖方向是唯一判据**：第一层需要的必须住第一层；靠窄契约反向补出来的全部撤掉了。
-- **创造页清单** = `common/registry/cews/EnergyWaveStudyTab#CONTENTS`（**W12 后 12 项**；**机壳、三台应力充能器与两个能量构件都已归矿物页**，后者走同类的 `BASE_PAGE_ITEMS` 反向搬运；强化避雷针留矿物页）。同步走 `BuildCreativeModeTabContentsEvent`：**先 `remove` 再 `accept`**（只 `accept` 会抛 `already exists in the tab's list`，dev/发布同崩），且**该事件只在逻辑客户端触发**——服务端验不到。**加减机器只改这份清单。**
+- **创造页：全模组只剩一个（2026-09-30 用户裁定）**——`createoreexpansion:base_tab` = **一页 + 三条分区横幅**（矿物/机械/装备）。**CEWS 的 `energy_wave_study` 页与其搬运逻辑 `EnergyWaveStudyTab` 已删**；该层物品改由 `CewsRegistrate#defaultCreativeTab(CoeCreativeTabs.BASE_TAB.key())` 直接进本页（12 台波机器落**机械**分区）。**加减内容只改两处**：注册点 + `CoeCreativeSections` 的判据族。⚠ 横幅的坑（`accept(EMPTY)` 抛异常 / 图集只扫 `gui/sprites/` / 自适应整行空）→ `docs/共享经验-盔甲与材料集/08-…md` §6；关卡 `tools/check-creative-sections.ps1`。
 - **第三层 `transmutation` 是空壳**（用户 2026-09-28 裁定）：mod 已注册（对 `createoreexpansion` required），**内容全部并入第一层**；**「善化」模块单独只属第一层**，善化系列的新加工配方（含今后的扩展）归第三层——**第三层只是对第一层「善化」的扩展**。空壳仍必须调 `LayerBootstrap.ensureAttached(modBus)`（构造器第一条语句）。
 - **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可分家），否则所有 id 全变、老存档报废；**配置键、语言键、数据包路径同理不许改**。英文名 `Create: Energy Wave Studies`（缩写不变），id 一律 `energy_wave_study`。
 - 耦合点与方案 → `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`；**拆包后的方向判据与六次「全绿但坏掉」→ `markdown_output/分层重构（依赖方向重排）复盘.md`**。

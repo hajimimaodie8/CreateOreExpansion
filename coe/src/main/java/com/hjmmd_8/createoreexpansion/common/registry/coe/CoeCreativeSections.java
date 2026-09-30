@@ -137,11 +137,38 @@ public final class CoeCreativeSections {
     private static final int ORE_CRYSTAL = 9;
     private static final int ORE_BUCKET = 10;
 
-    /** ② 机械的区内族序（§8 ② 的分组顺序）。 */
+    /** ② 机械的区内族序（§8 ② 的分组顺序；2026-09-30 追加波机器一族）。 */
     private static final int MACHINE_MACHINE = 0;
     private static final int MACHINE_CASING = 1;
     private static final int MACHINE_WHEEL = 2;
     private static final int MACHINE_MECHANISM = 3;
+    /** CEWS 的波机器家族（2026-09-30 用户裁定搬入本页；排最后，便于以后继续往上累加）。 */
+    private static final int MACHINE_WAVE = 4;
+
+    /**
+     * <b>CEWS 波机器的注册名后缀族</b>（2026-09-30 用户裁定「标签页只有一个」后，
+     * 该层 12 台机器由 {@code CewsRegistrate} 直接进本页，全部落「机械」分区）。
+     *
+     * <p>用后缀族而不是逐个点名：这些是<b>成族出现</b>的机器（三种材质的调级器 / 调节器、
+     * 差波器家族…），以后加新材质或新家族成员时会自动跟上 —— 这也是不会退化成
+     * "枚举物品"的关键（落地文档 §5 步骤 2 的硬要求）。</p>
+     *
+     * <p>清单与本页实测对应关系（12 件）：
+     * {@code energy_field_controller} / {@code stellar_wave_transmuter} /
+     * {@code energy_wave_regulator} · {@code sapphire_wave_regulator} · {@code stellarstone_wave_regulator} /
+     * {@code wave_speed_regulator} · {@code sapphire_speed_regulator} · {@code stellarstone_speed_regulator} /
+     * {@code energy_wave_disperser} · {@code six_face_disperser} /
+     * {@code octa_energy_wave_differencer} / {@code wave_query_gauge}。</p>
+     */
+    private static final String[] WAVE_MACHINE_SUFFIXES = {
+        "_field_controller",    // 能量场控制器
+        "_wave_transmuter",     // 星辉波变器
+        "_wave_regulator",      // 能量调级器（三种材质）
+        "_speed_regulator",     // 波速调节器（三种材质）
+        "_disperser",           // 波差器家族（四面 / 六面）
+        "_differencer",         // 波差器家族（八面）
+        "_query_gauge"          // 波情查询仪（用户裁定：也放机械分区）
+    };
 
     /** ③ 装备的区内族序（§8 ③ 的分组顺序）。 */
     private static final int GEAR_TOOL = 0;
@@ -202,9 +229,15 @@ public final class CoeCreativeSections {
         }
         // 机器构件 4 件：transmute_mechanism / incomplete_transmute_mechanism /
         // energy_mechanism / incomplete_energy_mechanism（后两件的注册在 CEWS 层，
-        // 由 EnergyWaveStudyTab 在展示层搬到本页）
+        // 2026-09-30 起该层默认页就是本页，所以它们本来就是本页成员）
         if (path.endsWith("_mechanism")) {
             return new Classification("machine", MACHINE_MECHANISM);
+        }
+        // CEWS 的波机器 12 件（用户裁定搬入本页）：按后缀族识别，见 WAVE_MACHINE_SUFFIXES
+        for (String waveSuffix : WAVE_MACHINE_SUFFIXES) {
+            if (path.endsWith(waveSuffix)) {
+                return new Classification("machine", MACHINE_WAVE);
+            }
         }
 
         // ---------------- ① 矿物 ----------------

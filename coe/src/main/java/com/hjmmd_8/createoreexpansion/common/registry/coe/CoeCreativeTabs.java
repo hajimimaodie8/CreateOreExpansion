@@ -5,20 +5,21 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 
 /**
- * <b>COE（矿物拓展）自己的创造模式标签页</b>（P3c：从 {@code common/AllCreativeModeTabs} 拆出）。
+ * <b>本模组唯一的创造模式标签页</b>：{@code base_tab}（"矿物拓展"，图标 = 翡翠锭）。
  *
- * <p>本层只有一个页：{@code base_tab}（"矿物拓展"，图标 = 翡翠锭）。它<b>排在最前</b>——
- * {@code withTabsBefore} 指向 CEWS 的页（{@code energy_wave_study}），于是整条顺序是
- * <b>矿物拓展 → 能量波阵学 → Create 调色板</b>（与拆分前的枚举顺序逐字一致）。</p>
+ * <p><b>2026-09-30（用户裁定）：全模组只保留这一个页。</b>原来 CEWS 的
+ * {@code energy_wave_study} 页与其搬运逻辑 {@code EnergyWaveStudyTab} 已删除，
+ * CEWS 层的 12 台波机器改由 {@code CewsRegistrate#defaultCreativeTab} 直接进本页，
+ * 落在<b>「机械」分区</b>（判定见 {@link CoeCreativeSections}）。</p>
  *
- * <p><b>为什么这里能引用 CEWS 的页而不违反分层方向</b>：本类读的是
- * {@link LayerCreativeTab#ENERGY_WAVE_STUDY_TAB_ID}（core 的 {@code static final String} 常量，
- * P3q 从 {@code common/hub/EnergyWaveStudyTab} 下移；那个类本身 P3s 又搬到了
- * {@code common/registry/cews/}），<b>没有</b> import 任何 CEWS 层的类，
- * 所以不存在 COE → CEWS 的编译期依赖。</p>
+ * <p><b>排序锚点</b>：本页接手了原 CEWS 页的位置 —— {@code withTabsBefore} 指向
+ * Create 的调色板页（{@code AllCreativeModeTabs.PALETTES_CREATIVE_TAB}），
+ * 所以玩家可见顺序仍是<b>矿物拓展 → Create 调色板</b>，与删除前一致。
+ * 注意<b>不能</b>拿原版 {@code HOTBAR/SEARCH/OP_BLOCKS/INVENTORY} 当锚点
+ * （会把原版页拉进排序图，见协作文档 §6.5）。</p>
  *
  * <p><b>本类不做注册动作</b>：创造页注册表住在 {@link LayerCreativeTab}（core），
- * 由根侧注入的登记动作按层顺序登记——这是"注册顺序不变"的前提。</p>
+ * 由每一层自己的 {@code @Mod} 构造器调用 {@code registerAll} 登记。</p>
  */
 public final class CoeCreativeTabs {
 
@@ -27,11 +28,11 @@ public final class CoeCreativeTabs {
     public static final LayerCreativeTab BASE_TAB = LayerCreativeTab.of(
         "base_tab",
         "itemGroup.createoreexpansion",
-        LayerCreativeTab.tabKey(LayerCreativeTab.ENERGY_WAVE_STUDY_TAB_ID),
+        com.simibubi.create.AllCreativeModeTabs.PALETTES_CREATIVE_TAB.getKey(),
         () -> CoeItems.JADE_INGOT.asStack())
         // 本页是「一页 + 三条分区横幅（矿物 / 机械 / 装备）」：用会补空行的子类构建。
-        // 只有本页声明工厂 —— CEWS 的 energy_wave_study 页必须保持原样（它靠自己那份
-        // remove/accept 清单钉顺序），core 的 LayerCreativeTab 因此按页区分，不会误伤。
+        // 现在全模组只有这一个页，所以"按页区分工厂"这件事失去了对象，
+        // 但 core 的 LayerCreativeTab 仍保留按页注入的能力（将来若再添页就不会误伤）。
         .sectioned(CoeSectionedTab::new);
 
     /** 本层页的声明顺序（由协调入口读取，顺序 = 拆分前的枚举顺序）。 */

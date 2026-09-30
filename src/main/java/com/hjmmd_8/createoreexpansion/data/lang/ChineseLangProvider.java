@@ -24,7 +24,10 @@ public class ChineseLangProvider extends LanguageProvider {
     protected void addTranslations() {
         // ========== 创造标签页 ==========
         add("itemGroup.createoreexpansion", "机械动力：矿物拓展");
-        // CEWS（能量波阵学）独立标签页：能量波系统的机器 + 波情查询仪（清单见 common/EnergyWaveStudyTab）
+        // CEWS（能量波阵学）**已无独立标签页**（2026-09-30 用户裁定「标签页只有一个」：
+        // 该层的机器全部进矿物拓展页的「机械」分区，页与搬运逻辑 EnergyWaveStudyTab 已删除）。
+        // 下面这条键保留：删它要同时改两份语言文件与四处生成产物，而它已不被任何代码引用，
+        // 留着零成本；将来若真要清理请连同 en_us 与四个 src/generated 一起改。
         add("itemGroup.createoreexpansion.energy_wave_study", "机械动力：能量波阵学");
         add("createoreexpansion.mod_name", "机械动力：矿物拓展");
 

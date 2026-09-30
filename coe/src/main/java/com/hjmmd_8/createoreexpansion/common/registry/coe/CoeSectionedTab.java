@@ -10,9 +10,10 @@ import net.minecraft.world.item.ItemStack;
 /**
  * <b>会在 {@code getDisplayItems()} 里补空行的创造页子类</b>（只给 {@code base_tab} 用）。
  *
- * <p><b>它解决什么</b>：COE 的 {@code base_tab} 是一个<b>空建造器</b> —— 成员是在
- * {@code BuildCreativeModeTabContentsEvent} 上由 Registrate（{@code defaultCreativeTab}）
- * 与 {@code EnergyWaveStudyTab} 塞进来的（见落地文档 §4.1~§4.3）。所以「在生成器里排好顺序」
+ * <p><b>它解决什么</b>：本页是一个<b>空建造器</b> —— 成员是在
+ * {@code BuildCreativeModeTabContentsEvent} 上由两个 Registrate（{@code CoeRegistrate} 与
+ * {@code CewsRegistrate} 的 {@code defaultCreativeTab}）塞进来的（见落地文档 §4.1~§4.3；
+ * 2026-09-30 起 CEWS 的物品也走这条路 —— 该层不再有独立页）。所以「在生成器里排好顺序」
  * 这一招在这里不成立；改成<b>在渲染前的最后一刻</b>把真实列表切成三区、插空行、按分区顺序重排
  * （文档 §4.5 的路径 A）。</p>
  *

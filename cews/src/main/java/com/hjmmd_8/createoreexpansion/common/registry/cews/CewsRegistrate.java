@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.cews;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.RegistrateTooltips;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 import com.simibubi.create.foundation.data.CreateRegistrate;
 
 /**
@@ -28,14 +29,14 @@ public final class CewsRegistrate {
         LayerRegistrate.create(CoeCore.REGISTRY_NAMESPACE, false);
 
     static {
-        // P7a：这里不再需要"请求登记创造页"——登记动作已由 CewsMod 构造器里的
-        // LayerCreativeTab.registerAll(CewsCreativeTabs.tabs()) 直接完成。
         // W6-c：共享库的通用两级（描述行 + 动能统计）仍旧装；但"充能器专用那一段"
         // （ChargerKineticTooltip#withChargers）已随充能器搬到第一层 —— 它必须装在
         // CoeRegistrate 上，否则那三台机器的物品悬停会丢掉自定义应力区间行。
         RegistrateTooltips.install(REGISTRATE);
-        // CEWS 的默认创造页 = 能量波阵学页（本层自己的常量，不再绕 SHARED 聚合入口）
-        REGISTRATE.defaultCreativeTab(CewsCreativeTabs.ENERGY_WAVE_STUDY.key());
+        // 2026-09-30（用户裁定）：CEWS 不再有自己的创造页，本层物品默认进**矿物拓展页**
+        // （CoeCreativeTabs.BASE_TAB）的「机械」分区。方向 cews → coe 是**允许方向**
+        // （AGENTS 红线：cews 依赖 coe 合法、反向禁止）。
+        REGISTRATE.defaultCreativeTab(CoeCreativeTabs.BASE_TAB.key());
     }
 
     private CewsRegistrate() {}

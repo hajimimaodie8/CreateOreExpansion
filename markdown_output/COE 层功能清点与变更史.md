@@ -238,3 +238,50 @@ TRANSMUTING → LIGHTNING → LIGHTNING_BLOCK → GRINDING → DISMANTLING → C
 3. **只留文件**（当前做法）：本文件就是版本化的历史，任何会话都能读它、往里追加；不依赖记忆库。
 
 **一句话交接**：新会话只要在开头读本文件 §1–§5 就知道「COE 层现在有什么」，读 §6 就知道「它是怎么来的」，**并把每一轮改动追加到 §6.2**。
+
+### 6.5 W13 创造页合并为「一个页」（2026-09-30，用户裁定）
+
+> 主题：把 CEWS（能量波阵学）那 12 台机器全部搬进矿物拓展页的**机械分区**，
+> 并**删除 CEWS 的独立创造页**；此后全模组只有一个标签页，新内容往三个分区里累加。
+
+**用户的裁定（本轮问过才动手）**：① CEWS 页**彻底删除**（不是保留空白页）；② 波情查询仪
+`wave_query_gauge`（手持工具）也放**机械分区**。
+
+**改动五处**：
+
+- `CewsRegistrate`：`defaultCreativeTab` 从 CEWS 页改为 `CoeCreativeTabs.BASE_TAB.key()`
+  （方向 cews → coe 是允许方向）
+- 删除 `CewsCreativeTabs`（页声明）与 `EnergyWaveStudyTab`（"往本页放 / 从基础页剔除"的搬运逻辑，
+  两个页没了它就没有职责），并从 `CewsMod` 摘掉 `registerAll` 与那个 `addListener`
+- `CoeCreativeTabs.BASE_TAB` **接手原 CEWS 页的排序位置**：`withTabsBefore(Create 的调色板页)`，
+  所以玩家可见顺序仍是「矿物拓展 → Create 调色板」
+- core 的 `LayerCreativeTab#ENERGY_WAVE_STUDY_TAB_ID` 常量已无引用者，**删除**
+- `CoeCreativeSections` 新增 **7 条波机器后缀族**（`_field_controller` / `_wave_transmuter` /
+  `_wave_regulator` / `_speed_regulator` / `_disperser` / `_differencer` / `_query_gauge`），
+  按族而非点名 —— 以后加新材质/新家族成员会自动跟上
+
+**实测（服务端探针，读游戏真实构建的列表）**：
+
+| 配置 | 改动前 | 改动后 |
+|---|---|---|
+| 只装 coe.jar | 143 = 76/19/48 | **143 = 76/19/48（不变）** ✅ CEWS 物品不在场 |
+| coe + cews | 145 = 76/21/48 | **156 = 76/32/48**（+12 台波机器 **−1** 见下） |
+
+两次都 `nonempty == buckets`、首物品行 1/11/16、三个横幅行**整行空** ✅。
+探针用后整块删除（grep 零命中），十道关卡全绿。
+
+**⚠ 一处连带的行为后果（不是 bug，是代码本意终于生效）**：`incomplete_energy_mechanism`
+（未完成的能量构件）在 `CewsItems.java:27` 写着 `.removeTab(CoeCreativeTabs.BASE_TAB.key())` ——
+**本意就是不进矿物页**。删页之前那条 `removeTab` 是**空转**（当时默认页是 CEWS 页），
+而被删的搬运逻辑又把它 `accept` 进了矿物页 ⇒ 它曾是**唯一一个"意外出现在页里"的构件**。
+现在它与孪生的 `incomplete_transmute_mechanism` **一致：两个未完成构件都不进任何创造页**。
+
+**新增/更新的关卡**：`tools/check-creative-sections.ps1` 的 `cews-untouched` 断言语义改为
+「**CEWS 页必须不存在** + 该层 Registrate 必须指向唯一那页 + 7 条波机器后缀族必须在」，
+另加 `single-tab`（`TABS = List.of(BASE_TAB)`）与 `anchor`（锚 Create 调色板页）两条。
+
+**未收口**：进游戏看一眼（12 台机器是否都落在「机械」横幅下面）。
+
+---
+
+- （待追加）
