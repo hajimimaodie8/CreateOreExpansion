@@ -1,52 +1,37 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
 import com.hjmmd_8.createoreexpansion.common.i18n.Translatable;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import net.minecraft.resources.ResourceLocation;
 
+/**
+ * 物品技能条目的<b>只读元数据契约</b>（技能换核后的形态）。
+ *
+ * <p><b>2026-09-30 技能换核第 5 阶段</b>：本接口原先还带着执行与数值成员
+ * ——{@code release(Object, DataSkill)}、{@code canRelease(Object, DataSkill)}、
+ * {@code getCost()}、{@code getCooldownSeconds()}。它们的存在理由是"技能实例自己会跑"，
+ * 而执行早已迁到 Skiller 新内核（{@code integration/skiller/skill/*ItemSkill}），
+ * 旧实现类也全部删除；这四经全仓检索确认<b>零调用者</b>，故一并退役。</p>
+ *
+ * <p>现在这个接口只回答两个问题：<b>这条技能是什么类型</b>（决定由哪个触发族释放）
+ * 与 <b>它的翻译键是什么</b>（tooltip 显示）。实现体只有
+ * {@link MetadataSkill}（纯元数据壳）与 {@link DataSkill} 的承载关系。</p>
+ */
 public interface ItemSkill extends Translatable {
 
-    /**
-     * 释放技能。技能实现应在真正生效前自行调用
-     * {@link com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend#tryConsume} 消耗能量。
-     *
-     * @param context 技能上下文
-     * @param data    技能data
-     * @throws ClassCastException 技能上下文类型错误
-     */
-    void release(Object context, DataSkill data);
-
-    /**
-     * 检查技能是否可以释放（在消耗能量前调用）
-     *
-     * @param context 技能上下文
-     * @param data    技能data
-     * @return true=可以释放，false=条件不满足
-     */
-    default boolean canRelease(Object context, DataSkill data) {
-        return true; // 默认总是可以释放
-    }
-
+    /** 技能类型 —— 决定由哪个触发族（挖掘 / 受击 / 使用物品）释放。 */
     SkillType getType();
 
-    default int getCost() {
-        return 100;
-    }
-
     /**
-     * 技能自身的冷却秒数（0 = 无自定义，由调用方使用默认/注册表冷却）。
-     * 剑类双技能各自返回独立冷却，互不影响。
+     * tooltip 用的翻译键，口径为 {@code skill.<namespace>.<path>}，
+     * 并把 {@code great_}/{@code grand_} 等级前缀归一（等级由 tooltip 用罗马数字显示）。
      */
-    default int getCooldownSeconds() {
-        return 0;
-    }
-
     @Override
     default String getTranslateKey() {
-        ResourceLocation id = AllSkills.getId(this);
+        ResourceLocation id = com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills.getId(this);
+        if (id == null) {
+            return "skill.createoreexpansion.unknown";
+        }
         String path = id.getPath();
-        // 等级前缀归一：great_/grand_ 统一映射到基础技能名（技能等级由 tooltip 罗马数字显示，
-        // 无需为每个等级单独定义翻译键）。如 great_fell / grand_fell → 查 skill.*.fell。
         if (path.startsWith("great_")) {
             path = path.substring("great_".length());
         } else if (path.startsWith("grand_")) {

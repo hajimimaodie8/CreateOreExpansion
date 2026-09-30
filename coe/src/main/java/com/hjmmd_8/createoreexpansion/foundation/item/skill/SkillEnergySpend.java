@@ -1,33 +1,21 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
-import net.minecraft.world.entity.player.Player;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * <b>旧技能框架（{@link ItemSkill} / {@link DataSkill}）专用的能量口径与扣能编排</b>。
+ * 技能<b>有效等级</b>的唯一口径（技能换核后只保留这一件事）。
  *
- * <p><b>P3p 从 core 搬出来的一支</b>：它原先住在
- * {@code content.equipment.tool.energy.SkillEnergyCost}（有效等级与消耗）与
- * {@code content.equipment.tool.energy.ToolEnergy#tryConsume}（扣能编排）。那两个类住在共享库
- * （core）里（P12 还原了它们的老包名 {@code content.equipment.tool.energy}），
- * 而这里用到的东西——技能注册表 {@link AllSkills}、{@code SKILLS} 组件
- * （{@link AllDataComponents#SKILLS}）、旧技能类型 {@link DataSkill}/{@link ItemSkill}——
- * 全是层内（或根侧共享层里的旧框架）类型，<b>库不能反向依赖它们</b>，
- * 于是这一支整体搬到旧框架自己的包里，<b>方法体逐字未改</b>。</p>
+ * <p><b>2026-09-30 技能换核第 5 阶段</b>：本类原先还带着旧框架的能量口径与扣能编排
+ * （{@code compute(ItemStack, ItemSkill)} / {@code tryConsume(...)} / {@code skillLevel(...)}），
+ * 它们只被旧执行入口（{@code SkillsComponent#releaseSkills/releaseSkillAt} 与旧技能实现）
+ * 调用；那些入口已整体删除，这三个方法经全仓检索确认<b>零调用者</b>，一并移除。
+ * 能量消耗与冷却现在统一由新内核（Skiller）从技能配置读取，
+ * 见 {@code integration/skiller/skill/CoeSkillSupport}。</p>
  *
- * <p><b>新内核（Skiller）不走这里</b>：它直接调
- * {@link SkillEnergyCost#effectiveLevel(ItemStack, int, int)} /
- * {@link SkillEnergyCost#compute(ItemStack, int, int)}（只吃 {@code int} 的那两个重载）。
- * 于是「通用算术住 core、旧框架胶水住旧框架包」这条界线在源码上看得见。</p>
- *
- * <p>调用点：{@code content.skill.*} 的各技能与 {@code SkillsComponent}——
- * 其中 {@code SkillsComponent} 与本类同包，无需 import。</p>
+ * <p>留下 {@link #effectiveLevel(ItemStack, DataSkill)} 是因为它同时服务于
+ * 技能 tooltip 的等级显示与「按等级取配置」两条仍在的路径。</p>
  */
 public final class SkillEnergySpend {
 
@@ -39,90 +27,16 @@ public final class SkillEnergySpend {
      * 显示与消耗统一以此为准。技艺提升/技艺回溯 3 级及以上提升量/削减量一律按 2 计，
      * 两个附魔可共存（净效果 = 提升量 - 削减量）。
      *
-     * <p>（原 {@code SkillEnergyCost.effectiveLevel(ItemStack, DataSkill)}，方法体逐字未改。）</p>
+     * <p>口径未变；换核后从 {@link DataSkill#id} 取注册 id（不再经技能实例反查）。</p>
      */
     public static int effectiveLevel(ItemStack stack, DataSkill data) {
         int base = data.nbt != null ? data.nbt.getInt("Level") : 1;
-        AllSkills.RegisteredDataSkill registered = AllSkills.getData(AllSkills.getId(data.skill));
+        AllSkills.RegisteredDataSkill registered = AllSkills.getData(
+                data.id != null ? data.id : AllSkills.getId(data.skill));
         int maxLevel = registered != null ? registered.maxLevel() : 5;
         int boost = Math.min(ToolEnchantments.skillBoostLevel(stack), 2);
         int regression = Math.min(ToolEnchantments.skillRegressionLevel(stack), 2);
         int level = Math.max(1, base) + boost - regression;
         return Math.max(1, Math.min(level, maxLevel));
-    }
-
-    /**
-     * 计算一次技能释放的实际能量消耗（旧框架版）。
-     *
-     * <p>口径与 {@link SkillEnergyCost#compute(ItemStack, int, int)} 完全一致，
-     * 只是由本方法自己从技能实例取一级消耗、从 {@code SKILLS} 组件取当前等级。</p>
-     *
-     * @param stack 手持的工具
-     * @param skill 将要释放的技能
-     * @return 实际消耗（&lt;= 0 表示无需能量）
-     */
-    public static int compute(ItemStack stack, ItemSkill skill) {
-        return SkillEnergyCost.compute(stack, skill.getCost(), skillLevel(stack, skill));
-    }
-
-    /**
-     * 技能释放前统一检查并消耗能量。
-     *
-     * <p>由各技能在“真正生效前”调用一次（例如破坏方块前、收割前），
-     * 能量不足时发送低能量提示并返回 false，技能应放弃本次释放。</p>
-     *
-     * <p>注意：无论创造模式与否都会消耗能量（与旧行为一致），
-     * 消耗后立即标记物品栏变更，确保客户端能量条同步刷新。</p>
-     *
-     * <p>实现上把「凝能佩兜底」的判定与扣减委托给
-     * {@link ToolEnergy#canAfford(Player, ItemStack, int)} /
-     * {@link ToolEnergy#consume(Player, ItemStack, int)}，本方法只负责编排：
-     * 预检查 → 扣能 → 提示。</p>
-     *
-     * <p>（原 {@code ToolEnergy#tryConsume(Player, ItemStack, ItemSkill)}，方法体逐字未改——
-     * 那时它读的是同类里的 {@code SkillEnergyCost.compute}，现在读本类的
-     * {@link #compute(ItemStack, ItemSkill)}，同一个实现。）</p>
-     *
-     * @param player 释放技能的玩家（可为 null）
-     * @param stack  手持的工具
-     * @param skill  将要释放的技能（通过 {@link ItemSkill#getCost()} 获取消耗）
-     * @return 是否成功消耗能量（true 表示可以继续执行技能）
-     */
-    public static boolean tryConsume(Player player, ItemStack stack, ItemSkill skill) {
-        int cost = compute(stack, skill);
-        if (cost == 0) {
-            return true;
-        }
-        // 预检查失败、或扣减失败（能量不足）都按旧行为提示并放弃本次释放
-        if (!ToolEnergy.canAfford(player, stack, cost) || !ToolEnergy.consume(player, stack, cost)) {
-            if (player != null) {
-                ToolEnergy.sendLowEnergy(player, stack);
-            }
-            return false;
-        }
-        if (player != null) {
-            // 强制物品栏同步，确保客户端立即看到能量变化
-            player.getInventory().setChanged();
-            // 同步显示剩余能量：绑定的凝能佩行在上、工具行在下（护目镜判定）
-            ToolEnergy.sendRemainingEnergyWithMedallion(player, stack, IMedallion.findBoundMedallion(player, stack));
-        }
-        return true;
-    }
-
-    /**
-     * 读取工具上指定技能的当前有效等级（含技能提升附魔）。
-     *
-     * @return 技能等级，找不到时为 1
-     */
-    private static int skillLevel(ItemStack stack, ItemSkill skill) {
-        SkillsComponent component = stack.get(AllDataComponents.SKILLS);
-        if (component != null) {
-            for (DataSkill data : component.getAllData()) {
-                if (data.skill == skill) {
-                    return effectiveLevel(stack, data);
-                }
-            }
-        }
-        return 1;
     }
 }
