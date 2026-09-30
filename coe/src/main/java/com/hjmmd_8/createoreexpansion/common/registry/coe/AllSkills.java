@@ -2,13 +2,6 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.content.skill.AreaAoeSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.BowCurseSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.BowDisarmSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.FellingSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.HoeSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.PlunderSkill;
-import com.hjmmd_8.createoreexpansion.content.skill.SkinSkill;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfigs;
@@ -16,14 +9,12 @@ import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkillAoeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfigs;
-import com.hjmmd_8.createoreexpansion.content.skill.strategy.AreaAoeStrategy;
-import com.hjmmd_8.createoreexpansion.content.skill.strategy.FellingStrategy;
-import com.hjmmd_8.createoreexpansion.content.skill.strategy.HoeStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ConfigSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.MetadataSkill;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.EntityStrategy;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.strategy.SkillStrategy;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
@@ -52,9 +43,7 @@ public final class AllSkills {
     // ========== 伐树（斧类连锁砍树）—— 数值统一在 FellingConfigs 修改 ==========
     /** 伐树（一技能多等级：addSkills(FELL, 等级) 按等级取实际配置，Lv1 翡翠斧/ Lv2 黄玉斧/ Lv3 蓝宝石斧） */
     public static final RegisteredDataSkill FELL =
-            skill("fell", FellingSkill.class, FellingStrategy.class)
-                    .skill(FellingSkill::new)
-                    .strategy(FellingStrategy::new)
+            skill("fell", SkillType.EXCAVATION_SKILL)
                     .config(FellingConfigs.config(FellingConfigs.LEVEL_1))
                     .configsByLevel(level -> FellingConfigs.config(FellingConfigs.level(level)))
                     .register();
@@ -64,9 +53,7 @@ public final class AllSkills {
     // ========== 开岩（稿类范围挖掘）—— 数值统一在 SkillAoeConfigs 修改 ==========
     /** 开岩（一技能多等级：addSkills(SHATTER, 等级) 按等级取实际配置，Lv1 翡翠稿/ Lv2 黄玉稿/ Lv3 蓝宝石稿） */
     public static final RegisteredDataSkill SHATTER =
-            skill("shatter", AreaAoeSkill.class, AreaAoeStrategy.class)
-                    .skill(AreaAoeSkill::new)
-                    .strategy(AreaAoeStrategy::new)
+            skill("shatter", SkillType.EXCAVATION_SKILL)
                     .config(SkillAoeConfigs.aoeConfig(SkillAoeConfigs.BREAK_ROCK_TAG, SkillAoeConfigs.BREAK_ROCK_1))
                     .configsByLevel(level -> SkillAoeConfigs.aoeConfig(
                             SkillAoeConfigs.BREAK_ROCK_TAG, SkillAoeConfigs.breakRockLevel(level)))
@@ -77,9 +64,7 @@ public final class AllSkills {
     // ========== 引渠 / 平场（铲类范围挖掘）—— 数值统一在 SkillAoeConfigs 修改 ==========
     /** 引渠（一技能多等级：addSkills(CHANNEL, 等级) 按等级取实际配置，Lv1 翡翠铲/ Lv2 黄玉铲/ Lv3 蓝宝石铲） */
     public static final RegisteredDataSkill CHANNEL =
-            skill("channel", AreaAoeSkill.class, AreaAoeStrategy.class)
-                    .skill(AreaAoeSkill::new)
-                    .strategy(AreaAoeStrategy::new)
+            skill("channel", SkillType.EXCAVATION_SKILL)
                     .config(SkillAoeConfigs.aoeConfig(SkillAoeConfigs.CHANNEL_TAG, SkillAoeConfigs.CHANNEL_1))
                     .configsByLevel(level -> SkillAoeConfigs.aoeConfig(
                             SkillAoeConfigs.CHANNEL_TAG, SkillAoeConfigs.channelLevel(level)))
@@ -88,9 +73,7 @@ public final class AllSkills {
     // 将来启用时 addSkills(CHANNEL, 4/5) 即可，无需新增注册。
     /** 平场（一技能多等级：addSkills(GRADE, 等级) 按等级取实际配置，Lv1 蓝宝石铲/ Lv2/ Lv3） */
     public static final RegisteredDataSkill GRADE =
-        skill("grade", AreaAoeSkill.class, AreaAoeStrategy.class)
-                .skill(AreaAoeSkill::new)
-                .strategy(AreaAoeStrategy::new)
+        skill("grade", SkillType.EXCAVATION_SKILL)
                 .config(SkillAoeConfigs.aoeConfig(SkillAoeConfigs.GRADE_TAG, SkillAoeConfigs.GRADE_1))
                 .configsByLevel(level -> SkillAoeConfigs.aoeConfig(
                         SkillAoeConfigs.GRADE_TAG, SkillAoeConfigs.gradeLevel(level)))
@@ -102,9 +85,7 @@ public final class AllSkills {
     // ========== 剥取（剑类额外掉落）—— 数值统一在 SkinConfigs 修改 ==========
     /** 剥取（一技能多等级：addSkills(SKIN, 等级) 按等级取实际配置，Lv1 翡翠剑/ Lv2 黄玉剑/ Lv3 蓝宝石剑） */
     public static final RegisteredDataSkill SKIN =
-            skill("skin", SkinSkill.class, EntityStrategy.class)
-                    .skill(SkinSkill::new)
-                    .strategy(EntityStrategy::new)
+            skill("skin", SkillType.HIT_SKILL)
                     .config(SkinConfigs.config(SkinConfigs.LEVEL_1))
                     .configsByLevel(level -> SkinConfigs.config(SkinConfigs.level(level)))
                     .register();
@@ -114,9 +95,7 @@ public final class AllSkills {
     // ========== 夺取（剑类夺取装备 + 吸血）—— 数值统一在 PlunderConfigs 修改 ==========
     /** 夺取（一技能多等级：addSkills(PLUNDER, 等级) 按等级取实际配置，Lv1 黄玉剑键二/ Lv2 蓝宝石剑键二） */
     public static final RegisteredDataSkill PLUNDER =
-            skill("plunder", PlunderSkill.class, EntityStrategy.class)
-                    .skill(PlunderSkill::new)
-                    .strategy(EntityStrategy::new)
+            skill("plunder", SkillType.HIT_SKILL)
                     .config(PlunderConfigs.config(PlunderConfigs.LEVEL_1))
                     .configsByLevel(level -> PlunderConfigs.config(PlunderConfigs.level(level)))
                     .register();
@@ -126,9 +105,7 @@ public final class AllSkills {
     // ========== 耕作（锄头）—— 数值统一在 HoeConfigs 修改 ==========
     /** 耕作（一技能多等级：addSkills(HOE, 等级) 按等级取实际配置，Lv1 翡翠锄/ Lv2 黄玉锄/ Lv3 蓝宝石锄） */
     public static final RegisteredDataSkill HOE =
-            skill("hoe", HoeSkill.class, HoeStrategy.class)
-                    .skill(HoeSkill::new)
-                    .strategy(HoeStrategy::new)
+            skill("hoe", SkillType.USE_SKILL)
                     .config(HoeConfigs.config(HoeConfigs.LEVEL_1))
                     .configsByLevel(level -> HoeConfigs.config(HoeConfigs.level(level)))
                     .register();
@@ -138,8 +115,7 @@ public final class AllSkills {
     // ========== 翠玉之弓技能（传说武器：能量上限 2000，一技能多等级，数值统一在 BowCurseConfigs/BowDisarmConfigs 修改） ==========
     /** 凋零诅咒（弓技能一：命中附加凋零+缓慢+药水云） */
     public static final RegisteredDataSkill BOW_CURSE =
-            skill("bow_curse", BowCurseSkill.class, SkillStrategy.class)
-                    .skill(s -> new BowCurseSkill())
+            skill("bow_curse", SkillType.USE_SKILL)
                     .config(BowCurseConfigs.config(BowCurseConfigs.LEVEL_1))
                     .configsByLevel(level -> BowCurseConfigs.config(BowCurseConfigs.level(level)))
                     .register();
@@ -147,8 +123,7 @@ public final class AllSkills {
     // 将来启用时 addSkills(BOW_CURSE, 4/5) 即可，无需新增注册。
     /** 缴械风暴（弓技能二：范围缴械+怪物扒装备） */
     public static final RegisteredDataSkill BOW_DISARM =
-            skill("bow_disarm", BowDisarmSkill.class, SkillStrategy.class)
-                    .skill(s -> new BowDisarmSkill())
+            skill("bow_disarm", SkillType.USE_SKILL)
                     .config(BowDisarmConfigs.config(BowDisarmConfigs.LEVEL_1))
                     .configsByLevel(level -> BowDisarmConfigs.config(BowDisarmConfigs.level(level)))
                     .register();
@@ -172,6 +147,35 @@ public final class AllSkills {
         return new SkillBuilder<>(id, skillType, strategyType);
     }
 
+    /**
+     * 创建技能构建器（<b>元数据壳版</b>，2026-09-30 起）。
+     *
+     * <p>技能执行已整体迁到 Skiller 新内核，旧自研实现类只剩「数据组件载体」用途。
+     * 本重载不再要求传入技能类 / 策略类，注册出来的条目由 {@link MetadataSkill} 承载，
+     * 只提供 id、类型与展示数值；<b>存档格式一字不变</b>
+     * （{@code skillId + NBT}，见 {@link DataSkill#toString()}）。</p>
+     *
+     * @param id   技能注册 id（{@code createoreexpansion:xxx}，必须与旧注册一字不差）
+     * @param type 技能类型（决定触发器）
+     */
+    public static SkillBuilder<ItemSkill, SkillStrategy<?>> skill(String id, SkillType type) {
+        return buildMetadata(CoeCore.modLoc(id), type);
+    }
+
+    /**
+     * 元数据构建器的<b>唯一构造点</b>。
+     *
+     * <p>泛型参数在构造处无法用类字面量表达（{@code SkillStrategy<?>.class} 不合法），
+     * 因此这里用一次原始类型中转，把 {@code @SuppressWarnings("unchecked")} 收敛在这一个方法里，
+     * 不扩散到调用点。运行期无强转风险：{@link SkillBuilder} 的
+     * {@code skillType}/{@code strategyType} 只用于注册期类型校验，元数据模式下不参与执行。</p>
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static SkillBuilder<ItemSkill, SkillStrategy<?>> buildMetadata(ResourceLocation id, SkillType type) {
+        SkillBuilder raw = new SkillBuilder(id, ItemSkill.class, SkillStrategy.class);
+        return (SkillBuilder<ItemSkill, SkillStrategy<?>>) raw.metadata(type);
+    }
+
     public static ItemSkill get(ResourceLocation id) {
         return id == null ? null : SKILLS.getOrDefault(id, null);
     }
@@ -191,6 +195,13 @@ public final class AllSkills {
         private final ResourceLocation id;
         private final Class<T> skillType;
         private final Class<S> strategyType;
+        /**
+         * 元数据壳（2026-09-30 起的默认模式）。
+         *
+         * <p>非 null 时 {@link #createSkill()} 直接返回它，<b>不再实例化任何旧技能实现类</b>。
+         * 技能执行已迁到 Skiller 新内核，旧实现类只剩数据组件载体用途。</p>
+         */
+        private MetadataSkill metadata;
         private Function<S, T> factory;
         private S strategy;
         private T skill;
@@ -213,6 +224,16 @@ public final class AllSkills {
 
         public SkillBuilder<T, S> skill(Function<S, T> factory) {
             this.factory = factory;
+            return this;
+        }
+
+        /**
+         * 切换到元数据壳模式：注册条目只承载 id + 类型，不再实例化旧技能实现类。
+         *
+         * @param type 技能类型（决定触发器，与旧实现在新内核里声明的类型一致）
+         */
+        public SkillBuilder<T, S> metadata(SkillType type) {
+            this.metadata = new MetadataSkill(this.id, type);
             return this;
         }
 
@@ -275,14 +296,29 @@ public final class AllSkills {
             data.maxLevel = this.maxLevel;
             if (config != null) {
                 config.load(data);
-                // 将配置载入技能实例，保证 getCost() 等字段返回注册时的真实值
-                ConfigSkill.loadConfig(built, config, data);
+                // 将配置载入技能实例，保证 getCost() 等字段返回注册时的真实值；
+                // 元数据壳没有 IItemSkill#load，故只对旧式 ConfigSkill 生效。
+                if (!(built instanceof MetadataSkill)) {
+                    ConfigSkill.loadConfig(built, config, data);
+                }
             }
             SKILL_DATA.put(id, data);
             return data;
         }
 
+        /**
+         * 产出该条目的技能实例。
+         *
+         * <p>两条路径：<b>元数据模式</b>（{@link #metadata} 非空，2026-09-30 起所有条目）
+         * 只构造一个 {@link MetadataSkill}，不加载任何旧实现类；
+         * <b>旧式模式</b>（仍传了工厂）保留原行为，供尚未迁移的调用点使用。</p>
+         */
         private T createSkill() {
+            if (metadata != null) {
+                @SuppressWarnings("unchecked")
+                T asMeta = (T) metadata;
+                return asMeta;
+            }
             if (factory == null) throw new NullPointerException("Factory cannot be null");
             // 允许strategy为null，支持没有strategy的技能
             if (skill == null) skill = factory.apply(strategy);
