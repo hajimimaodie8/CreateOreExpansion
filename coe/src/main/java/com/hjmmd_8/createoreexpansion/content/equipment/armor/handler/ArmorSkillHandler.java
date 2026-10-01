@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.armor.handler;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.handler.LastStandHandler;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -63,21 +64,31 @@ public final class ArmorSkillHandler {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
+        // ① 翠玉套 · 虚衡坠护（**保持原样，一行判定都不动**）
         int level = ArmorSkillRuntime.levelOf(player, ArmorSkillRuntime.FALL_GUARD);
-        if (level <= 0) {
-            return;
+        if (level > 0) {
+            if (ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.FALL_GUARD)) {
+                event.setCanceled(true);
+                // 落地特效（用户 2026-10-01）：按住技能键落地 ⇒ "黄绿交加"加强版
+                ArmorSkillFx.landingImpact(player, true);
+                return;
+            }
+            FallGuardConfigs.Config config = FallGuardConfigs.config(level);
+            if (player.getRandom().nextDouble() < config.passiveChance()) {
+                event.setCanceled(true);
+                // 基础落地特效（用户 2026-10-01）：被动豁免摔落伤害时也有
+                ArmorSkillFx.landingImpact(player, false);
+                return;
+            }
         }
-        if (ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.FALL_GUARD)) {
+        // ② 宝石套 · 绝境守护：继承虚衡坠护的摔落豁免（规格 §1.1"继承虚衡坠护的摔落豁免"，
+        // 口径同 §一 虚衡坠护：被动按概率、按住 100%）。判定与概率源都住在 LastStandHandler
+        // （概率沿用虚衡坠护同级那一档，见 LastStandConfigs.passiveFallChance）。
+        // ⚠ **不**判 LastStand 的冷却：摔落豁免是"继承来的被动"，与主动长按的内置冷却无关，
+        // 冷却中按住技能键仍然该 100% 豁免（与虚衡坠护一致）。
+        if (LastStandHandler.shouldNegateFall(player)) {
             event.setCanceled(true);
-            // 落地特效（用户 2026-10-01）：按住技能键落地 ⇒ "黄绿交加"加强版
-            ArmorSkillFx.landingImpact(player, true);
-            return;
-        }
-        FallGuardConfigs.Config config = FallGuardConfigs.config(level);
-        if (player.getRandom().nextDouble() < config.passiveChance()) {
-            event.setCanceled(true);
-            // 基础落地特效（用户 2026-10-01）：被动豁免摔落伤害时也有
-            ArmorSkillFx.landingImpact(player, false);
+            ArmorSkillFx.landingImpact(player, ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.LAST_STAND));
         }
     }
 

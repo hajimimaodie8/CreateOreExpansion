@@ -265,6 +265,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.equip_skill.cooldown", "技能冷却中：还需 %s 秒");
         add("createoreexpansion.equip_skill.no_energy", "护甲能量不足，无法发动");
         add("skill.createoreexpansion.charge_dash", "蓄能疾骋");
+        add("skill.createoreexpansion.last_stand", "绝境守护");
+        add("skill.createoreexpansion.field_charge", "临域充力");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");

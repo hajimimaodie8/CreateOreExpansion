@@ -72,9 +72,15 @@ public final class ArmorSkillProvider implements SkillProvider {
      *
      * <p>顺序即槽位顺序：键一 = 下标 0、键二 = 1、键三 = 2。用户 2026-10-01 逐套给的技能表正在
      * 逐个落地，<b>落地一个就往这里加一个</b>（加了之后客户端才开始轮询那个槽位、HUD 才列出来）。</p>
+     *
+     * <p>⚠ 这张表的<b>顺序</b>必须与 {@code ArmorSkillRuntime#skillId(ArmorSet, int)} 的 switch 逐字同序：
+     * 前者决定"客户端轮询/列哪几个槽位"，后者决定"按下那个槽位跑哪个技能"。</p>
      */
     private static final Map<ArmorSet, List<ResourceLocation>> SET_SKILL_IDS = Map.of(
-        ArmorSet.JADE, List.of(ArmorSkillRuntime.FALL_GUARD_ID, ArmorSkillRuntime.CHARGE_DASH_ID));
+        ArmorSet.JADE, List.of(ArmorSkillRuntime.FALL_GUARD_ID, ArmorSkillRuntime.CHARGE_DASH_ID),
+        // 宝石套（规格 §八 第 2 层）：槽位 1 = 绝境守护（本轮实现）、槽位 2 = 临域充力
+        // （本轮只登记/注册，行为是第 3 层 —— 登记它是为了让第 3 层能并行开工而不动这张表）。
+        ArmorSet.GEM, List.of(ArmorSkillRuntime.LAST_STAND_ID, ArmorSkillRuntime.FIELD_CHARGE_ID));
 
     /**
      * 该套在装备段暴露的技能 id（<b>按槽位顺序</b>）—— 供显示层共用（护甲 tooltip / HUD）。

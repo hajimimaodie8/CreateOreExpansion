@@ -369,6 +369,8 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.equip_skill.cooldown", "Skill on cooldown: %s s left");
         add("createoreexpansion.equip_skill.no_energy", "Not enough armor energy");
         add("skill.createoreexpansion.charge_dash", "Charge Dash");
+        add("skill.createoreexpansion.last_stand", "Last Stand");
+        add("skill.createoreexpansion.field_charge", "Field Charge");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");

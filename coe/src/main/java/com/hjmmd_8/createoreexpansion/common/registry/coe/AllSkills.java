@@ -8,6 +8,7 @@ import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.LastStandConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkillAoeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.SkinConfigs;
@@ -156,6 +157,28 @@ public final class AllSkills {
     public static final RegisteredDataSkill CHARGE_DASH =
             skill("charge_dash", SkillType.USE_SKILL)
                     .maxLevel(ChargeDashConfigs.MAX_LEVEL)
+                    .register();
+
+    /**
+     * 绝境守护（宝石套 · 槽位 1，基准等级 1）：被动高额伤害按概率豁免 + 长按分段给不死图腾。
+     *
+     * <p>与上面两条同样：执行在 {@code ArmorSkillRuntime}（长按语义）与
+     * {@code LastStandHandler}（被动触发），数值在 {@link LastStandConfigs}，
+     * 这里只登记 id / 类型 / 等级上限，<b>不挂</b> {@code .config(...)}（不走内核的 config 解析链）。</p>
+     */
+    public static final RegisteredDataSkill LAST_STAND =
+            skill("last_stand", SkillType.USE_SKILL)
+                    .maxLevel(LastStandConfigs.MAX_LEVEL)
+                    .register();
+
+    /**
+     * 临域充力（宝石套 · 槽位 2，基准等级 2）：本轮<b>只登记/注册</b>（规格 §八 第 2 层要求
+     * "两条技能都进注册管线"，好让第 3 层实现时不必再动注册表）。它的行为（应力注入 /
+     * 手摇曲柄判定 / 环绕粒子）是<b>第 3 层</b>，此刻按住这个槽位除了进入长按状态不会有效果。
+     */
+    public static final RegisteredDataSkill FIELD_CHARGE =
+            skill("field_charge", SkillType.USE_SKILL)
+                    .maxLevel(LastStandConfigs.MAX_LEVEL)
                     .register();
 
     // ========== 工具方法 ==========

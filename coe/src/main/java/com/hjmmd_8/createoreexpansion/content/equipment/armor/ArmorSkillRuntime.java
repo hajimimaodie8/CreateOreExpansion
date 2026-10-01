@@ -5,8 +5,10 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.integration.skiller.ArmorSkillProvider;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.handler.LastStandHandler;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.LastStandConfigs;
 import com.leaf.skiller.server.PlayerPressedKeys;
 
 import net.minecraft.nbt.CompoundTag;
@@ -171,12 +173,21 @@ public final class ArmorSkillRuntime {
                     if (CHARGE_DASH.equals(skill)) {
                         // 用户 2026-10-01 修正：**一边按一边产生疾跑 buff**（不是松手才给）
                         applyChargeDash(player, set, ticks);
+                    } else if (LAST_STAND.equals(skill)) {
+                        // 绝境守护：同样"一边按一边给"—— 段位推进时施加/升级不死图腾 buff
+                        // （规格 §8 第 2 层"段位随长按推进"，松手不再补发，理由同蓄能疾骋）
+                        applyLastStand(player, set, ticks);
                     }
                     // 用户 2026-10-01 口径：能量消耗到"见底"⇒ 自动断停 + 把能量清空
-                    if (set != null && skill != null && isExhausted(player, set, index, ticks)) {
+                    // ⚠ 只在"这条技能真的有耗能曲线"时判：宝石套槽位 2（临域充力）的行为是
+                    // **第 3 层**，它此刻只是被登记进套件表（客户端会轮询、HUD 会列行），
+                    // 按住它不该把护甲能量清空 —— 见 accumulatedCost 对它的 0 返回。
+                    if (set != null && skill != null && !FIELD_CHARGE.equals(skill)
+                            && isExhausted(player, set, index, ticks)) {
                         held.remove(slot);
                         ACTIVE.remove(id);
                         DASH_SEGMENT.remove(id);
+                        LAST_STAND_SEGMENT.remove(id);
                         ArmorEnergy.consume(player, ArmorEnergy.totalEnergy(player)); // 见底即清空
                         startCooldown(player, skill, cooldownSecondsOf(player, set, index));
                         continue;
@@ -186,6 +197,7 @@ public final class ArmorSkillRuntime {
                 held.remove(slot);
                 ACTIVE.remove(id);
                 DASH_SEGMENT.remove(id);
+                LAST_STAND_SEGMENT.remove(id);
                 release(player, set, index, previous);
             }
         }
@@ -289,6 +301,13 @@ public final class ArmorSkillRuntime {
             ChargeDashConfigs.Config config = ChargeDashConfigs.config(effectiveLevel(player, set, skillId));
             ArmorEnergy.consume(player, holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost()));
             startCooldown(player, skillId, config.cooldownSeconds());
+        } else if (skillId.equals(LAST_STAND)) {
+            // 绝境守护（宝石套 · 槽位 1）：与蓄能疾骋同一条口径 —— 不死图腾 buff 在按住期间
+            // 就按段位施加（见 applyLastStand），松手**只结算能量与冷却、不再补发**。
+            // 补发会让"按住 1 tick 再松手"白拿一整段时长。
+            LastStandConfigs.Config config = LastStandConfigs.config(effectiveLevel(player, set, skillId));
+            ArmorEnergy.consume(player, holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost()));
+            startCooldown(player, skillId, config.cooldownSeconds());
         }
     }
 
@@ -325,6 +344,36 @@ public final class ArmorSkillRuntime {
         }
     }
 
+    /** 绝境守护的"当前段位"（只在段位往上爬时重新施加 buff，避免每 tick 重置时长）。 */
+    private static final Map<UUID, Integer> LAST_STAND_SEGMENT = new HashMap<>();
+
+    /**
+     * 按住期间施加/升级<b>不死图腾</b>那一组 buff（规格 §8 第 2 层"主动：长按分段"）。
+     *
+     * <p>与 {@link #applyChargeDash} 同一条纪律：<b>只在段位变化时重新施加</b> ——
+     * 每 tick 重置时长会让"松手后剩余时间"永远等于整段，等于无限续杯。</p>
+     *
+     * <p>段位 1..N ⇒ 三个效果的 amplifier 各 +0..+（N-1）（规格 §7 Q5 默认口径
+     * "三类都按段位 +1 级"）；时长取 {@code segmentSeconds[段位-1]}。施加落点在
+     * {@code LastStandHandler#applyTotemEffects}（被动触发走的是同一个方法 ⇒ 数值单一来源）。</p>
+     */
+    private static void applyLastStand(ServerPlayer player, ArmorSet set, int heldTicks) {
+        int level = effectiveLevel(player, set, LAST_STAND);
+        LastStandConfigs.Config config = LastStandConfigs.config(level);
+        int segment = LastStandConfigs.segmentOf(heldTicks, config);
+        Integer last = LAST_STAND_SEGMENT.get(player.getUUID());
+        if (last != null && last == segment) {
+            // 段位没变：buff 已施加过（时长在推进），这里只续粒子
+            if (player.tickCount % 2 == 0) {
+                ArmorSkillFx.lastStandAura(player, segment);
+            }
+            return;
+        }
+        LAST_STAND_SEGMENT.put(player.getUUID(), segment);
+        LastStandHandler.applyTotemEffects(player, segment, level);
+        ArmorSkillFx.lastStandAura(player, segment);
+    }
+
     /**
      * 按住时"发动不了"的可见反馈（动作栏 + 日志）。
      *
@@ -350,23 +399,40 @@ public final class ArmorSkillRuntime {
     /** 该技能在该等级下、按住这么多 tick 时的累计花费（与松手结算同一个公式）。 */
     private static int accumulatedCost(ServerPlayer player, ArmorSet set, int index, int heldTicks) {
         String skill = skillId(set, index);
+        if (FIELD_CHARGE.equals(skill)) {
+            // 临域充力（宝石套槽位 2）：行为是第 3 层，此刻**没有耗能曲线**（规格 §2.2 的
+            // 点/秒要等第 3 层接）。返回 0 才能让"能量见底自动断停"不误触发，
+            // 否则按住槽位 2 会把满套能量一次性清空。
+            return 0;
+        }
         int level = effectiveLevel(player, set, skill);
         if (FALL_GUARD.equals(skill)) {
             FallGuardConfigs.Config config = FallGuardConfigs.config(level);
             return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
         }
-        ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
+        if (CHARGE_DASH.equals(skill)) {
+            ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
+            return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
+        }
+        LastStandConfigs.Config config = LastStandConfigs.config(level);
         return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
     }
 
     /** 该技能该起的冷却秒数（给"能量见底自动断停"用，与松手结算同一处取值）。 */
     private static int cooldownSecondsOf(ServerPlayer player, ArmorSet set, int index) {
         String skill = skillId(set, index);
+        if (FIELD_CHARGE.equals(skill)) {
+            // 同上：行为是第 3 层 ⇒ 此刻不起冷却（第 3 层会补 25/20/15 秒那张表）
+            return 0;
+        }
         int level = effectiveLevel(player, set, skill);
         if (FALL_GUARD.equals(skill)) {
             return FallGuardConfigs.config(level).cooldownSeconds();
         }
-        return ChargeDashConfigs.config(level).cooldownSeconds();
+        if (CHARGE_DASH.equals(skill)) {
+            return ChargeDashConfigs.config(level).cooldownSeconds();
+        }
+        return LastStandConfigs.config(level).cooldownSeconds();
     }
 
     /**
@@ -472,16 +538,26 @@ public final class ArmorSkillRuntime {
     /**
      * 该套在第 index 个装备槽位上的技能 id。
      *
-     * <p>本轮（规格 §8 第 1 层）仍然<b>只有翠玉套</b>的两条在这里：宝石套的
-     * {@link #LAST_STAND} / {@link #FIELD_CHARGE} 只登记了 id 与基准等级
-     * （{@link ArmorSkillLevels}），行为与内核注册是第 2 / 3 层的事；
-     * 现在加进来会让"按住 Alt+技能键"进入长按状态却什么都不发生。</p>
+     * <p>顺序 = 槽位顺序（{@link ArmorSkillProvider#SLOT_BASE} 起），与
+     * {@link ArmorSkillProvider#skillIdsOf} 的表<b>必须逐字同序</b>：那张表决定客户端轮询哪个槽位、
+     * HUD 列哪几行，这里决定"按下这个槽位到底跑哪个技能"。</p>
+     *
+     * <p>翠玉套 {@code fall_guard / charge_dash}（第 1 层已有）；宝石套
+     * {@code last_stand / field_charge}（规格 §八 第 2 层：两条技能都登记进套件表 ——
+     * 临域充力的<b>行为</b>是第 3 层，本轮只有绝境守护有行为）。</p>
      */
     private static @Nullable String skillId(ArmorSet set, int index) {
         if (set == ArmorSet.JADE) {
             return switch (index) {
                 case 0 -> FALL_GUARD;
                 case 1 -> CHARGE_DASH;
+                default -> null;
+            };
+        }
+        if (set == ArmorSet.GEM) {
+            return switch (index) {
+                case 0 -> LAST_STAND;
+                case 1 -> FIELD_CHARGE;
                 default -> null;
             };
         }

@@ -12,6 +12,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.tooltip.SkillsTooltipHandler;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.LastStandConfigs;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
@@ -191,10 +192,22 @@ public final class EquipmentSkillHud {
             net.minecraft.resources.ResourceLocation skillId =
                 index < skillIds.size() ? skillIds.get(index) : null;
             int level = skillId == null ? 0 : ArmorSkillRuntime.levelOf(player, skillId.getPath());
-            // 每个槽位有自己的数值源：槽位 1 = 虚衡坠护、槽位 2 = 蓄能疾骋（别拿一套配置套所有槽位）
+            // 每个槽位有自己的数值源，且**按套装分家**（别拿一张配置表套所有槽位/所有套）：
+            //   翠玉：槽位 1 = 虚衡坠护、槽位 2 = 蓄能疾骋
+            //   宝石：槽位 1 = 绝境守护；槽位 2 = 临域充力（行为是第 3 层 ⇒ 此刻 0/0，
+            //         不借别的技能的数值来显示，免得预览行报一个不存在的账）
             int holdSeconds;
             int holdTotalCost;
-            if (index == 1) {
+            if (active == ArmorSet.GEM) {
+                if (index == 1) {
+                    holdSeconds = 0;
+                    holdTotalCost = 0;
+                } else {
+                    LastStandConfigs.Config config = LastStandConfigs.config(level);
+                    holdSeconds = config.holdSeconds();
+                    holdTotalCost = config.holdTotalCost();
+                }
+            } else if (index == 1) {
                 ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
                 holdSeconds = config.holdSeconds();
                 holdTotalCost = config.holdTotalCost();

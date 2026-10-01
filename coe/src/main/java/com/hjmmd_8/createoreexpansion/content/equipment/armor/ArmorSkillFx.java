@@ -143,4 +143,91 @@ public final class ArmorSkillFx {
         return new DustParticleOptions(
             new Vector3f((float) color.x, (float) color.y, (float) color.z), scale);
     }
+
+    // ===================== 宝石套 · 绝境守护（用户 2026-10-01，槽位 1） =====================
+
+    /**
+     * 宝石套的两个端点色：<b>蓝 → 红</b>。
+     *
+     * <p>与宝石套能量条<b>同一对数值</b>（{@code ArmorEnergyColors.GEM_STOPS} 的
+     * {@code 0x55AAFF} / {@code 0xFF4A4A}）—— 用户 2026-10-01："宝石套能量条同色系：
+     * 蓝 {@code 0x55AAFF} → 红 {@code 0xFF4A4A}"。换算成 0~1 三元组后写在这里，
+     * 改色只改这四个常量（{@code 0x55} / 255 = 0.3333…，{@code 0xAA} / 255 = 0.6667…，
+     * {@code 0xFF} = 1.0，{@code 0x4A} / 255 = 0.2902…）。</p>
+     */
+    private static final Vec3 GEM_BLUE = new Vec3(0x55 / 255.0D, 0xAA / 255.0D, 0xFF / 255.0D);
+
+    private static final Vec3 GEM_RED = new Vec3(0xFF / 255.0D, 0x4A / 255.0D, 0x4A / 255.0D);
+
+    /** 长按光环每圈几颗（越大越"流动"，太小会看着像静止的点）。 */
+    private static final int AURA_POINTS = 14;
+
+    /** 长按光环的基准半径（格）。 */
+    private static final double AURA_RADIUS = 0.78D;
+
+    /**
+     * <b>绝境守护长按期间的光环</b>（用户 2026-10-01：这个技能要"带动感"的粒子）。
+     *
+     * <p>观感 = <b>绕玩家向上流动</b>：两圈错开相位的染色粒子，一圈贴地（y+0.05）、
+     * 一圈抬到腰高（y+0.95），相位随时间推进 ⇒ 看着像螺旋往上走；颜色按<b>段位</b>从宝石套蓝
+     * 推向红（段位越高越红，与"按得越久越接近满级 buff"一致）。每 2 tick 调一次即可
+     * （调用点在 {@code ArmorSkillRuntime#applyLastStand}）。</p>
+     *
+     * @param player  服务端玩家
+     * @param segment 当前段位（1 起）；决定颜色偏向红端多少
+     */
+    public static void lastStandAura(ServerPlayer player, int segment) {
+        if (player == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        // 段位归一：1 段 = 纯蓝，最高段 = 纯红（段数未知时按 3 段兜底，不越界）
+        double ratio = Math.max(0.0D, Math.min(1.0D, (segment - 1) / 2.0D));
+        Vec3 color = GEM_BLUE.lerp(GEM_RED, ratio);
+        double phase = player.tickCount * 0.35D;
+        double x = player.getX();
+        double y = player.getY();
+        double z = player.getZ();
+        for (int i = 0; i < AURA_POINTS; i++) {
+            double angle = Math.PI * 2.0D / AURA_POINTS * i + phase;
+            double dx = Math.cos(angle) * AURA_RADIUS;
+            double dz = Math.sin(angle) * AURA_RADIUS;
+            // 贴地一圈（细）：让"脚边有能量在转"
+            level.sendParticles(dust(color, 0.80F), x + dx, y + 0.05D, z + dz,
+                1, 0.0D, 0.0D, 0.0D, 0.0D);
+            // 半高一圈（错开 180°，半径略小、更亮）：与上圈一起看出"向上流动"
+            level.sendParticles(dust(color, 1.15F), x - dx * 0.75D, y + 0.95D, z - dz * 0.75D,
+                1, 0.0D, 0.02D, 0.0D, 0.01D);
+        }
+        // 点缀：偶尔一颗亮闪从脚下升起，强化"脉冲"观感
+        if (player.tickCount % 4 == 0) {
+            level.sendParticles(ParticleTypes.END_ROD, x, y + 0.10D, z,
+                2, 0.28D, 0.05D, 0.28D, 0.03D);
+        }
+    }
+
+    /**
+     * <b>绝境守护触发瞬间的爆发</b>（被动高伤豁免 / 主动到段都走它）—— 血色向外扩散 + 图腾闪光。
+     *
+     * <p>颜色取宝石套红端（与 {@link #lastStandAura} 同源常量）。用原版
+     * {@code TOTEM_OF_UNDYING} 粒子类型（服务端发原版粒子，不新增自定义类型）。</p>
+     */
+    public static void totemBurst(ServerPlayer player) {
+        if (player == null) {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        double x = player.getX();
+        double y = player.getY();
+        double z = player.getZ();
+        // 一圈血色：贴地向外扩散
+        for (int i = 0; i < 20; i++) {
+            double angle = Math.PI * 2.0D / 20.0D * i;
+            level.sendParticles(dust(GEM_RED, 1.35F),
+                x + Math.cos(angle) * 1.1D, y + 0.10D, z + Math.sin(angle) * 1.1D,
+                1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
+        // 原版不死图腾粒子（与原版图腾触发时的观感一致）
+        level.sendParticles(ParticleTypes.TOTEM_OF_UNDYING, x, y + 1.0D, z, 40, 0.4D, 0.6D, 0.4D, 0.35D);
+    }
 }
