@@ -336,6 +336,11 @@ public final class CoeBlocks {
 		.tag(BlockTags.BEACON_BASE_BLOCKS)
 		.tag(AllGemTags.SANCTSTONE.storageBlocks)
 		.item()
+		// 星芒石 = 星辉石同待遇（用户 2026-10-01 裁定）：方块物品也挂系列标签，
+		// 让"星辉类的东西"在掉落物层面（岩浆/善化液不销毁、虚空浮回）与物品侧判定一致。
+		// 注意：这里必须直接用标签——SeriesTraits 的 addStellarstoneTraits() 无参重载是给**方块** builder 的，
+		// 在 .item() 之后（ItemBuilder）用它选不中正确重载（编译实测）。
+		.tag(AllModItemTags.STELLARSTONE_ITEMS)
 		.tag(AllGemTags.SANCTSTONE.itemStorageBlocks)
 		.build()
 		.register();

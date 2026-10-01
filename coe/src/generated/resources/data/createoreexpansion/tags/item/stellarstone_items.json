@@ -1,5 +1,6 @@
 {
   "values": [
+    "createoreexpansion:sanctstone_block",
     "createoreexpansion:stellarstone_ingot",
     "createoreexpansion:raw_stellarstone",
     "createoreexpansion:stellarstone_nugget",
@@ -14,6 +15,14 @@
     "createoreexpansion:stellarstone_shovel",
     "createoreexpansion:stellarstone_axe",
     "createoreexpansion:stellarstone_hoe",
-    "createoreexpansion:stellarstone_stress_medallion"
+    "createoreexpansion:stellarstone_stress_medallion",
+    "createoreexpansion:sanctstone_ingot",
+    "createoreexpansion:sanctstone_sheet",
+    "createoreexpansion:sanctstone_rod",
+    "createoreexpansion:sanctstone_wire",
+    "createoreexpansion:astral_helmet",
+    "createoreexpansion:astral_chestplate",
+    "createoreexpansion:astral_leggings",
+    "createoreexpansion:astral_boots"
   ]
 }

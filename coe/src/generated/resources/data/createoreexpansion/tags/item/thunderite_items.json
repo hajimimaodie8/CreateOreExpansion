@@ -10,6 +10,10 @@
     "createoreexpansion:thunderite_shovel",
     "createoreexpansion:thunderite_axe",
     "createoreexpansion:thunderite_hoe",
-    "createoreexpansion:thunderite_stress_medallion"
+    "createoreexpansion:thunderite_stress_medallion",
+    "createoreexpansion:thunder_helmet",
+    "createoreexpansion:thunder_chestplate",
+    "createoreexpansion:thunder_leggings",
+    "createoreexpansion:thunder_boots"
   ]
 }

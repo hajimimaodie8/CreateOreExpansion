@@ -5,6 +5,8 @@ import com.hjmmd_8.createoreexpansion.common.registry.transmutation.Transmutatio
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationFluids;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
@@ -14,6 +16,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -181,6 +184,15 @@ public final class MedallionEffectHandler {
             ItemStack stack = player.getItemInHand(hand);
             if (stack.is(AllModItemTags.THUNDERITE_ITEMS) && ToolEnergy.canCharge(stack)) {
                 ToolEnergy.setEnergy(stack, ToolEnergy.getMaxEnergy(stack));
+                absorbed = true;
+            }
+        }
+        // 雷鸣套（护甲）：被雷击也把穿戴中的护甲充满（用户 2026-10-01："护甲也挂系列标签并享受全部特性"）。
+        // 护甲能量池与工具不同（容量随附魔变化、扣能四件平摊）⇒ 必须走 ArmorEnergy，不能借 ToolEnergy。
+        for (EquipmentSlot slot : ArmorSet.armorSlots()) {
+            ItemStack piece = player.getItemBySlot(slot);
+            if (!piece.isEmpty() && piece.is(AllModItemTags.THUNDERITE_ITEMS) && ArmorEnergy.stores(piece)) {
+                ArmorEnergy.addEnergy(piece, ArmorEnergy.maxOf(piece));
                 absorbed = true;
             }
         }

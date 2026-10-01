@@ -574,11 +574,12 @@ public final class CoeItems {
         "stellarstone_stress_medallion", MedallionCurios.KIND_STELLARSTONE, StellarstoneStressMedallionItem::new,
         10000, ToolEnergyColorConfig.STELLARSTONE, AllModItemTags.STELLARSTONE_ITEMS);
 
-    // ---- 灵石族（sanctstone，4 个形态）：每件都提稀有度，但**不是**系列（无系列物品标签）----
-    public static final ItemEntry<Item> SANCTSTONE_INGOT = gemIngot("sanctstone_ingot", AllGemTags.SANCTSTONE, GemDecor.UNCOMMON);
-    public static final ItemEntry<Item> SANCTSTONE_SHEET = gemSheet("sanctstone_sheet", AllGemTags.SANCTSTONE, GemDecor.UNCOMMON);
-    public static final ItemEntry<Item> SANCTSTONE_ROD = gemRod("sanctstone_rod", AllGemTags.SANCTSTONE, GemDecor.UNCOMMON);
-    public static final ItemEntry<Item> SANCTSTONE_WIRE = gemWire("sanctstone_wire", AllGemTags.SANCTSTONE, GemDecor.UNCOMMON);
+    // ---- 灵石族（sanctstone，4 个形态）：**星芒石与星辉石同待遇**（用户 2026-10-01 裁定）----
+    // 与星辉石共用 stellarstone_items 标签 ⇒ 善化抗性 / 岩浆不销毁 / 虚空浮回三档全部继承。
+    public static final ItemEntry<Item> SANCTSTONE_INGOT = gemIngot("sanctstone_ingot", AllGemTags.SANCTSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> SANCTSTONE_SHEET = gemSheet("sanctstone_sheet", AllGemTags.SANCTSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> SANCTSTONE_ROD = gemRod("sanctstone_rod", AllGemTags.SANCTSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> SANCTSTONE_WIRE = gemWire("sanctstone_wire", AllGemTags.SANCTSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
 
     // ---- 雷鸣合金族（thunderite）：系列族（系列标签 + 少见稀有度）；"碎屑"是无形态标签的中间产物 ----
     public static final ItemEntry<Item> THUNDERITE_INGOT = gemIngot(
@@ -1127,10 +1128,23 @@ public final class CoeItems {
         ResourceLocation textureLoc = CoeCore.modLoc(textureBase);
         ArmorSet set = ArmorSet.byMaterial(material);
         int perPiece = set == null ? 0 : set.perPieceEnergy();
-        return CoeRegistrate.REGISTRATE
+        // ⑦ 系列归属（用户 2026-10-01："护甲也算系列成员，享受全部特性"）：
+        //    星界套 = 星辉石系列（岩浆/善化液不销毁 + 虚空浮回 + 雷击充满）
+        //    雷鸣套 = 雷鸣合金系列（岩浆不销毁 + 雷击充满）
+        //    判定与行为都读 SeriesTraits（唯一入口），这里只写"这件东西属于哪个系列"。
+        TagKey<Item> seriesTag = set == null ? null : switch (set) {
+            case ASTRAL -> AllModItemTags.STELLARSTONE_ITEMS;
+            case THUNDER -> AllModItemTags.THUNDERITE_ITEMS;
+            default -> null;
+        };
+        var builder = CoeRegistrate.REGISTRATE
             .item(id, p -> new CoeArmorItem(material, type, p, textureLoc))
             // 创造页分区：盔甲属「装备」——注册处一行声明（用户 2026-10-01 的固定套路）
-            .transform(CoeCreativeSections.section(CoeCreativeSections.CreativeSection.GEAR))
+            .transform(CoeCreativeSections.section(CoeCreativeSections.CreativeSection.GEAR));
+        if (seriesTag != null) {
+            builder = builder.tag(seriesTag);
+        }
+        return builder
             .properties(p -> p.durability(durability)
                 .component(AllDataComponents.ENERGY, perPiece)
                 .component(AllDataComponents.MAX_ENERGY, perPiece))
