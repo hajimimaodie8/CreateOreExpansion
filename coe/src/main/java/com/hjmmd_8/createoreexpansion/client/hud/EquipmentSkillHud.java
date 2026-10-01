@@ -7,6 +7,7 @@ import java.util.Map;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.ArmorSkillProvider;
@@ -127,15 +128,16 @@ public final class EquipmentSkillHud {
 
         ArmorSet worn = ArmorSet.wornSet(player);
         if (worn != null) {
-            lines.add(new Line(Component.translatable(SET_ACTIVE_KEY, wornName(worn), worn.wornLevel(player)),
-                COLOR_ACTIVE));
+            // 等级 = **整体技能等级**（逐件算完取最大，见 ArmorSkillRuntime#effectiveLevel），
+            // 用罗马数字显示（用户 2026-10-01："技能等级为 1（注意，1 是罗马数字 I）"）
+            lines.add(new Line(Component.translatable(SET_ACTIVE_KEY, wornName(worn),
+                roman(ArmorSkillRuntime.effectiveLevel(player, worn))), COLOR_ACTIVE));
         } else {
             // 严格全套之外还有一条：3 件同套 + 散构聚能补齐（生效等级与全套相同）
             ArmorSet assembled = ArmorSet.effectiveSet(player);
             if (assembled != null) {
-                lines.add(new Line(
-                    Component.translatable(SET_BY_ENCHANT_KEY, wornName(assembled), assembled.wornLevel(player)),
-                    COLOR_ACTIVE));
+                lines.add(new Line(Component.translatable(SET_BY_ENCHANT_KEY, wornName(assembled),
+                    roman(ArmorSkillRuntime.effectiveLevel(player, assembled))), COLOR_ACTIVE));
             } else {
                 lines.add(new Line(Component.translatable(
                     ArmorSet.wearsAnyOurArmor(player) ? SET_INCOMPLETE_KEY : SET_NONE_KEY), COLOR_INACTIVE));
@@ -205,6 +207,20 @@ public final class EquipmentSkillHud {
             }
         }
         return null;
+    }
+
+    /**
+     * 等级 → 罗马数字（用户 2026-10-01："技能等级为 1（注意，1 是罗马数字 I）"）。
+     *
+     * <p>装备技能 3 级封顶 ⇒ 只需 I/II/III；越界值回退成阿拉伯数字（不会崩、也不会显示空）。</p>
+     */
+    private static String roman(int level) {
+        return switch (level) {
+            case 1 -> "I";
+            case 2 -> "II";
+            case 3 -> "III";
+            default -> Integer.toString(level);
+        };
     }
 
     /** 修饰键的显示名（玩家改键后跟着变）。 */

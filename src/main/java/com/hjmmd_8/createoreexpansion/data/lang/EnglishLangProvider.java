@@ -328,9 +328,9 @@ public class EnglishLangProvider extends LanguageProvider {
 
         // ========== Equipment skill hint (shown above the hotbar while the modifier is held) ==
         add("createoreexpansion.hud.equipment.title", "Equipment Skills (hold %s)");
-        add("createoreexpansion.hud.equipment.set_active", "%s Set - full bonus active, Lv%s");
+        add("createoreexpansion.hud.equipment.set_active", "Wearing %s Set - skill level %s");
         add("createoreexpansion.hud.equipment.set_by_enchant",
-            "%s Set - completed by Loose Convergence, Lv%s");
+            "Wearing %s Set (Loose Convergence) - skill level %s");
         add("createoreexpansion.hud.equipment.set_incomplete",
             "Not a full set - wear four matching pieces (Loose Convergence can cover one)");
         add("createoreexpansion.hud.equipment.set_none", "No modded armor worn");

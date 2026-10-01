@@ -79,6 +79,16 @@ public class EnergyTooltipHandler {
             return index + 1;
         }
 
+        // 雷鸣合金系列（工具/佩）：改成与**雷鸣盔甲**同款的渐变条（用户 2026-10-01：
+        // "把雷鸣工具所有的进度能量条都换成像雷鸣盔甲那样的能量条，原来的没有渐变不好看"）。
+        // 两端色直接读 ToolEnergyColorConfig.THUNDERITE —— 护甲那条渐变也是读它（同一数据源，
+        // 见 ArmorEnergyColors 的 THUNDER 分支），因此两边永远一致、不会各写一个色。
+        if (com.hjmmd_8.createoreexpansion.common.SeriesTraits.isThunderite(stack)) {
+            tip.add(index, BarTooltipRender.energyGradient(energy, max, BAR_SLOTS,
+                    ToolEnergyColorConfig.THUNDERITE.light, ToolEnergyColorConfig.THUNDERITE.dark));
+            return index + 1;
+        }
+
         tip.add(index, BarTooltipRender.energy(energy, max, BAR_SLOTS, fillColor));
         return index + 1;
     }

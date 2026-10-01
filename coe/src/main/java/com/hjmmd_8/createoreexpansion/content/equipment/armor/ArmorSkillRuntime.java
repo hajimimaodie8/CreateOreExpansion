@@ -216,25 +216,42 @@ public final class ArmorSkillRuntime {
             player.level().getGameTime() + seconds * 20L);
     }
 
-    /** 当前生效等级（套装基准等级 + 护甲上技艺提升/记忆回溯的加减，钳在 1~3）。 */
+    /**
+     * 当前生效的<b>整体技能等级</b>（用户 2026-10-01 定稿口径）。
+     *
+     * <p><b>逐件算完再取最大值</b>：每件护甲的等级 = 该套基准等级 + 该件上的技艺提升 − 该件上的记忆回溯；
+     * 整体等级 = 四件里最大的那个（最后钳在 1~3）。</p>
+     *
+     * <p><b>为什么不是"提升取最大、回溯取最大"</b>（我第一版那样写是错的）：</p>
+     * <pre>
+     * 基准 1；头盔有「技艺提升 1」，靴子有「记忆回溯 1」
+     *   逐件取最大（本实现）：max(1+1, 1-1) = 2   ← 用户口径：以"某一件上最好的净结果"为准
+     *   分别取最大（旧实现）：1 + max(1) - max(1) = 1
+     * </pre>
+     * <p>用户原话：「记忆重塑和记忆提升这两个附魔针对于套装来说，整体技能的等级，
+     * 取决于所有套装中相应增或减的技能等级的最大值。」</p>
+     */
     public static int effectiveLevel(Player player, ArmorSet set) {
         if (player == null || set == null) {
             return 0;
         }
-        int level = set.wornLevel(player);
-        if (level <= 0) {
+        int base = set.wornLevel(player);
+        if (base <= 0) {
             return 0;
         }
-        int boost = 0;
-        int regression = 0;
+        int best = base;
         for (net.minecraft.world.entity.EquipmentSlot slot : ArmorSet.armorSlots()) {
             var stack = player.getItemBySlot(slot);
-            boost = Math.max(boost, com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-                .skillBoostLevel(stack));
-            regression = Math.max(regression, com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-                .skillRegressionLevel(stack));
+            if (stack.isEmpty() || ArmorSet.of(stack) == null) {
+                continue;
+            }
+            int boost = com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
+                .skillBoostLevel(stack);
+            int regression = com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
+                .skillRegressionLevel(stack);
+            best = Math.max(best, base + boost - regression);
         }
-        return Math.max(1, Math.min(FallGuardConfigs.MAX_LEVEL, level + boost - regression));
+        return Math.max(1, Math.min(FallGuardConfigs.MAX_LEVEL, best));
     }
 
     /** 该套在第 index 个装备槽位上有没有技能（雷鸣套的 1、2 通星界 ⇒ 见实现）。 */
