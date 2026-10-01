@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
@@ -84,6 +85,8 @@ public final class EquipmentSkillHud {
     private static final String NO_SKILL_KEY = "createoreexpansion.hud.equipment.no_skill";
     /** 单条技能行：技能序号 / 技能名 / 按键。 */
     private static final String SKILL_LINE_KEY = "createoreexpansion.hud.equipment.skill_line";
+    /** 能量合计行：当前 / 上限。 */
+    private static final String ENERGY_LINE_KEY = "createoreexpansion.hud.equipment.energy";
 
     private static final int COLOR_TITLE = 0xFFFFFFFF;
     private static final int COLOR_ACTIVE = 0xFF6BE06B;
@@ -138,6 +141,12 @@ public final class EquipmentSkillHud {
             }
         }
         lines.addAll(skillLines());
+        // 能量行（2026-10-01）：技能扣能是"四件平摊"，所以玩家真正要知道的是合计
+        int totalMax = ArmorEnergy.totalMax(player);
+        if (totalMax > 0) {
+            lines.add(new Line(Component.translatable(ENERGY_LINE_KEY,
+                ArmorEnergy.totalEnergy(player), totalMax), COLOR_SKILL));
+        }
 
         drawCentered(graphics, minecraft, lines);
     }

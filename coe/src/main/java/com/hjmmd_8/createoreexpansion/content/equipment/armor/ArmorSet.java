@@ -62,14 +62,14 @@ import org.jetbrains.annotations.Nullable;
  */
 public enum ArmorSet {
 
-    /** 翠玉套（基准 Lv1；耐久倍率 36，防御略强于铁）。 */
-    JADE(CoeArmorMaterials.JADE_SET, 1, CoeArmorMaterials.JADE),
-    /** 宝石套（基准 Lv2；耐久 = 下界合金 1.25 倍）。 */
-    GEM(CoeArmorMaterials.GEM_SET, 2, CoeArmorMaterials.GEM),
-    /** 星界套（基准 Lv3；耐久 = 下界合金 2 倍，韧性 2）。 */
-    ASTRAL(CoeArmorMaterials.ASTRAL_SET, 3, CoeArmorMaterials.ASTRAL),
-    /** 雷鸣套（基准 Lv4；与星界同耐久，韧性 3 + 抗击退）。 */
-    THUNDER(CoeArmorMaterials.THUNDER_SET, 4, CoeArmorMaterials.THUNDER);
+    /** 翠玉套（基准 Lv1；耐久倍率 36，防御略强于铁；单件储能 250 ⇒ 满套 1000）。 */
+    JADE(CoeArmorMaterials.JADE_SET, 1, CoeArmorMaterials.JADE, 250),
+    /** 宝石套（基准 Lv2；耐久 = 下界合金 1.25 倍；单件储能 1000 ⇒ 满套 4000）。 */
+    GEM(CoeArmorMaterials.GEM_SET, 2, CoeArmorMaterials.GEM, 1000),
+    /** 星界套（基准 Lv3；耐久 = 下界合金 2 倍，韧性 2；单件储能 2500 ⇒ 满套 10000）。 */
+    ASTRAL(CoeArmorMaterials.ASTRAL_SET, 3, CoeArmorMaterials.ASTRAL, 2500),
+    /** 雷鸣套（基准 Lv4；与星界同耐久，韧性 3 + 抗击退；单件储能 2500 ⇒ 满套 10000）。 */
+    THUNDER(CoeArmorMaterials.THUNDER_SET, 4, CoeArmorMaterials.THUNDER, 2500);
 
     /**
      * 四个护甲槽（判定顺序固定为头 → 胸 → 腿 → 脚）。
@@ -79,6 +79,16 @@ public enum ArmorSet {
      */
     private static final List<EquipmentSlot> ARMOR_SLOTS =
         List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET);
+
+    /**
+     * 四个护甲槽的<b>唯一来源</b>（顺序 = 头 / 胸 / 腿 / 脚）。
+     *
+     * <p>判定、能量合计、消耗分摊、凝能佩充能、提示层全都要这份清单 —— 一律问这里，
+     * 别在各自类里再写一遍（写两份必然漂移，且"顺序"本身是消耗分摊的语义）。</p>
+     */
+    public static List<EquipmentSlot> armorSlots() {
+        return ARMOR_SLOTS;
+    }
 
     private static final ArmorSet[] VALUES = values();
 
@@ -91,10 +101,26 @@ public enum ArmorSet {
     /** 该套的盔甲材质；物品归属靠它判（护甲物品就是用它构造的，同一 Holder 实例 ⇒ 身份比较即可）。 */
     private final Holder<ArmorMaterial> material;
 
-    ArmorSet(String setName, int baseLevel, Holder<ArmorMaterial> material) {
+    /**
+     * <b>单件储能</b>（用户 2026-10-01 定稿）：翠玉 250 / 宝石 1000 / 星界 2500 / 雷鸣 2500。
+     * 满套总容量 = 四件之和（1000 / 4000 / 10000 / 10000）。
+     *
+     * <p>⚠ 这只是"这件护甲本身"的容量；<b>带散构聚能的件一律 2500</b>（用户按字面选定），
+     * 那条例外在 {@link ArmorEnergy#maxOf(net.minecraft.world.item.ItemStack)} 里生效 ——
+     * 因为容量取决于"有没有那个附魔"，附魔会被铁砧加减，不能写死成物品组件。</p>
+     */
+    private final int perPieceEnergy;
+
+    ArmorSet(String setName, int baseLevel, Holder<ArmorMaterial> material, int perPieceEnergy) {
         this.setName = setName;
         this.baseLevel = baseLevel;
         this.material = material;
+        this.perPieceEnergy = perPieceEnergy;
+    }
+
+    /** 单件储能（250 / 1000 / 2500 / 2500）。 */
+    public int perPieceEnergy() {
+        return this.perPieceEnergy;
     }
 
     /** 套名（{@code jade} 等），与 {@link CoeArmorMaterials#JADE_SET} 同源。 */

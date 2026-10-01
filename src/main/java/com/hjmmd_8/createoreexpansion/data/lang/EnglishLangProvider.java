@@ -337,6 +337,8 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.hud.equipment.set_none", "No modded armor worn");
         add("createoreexpansion.hud.equipment.no_skill", "No set skills yet");
         add("createoreexpansion.hud.equipment.skill_line", "Skill %s  %s  [%s]");
+        add("createoreexpansion.hud.equipment.energy", "Energy %s / %s");
+        add("createoreexpansion.tooltip.armor_energy_total", "Set total %s / %s");
         // Set names (same source as the armor item names)
         add("createoreexpansion.armor_set.jade", "Jade");
         add("createoreexpansion.armor_set.gem", "Gem");

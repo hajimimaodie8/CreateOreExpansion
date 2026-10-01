@@ -10,6 +10,8 @@ import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandler;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandlers;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveSubLevelCollisions;
+import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
@@ -429,6 +431,14 @@ public abstract class AbstractChargerWaveEntity extends Entity
 				if (!(target instanceof Player player) || !player.isCreative()) {
 					target.hurt(level().damageSources()
 						.indirectMagic(this, null), getDamage());
+				}
+				// 2026-10-01（用户定稿的充能路径②）：能量波打中<b>穿戴护甲的玩家</b> ⇒ 给穿戴中的
+				// 四件护甲充能，额度与"波给物品充能"完全一致（ChargingRecipe.energyForLevel）。
+				// 刻意放在创造模式判定之外：创造玩家也照充（方便测试与建造）。
+				// 非攻击态波从生物身上穿过（上面那句注释），因此只有攻击态能这么充 —— 与用户
+				// "让能量波去打你自己"的描述一致。
+				if (target instanceof Player wearer) {
+					ArmorEnergy.chargeWorn(wearer, ChargingRecipe.energyForLevel(this.waveLevel));
 				}
 				ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
 				discard();

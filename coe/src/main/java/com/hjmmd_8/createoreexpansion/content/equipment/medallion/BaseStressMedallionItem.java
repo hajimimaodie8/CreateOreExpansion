@@ -1,6 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import net.minecraft.ChatFormatting;
@@ -11,6 +13,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -139,6 +142,8 @@ public abstract class BaseStressMedallionItem extends Item implements IMedallion
             if (ToolEnergy.getEnergy(self) <= 0)
                 break;
         }
+        // 2026-10-01：充能模式同时给穿戴中的四件护甲充能（用户定稿的充能路径①）
+        refillWornArmor(player, self);
     }
 
     @Override
@@ -158,6 +163,33 @@ public abstract class BaseStressMedallionItem extends Item implements IMedallion
             return;
         ToolEnergy.setEnergy(self, have - give);
         ToolEnergy.setEnergy(tool, ToolEnergy.getEnergy(tool) + give);
+    }
+
+    /**
+     * 充能模式：消耗佩能量给<b>穿戴中的四件护甲</b>充能（用户 2026-10-01 定稿的充能路径①）。
+     *
+     * <p>与 {@link #refillTool} 同一套搬运方式：佩有多少搬多少，搬的量以"该件还差多少到上限"
+     * 为界（上限由 {@code ArmorEnergy#maxOf} 现算 —— 带散构聚能的件是 2500）。一件满了就换下一件，
+     * 佩空了就停。</p>
+     *
+     * <p><b>顺序</b>：工具在前、护甲在后 —— 保住既有玩法（绑定工具优先），护甲吃剩下的。</p>
+     */
+    private void refillWornArmor(Player player, ItemStack self) {
+        for (EquipmentSlot slot : ArmorSet.armorSlots()) {
+            int have = ToolEnergy.getEnergy(self);
+            if (have <= 0)
+                return;
+            ItemStack piece = player.getItemBySlot(slot);
+            int max = ArmorEnergy.maxOf(piece);
+            if (max <= 0)
+                continue;
+            int need = max - ArmorEnergy.getEnergy(piece);
+            if (need <= 0)
+                continue;
+            int added = ArmorEnergy.addEnergy(piece, Math.min(need, have));
+            if (added > 0)
+                ToolEnergy.setEnergy(self, have - added);
+        }
     }
 
     // ========== 物品交互 ==========

@@ -233,6 +233,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.hud.equipment.set_none", "未穿戴本模组护甲");
         add("createoreexpansion.hud.equipment.no_skill", "暂无套装技能");
         add("createoreexpansion.hud.equipment.skill_line", "技能%s  %s  [%s]");
+        add("createoreexpansion.hud.equipment.energy", "能量 %s / %s");
+        add("createoreexpansion.tooltip.armor_energy_total", "套装合计 %s / %s");
         // 套名（与护甲物品名同源；提示层用 createoreexpansion.armor_set.<set> 拼键）
         add("createoreexpansion.armor_set.jade", "翠玉");
         add("createoreexpansion.armor_set.gem", "宝石");
