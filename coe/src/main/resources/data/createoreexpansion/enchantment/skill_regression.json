@@ -2,7 +2,7 @@
   "description": {
     "translate": "enchantment.createoreexpansion.skill_regression"
   },
-  "supported_items": "#createoreexpansion:skill_tools",
+  "supported_items": "#createoreexpansion:skill_boostable",
   "weight": 1,
   "max_level": 2,
   "min_cost": {

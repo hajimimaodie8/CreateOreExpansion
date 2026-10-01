@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfigs;
@@ -126,6 +127,22 @@ public final class AllSkills {
                     .register();
     // 缴械风暴 Lv4/Lv5 为预留等级：数值已在 BowDisarmConfigs 定义，
     // 将来启用时 addSkills(BOW_DISARM, 4/5) 即可，无需新增注册。
+
+    // ========== 装备（护甲）技能 —— 数值统一在各自的 *Configs 里改 ==========
+    /**
+     * 虚衡坠护（翠玉套 · 槽位 1）：被动摔落豁免 + 长按 100% 豁免。
+     *
+     * <p><b>装备技能 3 级封顶</b>（用户 2026-10-01："和工具的五级封顶不一样"）。数值见
+     * {@link FallGuardConfigs}；执行由 {@code ArmorSkillRuntime} + {@code ArmorSkillHandler}
+     * 承担（长按语义，内核没有"按住期间持续生效"的模型）。</p>
+     */
+    public static final RegisteredDataSkill FALL_GUARD =
+            skill("fall_guard", SkillType.USE_SKILL)
+                    // 刻意<b>不</b>挂 .config(...)/.configsByLevel(...)：护甲技能的执行走
+                    // ArmorSkillRuntime（长按语义），数值由 FallGuardConfigs 按等级直接取，
+                    // 不经内核的 config 解析链。这里只登记 id / 类型 / 等级上限。
+                    .maxLevel(FallGuardConfigs.MAX_LEVEL)
+                    .register();
 
     // ========== 工具方法 ==========
     /**

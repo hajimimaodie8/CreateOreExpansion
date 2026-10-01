@@ -362,6 +362,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add("enchantment.createoreexpansion.skill_boost", "Artistry Boost");
         add("enchantment.createoreexpansion.skill_regression", "Artistry Regression");
         add("enchantment.createoreexpansion.loose_convergence", "Loose Convergence");
+        add("skill.createoreexpansion.fall_guard", "Fall Guard");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");

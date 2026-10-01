@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "#createoreexpansion:skill_tools",
+    "#minecraft:enchantable/armor"
+  ]
+}

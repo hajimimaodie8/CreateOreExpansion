@@ -258,6 +258,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("enchantment.createoreexpansion.skill_boost", "技艺提升");
         add("enchantment.createoreexpansion.skill_regression", "技艺回溯");
         add("enchantment.createoreexpansion.loose_convergence", "散构聚能");
+        add("skill.createoreexpansion.fall_guard", "虚衡坠护");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");
