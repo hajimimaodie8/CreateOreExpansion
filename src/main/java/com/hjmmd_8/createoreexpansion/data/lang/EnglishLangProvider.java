@@ -327,6 +327,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.equipment_modifier", "Equipment Skill (Modifier)");
 
         // ========== Equipment skill hint (shown above the hotbar while the modifier is held) ==
+        add("createoreexpansion.hud.equipment.hold_preview", "Holding %ss / %ss - will cost %s (max %s)");
         add("createoreexpansion.hud.equipment.title", "Equipment Skills (hold %s)");
         add("createoreexpansion.hud.equipment.set_active", "Wearing %s Set - skill level %s");
         add("createoreexpansion.hud.equipment.set_by_enchant",

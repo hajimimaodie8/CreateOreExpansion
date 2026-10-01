@@ -21,6 +21,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -80,6 +82,7 @@ public final class CoeSkillClient {
         }
 
         injectKeySourceOnce();
+        tickHoldCounters();
 
         // 只比较「技能组件」而不是整个物品堆：能量消耗会改物品堆的其它组件，
         // 若按物品堆比较，每次用技能都会触发一次重算（没必要且有分配开销）。
@@ -188,6 +191,35 @@ public final class CoeSkillClient {
      */
     public static boolean isEquipmentModifierDown() {
         return AllKeys.EQUIPMENT_MODIFIER.isPressed();
+    }
+
+    // ================= 长按计时（给 HUD 做"实时扣能预览"用） =================
+
+    /**
+     * 客户端长按计时：槽位 → 已按住 tick 数（用户 2026-10-01 要求"长按时要能看见能量怎么降"）。
+     *
+     * <p>为什么客户端也要自己数：服务端的结算在<b>松手那一刻</b>（用户口径：按比例、向下取整），
+     * 所以按住期间服务端不会持续扣能；而玩家想看到的"按住越久要花越多"是<b>预览</b>，
+     * 必须由客户端按同一公式实时算。公式<b>与服务端同一个</b>
+     * （{@code ArmorSkillRuntime#holdCost}），不会两套账。</p>
+     */
+    private static final Map<Integer, Integer> HOLD_TICKS = new HashMap<>();
+
+    /** 每客户端 tick 推进长按计时（由 {@link #onClientTick} 调用）。 */
+    private static void tickHoldCounters() {
+        for (int index = 0; index < ArmorSkillProvider.SLOT_COUNT; index++) {
+            int slot = ArmorSkillProvider.SLOT_BASE + index;
+            if (isSlotPressed(slot)) {
+                HOLD_TICKS.merge(slot, 1, Integer::sum);
+            } else {
+                HOLD_TICKS.remove(slot);
+            }
+        }
+    }
+
+    /** 该装备槽位当前已按住多少 tick（没按该槽位时为 0）。 */
+    public static int holdTicksOf(int slot) {
+        return HOLD_TICKS.getOrDefault(slot, 0);
     }
 
     /**

@@ -7,6 +7,7 @@ import java.util.Map;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
+import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
@@ -75,6 +76,8 @@ public final class EquipmentSkillHud {
 
     /** 标题行（含修饰键名）。 */
     private static final String TITLE_KEY = "createoreexpansion.hud.equipment.title";
+    /** 长按实时预览行（已按住多少秒 / 该级上限多少秒 → 预计扣多少 / 满额多少）。 */
+    private static final String HOLD_PREVIEW_KEY = "createoreexpansion.hud.equipment.hold_preview";
     /** 成套生效行（套名 + 等级）。 */
     private static final String SET_ACTIVE_KEY = "createoreexpansion.hud.equipment.set_active";
     /** 散构聚能补齐行（套名 + 等级）。 */
@@ -150,8 +153,40 @@ public final class EquipmentSkillHud {
             lines.add(new Line(Component.translatable(ENERGY_LINE_KEY,
                 ArmorEnergy.totalEnergy(player), totalMax), COLOR_SKILL));
         }
+        lines.addAll(holdPreviewLines(player));
 
         drawCentered(graphics, minecraft, lines);
+    }
+
+    /**
+     * <b>长按实时预览</b>（用户 2026-10-01："持续按住时并没有动态显示能量的掉落"）。
+     *
+     * <p>结算时机是用户定的"<b>松手时一次性按比例扣</b>"，所以按住期间服务端不会持续扣能；
+     * 玩家想看的"按住越久要花越多"是<b>预览</b> —— 这里用与服务端<b>同一个</b>
+     * {@link ArmorSkillRuntime#holdCost} 公式实时算，不会两套账。</p>
+     */
+    private static List<Line> holdPreviewLines(Player player) {
+        List<Line> lines = new ArrayList<>();
+        ArmorSet active = ArmorSet.effectiveSet(player);
+        if (active == null) {
+            return lines;
+        }
+        int level = ArmorSkillRuntime.effectiveLevel(player, active);
+        for (int index = 0; index < ArmorSkillProvider.SLOT_COUNT; index++) {
+            int slot = ArmorSkillProvider.SLOT_BASE + index;
+            int held = CoeSkillClient.holdTicksOf(slot);
+            if (held <= 0) {
+                continue;
+            }
+            // 目前装备段只有虚衡坠护落地（蓄能疾骋待其耗能量数值）；将来多技能时这里按槽位取各自的 config。
+            FallGuardConfigs.Config config = FallGuardConfigs.config(level);
+            int cost = ArmorSkillRuntime.holdCost(held, config.holdSeconds(), config.holdTotalCost());
+            lines.add(new Line(Component.translatable(HOLD_PREVIEW_KEY,
+                String.format("%.1f", held / 20.0F),
+                String.format("%.1f", config.holdSeconds()),
+                cost, config.holdTotalCost()), COLOR_SKILL));
+        }
+        return lines;
     }
 
     /**

@@ -153,6 +153,7 @@
   "createoreexpansion.heat_level.seething": "Superheated",
   "createoreexpansion.heat_level.smouldering": "Smouldering",
   "createoreexpansion.hud.equipment.energy": "Energy %s / %s",
+  "createoreexpansion.hud.equipment.hold_preview": "Holding %ss / %ss - will cost %s (max %s)",
   "createoreexpansion.hud.equipment.no_skill": "No set skills yet",
   "createoreexpansion.hud.equipment.set_active": "Wearing %s Set - skill level %s",
   "createoreexpansion.hud.equipment.set_by_enchant": "Wearing %s Set (Loose Convergence) - skill level %s",

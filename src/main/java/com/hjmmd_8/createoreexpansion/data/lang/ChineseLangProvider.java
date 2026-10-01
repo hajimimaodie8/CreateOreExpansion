@@ -225,6 +225,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.equipment_modifier", "装备技能（修饰键）");
 
         // ========== 装备技能提示层（按住装备修饰键时显示在快捷栏上方） ==========
+        add("createoreexpansion.hud.equipment.hold_preview", "按住 %ss / %ss → 预计扣 %s（满额 %s）");
         add("createoreexpansion.hud.equipment.title", "装备技能（按住 %s）");
         add("createoreexpansion.hud.equipment.set_active", "已佩戴%s套 · 技能等级 %s");
         add("createoreexpansion.hud.equipment.set_by_enchant", "已佩戴%s套（散构聚能补齐）· 技能等级 %s");
