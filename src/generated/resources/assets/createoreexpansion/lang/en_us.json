@@ -255,6 +255,7 @@
   "createoreexpansion.stellar_wave_transmuter.mode.attack": "Attack Mode",
   "createoreexpansion.stellar_wave_transmuter.mode.processing": "Processing Mode",
   "createoreexpansion.tooltip.armor_energy_total": "Set total %s / %s",
+  "createoreexpansion.tooltip.armor_skills": "Hold [%s] to view set skill levels",
   "createoreexpansion.tooltip.lightning_rod.charge": "γ Charge: ",
   "createoreexpansion.tooltip.lightning_rod.ready": "Lightning ready! Right-click to release",
   "createoreexpansion.tooltip.no_wheel_type": "No wheel installed, cannot process",

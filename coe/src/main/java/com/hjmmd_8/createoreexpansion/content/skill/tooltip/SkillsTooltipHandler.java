@@ -79,8 +79,12 @@ public class SkillsTooltipHandler {
 
     /**
      * 技能等级对应的整行颜色（ARGB）：Lv1 白 / Lv2 绿 / Lv3 蓝 / Lv4 紫 / Lv5 橙（超出用橙色）。
+     *
+     * <p><b>这是"等级 → 颜色"的唯一出处</b>（用户 2026-10-01：工具已经这么写了，装备也要）。
+     * 装备 tooltip（{@code ArmorSkillTooltipHandler}）与装备 HUD（{@code EquipmentSkillHud}）
+     * 都调它 ⇒ 三处永远一致，不会各写一套色。</p>
      */
-    private static int levelColor(int level) {
+    public static int levelColor(int level) {
         return switch (level) {
             case 1 -> 0xFFE8E8E8; // Lv1 白色
             case 2 -> 0xFF49B85C; // Lv2 绿色
@@ -88,6 +92,21 @@ public class SkillsTooltipHandler {
             case 4 -> 0xFF994FC2; // Lv4 紫色
             default -> 0xFFE68A27; // Lv5 橙色（及超出）
         };
+    }
+
+    /**
+     * 技能行（<b>给装备 tooltip 复用</b>）：{@code   [按键] 技能名 罗马数字}，整行颜色按等级。
+     *
+     * <p>装备技能的等级是<b>套级</b>的（逐件算完取最大，见 {@code ArmorSkillRuntime#effectiveLevel}），
+     * 所以等级由调用方传入，不在这里算。</p>
+     */
+    public static Component skillLine(Component key, Component name, int level) {
+        return Component.literal("  [")
+                .append(key)
+                .append("] ")
+                .append(name)
+                .append(" " + toRoman(level))
+                .withStyle(style -> style.withColor(TextColor.fromRgb(levelColor(level))));
     }
 
     /** Alt 键帽组件：显示「Alt」（去掉左/右修饰），按住 Alt 时白色高亮，否则灰色（跟随外层样式） */

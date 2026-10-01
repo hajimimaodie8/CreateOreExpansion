@@ -259,6 +259,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("enchantment.createoreexpansion.skill_regression", "技艺回溯");
         add("enchantment.createoreexpansion.loose_convergence", "散构聚能");
         add("skill.createoreexpansion.fall_guard", "虚衡坠护");
+        add("createoreexpansion.tooltip.armor_skills", "按住 [%s] 可查看套装技能等级");
         add("skill.createoreexpansion.charge_dash", "蓄能疾骋");
 
         // ========== 流体/配方 ==========

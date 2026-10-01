@@ -9,6 +9,7 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.tooltip.SkillsTooltipHandler;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
@@ -148,7 +149,7 @@ public final class EquipmentSkillHud {
                     ArmorSet.wearsAnyOurArmor(player) ? SET_INCOMPLETE_KEY : SET_NONE_KEY), COLOR_INACTIVE));
             }
         }
-        lines.addAll(skillLines());
+        lines.addAll(skillLines(player));
         // 能量行（2026-10-01）：技能扣能是"四件平摊"，所以玩家真正要知道的是合计
         int totalMax = ArmorEnergy.totalMax(player);
         if (totalMax > 0) {
@@ -220,8 +221,13 @@ public final class EquipmentSkillHud {
      * <p>槽位号来自内核在客户端收集到的组件（{@link ClientSkillCache#skills}）；
      * 名字走 {@link ItemSkill#getTranslateKey()}（与技能 tooltip 同一条语言键）。</p>
      */
-    private static List<Line> skillLines() {
+    private static List<Line> skillLines(Player player) {
         List<Line> lines = new ArrayList<>();
+        // 等级配色与工具 tooltip 共用一处（用户 2026-10-01："装备栏 2 级绿、3 级蓝，工具里已经这么写了"）。
+        // 装备技能等级是**套级**的（逐件算完取最大），所以整段用同一个等级色。
+        ArmorSet activeSet = ArmorSet.effectiveSet(player);
+        int setLevel = activeSet == null ? 1 : ArmorSkillRuntime.effectiveLevel(player, activeSet);
+        int levelColor = SkillsTooltipHandler.levelColor(setLevel);
         SkillComponent component = ClientSkillCache.skills;
         Map<Integer, SkillBundle> bindings = component == null ? Map.of() : component.bindings();
         for (int index = 0; index < ArmorSkillProvider.SLOT_COUNT; index++) {
@@ -235,7 +241,7 @@ public final class EquipmentSkillHud {
             }
             AllKeys key = CoeSkillClient.skillKeyForEquipmentSlot(ArmorSkillProvider.SLOT_BASE + index);
             Component keyName = key == null ? Component.empty() : key.getKeybind().getTranslatedKeyMessage();
-            lines.add(new Line(Component.translatable(SKILL_LINE_KEY, index + 1, name, keyName), COLOR_SKILL));
+            lines.add(new Line(Component.translatable(SKILL_LINE_KEY, index + 1, name, keyName), levelColor));
         }
         if (lines.isEmpty()) {
             lines.add(new Line(Component.translatable(NO_SKILL_KEY), COLOR_INACTIVE));

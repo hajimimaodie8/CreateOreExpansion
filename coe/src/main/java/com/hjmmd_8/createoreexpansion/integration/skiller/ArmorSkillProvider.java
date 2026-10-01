@@ -77,6 +77,18 @@ public final class ArmorSkillProvider implements SkillProvider {
         ArmorSet.JADE, List.of(ArmorSkillRuntime.FALL_GUARD_ID, ArmorSkillRuntime.CHARGE_DASH_ID));
 
     /**
+     * 该套在装备段暴露的技能 id（<b>按槽位顺序</b>）—— 供显示层共用（护甲 tooltip / HUD）。
+     *
+     * <p>把这张表暴露出来，而不是让显示层各写一份技能清单：清单只有一处，
+     * 将来补"临域充力 / 星芒嬗震 / 雷鸣威震"时，tooltip 与 HUD 自动跟着变。</p>
+     *
+     * @param set 套装；不在表里时返回空表（不是 null）
+     */
+    public static List<ResourceLocation> skillIdsOf(ArmorSet set) {
+        return SET_SKILL_IDS.getOrDefault(set, List.of());
+    }
+
+    /**
      * 由 {@code SkillerIntegration} 在注册期各建一个实例（{@code SkillProviders.register}）。
      * 与 {@link CoeSkillProvider} 一样：本类<b>无状态</b>（表是静态常量），实例本身不承载任何东西。
      */

@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergyTooltipHandler;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillTooltipHandler;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler.MedallionEffectHandler;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.EnergyTooltipHandler;
@@ -37,6 +38,9 @@ public class ClientEvents {
         // 护甲能量区（2026-10-01）：工具能量区之后。护甲刻意不写 MAX_ENERGY 组件，
         // 所以上面那条（按组件判定）对护甲恒不生效，两条不会重复显示。
         index = ArmorEnergyTooltipHandler.addArmorEnergyTooltip(event, index);
+        // 装备（套装）技能区（2026-10-01 用户要求）：与工具技能区同形（按住左 Alt 看等级、按等级着色），
+        // 但**独立成区** —— 用户原话"要在单独的装备栏里面单独展示"。
+        index = ArmorSkillTooltipHandler.addArmorSkillTooltip(event, index);
         // 绑定行位于能量区之后（能量标题行、能量条、再下一行）
         EnergyTooltipHandler.addBoundTooltip(event, index);
         // 星辉石/雷鸣工具与佩：按住 Alt 或 Shift 查看概要时，概要顶部追加祝福行（物品自身颜色）

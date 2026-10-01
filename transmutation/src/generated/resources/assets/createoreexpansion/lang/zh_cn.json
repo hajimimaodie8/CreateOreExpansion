@@ -259,6 +259,7 @@
   "createoreexpansion.stellar_wave_transmuter.mode.attack": "攻击波变态",
   "createoreexpansion.stellar_wave_transmuter.mode.processing": "加工波变态",
   "createoreexpansion.tooltip.armor_energy_total": "套装合计 %s / %s",
+  "createoreexpansion.tooltip.armor_skills": "按住 [%s] 可查看套装技能等级",
   "createoreexpansion.tooltip.lightning_rod.charge": "γ 充能进度：",
   "createoreexpansion.tooltip.lightning_rod.ready": "引雷充能就绪！右键释放闪电",
   "createoreexpansion.tooltip.no_wheel_type": "未安装角磨轮，无法加工",
