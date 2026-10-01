@@ -73,6 +73,8 @@
   "createoreexpansion.creative_section.gear": "装备",
   "createoreexpansion.creative_section.machine": "机械",
   "createoreexpansion.creative_section.ore": "矿物",
+  "createoreexpansion.equip_skill.cooldown": "技能冷却中：还需 %s 秒",
+  "createoreexpansion.equip_skill.no_energy": "护甲能量不足，无法发动",
   "createoreexpansion.field_controller.lid_closed": "接收盖已关闭",
   "createoreexpansion.field_controller.lid_opened": "接收盖已打开",
   "createoreexpansion.field_controller.type_accel": "能量场类型：加速场",

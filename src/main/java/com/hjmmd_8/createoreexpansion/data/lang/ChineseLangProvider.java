@@ -260,6 +260,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("enchantment.createoreexpansion.loose_convergence", "散构聚能");
         add("skill.createoreexpansion.fall_guard", "虚衡坠护");
         add("createoreexpansion.tooltip.armor_skills", "按住 [%s] 可查看套装技能等级");
+        add("createoreexpansion.equip_skill.cooldown", "技能冷却中：还需 %s 秒");
+        add("createoreexpansion.equip_skill.no_energy", "护甲能量不足，无法发动");
         add("skill.createoreexpansion.charge_dash", "蓄能疾骋");
 
         // ========== 流体/配方 ==========

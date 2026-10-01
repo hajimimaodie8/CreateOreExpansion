@@ -364,6 +364,8 @@ public class EnglishLangProvider extends LanguageProvider {
         add("enchantment.createoreexpansion.loose_convergence", "Loose Convergence");
         add("skill.createoreexpansion.fall_guard", "Fall Guard");
         add("createoreexpansion.tooltip.armor_skills", "Hold [%s] to view set skill levels");
+        add("createoreexpansion.equip_skill.cooldown", "Skill on cooldown: %s s left");
+        add("createoreexpansion.equip_skill.no_energy", "Not enough armor energy");
         add("skill.createoreexpansion.charge_dash", "Charge Dash");
 
         // ========== 流体/配方 ==========

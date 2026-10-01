@@ -74,6 +74,9 @@ public final class ArmorSkillRuntime {
     /** 服务端长按计数：玩家 UUID → (槽位 → 已按住 tick 数)。 */
     private static final Map<UUID, Map<Integer, Integer>> HOLD_TICKS = new HashMap<>();
 
+    /** 发动被挡的提示节流：玩家#槽位 → 上次提示的 tick（每 20 tick 最多一次）。 */
+    private static final Map<String, Integer> BLOCK_NOTIFY_TICK = new HashMap<>();
+
     /** 【临时诊断】玩家#槽位 → 上一次读到的按下状态（只在变化时打日志）。 */
     private static final Map<String, Boolean> DIAG_PRESSED = new HashMap<>();
 
@@ -122,8 +125,15 @@ public final class ArmorSkillRuntime {
                         continue;
                     }
                     String skill = skillId(set, index);
-                    // 冷却中按住无效（冷却在松手时起，之前这里漏判 ⇒ 冷却形同虚设）
-                    if (!isReady(player, skill) || ArmorEnergy.totalEnergy(player) <= 0) {
+                    // 冷却中 / 没能量：**必须让玩家看得见原因**（用户 2026-10-01 报"有的时候按了根本
+                    // 不生效、松开也没给" —— 就是被这两条静默挡掉的，玩家只能感到"随机失效"）。
+                    if (!isReady(player, skill)) {
+                        notifyBlocked(player, slot, "createoreexpansion.equip_skill.cooldown",
+                            Math.max(1, cooldownLeft(player, skill) / 20));
+                        continue;
+                    }
+                    if (ArmorEnergy.totalEnergy(player) <= 0) {
+                        notifyBlocked(player, slot, "createoreexpansion.equip_skill.no_energy", 0);
                         continue;
                     }
                     held.put(slot, 0);
@@ -283,6 +293,30 @@ public final class ArmorSkillRuntime {
                 net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED,
                 seconds * 20, segment - 1, false, true, true));
         }
+    }
+
+    /**
+     * 按住时"发动不了"的可见反馈（动作栏 + 日志）。
+     *
+     * <p>为什么必须有：用户 2026-10-01 报"有的时候按住 Alt+R 根本不生效、松开也没给" ——
+     * 真实原因是**冷却中**与**能量为 0** 这两条静默 `continue`，玩家感受就是"随机失效"。
+     * 现在会明说原因，并且**按同一槽位每 20 tick 只提示一次**（按住不放也不会刷屏）。</p>
+     */
+    private static void notifyBlocked(ServerPlayer player, int slot, String langKey, int seconds) {
+        String key = player.getUUID() + "#" + slot;
+        Integer last = BLOCK_NOTIFY_TICK.get(key);
+        int now = player.tickCount;
+        if (last != null && now - last < 20) {
+            return;
+        }
+        BLOCK_NOTIFY_TICK.put(key, now);
+        net.minecraft.network.chat.Component message = seconds > 0
+            ? net.minecraft.network.chat.Component.translatable(langKey, seconds)
+            : net.minecraft.network.chat.Component.translatable(langKey);
+        player.displayClientMessage(message, true);
+        com.hjmmd_8.createoreexpansion.common.CoeCore.LOGGER.info(
+            "[装备技能] 槽位 {} 发动被挡：{}（冷却剩余 {} 秒，能量合计 {}）",
+            slot, langKey, seconds, ArmorEnergy.totalEnergy(player));
     }
 
     /** 该技能在该等级下、按住这么多 tick 时的累计花费（与松手结算同一个公式）。 */

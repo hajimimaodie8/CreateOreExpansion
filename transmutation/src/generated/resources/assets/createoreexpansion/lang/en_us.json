@@ -69,6 +69,8 @@
   "createoreexpansion.creative_section.gear": "Gear",
   "createoreexpansion.creative_section.machine": "Machines",
   "createoreexpansion.creative_section.ore": "Ores",
+  "createoreexpansion.equip_skill.cooldown": "Skill on cooldown: %s s left",
+  "createoreexpansion.equip_skill.no_energy": "Not enough armor energy",
   "createoreexpansion.field_controller.lid_closed": "Receiver lid closed",
   "createoreexpansion.field_controller.lid_opened": "Receiver lid opened",
   "createoreexpansion.field_controller.type_accel": "Field type: Acceleration",
