@@ -73,6 +73,14 @@ public final class CoeSkillRelease {
             if (slot == null || !PlayerPressedKeys.isPressed(player, slot)) {
                 continue;
             }
+            // 装备段槽位（3/4/5）**不由内核释放**：装备技能是长按语义（虚衡坠护按住期间持续豁免、
+            // 蓄能疾骋按住越久 Buff 越强），内核只有"事件触发的瞬时释放"模型，
+            // 它的执行在 ArmorSkillRuntime（读同一份 PlayerPressedKeys）。
+            // 这里若放行，内核会去释放一个**没有注册策略**的装备技能 —— 也正是
+            // check-skill-registry-parity 断言"装备技能不许出现在内核注册表"的原因。
+            if (ArmorSkillProvider.isEquipmentSlot(slot)) {
+                continue;
+            }
             if (releaseBundle(player, binding.getValue(), type, env, consumeInCreative)) {
                 released = true;
             }

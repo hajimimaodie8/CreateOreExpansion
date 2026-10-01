@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.CoeArmorItem;
 import com.tterrag.registrate.util.entry.ItemEntry;
 
@@ -185,9 +186,19 @@ public final class CoeArmorItems {
     private static ItemEntry<CoeArmorItem> armor(String id, Holder<ArmorMaterial> material,
                                                  ArmorItem.Type type, String textureBase, int durability) {
         ResourceLocation textureLoc = CoeCore.modLoc(textureBase);
+        // ⑥ 能量：<b>初始即满</b>（用户 2026-10-01："所有东西制造出来之后、或者在创造模式物品栏
+        // 里面，能量都是满的"）。做法与工具一致（CoeItems 的 EnergyItemBuilder 也是
+        // defaultEnergy == maxEnergy）：ENERGY 与 MAX_ENERGY 写同一个值。
+        // 容量真源 = ArmorSet.perPieceEnergy()（翠玉 250 / 宝石 1000 / 星界·雷鸣 2500），
+        // 按材质查套 —— 注册期还没有 ItemStack，所以走 ArmorSet.byMaterial。
+        // 注意：组件是逐堆的，老存档里已存在的那件保留它自己存的值（不回溯、不需要迁移）。
+        ArmorSet set = ArmorSet.byMaterial(material);
+        int perPiece = set == null ? 0 : set.perPieceEnergy();
         return CoeRegistrate.REGISTRATE
             .item(id, p -> new CoeArmorItem(material, type, p, textureLoc))
-            .properties(p -> p.durability(durability))
+            .properties(p -> p.durability(durability)
+                .component(AllDataComponents.ENERGY, perPiece)
+                .component(AllDataComponents.MAX_ENERGY, perPiece))
             .tag(armorTag(type))
             .tag(ItemTags.TRIMMABLE_ARMOR)
             .model((ctx, provider) -> provider.generated(ctx::get, CoeCore.modLoc("item/" + id)))

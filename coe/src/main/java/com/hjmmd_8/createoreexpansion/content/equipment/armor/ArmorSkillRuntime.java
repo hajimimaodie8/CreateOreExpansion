@@ -53,6 +53,10 @@ public final class ArmorSkillRuntime {
     /** 装备技能槽位 → 技能 id（与 {@link ArmorSkillProvider#SLOT_BASE} 顺序一致）。 */
     public static final String FALL_GUARD = "fall_guard";
 
+    /** 虚衡坠护的技能 id（{@code createoreexpansion:fall_guard}）—— 注册与 provider 共用的唯一真源。 */
+    public static final net.minecraft.resources.ResourceLocation FALL_GUARD_ID =
+        com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(FALL_GUARD);
+
     /** 玩家持久数据里的冷却键前缀（后接技能 id）。 */
     private static final String COOLDOWN_PREFIX = "createoreexpansion:equip_cd_";
 

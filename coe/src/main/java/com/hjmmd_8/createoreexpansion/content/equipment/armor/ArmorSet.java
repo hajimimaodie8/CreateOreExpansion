@@ -134,6 +134,24 @@ public enum ArmorSet {
     }
 
     /**
+     * 按<b>材质</b>找套 —— 给"只有材质、还没有 ItemStack"的注册期用
+     * （{@code CoeArmorItems} 要给物品写默认能量组件；{@link #of(ItemStack)} 那时用不了）。
+     *
+     * @param material 护甲材质；不是本模组四套之一 ⇒ {@code null}
+     */
+    public static @Nullable ArmorSet byMaterial(Holder<ArmorMaterial> material) {
+        if (material == null) {
+            return null;
+        }
+        for (ArmorSet set : VALUES) {
+            if (set.material == material) {
+                return set;
+            }
+        }
+        return null;
+    }
+
+    /**
      * 该物品属于哪一套。
      *
      * @return 本模组四套护甲之一 ⇒ 对应的枚举值；不是护甲 / 不是本模组的 ⇒ {@code null}

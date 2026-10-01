@@ -20,6 +20,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 
 import net.neoforged.api.distmarker.Dist;
@@ -180,11 +181,27 @@ public final class EquipmentSkillHud {
         return lines;
     }
 
-    /** 技能包里的显示名（取第一个能解析出语言键的技能实例）。 */
+    /**
+     * 技能包里的显示名。
+     *
+     * <p>取名字有两条口径，这里必须走<b>第二条</b>：</p>
+     * <ol>
+     *     <li>旧框架的 {@code ItemSkill#getTranslateKey()} —— 只在"技能实例仍归旧框架"时才有；
+     *         内核的 {@code ItemSkillRegistration} <b>不是</b>那个接口，对它做 {@code instanceof}
+     *         恒为 false（2026-10-01 实测：已经有绑定了却一行技能都不显示，就是踩了这条）；</li>
+     *     <li><b>技能 id → 语言键</b>：本模组技能语言键的格式恒为
+     *         {@code skill.<namespace>.<path>}（12 条键见两个 LangProvider），
+     *         而内核 {@code ItemSkillRegistration#getId()} 给的就是那个 id。</li>
+     * </ol>
+     */
     private static @Nullable Component skillName(SkillBundle bundle) {
         for (ISkillInstance<?> instance : bundle.getAllData()) {
-            if (instance != null && instance.skill() instanceof ItemSkill itemSkill) {
-                return Component.translatable(itemSkill.getTranslateKey());
+            if (instance == null || instance.skill() == null) {
+                continue;
+            }
+            ResourceLocation id = instance.skill().getId();
+            if (id != null) {
+                return Component.translatable("skill." + id.getNamespace() + "." + id.getPath());
             }
         }
         return null;

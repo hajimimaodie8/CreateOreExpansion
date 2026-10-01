@@ -10,7 +10,9 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitContextFact
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemSkillContext;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.FallGuardItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BowShootItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.HoeItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.PlunderItemSkill;
@@ -98,6 +100,9 @@ public final class SkillerIntegration {
         if (SkillerRegistries.SKILL_RESOURCE.equals(registryKey)) {
             event.register(SkillerRegistries.SKILL_RESOURCE,
                     CoeToolEnergyResource.ID, CoeToolEnergyResource::new);
+            // 护甲能量（2026-10-01）：四套护甲的储能池，装备技能实例的 "resource" 指向它
+            event.register(SkillerRegistries.SKILL_RESOURCE,
+                CoeArmorEnergyResource.ID, CoeArmorEnergyResource::new);
             logRegistry("skill_resource", SkillerBuiltInRegistries.SKILL_RESOURCES.keySet().size());
             return;
         }
@@ -120,9 +125,30 @@ public final class SkillerIntegration {
             registerFellingSkill(event);
             registerHitSkills(event);
             registerUseSkills(event);
+            registerArmorSkills(event);
             logRegistry("skill", SkillerBuiltInRegistries.SKILLS.keySet().size());
             return;
         }
+    }
+
+    /**
+     * 注册<b>装备（护甲）技能</b>的技能条目。
+     *
+     * <p><b>为什么装备技能也必须在这里登记</b>：{@code skiller:skill} 是<b>数据驱动白名单</b> ——
+     * 实例反序列化（{@code NbtSkillInstanceFactory#createFromData}）第一步就是
+     * {@code SKILLS.get(skillId)}，查不到直接返回 null。不登记的症状是"看着全接好了、实则一直没有绑定"：
+     * 客户端不会为槽位 3/4/5 轮询按键（技能按不出来），HUD 也没有技能行
+     * （2026-10-01 用户实测到的就是这个现象）。</p>
+     *
+     * <p><b>为什么挂 USE 类型 + 空壳实现</b>：内核的注册条目必须带"类型 + 上下文工厂 + 技能实现"
+     * 三件套。装备技能的执行在 {@code ArmorSkillRuntime}（长按语义），这两个方法与策略都不会被调用
+     * （内核释放路径显式跳过装备段槽位，见 {@code CoeSkillRelease}）。挂 USE 是因为"按键触发的
+     * 主动效果"在语义上最接近；空壳实现见 {@link FallGuardItemSkill} 的类注释。</p>
+     */
+    private static void registerArmorSkills(RegisterEvent event) {
+        event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.FALL_GUARD_ID,
+                () -> new ItemSkillRegistration<UseItemSkillContext>(
+                        CoeSkillTypes.USE, UseItemContextFactory.KEY, new FallGuardItemSkill()));
     }
 
     /**

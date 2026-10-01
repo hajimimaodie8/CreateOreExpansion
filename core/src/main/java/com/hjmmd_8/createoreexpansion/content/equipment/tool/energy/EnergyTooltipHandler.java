@@ -32,6 +32,14 @@ public class EnergyTooltipHandler {
     public static int addEnergyTooltip(ItemTooltipEvent event, int startIndex) {
         ItemStack stack = event.getItemStack();
 
+        // 护甲不走这里：护甲容量"随附魔变化、必须现算"（散构聚能 = 2500），
+        // 由 ArmorEnergyTooltipHandler 负责画那一条（含按套配色）。
+        // 护甲现在也带 ENERGY/MAX_ENERGY 组件（2026-10-01 起"初始即满"），若不过滤，
+        // 护甲 tooltip 上会出现**两条**能量区（一条按组件写死的容量、一条按现算容量）。
+        if (stack.getItem() instanceof net.minecraft.world.item.ArmorItem) {
+            return startIndex;
+        }
+
         if (!ToolEnergy.hasEnergy(stack))
             return startIndex;
 

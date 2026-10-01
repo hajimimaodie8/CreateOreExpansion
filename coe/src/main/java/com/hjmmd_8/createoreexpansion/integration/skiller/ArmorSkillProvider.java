@@ -1,6 +1,14 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller;
 
-import java.util.List;
+import java.util.LinkedHashMap;
+
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
+import com.leaf.skiller.AllSkillInstanceFactories;
+import com.leaf.skiller.api.registry.SkillerBuiltInRegistries;
+import com.leaf.skiller.foundation.SkillData;
+import com.leaf.skiller.foundation.skill.ISkillInstance;
+
+import net.minecraft.nbt.CompoundTag;import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -49,16 +57,24 @@ public final class ArmorSkillProvider implements SkillProvider {
     /** 装备技能的槽位号起点（工具/物品占 0/1/2，装备从 3 开始，两段空间不重叠）。 */
     public static final int SLOT_BASE = 3;
 
-    /** 装备最多 3 个技能（用户 2026-10-01："装备最多再 3 个技能"）。 */
+    /** Skiller 实例 NBT 里资源与等级所用的键（与 CoeSkillProvider 逐字一致）。 */
+    private static final String RESOURCE_KEY = "resource";
+    private static final String LEVEL_KEY = "level";
+
+    /** （套 + 等级）→ 已构造组件。只承载按键轮询/HUD 列表，不含每玩家状态，故可全局缓存。 */
+    private static final java.util.Map<String, SkillComponent> CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 装备最多 3 个技能（用户 2026-10-01：""装备最多再 3 个技能""）。 */
     public static final int SLOT_COUNT = 3;
 
     /**
      * 套装 → 该套的技能 id 表（槽位 = 表内下标 + {@link #SLOT_BASE}，每套最多 {@link #SLOT_COUNT} 条）。
      *
-     * <p>目前为空。只放<b>数据</b>（id），不放实例：实例化需要"能量资源"口径，那个还没裁定
-     * （见类注释最后一节）。</p>
+     * <p>顺序即槽位顺序：键一 = 下标 0、键二 = 1、键三 = 2。用户 2026-10-01 逐套给的技能表正在
+     * 逐个落地，<b>落地一个就往这里加一个</b>（加了之后客户端才开始轮询那个槽位、HUD 才列出来）。</p>
      */
-    private static final Map<ArmorSet, List<ResourceLocation>> SET_SKILL_IDS = Map.of();
+    private static final Map<ArmorSet, List<ResourceLocation>> SET_SKILL_IDS = Map.of(
+        ArmorSet.JADE, List.of(ArmorSkillRuntime.FALL_GUARD_ID));
 
     /**
      * 由 {@code SkillerIntegration} 在注册期各建一个实例（{@code SkillProviders.register}）。
@@ -116,11 +132,56 @@ public final class ArmorSkillProvider implements SkillProvider {
         if (ids == null || ids.isEmpty()) {
             return SkillComponent.EMPTY;
         }
-        // 表非空时的实例构造还没写：它被"装备技能的能量从哪来"这个未裁定问题挡住
-        // （见类注释最后一节）。照 CoeSkillProvider#toInstance 建实例时，等级取
-        // worn.wornLevel(player)（= 该套基准等级 1..4），NBT 写 "level" 与 "resource"。
-        // 在那之前刻意<b>不</b>产出实例：资源口径未定的技能一旦被释放，consumeResource
-        // 阶段的行为是未定义的。
-        return SkillComponent.EMPTY;
+        // 等级 = 生效等级（套装基准等级 + 护甲上技艺提升 − 记忆回溯，钳 1~3），
+        // 与 ArmorSkillRuntime 的取值同一入口 —— 客户端 HUD 因此显示的就是实际生效等级。
+        int level = ArmorSkillRuntime.effectiveLevel(player, worn);
+        if (level <= 0) {
+            return SkillComponent.EMPTY;
+        }
+        return cached(worn, level, ids);
+    }
+
+    /**
+     * 按（套 + 等级）缓存已构造的组件。
+     *
+     * <p>为什么可以缓存：装备技能的<b>执行</b>在 {@link ArmorSkillRuntime}，这些实例只承担
+     * "客户端据此轮询槽位 3/4/5 并发按键包"和"HUD 据此列技能名"两件事，不承载每玩家的状态；
+     * 而 {@code componentOf} 会被按键轮询高频调用（每 tick），每次都建实例是纯浪费。</p>
+     */
+    private static SkillComponent cached(ArmorSet set, int level, List<ResourceLocation> ids) {
+        String key = set.name() + "#" + level + "#" + ids.size();
+        SkillComponent hit = CACHE.get(key);
+        if (hit != null) {
+            return hit;
+        }
+        SkillComponent built = build(level, ids);
+        CACHE.put(key, built);
+        return built;
+    }
+
+    /** 真正构造：照 {@code CoeSkillProvider#toInstance} 的口径建实例（资源 = 护甲能量）。 */
+    private static SkillComponent build(int level, List<ResourceLocation> ids) {
+        ResourceLocation factoryId = defaultFactoryId();
+        if (factoryId == null) {
+            return SkillComponent.EMPTY;
+        }
+        Map<Integer, SkillBundle> bindings = new LinkedHashMap<>();
+        for (int index = 0; index < ids.size() && index < SLOT_COUNT; index++) {
+            CompoundTag nbt = new CompoundTag();
+            // 资源 = 护甲能量（本模组四套的储能池）；等级写 "level"（内核的键名，与工具一致）
+            nbt.putString(RESOURCE_KEY, CoeArmorEnergyResource.ID.toString());
+            nbt.putInt(LEVEL_KEY, level);
+            ISkillInstance<?> instance =
+                ISkillInstance.fromData(new SkillData(ids.get(index), factoryId, nbt));
+            if (instance != null) {
+                bindings.put(SLOT_BASE + index, new SkillBundle(List.of(instance)));
+            }
+        }
+        return bindings.isEmpty() ? SkillComponent.EMPTY : new SkillComponent(bindings);
+    }
+
+    /** 与 {@code CoeSkillProvider#defaultFactoryId} 同源：内核的默认实例工厂。 */
+    private static ResourceLocation defaultFactoryId() {
+        return SkillerBuiltInRegistries.SKILL_FACTORIES.getKey(AllSkillInstanceFactories.DEFAULT.getFactory());
     }
 }
