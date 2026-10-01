@@ -145,17 +145,16 @@ git status --short                                          # git add 之后再�
 
 ## 📐 其它现行口径（系列特性 / 机器交互 / 语言键）
 
-- **物品注册只有一个入口 `CoeItems`**（用户 2026-10-01 裁定）：本模组物品（工具/佩/弓/盔甲/回旋镖…）**声明与能量注册全在 `CoeItems`**；`armor(...)` / `grindingWheel(...)` / `skillItem()` 这类辅助方法也在本类，**不要再为物品另开注册文件**（盔甲曾被拆到 `CoeArmorItems`，已裁定并回）。**加物品前先把 `CoeItems` 读一遍**：能量有现成路径（`EnergyItemBuilder` 的 `defaultEnergy == maxEnergy` = 初始即满），照抄即可，别自创第二套。
+- **物品注册只有一个入口 `CoeItems`**（用户 2026-10-01 裁定）：本模组物品（工具/佩/弓/盔甲/回旋镖…）**声明与能量注册全在 `CoeItems`**；`armor(...)` / `grindingWheel(...)` / `skillItem()` 这类辅助方法也在本类，**不要再为物品另开注册文件**（盔甲曾被拆到 `CoeArmorItems`，已裁定并回）。**加物品前先把 `CoeItems` 读一遍**：能量有现成路径（`EnergyItemBuilder` 的 `defaultEnergy == maxEnergy` = 初始即满），照抄即可。**创造页分栏也在这条链上声明**：`.transform(CoeCreativeSections.section(CreativeSection.ORE/MACHINE/GEAR))` 一行归栏（声明优先于规则；机制与迁移进度见 `CoeCreativeSections` 类注释与变更史 §6.19）。
 - **系列特性登记口径**（用户 2026-09-15 定稿）：**唯一入口 = `common/SeriesTraits`**；判定 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定（限定本模组命名空间）。**四个系列标签由 datagen 生成，手写文件禁止同名**（同名让 processResources 报 duplicate 直接失败）；**两个系列（含方块物品）免疫嬗乱销毁**，判定在 `TransmutationDisorderEffect#canTransmutationDestroy`（W6 后随嬗化住 `:coe`）——**方块物品进不了物品标签，故不能用标签覆盖**。链式写法与来由 → `markdown_output/机器交互实现细节（AGENTS迁入）.md` 的 `## 6.`。
 - **机器交互四条统一规则**（用户 2026-09-15 定稿）：① 空手右键某个面 = 开/关该面开口；② 空手右键指示灯 = 只切那盏灯对应的开口；③ 扳手右键 = 有特殊模式的机器只切模式、没模式的机器照旧切开口；④ 旋转必须 **Ctrl + 扳手右键**。
   实现三件套（契约 `common/machine/MachineInteraction` / 载荷 `common/machine/MachineRotatePayload` / 客户端 `client/MachineRotateClient`）的逐条细节、来由与 `IWrenchable` 副作用更正 → `markdown_output/机器交互实现细节（AGENTS迁入）.md`（2026-09-28 为腾本文件预算原样迁出）。**Ctrl 的判定必须在客户端**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
-- **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文漏了 **17 条**（雷鸣合金整条材料线 11 条 + 能量场控制器 + 蓝宝石充能器/两个调节器 + 嬗变液方块与流体），英文客户端在这些条目上显示原始键名——已在 `d869e2d2` 补齐，英文名沿用「与 Stellarstone 同构」的规律。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
+- **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文曾漏 17 条（雷鸣合金整条材料线 + 能量场控制器 + 蓝宝石充能器/两个调节器 + 嬗变液方块与流体），英文客户端在这些条目上显示原始键名——已在 `d869e2d2` 补齐。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
   ```powershell
   $en = Get-Content src\generated\resources\assets\createoreexpansion\lang\en_us.json -Raw -Encoding UTF8 | ConvertFrom-Json
   $zh = Get-Content src\generated\resources\assets\createoreexpansion\lang\zh_cn.json -Raw -Encoding UTF8 | ConvertFrom-Json
   Compare-Object @($en.PSObject.Properties.Name) @($zh.PSObject.Properties.Name)
   ```
-  顺带：`block…jade_stress_charger` 的英文曾误写为 "Jade Create Charger"，已与护目镜条目统一为 "Jade Stress Charger"。
 
 ## ⏸ 挂起事项（重要，动手前必读）
 

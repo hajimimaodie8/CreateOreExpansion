@@ -1,20 +1,25 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.tterrag.registrate.builders.ItemBuilder;
+import com.tterrag.registrate.util.nullness.NonNullFunction;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -68,24 +73,141 @@ public final class CoeCreativeSections {
     public static final String REST_KEY = "__rest";
 
     /**
+     * <b>三个分区</b>（用户 2026-10-01 要求"抽象成一个块、形成固定套路"后由 record 升为枚举）。
+     *
+     * <p>枚举把「分区」这三件东西收成<b>一个具名常量</b>：`key` / 语言键 / 横幅精灵。注册物品时只需
+     * 一行 {@code .transform(section(GEAR))}（见 {@link #section}），其余（分区顺序、行内补白、
+     * 横幅行、区内族序）全部由本类自动完成 —— 这就是"加一行就自动归栏"的那一行。</p>
+     *
+     * <p><b>枚举顺序 = 分区顺序</b>：① 矿物 → ② 机械 → ③ 装备（作者明确要求这个顺序），
+     * {@link #BASE_SECTIONS} 由它派生，不再手写第二份表。</p>
+     *
+     * <p>⚠ `key` 是存档无关但**渲染/记录相关**的字符串（进 {@link #SECTION_ROWS} 的 key、
+     * 也是 {@link #byKey} 的入参）⇒ 不许改（改了横幅就不再落位）。语言键与精灵名同理。</p>
+     */
+    public enum CreativeSection {
+        /** ① 矿物：原矿 → 粗矿 → 锭 → 粒 → 板 → 杆 → 线 → 碎片 → 块 → 水晶 → 桶。 */
+        ORE("ore"),
+        /** ② 机械：处理机器 → 机壳 → 波机器（CEWS）→ 机器构件 → 角磨轮。 */
+        MACHINE("machine"),
+        /** ③ 装备：工具 → 盔甲 → 弓 → 佩（+ 回旋镖等今后同类）。 */
+        GEAR("gear");
+
+        /** 分区 key：{@code ore} / {@code machine} / {@code gear}。 */
+        public final String key;
+
+        CreativeSection(String key) {
+            this.key = key;
+        }
+
+        /**
+         * 释词的语言键（横幅上画的那两个字）。
+         *
+         * <p><b>为什么是方法而不是构造期算好的字段</b>：嵌套类/枚举的初始化<b>不会</b>触发外层类初始化
+         * （JLS），而枚举常量可能在 {@code CoeCreativeSections} 尚未初始化时就被引用
+         * （例如 {@code CoeItems} 里 {@code section(CreativeSection.GEAR)}）——
+         * 那时外层的 {@code LANG_PREFIX} / {@code NS} 还是默认值 {@code null}，
+         * 构造期取值会得到 {@code "nullegear"} 这种坏键、以及 NPE 的精灵名。
+         * 惰性方法每次现读外层常量，顺序问题消失。</p>
+         */
+        public String langKey() {
+            return LANG_PREFIX + key;
+        }
+
+        /** 横幅精灵名（{@code blitSprite} 吃精灵名，不带路径前缀与 {@code .png}）。 */
+        public ResourceLocation banner() {
+            return sprite("section_" + key);
+        }
+    }
+
+    /**
+     * <b>注册期的显式声明表</b>：物品 → 分区（+ 可选区内族序）。<b>声明优先于规则</b>。
+     *
+     * <p>为什么要这张表：规则（{@link #classify} 的标签 + 注册名后缀）能让"忘声明"的物品也落对区，
+     * 但归属<b>不可见</b>——想确认某件东西在哪一栏，得去读规则。声明表让"哪件东西在哪一栏"
+     * 就写在<b>它的注册那一行</b>上（用户 2026-10-01 的诉求）。</p>
+     *
+     * <p>与 {@code ChargingRecipeTools} / {@code SeriesTraits} 同一手法：注册链上<b>一行登记</b>、
+     * 判定处<b>一处消费</b>（唯一取值点），因此不需要数据组件、不影响存档格式。</p>
+     *
+     * <p>并发：注册是并行的，用 {@link ConcurrentHashMap}；同 id 重复登记时后者覆盖（不报错，
+     * 因为 in-place 重登记无害）。</p>
+     */
+    private static final Map<Item, CreativeSection> DECLARED = new ConcurrentHashMap<>();
+
+    /** 显式声明时若规则给不出族序，落在这个组（仍在该分区内，排在规则能判定的物品之后）。 */
+    private static final int DECLARED_FALLBACK_ORDER = 50;
+
+    /**
+     * <b>把物品登记进指定分区</b>（注册期由 {@link #section} 调用，也可以手写调用）。
+     *
+     * @param item    已注册的物品（Registrate 的 {@code onRegister} 给的就是它）
+     * @param section 目标分区
+     */
+    public static void declare(Item item, CreativeSection section) {
+        if (item != null && section != null) {
+            DECLARED.put(item, section);
+        }
+    }
+
+    /**
+     * 该物品是否被<b>显式声明</b>过分区（只读；给探针与工具统计"还有多少件靠规则"用）。
+     *
+     * @return 声明的分区；没声明过返回 {@code null}（此时归规则判定）
+     */
+    public static @Nullable CreativeSection declaredOf(@Nullable Item item) {
+        return item == null ? null : DECLARED.get(item);
+    }
+
+    /** 已显式声明的物品件数（迁移进度指标：靠规则的件数 = 本页总数 − 它）。 */
+    public static int declaredCount() {
+        return DECLARED.size();
+    }
+
+    /**
+     * <b>链上一行：把物品登记进指定分区</b>（用户要的那个"块"）。
+     *
+     * <p>用法（与仓库已有的 {@code .transform(skillItem())}、{@code .addEnergy()} 同一套路数）：</p>
+     * <pre>{@code
+     * public static final ItemEntry<Item> JADE_INGOT = CoeRegistrate.REGISTRATE
+     *         .item("jade_ingot", Item::new)
+     *         .transform(section(CreativeSection.ORE))   // ← 就这一行
+     *         .model(...)
+     *         .register();
+     * }</pre>
+     *
+     * <p>它<b>不改动</b>物品本身（不加组件、不动 NBT），只在注册完成时把"这件东西归哪一栏"写进
+     * {@link #DECLARED} —— 因此对存档、网络、datagen 全部零影响。</p>
+     *
+     * <p>仍然保留规则兜底：<b>没声明</b>的物品照旧由 {@link #classify} 判定，不会掉进兜底桶。
+     * 新物品的正确姿势是<b>声明</b>（可见、可查、不依赖后缀巧合）。</p>
+     */
+    public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, ItemBuilder<T, P>> section(
+            CreativeSection section) {
+        return builder -> builder.onRegister(item -> declare(item, section));
+    }
+
+    /**
      * <b>一个分区</b>：进 {@link #SECTION_ROWS} 的 key + 释词语言键 + 横幅精灵。
      *
      * @param key     分区 key（{@code ore} / {@code machine} / {@code gear}）
      * @param langKey 释词的语言键（横幅上画的那两个字）
      * @param banner  横幅精灵名（{@code blitSprite} 吃的是精灵名，<b>不带</b> {@code textures/gui/sprites/} 前缀与 {@code .png}）
+     * @deprecated 已被 {@link CreativeSection} 枚举取代（枚举同时携带三者）；保留仅为兼容既有调用点，
+     *     {@link #BASE_SECTIONS} 现在由枚举派生。
      */
+    @Deprecated
     public record Section(String key, String langKey, ResourceLocation banner) {}
 
     /**
-     * <b>分区顺序 = 这张表的顺序</b>：① 矿物 → ② 机械 → ③ 装备（作者明确要求这个顺序）。
+     * <b>分区顺序 = {@link CreativeSection} 的声明顺序</b>：① 矿物 → ② 机械 → ③ 装备（作者明确要求这个顺序）。
      *
      * <p>三个横幅精灵名与三张 162×18 贴图<b>逐字对应</b>：{@code section_ore} / {@code section_machine}
      * / {@code section_gear}（作者提供的素材，落在 {@code coe/src/main/resources/assets/.../textures/gui/sprites/}）。</p>
      */
-    public static final List<Section> BASE_SECTIONS = List.of(
-        new Section("ore", LANG_PREFIX + "ore", sprite("section_ore")),
-        new Section("machine", LANG_PREFIX + "machine", sprite("section_machine")),
-        new Section("gear", LANG_PREFIX + "gear", sprite("section_gear")));
+    public static final List<Section> BASE_SECTIONS = Arrays.stream(CreativeSection.values())
+        .map(s -> new Section(s.key, s.langKey(), s.banner()))
+        .toList();
 
     /**
      * <b>每个分区的「首个物品」所在行（0 基）</b>，key = {@code "<页id>|<分区key>"}。
@@ -186,15 +308,35 @@ public final class CoeCreativeSections {
     private static final int UNCLASSIFIED = Integer.MAX_VALUE;
 
     /**
-     * <b>分区与区内排序的唯一判定入口</b>（优先级：③ 装备 → ② 机械 → ① 矿物）。
+     * <b>分区与区内排序的唯一判定入口</b>。
      *
-     * <p>判据一律「标签优先、注册名后缀兜底」，<b>不枚举 146 个物品</b> —— 金属/宝石家族只会越来越多，
-     * 枚举是死路（§5 步骤 2）。只有三件「没有家族标签、也没有可辨后缀」的东西按注册名点名：
-     * {@code thunderite_scrap} / {@code lucky_dust}（① 杂项原料）与 {@code jade_topaz_bow}（③ 弓）。</p>
+     * <p><b>判定优先级</b>：</p>
+     * <ol>
+     *     <li><b>注册期显式声明</b>（{@link #DECLARED}，由 {@link #section} 那一行写入）——
+     *         用户 2026-10-01 要求的"加一行就自动归栏"，也是<b>推荐姿势</b>；
+     *         区内族序仍由下面那套规则给出（保持分区内部排列不变），规则给不出就用
+     *         {@link #DECLARED_FALLBACK_ORDER}，排在本区规则能判定的物品之后；</li>
+     *     <li><b>规则兜底</b>：③ 装备 → ② 机械 → ① 矿物，「标签优先、注册名后缀兜底」，
+     *         <b>不枚举物品</b>（金属/宝石家族只会越来越多，枚举是死路）。</li>
+     * </ol>
+     *
+     * <p>两者并存是刻意的：声明让归属<b>可见</b>，规则让"忘声明"的物品<b>也不会掉进兜底桶</b>
+     * （宁可落对区，也不让物品凭空消失）。</p>
      */
     private static Classification classify(ItemStack stack) {
         String path = pathOf(stack);
+        // 规则先算一遍：即使走了显式声明，也需要它给出的区内族序（保持区内排列）
+        Classification byRule = classifyByRule(stack, path);
+        CreativeSection declared = DECLARED.get(stack.getItem());
+        if (declared != null) {
+            return new Classification(declared.key,
+                byRule.section() != null ? byRule.order() : DECLARED_FALLBACK_ORDER);
+        }
+        return byRule;
+    }
 
+    /** 规则判定（{@link #classify} 的第二优先级；拆出来是为了"声明优先但不丢族序"）。 */
+    private static Classification classifyByRule(ItemStack stack, String path) {
         // ---------------- ③ 装备（最高优先级） ----------------
         // 器具：用原版物品标签判（比按名字后缀可靠，§8 分族核对表）
         if (stack.is(ItemTags.SWORDS) || stack.is(ItemTags.PICKAXES)

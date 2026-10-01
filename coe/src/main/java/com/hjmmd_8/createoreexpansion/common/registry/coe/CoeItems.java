@@ -1154,6 +1154,9 @@ public final class CoeItems {
     private static ItemEntry<GrindingWheelItem> grindingWheel(String name, AllTags.AllItemTags tierTag, Supplier<Block> materialBlock) {
         return CoeRegistrate.REGISTRATE
             .item(name, GrindingWheelItem::new)
+            // 创造页分区：角磨轮按用户 2026-09-30 裁定归「机械」、且排在**本区最后**。
+            // 分区由这一行声明（固定套路）；"排最后"由 CoeCreativeSections 的 MACHINE_WHEEL 族序负责。
+            .transform(CoeCreativeSections.section(CoeCreativeSections.CreativeSection.MACHINE))
             .tag(AllTags.AllItemTags.GRINDING_WHEELS.tag)
             .tag(tierTag.tag)
             .model((ctx, prov) -> {
@@ -1373,6 +1376,8 @@ public final class CoeItems {
         int perPiece = set == null ? 0 : set.perPieceEnergy();
         return CoeRegistrate.REGISTRATE
             .item(id, p -> new CoeArmorItem(material, type, p, textureLoc))
+            // 创造页分区：盔甲属「装备」——注册处一行声明（用户 2026-10-01 的固定套路）
+            .transform(CoeCreativeSections.section(CoeCreativeSections.CreativeSection.GEAR))
             .properties(p -> p.durability(durability)
                 .component(AllDataComponents.ENERGY, perPiece)
                 .component(AllDataComponents.MAX_ENERGY, perPiece))
@@ -1523,6 +1528,10 @@ public final class CoeItems {
             if (energyItem) {
                 builder.onRegister(item -> ChargingRecipeTools.register(item));
             }
+            // 创造页分区：**走 skillItem() 的都是装备**（工具/弓）⇒ 在这里一处声明，26 件全覆盖。
+            // 这就是用户 2026-10-01 要的"注册处一行即归栏"（机制见 CoeCreativeSections 的 section(...)）。
+            builder.onRegister(item -> CoeCreativeSections.declare(
+                item, CoeCreativeSections.CreativeSection.GEAR));
             return builder;
         }
 
