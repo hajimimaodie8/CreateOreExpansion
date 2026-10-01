@@ -297,6 +297,55 @@ neoForge {
     }
 }
 
+// ── W13 附：按模块组合的**测试启动项**（2026-09-30 用户要求：只跑 COE / 跑 COE+CEWS）──────
+// 与上面 published* 的分工：
+//   published*  = **发布形态**（不绑 source set、只从 <gameDir>/mods 加载 jar；跑前要先执行
+//                 tools\prepare-run-published.ps1 把模块 jar 装进去）—— 验的是"真发布件"。
+//   本段        = **dev 形态**（直接跑 source set，只用 loadedMods 把"本模组哪几个 mod 文件
+//                 参与"收窄到指定组合）—— 不打包、不跑准备脚本，改完代码直接起，适合日常测试。
+//
+// 为什么用 loadedMods：MDG 的 `RunModel#getLoadedMods` 是 `SetProperty<ModModel>`
+// （**不是 mod id 字符串**，已用 javap 核实），默认 = mods{} 里全部条目；设成子集就等于
+// "只把这几个条目写进 -Dfml.modFolders"，其余 mod 文件本次启动根本不加载。
+// 上面 publishedServer 用它设空集（= 一个 dev mod 文件都不参与）。
+//
+// ⚠ 为什么列表里**必须有 coe_integration**（别"优化"掉它）：
+//   dev 里共享库 `core` 的 classes/resources **不是**跟着 :coe 走的，而是由根工程那个 mod 文件
+//   携带（上面 mods{} 的 "coe_integration" 条目里那行 `sourceSet(project(':core').sourceSets.main)`；
+//   第 ~450 行的注释也写明"它只改 dev 的 fml.modFolders"）。生产形态里 core 是 **JarJar 嵌在
+//   coe.jar 内**的，所以"只装 coe.jar"在 dev 里没有逐字对应物 —— 等价组合 = coe_integration + coe。
+//   去掉 coe_integration ⇒ core 的类一个都不在 mod 路径上 ⇒ 启动即 NoClassDefFoundError。
+//   （coe_integration 自身的内容 = 集成层：订阅者注入 / Ctrl+扳手 / 配置重载，对测试只有好处。）
+//
+// 已知取舍：这两个启动项**不含 transmutation**（空壳模块，0 内容）。
+// 想连集成层之外的东西一起加载，把 neoForge.mods.getByName('<条目名>') 加进列表即可。
+//
+// 以后要加组合（例如 COE+CEWS+嬗化、或只 CEWS）：照抄一段、改名字与 mod 列表、换 gameDirectory。
+// 每个启动项用**各自独立的 gameDirectory**，所以世界/配置/日志互不干扰（run\ 那份是共享的，
+// 多个实例同时开才会抢；这里天然避开）。
+// 日志里搜 "Found mod file" 可一眼确认本次启动到底加载了哪几个 mod 文件
+// （LogMarkers.SCAN 默认 DENY，所以下面显式打开）。
+neoForge {
+    runs {
+        // 只装 COE：createoreexpansion 本体（矿物/宝石/工具/技能 + 波引擎 + 嬗化内容）
+        // + coe_integration（dev 里 core 的载体，见上面的警告）
+        coeOnly {
+            client()
+            loadedMods.set([neoForge.mods.getByName('coe_integration'), neoForge.mods.getByName('coe')])
+            gameDirectory.set(project.file('build/run-coe-only'))
+            systemProperty 'forge.logging.marker.scan', 'ACCEPT'
+        }
+        // COE + CEWS：再加能量波阵学那一层（差波器/调级器/波速调节器/变器/场控制器/查询仪）
+        coeCews {
+            client()
+            loadedMods.set([neoForge.mods.getByName('coe_integration'), neoForge.mods.getByName('coe'),
+                            neoForge.mods.getByName('cews')])
+            gameDirectory.set(project.file('build/run-coe-cews'))
+            systemProperty 'forge.logging.marker.scan', 'ACCEPT'
+        }
+    }
+}
+
 // ── W3 附：发布形态测试台的类路径补偿（Registrate）────────────────────────────────
 // Create 的 **:slim 分类器把 JarJar 嵌套件整个剥掉了**（实测 create-1.21.1-6.0.10-280-slim.jar
 // 的 META-INF/jarjar/ 条目 = 0、com/tterrag/registrate/** = 0），所以 dev 里 Create 靠的是

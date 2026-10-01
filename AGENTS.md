@@ -22,12 +22,13 @@
 - 模组：`createoreexpansion`（Create 6.0.10 附属，NeoForge / Minecraft 1.21.1）
 - 根目录：`E:\mc\mcmod\createoreexpansion`，包根 `com.hjmmd_8.createoreexpansion`
 - 当前分支：`leaf-dev`
-- **工程结构（P7b 后）**：五个 Gradle 子工程 = `core`（JarJar 嵌套共享库，**不是 mod**）、`coe`（mod id `createoreexpansion`）、`cews`（`cews`）、`transmutation`（`transmutation`）、`all-neoforge`（0 文件占位）；各层文件数与逐项机制见 `markdown_output/模块拆分进度与决策链.md` §2.6 与下节。**根 `src/main/java` 只剩 7 个 dev-only 文件**；共享注册表挂载 / 旋转载荷 / 配方类型唤醒顺序由 core 的幂等入口 `common/registry/LayerBootstrap#ensureAttached` 承担（每个 `@Mod` 构造器**第一条语句**，`synchronized`——FML 的 mod 构造**并行**派发），创造页由每层 `LayerCreativeTab.registerAll(...)` 自持。**根自己还是一个 mod：mod id `coe_integration`**。
+- **工程结构（P7b 后）**：五个 Gradle 子工程 = `core`（JarJar 嵌套共享库，**不是 mod**）、`coe`（mod id `createoreexpansion`）、`cews`（`cews`）、`transmutation`（`transmutation`）、`all-neoforge`（0 文件占位）；分层细节见 `markdown_output/模块拆分进度与决策链.md` §2.6。**根 `src/main/java` 只剩 7 个 dev-only 文件**；共享接线由 core 的幂等入口 `LayerBootstrap#ensureAttached` 承担（每个 `@Mod` 构造器**第一条语句**，`synchronized`——FML 的 mod 构造**并行**派发）。**根自己还是一个 mod：mod id `coe_integration`**。
 - 构建与验证流程（本工程一贯用法）：
   1. `.\gradlew.bat compileJava`
   2. 改动语言/资源时：`.\gradlew.bat runData`（同时兼作 Bootstrap / mixin 冒烟测试）
   3. `.\gradlew.bat processResources jar --rerun-tasks`
   4. 校验 `build\libs\createoreexpansion-1.0.0.jar` 的时间与大小，再用 `dsh_im_return_file` 交付给用户
+- **测试启动项（dev，按模块组合）**：`runCoeOnly` / `runCoeCews` —— `loadedMods` 收窄本次加载的本模组 mod 文件，各自独立 gameDir `build/run-*`；⚠ **必须含 `coe_integration`**（dev 里 `core` 由它携带，去掉即 NoClassDefFoundError）。加组合照抄 `build.gradle` 的 W13 段。
 - 崩溃排查：`run/crash-reports/*.txt`、`run/logs/latest.log`
 - 可选依赖（Jade / JEI / CC&A / Create Optical / Vintage Improvements / Aeronautics / Sable）一律通过 `compat/*` 层的 `ModList.isLoaded` + 反射隔离，**绝不在 `content` 包直接 import 可选模组类**。
 
@@ -171,7 +172,7 @@ git status --short                                          # git add 之后再�
 - **现行边界（W6-c/W9 之后）**：**第一层 COE** = 矿物/宝石/工具/技能 + **波引擎**（`content/charger/{wave,craft,entity,payload}/**`、`content/wave/api/**`、`content/energyfield/**`）+ **三台应力充能器** + **三种机壳** + **嬗化全部**；**第二层 CEWS** = **除充能器以外的波机器**（差波器 / 调级器 / 波速调节器 / 变器 / 场控制器 / 查询仪）。**依赖方向是唯一判据**：第一层需要的必须住第一层；靠窄契约反向补出来的全部撤掉了。
 - **创造页：全模组只剩一个（2026-09-30 用户裁定）**——`createoreexpansion:base_tab` = **一页 + 三条分区横幅**（矿物/机械/装备）。**CEWS 的 `energy_wave_study` 页与其搬运逻辑 `EnergyWaveStudyTab` 已删**；该层物品改由 `CewsRegistrate#defaultCreativeTab(CoeCreativeTabs.BASE_TAB.key())` 直接进本页（12 台波机器落**机械**分区）。**加减内容只改两处**：注册点 + `CoeCreativeSections` 的判据族。⚠ 横幅的坑（`accept(EMPTY)` 抛异常 / 图集只扫 `gui/sprites/` / 自适应整行空）→ `docs/共享经验-盔甲与材料集/08-…md` §6；关卡 `tools/check-creative-sections.ps1`。
 - **第三层 `transmutation` 是空壳**（用户 2026-09-28 裁定）：mod 已注册（对 `createoreexpansion` required），**内容全部并入第一层**；**「善化」模块单独只属第一层**，善化系列的新加工配方（含今后的扩展）归第三层——**第三层只是对第一层「善化」的扩展**。空壳仍必须调 `LayerBootstrap.ensureAttached(modBus)`（构造器第一条语句）。
-- **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可分家），否则所有 id 全变、老存档报废；**配置键、语言键、数据包路径同理不许改**。英文名 `Create: Energy Wave Studies`（缩写不变），id 一律 `energy_wave_study`。
+- **拆包红线**：注册命名空间必须保持 `createoreexpansion`（mod id 可分家），否则所有 id 全变、老存档报废；**配置键、语言键、数据包路径同理不许改**。英文名 `Create: Energy Wave Studies`（缩写不变）。
 - 耦合点与方案 → `markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md`；**拆包后的方向判据与六次「全绿但坏掉」→ `markdown_output/分层重构（依赖方向重排）复盘.md`**。
 
 **第一层：矿物拓展（COE）—— 已落地**：`:coe` 就是它（mod id 仍是 `createoreexpansion`，它就是"本体"）。**依赖方向是唯一判据**：谁需要它，它就必须住在谁那里；CEWS 与 transmutation 都对它 required，反向禁止。

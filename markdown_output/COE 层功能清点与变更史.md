@@ -285,3 +285,28 @@ TRANSMUTING → LIGHTNING → LIGHTNING_BLOCK → GRINDING → DISMANTLING → C
 ---
 
 - （待追加）
+
+### 6.6 测试启动项：按模块组合跑（2026-09-30，用户要求）
+
+> 目的：日常测试时不必每次打发布 jar，直接按组合起游戏。
+> 「以后如果有新的，还要往上加」——加组合照抄 `build.gradle` 的 W13 段即可。
+
+- 新增两个 **dev 形态**启动项：`runCoeOnly`（只 COE）/ `runCoeCews`（COE + CEWS）。
+  实现方式 = MDG 的 `RunModel#loadedMods`（`SetProperty<ModModel>`，**不是 mod id 字符串**；
+  已用 `javap` 核实签名）设成子集 ⇒ 只有这几个条目进 `-Dfml.modFolders`。
+  各自独立 gameDir（`build/run-coe-only` / `build/run-coe-cews`），世界/配置/日志互不干扰。
+- **⚠ 必须含 `coe_integration`**：dev 里共享库 `core` 的 classes/resources 由根工程那个 mod 文件
+  携带（`build.gradle` 的 `mods { "coe_integration" { sourceSet(project(':core').sourceSets.main) } }`），
+  而生产形态里 core 是 JarJar 嵌在 `coe.jar` 内 —— 所以"只跑 COE"在 dev 里**没有逐字对应物**，
+  等价组合 = `coe_integration + coe`。去掉它 ⇒ core 的类不在 mod 路径上 ⇒ 启动即 `NoClassDefFoundError`。
+  （第一版就写错了，已修，并在 build.gradle 与 AGENTS 都留了醒目警告。）
+- **验证方式（不需要启动游戏）**：`createCoeOnlyLaunchScript` / `createCoeCewsLaunchScript`
+  生成 `build/moddev/runCoe*.cmd`，里面含完整 `-Dfml.modFolders`：
+  实测 `runCoeOnly` = 组名 `coe_integration` + `coe`（6 个目录）；
+  `runCoeCews` = `coe_integration` + `cews` + `coe`（8 个目录）—— 都不含 `transmutation` ✅
+- 与 `publishedServer`/`publishedClient` 的分工：后者是**发布形态**（不绑 source set、只从
+  `<gameDir>/mods` 加载 jar，跑前要 `tools/prepare-run-published.ps1`），验的是真发布件。
+
+---
+
+- （待追加）
