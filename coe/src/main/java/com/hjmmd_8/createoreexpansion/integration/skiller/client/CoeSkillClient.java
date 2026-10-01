@@ -86,7 +86,13 @@ public final class CoeSkillClient {
         SkillsComponent current = SkillItemStack.of(player.getMainHandItem()).getSkillsHolder();
 
         if (!ClientSkillCache.isEnable()) {
-            ClientSkillCache.enable(minecraft, player);
+            // ⚠ 2026-10-01 实测根因（字节码实证）：`ClientSkillCache.enable(Player)` 在**未启用**时是
+            // **空操作**（`if (enable) refresh(); else return;`）—— 它只负责"已启用时刷新"，
+            // 真正的启用开关只有 `handleSyncRequest(true)` 会打开（它同时收集技能组件并把组件回传服务端）。
+            // 而内核只在"服务端收到按键包"时才发同步请求 ⇒ **只有护甲带技能**的玩家永远等不到那一刻：
+            // 客户端组件恒为空 ⇒ HUD 显示"暂无套装技能"，槽位 3/4/5 也永不轮询（技能根本按不出来）。
+            // 这里主动做一次本地握手（与服务端请求时走的是同一段代码，安全）。
+            ClientSkillCache.handleSyncRequest(true);
             lastSkills = current;
             return;
         }
