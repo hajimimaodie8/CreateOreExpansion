@@ -7,6 +7,7 @@ import java.util.Map;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorCooldownClient;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.tooltip.SkillsTooltipHandler;
@@ -204,7 +205,7 @@ public final class EquipmentSkillHud {
             List<net.minecraft.resources.ResourceLocation> skillIds = ArmorSkillProvider.skillIdsOf(active);
             if (index < skillIds.size()) {
                 net.minecraft.resources.ResourceLocation skillId = skillIds.get(index);
-                int cooldownSeconds = (ArmorSkillRuntime.cooldownLeft(player, skillId.getPath()) + 19) / 20;
+                int cooldownSeconds = ArmorCooldownClient.remainingSeconds(skillId.getPath());
                 if (cooldownSeconds > 0) {
                     lines.add(new Line(Component.translatable(COOLDOWN_LINE_KEY,
                         Component.translatable("skill." + skillId.getNamespace() + "." + skillId.getPath()),

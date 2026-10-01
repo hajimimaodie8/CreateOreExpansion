@@ -374,6 +374,11 @@ public final class ArmorSkillRuntime {
         }
         player.getPersistentData().putLong(COOLDOWN_PREFIX + skillId,
             player.level().getGameTime() + seconds * 20L);
+        // 同步给客户端（持久数据不同步 ⇒ HUD 读不到冷却；用户 2026-10-01 报"HUD 那行没被替换"）
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer,
+                new EquipCooldownPayload(skillId, seconds));
+        }
     }
 
     /**

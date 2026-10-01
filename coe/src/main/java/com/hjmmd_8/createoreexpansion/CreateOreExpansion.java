@@ -229,6 +229,8 @@ public class CreateOreExpansion {
 
         // 技能设置开关（"创造模式释放技能是否消耗能量"）的 C2S/S2C 包：服务端权威 + 存进存档
         modEventBus.addListener(com.hjmmd_8.createoreexpansion.integration.skiller.SkillSettingsPayload::registerPayloads);
+        // 装备技能冷却同步（用户 2026-10-01）：服务端起冷却时通知客户端，HUD 才能显示剩余秒数
+        modEventBus.addListener(com.hjmmd_8.createoreexpansion.content.equipment.armor.EquipCooldownPayload::registerPayloads);
         // W6-c：能量场（加速/偏转/赋能）同步载荷的挂载点从 CewsMod 搬到这里 —— 载荷类
         // EnergyFieldSyncPayload 随能量场子系统（content.energyfield 包）进了 :coe，
         // 而 check-module-selfsufficiency 的 D3 要求"模块只挂载属于自己模块的 payload"。
