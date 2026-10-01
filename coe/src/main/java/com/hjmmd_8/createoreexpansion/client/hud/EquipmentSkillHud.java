@@ -88,9 +88,9 @@ public final class EquipmentSkillHud {
 
     /** 长按实时预览行（已按住多少秒 / 该级上限多少秒 → 预计扣多少 / 满额多少）。 */
     private static final String HOLD_PREVIEW_KEY = "createoreexpansion.hud.equipment.hold_preview";
-    /** 成套生效行（套名 + 等级）。 */
+    /** 成套生效行（<b>只有套名</b>，不带等级 —— 用户 2026-10-01 否掉"整体 LV"）。 */
     private static final String SET_ACTIVE_KEY = "createoreexpansion.hud.equipment.set_active";
-    /** 散构聚能补齐行（套名 + 等级）。 */
+    /** 散构聚能补齐行（<b>只有套名</b>；等级逐条列在技能行上）。 */
     private static final String SET_BY_ENCHANT_KEY = "createoreexpansion.hud.equipment.set_by_enchant";
     /** 穿了本模组护甲但不成套。 */
     private static final String SET_INCOMPLETE_KEY = "createoreexpansion.hud.equipment.set_incomplete";
@@ -141,16 +141,15 @@ public final class EquipmentSkillHud {
 
         ArmorSet worn = ArmorSet.wornSet(player);
         if (worn != null) {
-            // 等级 = **整体技能等级**（逐件算完取最大，见 ArmorSkillRuntime#effectiveLevel），
-            // 用罗马数字显示（用户 2026-10-01："技能等级为 1（注意，1 是罗马数字 I）"）
-            lines.add(new Line(Component.translatable(SET_ACTIVE_KEY, wornName(worn),
-                roman(ArmorSkillRuntime.effectiveLevel(player, worn))), COLOR_ACTIVE));
+            // 用户 2026-10-01 明确否掉"整体 LV1"的写法：这一行**只报套名**，
+            // 等级逐条列在技能行上（每条技能行有自己的等级与等级色，见 skillLines）。
+            lines.add(new Line(Component.translatable(SET_ACTIVE_KEY, wornName(worn)), COLOR_ACTIVE));
         } else {
-            // 严格全套之外还有一条：3 件同套 + 散构聚能补齐（生效等级与全套相同）
+            // 严格全套之外还有一条：3 件同套 + 散构聚能补齐（逐技能等级与全套同一取值路径）
             ArmorSet assembled = ArmorSet.effectiveSet(player);
             if (assembled != null) {
-                lines.add(new Line(Component.translatable(SET_BY_ENCHANT_KEY, wornName(assembled),
-                    roman(ArmorSkillRuntime.effectiveLevel(player, assembled))), COLOR_ACTIVE));
+                lines.add(new Line(Component.translatable(SET_BY_ENCHANT_KEY, wornName(assembled)),
+                    COLOR_ACTIVE));
             } else {
                 lines.add(new Line(Component.translatable(
                     ArmorSet.wearsAnyOurArmor(player) ? SET_INCOMPLETE_KEY : SET_NONE_KEY), COLOR_INACTIVE));
@@ -181,13 +180,17 @@ public final class EquipmentSkillHud {
         if (active == null) {
             return lines;
         }
-        int level = ArmorSkillRuntime.effectiveLevel(player, active);
+        // 技能清单与等级都是**逐技能**的（用户 2026-10-01 否掉"整体一个等级"）
+        List<net.minecraft.resources.ResourceLocation> skillIds = ArmorSkillProvider.skillIdsOf(active);
         for (int index = 0; index < ArmorSkillProvider.SLOT_COUNT; index++) {
             int slot = ArmorSkillProvider.SLOT_BASE + index;
             int held = CoeSkillClient.holdTicksOf(slot);
             if (held <= 0) {
                 continue;
             }
+            net.minecraft.resources.ResourceLocation skillId =
+                index < skillIds.size() ? skillIds.get(index) : null;
+            int level = skillId == null ? 0 : ArmorSkillRuntime.levelOf(player, skillId.getPath());
             // 每个槽位有自己的数值源：槽位 1 = 虚衡坠护、槽位 2 = 蓄能疾骋（别拿一套配置套所有槽位）
             int holdSeconds;
             int holdTotalCost;
@@ -202,9 +205,7 @@ public final class EquipmentSkillHud {
             }
             // 冷却中：**替换掉"按住多少秒 / 预计扣多少"那一行**，改成括号里的冷却说明
             //（用户 2026-10-01 的原话：不要覆盖技能行，把预估算那行换成"（技能X 冷却中：还有 N 秒）"）。
-            List<net.minecraft.resources.ResourceLocation> skillIds = ArmorSkillProvider.skillIdsOf(active);
-            if (index < skillIds.size()) {
-                net.minecraft.resources.ResourceLocation skillId = skillIds.get(index);
+            if (skillId != null) {
                 int cooldownSeconds = ArmorCooldownClient.remainingSeconds(skillId.getPath());
                 if (cooldownSeconds > 0) {
                     lines.add(new Line(Component.translatable(COOLDOWN_LINE_KEY,
@@ -236,7 +237,7 @@ public final class EquipmentSkillHud {
     }
 
     /**
-     * 装备段每个槽位一行：技能序号 + 技能名 + 按键。
+     * 装备段每个槽位一行：技能序号 + 技能名 + 按键，<b>每条行用该技能自己的等级色</b>。
      *
      * <p>槽位号来自内核在客户端收集到的组件（{@link ClientSkillCache#skills}）；
      * 名字走 {@link ItemSkill#getTranslateKey()}（与技能 tooltip 同一条语言键）。</p>
@@ -248,10 +249,6 @@ public final class EquipmentSkillHud {
             lines.add(new Line(Component.translatable(NO_SKILL_KEY), COLOR_INACTIVE));
             return lines;
         }
-        // 等级配色与工具 tooltip 共用一处（用户 2026-10-01："装备栏 2 级绿、3 级蓝，工具里已经这么写了"）。
-        // 装备技能等级是**套级**的（逐件算完取最大），所以整段用同一个等级色。
-        int setLevel = ArmorSkillRuntime.effectiveLevel(player, activeSet);
-        int levelColor = SkillsTooltipHandler.levelColor(setLevel);
         // 技能清单直接读 ArmorSkillProvider（**唯一真源**）：不依赖内核技能缓存是否就绪，
         // 因此"冷却中"这类状态也一定显示得出来（用户 2026-10-01："干嘛不把冷却时间写在上面？我好知道"）。
         List<net.minecraft.resources.ResourceLocation> ids = ArmorSkillProvider.skillIdsOf(activeSet);
@@ -260,10 +257,17 @@ public final class EquipmentSkillHud {
             Component name = Component.translatable("skill." + id.getNamespace() + "." + id.getPath());
             AllKeys key = CoeSkillClient.skillKeyForEquipmentSlot(ArmorSkillProvider.SLOT_BASE + index);
             Component keyName = key == null ? Component.empty() : key.getKeybind().getTranslatedKeyMessage();
+            // 等级**逐技能**取（用户 2026-10-01 否掉"整套一个等级"的整体 LV 写法）；
+            // 配色与工具 tooltip 共用一处（2 级绿、3 级蓝），不在这里另写一套色。
+            int level = ArmorSkillRuntime.levelOf(player, id.getPath());
+            int levelColor = SkillsTooltipHandler.levelColor(level);
+            // 规格 §0.2：**每条技能行都要带自己的罗马数字等级**（不只是颜色）。
+            // 罗马数字直接挂在技能名后面，因此**不改** skill_line 语言键（少一条 lang diff）。
+            Component shown = level > 0 ? name.copy().append(" " + roman(level)) : name;
             // 技能行**保持原样**（用户 2026-10-01：不要把冷却硬塞进这一行覆盖掉它）；
             // 冷却另起一行、用括号表示，见 holdPreviewLines。
             lines.add(new Line(Component.translatable(SKILL_LINE_KEY,
-                index + 1, name, keyName), levelColor));
+                index + 1, shown, keyName), levelColor));
         }
         if (lines.isEmpty()) {
             lines.add(new Line(Component.translatable(NO_SKILL_KEY), COLOR_INACTIVE));

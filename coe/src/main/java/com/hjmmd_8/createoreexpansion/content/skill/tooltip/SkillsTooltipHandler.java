@@ -97,8 +97,8 @@ public class SkillsTooltipHandler {
     /**
      * 技能行（<b>给装备 tooltip 复用</b>）：{@code   [按键] 技能名 罗马数字}，整行颜色按等级。
      *
-     * <p>装备技能的等级是<b>套级</b>的（逐件算完取最大，见 {@code ArmorSkillRuntime#effectiveLevel}），
-     * 所以等级由调用方传入，不在这里算。</p>
+     * <p>装备技能的等级<b>逐技能</b>求值（每条技能行自己的基准 + 技艺提升 − 记忆回溯，见
+     * {@code ArmorSkillRuntime#levelOf}），所以等级由调用方传入，不在这里算。</p>
      */
     public static Component skillLine(Component key, Component name, int level) {
         return Component.literal("  [")

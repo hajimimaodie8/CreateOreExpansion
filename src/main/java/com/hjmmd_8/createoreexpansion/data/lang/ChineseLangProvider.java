@@ -227,8 +227,9 @@ public class ChineseLangProvider extends LanguageProvider {
         // ========== 装备技能提示层（按住装备修饰键时显示在快捷栏上方） ==========
         add("createoreexpansion.hud.equipment.hold_preview", "按住 %ss / %ss → 预计扣 %s（满额 %s）");
         add("createoreexpansion.hud.equipment.title", "装备技能（按住 %s）");
-        add("createoreexpansion.hud.equipment.set_active", "已佩戴%s套 · 技能等级 %s");
-        add("createoreexpansion.hud.equipment.set_by_enchant", "已佩戴%s套（散构聚能补齐）· 技能等级 %s");
+        // 套名行只报套名（用户 2026-10-01 否掉"整体 LV1"的写法）；等级逐条列在技能行上
+        add("createoreexpansion.hud.equipment.set_active", "已佩戴%s套");
+        add("createoreexpansion.hud.equipment.set_by_enchant", "已佩戴%s套（散构聚能补齐）");
         add("createoreexpansion.hud.equipment.set_incomplete", "未成套 · 需同套四件（散构聚能可补一件）");
         add("createoreexpansion.hud.equipment.set_none", "未穿戴本模组护甲");
         add("createoreexpansion.hud.equipment.no_skill", "暂无套装技能");

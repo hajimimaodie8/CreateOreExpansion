@@ -26,10 +26,12 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
  * 技能行也复用 {@link SkillsTooltipHandler#skillLine(Component, Component, int)}。</p>
  *
  * <h2>等级从哪来</h2>
- * <p>装备技能等级是<b>套级</b>的（四件逐件算完取最大值，见
- * {@code ArmorSkillRuntime#effectiveLevel}）：拿在手上看某一件的 tooltip 时，
- * 显示的是<b>穿上之后整套生效</b>的那个等级。创造页搜索栏里没有玩家上下文
- * （{@code event.getEntity()} 为 null）⇒ 退回该套的基准等级。</p>
+ * <p>装备技能等级是<b>逐技能</b>的（规格 §0.1/§0.2）：每个技能有自己的基准等级
+ * （{@link ArmorSkillLevels}），对每个技能逐件算 {@code 基准 + 技艺提升 − 记忆回溯} 取最大值
+ * （{@code ArmorSkillRuntime#effectiveLevel}）；这里对<b>每一条技能行</b>各自问一次
+ * {@code ArmorSkillRuntime#levelOf(Player, String)}，所以两行可能显示不同的罗马数字与不同的颜色。
+ * 拿在手上看某一件的 tooltip 时，显示的是<b>穿上之后整套生效</b>的那个等级。创造页搜索栏里没有
+ * 玩家上下文（{@code event.getEntity()} 为 null）⇒ 只留提示行，不猜等级。</p>
  *
  * @since 1.0.0
  */
@@ -68,13 +70,14 @@ public final class ArmorSkillTooltipHandler {
             // 创造页搜索栏没有玩家上下文：只留提示行，不猜等级（避免显示成"0 级橙色"这种怪东西）
             return index;
         }
-        int level = ArmorSkillRuntime.effectiveLevel(player, set);
         List<ResourceLocation> ids = ArmorSkillProvider.skillIdsOf(set);
         for (int slotIndex = 0; slotIndex < ids.size(); slotIndex++) {
             ResourceLocation id = ids.get(slotIndex);
             AllKeys key = CoeSkillClient.skillKeyForEquipmentSlot(ArmorSkillProvider.SLOT_BASE + slotIndex);
             Component keyName = key == null ? Component.empty() : key.getKeybind().getTranslatedKeyMessage();
             Component name = Component.translatable("skill." + id.getNamespace() + "." + id.getPath());
+            // **逐技能**取等级：每条技能行用自己的等级（与 HUD 走同一个入口 ArmorSkillRuntime#levelOf）
+            int level = ArmorSkillRuntime.levelOf(player, id.getPath());
             tip.add(index++, SkillsTooltipHandler.skillLine(keyName, name, level));
         }
         return index;

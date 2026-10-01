@@ -68,6 +68,32 @@ public final class ArmorSkillRuntime {
     public static final net.minecraft.resources.ResourceLocation CHARGE_DASH_ID =
         com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(CHARGE_DASH);
 
+    /**
+     * 绝境守护（宝石套槽位 1，基准等级 1 —— 见 {@link ArmorSkillLevels}）。
+     *
+     * <p><b>本轮（规格 §8 第 1 层）只登记 id 与基准等级</b>：配置类（概率 50/60/70、长按
+     * 15/10/5 秒、不死图腾 buff）、被动触发与主动分段都在<b>第 2 层</b>。因此它现在还
+     * <b>不在</b> {@link ArmorSkillProvider#skillIdsOf(ArmorSet)}、不在内核注册表、也不在
+     * {@code AllSkills} —— 那是第 2 层的事，现在加进去会让"按住 Alt+R 有反应但什么也不发生"。</p>
+     */
+    public static final String LAST_STAND = "last_stand";
+
+    /** 绝境守护的技能 id（{@code createoreexpansion:last_stand}）—— 与基准等级表共用的唯一真源。 */
+    public static final net.minecraft.resources.ResourceLocation LAST_STAND_ID =
+        com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(LAST_STAND);
+
+    /**
+     * 临域充力（宝石套槽位 2，基准等级 2 —— 见 {@link ArmorSkillLevels}）。
+     *
+     * <p><b>本轮只登记 id 与基准等级</b>：应力注入器、手摇曲柄判定、环绕粒子都在<b>第 3 层</b>，
+     * 同样不注册内核、不进 {@code AllSkills}。</p>
+     */
+    public static final String FIELD_CHARGE = "field_charge";
+
+    /** 临域充力的技能 id（{@code createoreexpansion:field_charge}）。 */
+    public static final net.minecraft.resources.ResourceLocation FIELD_CHARGE_ID =
+        com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(FIELD_CHARGE);
+
     /** 玩家持久数据里的冷却键前缀（后接技能 id）。 */
     private static final String COOLDOWN_PREFIX = "createoreexpansion:equip_cd_";
 
@@ -198,6 +224,9 @@ public final class ArmorSkillRuntime {
     /**
      * 玩家当前生效的<b>某技能等级</b>（该技能必须由当前生效的那一套提供）。
      *
+     * <p><b>HUD / 护甲 tooltip / 其它调用点的唯一公开入口</b>：等级是<b>逐技能</b>的
+     * （规格 §0.1/§0.2），所以每一条技能行都问一次本方法，不要拿某一个技能的等级去涂所有行。</p>
+     *
      * @return 1~3；未生效 / 该套没有这个技能 ⇒ 0
      */
     public static int levelOf(Player player, String skillId) {
@@ -207,7 +236,7 @@ public final class ArmorSkillRuntime {
         }
         for (int index = 0; index < ArmorSkillProvider.SLOT_COUNT; index++) {
             if (skillId.equals(skillId(set, index))) {
-                return effectiveLevel(player, set);
+                return effectiveLevel(player, set, skillId);
             }
         }
         return 0;
@@ -247,7 +276,7 @@ public final class ArmorSkillRuntime {
             return;
         }
         if (skillId.equals(FALL_GUARD)) {
-            FallGuardConfigs.Config config = FallGuardConfigs.config(effectiveLevel(player, set));
+            FallGuardConfigs.Config config = FallGuardConfigs.config(effectiveLevel(player, set, skillId));
             int cost = holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
             // 扣款走"四件平摊、全有或全无"
             ArmorEnergy.consume(player, cost);
@@ -257,7 +286,7 @@ public final class ArmorSkillRuntime {
             // 蓄能疾骋：**迅捷在按住期间就已经逐段生效**（用户 2026-10-01 修正：
             // "按住 R 之后必须按完才有疾跑 buff，我想让它一边按一边产生"）。
             // 因此松手只结算能量与冷却，**不再补发效果** —— 否则松手等于白送一整段时长。
-            ChargeDashConfigs.Config config = ChargeDashConfigs.config(effectiveLevel(player, set));
+            ChargeDashConfigs.Config config = ChargeDashConfigs.config(effectiveLevel(player, set, skillId));
             ArmorEnergy.consume(player, holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost()));
             startCooldown(player, skillId, config.cooldownSeconds());
         }
@@ -276,7 +305,8 @@ public final class ArmorSkillRuntime {
      * 那等于无限续杯。</p>
      */
     private static void applyChargeDash(ServerPlayer player, ArmorSet set, int heldTicks) {
-        ChargeDashConfigs.Config config = ChargeDashConfigs.config(effectiveLevel(player, set));
+        ChargeDashConfigs.Config config =
+            ChargeDashConfigs.config(effectiveLevel(player, set, CHARGE_DASH));
         int segment = ChargeDashConfigs.segmentOf(heldTicks, config);
         Integer last = DASH_SEGMENT.get(player.getUUID());
         if (last != null && last == segment) {
@@ -319,8 +349,9 @@ public final class ArmorSkillRuntime {
 
     /** 该技能在该等级下、按住这么多 tick 时的累计花费（与松手结算同一个公式）。 */
     private static int accumulatedCost(ServerPlayer player, ArmorSet set, int index, int heldTicks) {
-        int level = effectiveLevel(player, set);
-        if (FALL_GUARD.equals(skillId(set, index))) {
+        String skill = skillId(set, index);
+        int level = effectiveLevel(player, set, skill);
+        if (FALL_GUARD.equals(skill)) {
             FallGuardConfigs.Config config = FallGuardConfigs.config(level);
             return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
         }
@@ -330,8 +361,9 @@ public final class ArmorSkillRuntime {
 
     /** 该技能该起的冷却秒数（给"能量见底自动断停"用，与松手结算同一处取值）。 */
     private static int cooldownSecondsOf(ServerPlayer player, ArmorSet set, int index) {
-        int level = effectiveLevel(player, set);
-        if (FALL_GUARD.equals(skillId(set, index))) {
+        String skill = skillId(set, index);
+        int level = effectiveLevel(player, set, skill);
+        if (FALL_GUARD.equals(skill)) {
             return FallGuardConfigs.config(level).cooldownSeconds();
         }
         return ChargeDashConfigs.config(level).cooldownSeconds();
@@ -382,10 +414,11 @@ public final class ArmorSkillRuntime {
     }
 
     /**
-     * 当前生效的<b>整体技能等级</b>（用户 2026-10-01 定稿口径）。
+     * <b>某个技能</b>当前生效的等级（用户 2026-10-01 规格 §0.1 定稿口径）。
      *
-     * <p><b>逐件算完再取最大值</b>：每件护甲的等级 = 该套基准等级 + 该件上的技艺提升 − 该件上的记忆回溯；
-     * 整体等级 = 四件里最大的那个（最后钳在 1~3）。</p>
+     * <p><b>逐件算完再取最大值</b>：每件护甲的等级 = <b>该技能自己的基准等级</b>
+     * （{@link ArmorSkillLevels#baseLevelOf}）+ 该件上的技艺提升 − 该件上的记忆回溯；
+     * 等级 = 四件里最大的那个（最后钳在 1~3）。</p>
      *
      * <p><b>为什么不是"提升取最大、回溯取最大"</b>（我第一版那样写是错的）：</p>
      * <pre>
@@ -395,15 +428,27 @@ public final class ArmorSkillRuntime {
      * </pre>
      * <p>用户原话：「记忆重塑和记忆提升这两个附魔针对于套装来说，整体技能的等级，
      * 取决于所有套装中相应增或减的技能等级的最大值。」</p>
+     *
+     * <p><b>与旧版的唯一区别</b>：基准不再取"整套一个值"（{@code set.wornLevel}），而是
+     * <b>逐技能</b>问 {@link ArmorSkillLevels}（宝石套 绝境守护 1 / 临域充力 2；翠玉套两条仍为 1）。
+     * 用户 2026-10-01 第二轮明确否掉"整体 LV1"的展示，所以每个技能都要单独算一遍。</p>
+     *
+     * @param player  玩家
+     * @param set     生效的那一套
+     * @param skillId 技能 id 的 path（如 {@code fall_guard}，与 {@link #levelOf} 同形）
+     * @return 1~3；未成套 / 参数为空 ⇒ 0
      */
-    public static int effectiveLevel(Player player, ArmorSet set) {
-        if (player == null || set == null) {
+    public static int effectiveLevel(Player player, ArmorSet set, String skillId) {
+        if (player == null || set == null || skillId == null) {
             return 0;
         }
-        int base = set.wornLevel(player);
-        if (base <= 0) {
+        // 生效门槛：不成套（且没有散构聚能补齐）时，该套一个技能都不给
+        if (set.wornLevel(player) <= 0) {
             return 0;
         }
+        // 该技能自己的基准（有显式覆盖用覆盖，否则回落到该套基准）
+        int base = ArmorSkillLevels.baseLevelOf(set,
+            com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(skillId));
         int best = base;
         for (net.minecraft.world.entity.EquipmentSlot slot : ArmorSet.armorSlots()) {
             var stack = player.getItemBySlot(slot);
@@ -427,7 +472,10 @@ public final class ArmorSkillRuntime {
     /**
      * 该套在第 index 个装备槽位上的技能 id。
      *
-     * <p>本轮只落地翠玉套的槽位 1（{@link #FALL_GUARD}）；其余在各自技能实现时补。</p>
+     * <p>本轮（规格 §8 第 1 层）仍然<b>只有翠玉套</b>的两条在这里：宝石套的
+     * {@link #LAST_STAND} / {@link #FIELD_CHARGE} 只登记了 id 与基准等级
+     * （{@link ArmorSkillLevels}），行为与内核注册是第 2 / 3 层的事；
+     * 现在加进来会让"按住 Alt+技能键"进入长按状态却什么都不发生。</p>
      */
     private static @Nullable String skillId(ArmorSet set, int index) {
         if (set == ArmorSet.JADE) {

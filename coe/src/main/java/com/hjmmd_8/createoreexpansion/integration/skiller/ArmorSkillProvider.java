@@ -130,6 +130,10 @@ public final class ArmorSkillProvider implements SkillProvider {
      * <p>用 {@link ArmorSet#effectiveSet(Player)} 而不是 {@code wornSet}：3 件同套 + 散构聚能
      * 时前者才是"生效的套"（后者为 {@code null}）。</p>
      *
+     * <p>每条绑定的等级是 {@link ArmorSkillRuntime#levelOf(Player, String)} —— <b>逐技能</b>
+     * 求值（规格 §0.1：每个技能有自己的基准等级，再逐件加减取最大）。等级 ≤ 0 的技能
+     * 不产生绑定（不会出现"0 级技能占着槽位"）。</p>
+     *
      * @param player 目标玩家；{@code null}、无生效套、或该套尚无技能时返回 {@link SkillComponent#EMPTY}
      */
     public static SkillComponent componentOf(@Nullable Player player) {
@@ -144,41 +148,51 @@ public final class ArmorSkillProvider implements SkillProvider {
         if (ids == null || ids.isEmpty()) {
             return SkillComponent.EMPTY;
         }
-        // 等级 = 生效等级（套装基准等级 + 护甲上技艺提升 − 记忆回溯，钳 1~3），
-        // 与 ArmorSkillRuntime 的取值同一入口 —— 客户端 HUD 因此显示的就是实际生效等级。
-        int level = ArmorSkillRuntime.effectiveLevel(player, worn);
-        if (level <= 0) {
+        // 等级 = 逐技能生效等级（该技能自己的基准 + 技艺提升 − 记忆回溯，钳 1~3），
+        // 与 HUD / tooltip 同一入口 —— 客户端看到的等级因此就是实际生效等级。
+        List<Integer> levels = new java.util.ArrayList<>(ids.size());
+        boolean any = false;
+        for (ResourceLocation id : ids) {
+            int level = ArmorSkillRuntime.levelOf(player, id.getPath());
+            levels.add(level);
+            any |= level > 0;
+        }
+        if (!any) {
             return SkillComponent.EMPTY;
         }
-        return cached(worn, level, ids);
+        return cached(worn, levels, ids);
     }
 
     /**
-     * 按（套 + 等级）缓存已构造的组件。
+     * 按（套 + 逐技能等级 + 技能条数）缓存已构造的组件。
      *
      * <p>为什么可以缓存：装备技能的<b>执行</b>在 {@link ArmorSkillRuntime}，这些实例只承担
      * "客户端据此轮询槽位 3/4/5 并发按键包"和"HUD 据此列技能名"两件事，不承载每玩家的状态；
      * 而 {@code componentOf} 会被按键轮询高频调用（每 tick），每次都建实例是纯浪费。</p>
      */
-    private static SkillComponent cached(ArmorSet set, int level, List<ResourceLocation> ids) {
-        String key = set.name() + "#" + level + "#" + ids.size();
+    private static SkillComponent cached(ArmorSet set, List<Integer> levels, List<ResourceLocation> ids) {
+        String key = set.name() + "#" + levels + "#" + ids.size();
         SkillComponent hit = CACHE.get(key);
         if (hit != null) {
             return hit;
         }
-        SkillComponent built = build(level, ids);
+        SkillComponent built = build(levels, ids);
         CACHE.put(key, built);
         return built;
     }
 
-    /** 真正构造：照 {@code CoeSkillProvider#toInstance} 的口径建实例（资源 = 护甲能量）。 */
-    private static SkillComponent build(int level, List<ResourceLocation> ids) {
+    /** 真正构造：照 {@code CoeSkillProvider#toInstance} 的口径建实例（资源 = 护甲能量，等级逐技能）。 */
+    private static SkillComponent build(List<Integer> levels, List<ResourceLocation> ids) {
         ResourceLocation factoryId = defaultFactoryId();
         if (factoryId == null) {
             return SkillComponent.EMPTY;
         }
         Map<Integer, SkillBundle> bindings = new LinkedHashMap<>();
         for (int index = 0; index < ids.size() && index < SLOT_COUNT; index++) {
+            int level = index < levels.size() ? levels.get(index) : 0;
+            if (level <= 0) {
+                continue;
+            }
             CompoundTag nbt = new CompoundTag();
             // 资源 = 护甲能量（本模组四套的储能池）；等级写 "level"（内核的键名，与工具一致）
             nbt.putString(RESOURCE_KEY, CoeArmorEnergyResource.ID.toString());
