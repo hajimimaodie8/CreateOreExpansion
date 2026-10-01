@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.armor.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 
@@ -68,11 +69,15 @@ public final class ArmorSkillHandler {
         }
         if (ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.FALL_GUARD)) {
             event.setCanceled(true);
+            // 落地特效（用户 2026-10-01）：按住技能键落地 ⇒ "黄绿交加"加强版
+            ArmorSkillFx.landingImpact(player, true);
             return;
         }
         FallGuardConfigs.Config config = FallGuardConfigs.config(level);
         if (player.getRandom().nextDouble() < config.passiveChance()) {
             event.setCanceled(true);
+            // 基础落地特效（用户 2026-10-01）：被动豁免摔落伤害时也有
+            ArmorSkillFx.landingImpact(player, false);
         }
     }
 

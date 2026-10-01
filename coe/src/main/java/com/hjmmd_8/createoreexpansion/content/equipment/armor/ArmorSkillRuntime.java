@@ -135,6 +135,10 @@ public final class ArmorSkillRuntime {
                     if (CHARGE_DASH.equals(skill)) {
                         // 用户 2026-10-01 修正：**一边按一边产生疾跑 buff**（不是松手才给）
                         applyChargeDash(player, set, ticks);
+                        // 迅捷拖尾（黄→绿渐变，用户 2026-10-01）：隔 2 tick 铺一段，只在水平移动时发
+                        if (ticks % 2 == 0) {
+                            ArmorSkillFx.dashTrail(player);
+                        }
                     }
                     // 用户 2026-10-01 口径：能量消耗到"见底"⇒ 自动断停 + 把能量清空
                     if (set != null && skill != null && isExhausted(player, set, index, ticks)) {
