@@ -149,6 +149,10 @@ public final class SkillerIntegration {
         event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.FALL_GUARD_ID,
                 () -> new ItemSkillRegistration<UseItemSkillContext>(
                         CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));
+        // 蓄能疾骋（翠玉套槽位 2）：执行体同样住在 ArmorSkillRuntime，与虚衡坠护共用同一个无操作壳。
+        event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.CHARGE_DASH_ID,
+                () -> new ItemSkillRegistration<UseItemSkillContext>(
+                        CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));
     }
 
     /**

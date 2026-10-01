@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.integration.skiller.ArmorSkillProvider;
+import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 import com.leaf.skiller.server.PlayerPressedKeys;
 
@@ -56,6 +57,16 @@ public final class ArmorSkillRuntime {
     /** 虚衡坠护的技能 id（{@code createoreexpansion:fall_guard}）—— 注册与 provider 共用的唯一真源。 */
     public static final net.minecraft.resources.ResourceLocation FALL_GUARD_ID =
         com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(FALL_GUARD);
+
+    /**
+     * 蓄能疾骋（翠玉套槽位 2）：长按越久，松手时给的<b>迅捷</b>越强、越久
+     * （用户 2026-10-01 规格：Lv1 三段 20/40/60 · Lv2 四段 · Lv3 五段；数值源 {@code ChargeDashConfigs}）。
+     */
+    public static final String CHARGE_DASH = "charge_dash";
+
+    /** 蓄能疾骋的技能 id（{@code createoreexpansion:charge_dash}）。 */
+    public static final net.minecraft.resources.ResourceLocation CHARGE_DASH_ID =
+        com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(CHARGE_DASH);
 
     /** 玩家持久数据里的冷却键前缀（后接技能 id）。 */
     private static final String COOLDOWN_PREFIX = "createoreexpansion:equip_cd_";
@@ -184,6 +195,19 @@ public final class ArmorSkillRuntime {
             ArmorEnergy.consume(player, cost);
             // 冷却：松手后开始计（记在玩家持久数据里）
             startCooldown(player, skillId, config.cooldownSeconds());
+        } else if (skillId.equals(CHARGE_DASH)) {
+            // 蓄能疾骋：按落到第几段给对应时长的迅捷（段号 1..N ⇒ 迅捷 I..N），再扣能、起冷却。
+            ChargeDashConfigs.Config config = ChargeDashConfigs.config(effectiveLevel(player, set));
+            int cost = holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
+            ArmorEnergy.consume(player, cost);
+            int segment = ChargeDashConfigs.segmentOf(heldTicks, config);
+            int seconds = config.segmentSeconds()[segment - 1];
+            if (seconds > 0) {
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                    net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED,
+                    seconds * 20, segment - 1, false, true, true));
+            }
+            startCooldown(player, skillId, config.cooldownSeconds());
         }
     }
 
@@ -265,8 +289,12 @@ public final class ArmorSkillRuntime {
      * <p>本轮只落地翠玉套的槽位 1（{@link #FALL_GUARD}）；其余在各自技能实现时补。</p>
      */
     private static @Nullable String skillId(ArmorSet set, int index) {
-        if (set == ArmorSet.JADE && index == 0) {
-            return FALL_GUARD;
+        if (set == ArmorSet.JADE) {
+            return switch (index) {
+                case 0 -> FALL_GUARD;
+                case 1 -> CHARGE_DASH;
+                default -> null;
+            };
         }
         return null;
     }

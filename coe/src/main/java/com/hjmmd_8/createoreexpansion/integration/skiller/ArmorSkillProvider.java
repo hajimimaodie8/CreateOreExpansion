@@ -74,7 +74,7 @@ public final class ArmorSkillProvider implements SkillProvider {
      * 逐个落地，<b>落地一个就往这里加一个</b>（加了之后客户端才开始轮询那个槽位、HUD 才列出来）。</p>
      */
     private static final Map<ArmorSet, List<ResourceLocation>> SET_SKILL_IDS = Map.of(
-        ArmorSet.JADE, List.of(ArmorSkillRuntime.FALL_GUARD_ID));
+        ArmorSet.JADE, List.of(ArmorSkillRuntime.FALL_GUARD_ID, ArmorSkillRuntime.CHARGE_DASH_ID));
 
     /**
      * 由 {@code SkillerIntegration} 在注册期各建一个实例（{@code SkillProviders.register}）。

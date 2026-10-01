@@ -8,6 +8,7 @@ import java.util.Map;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
+import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
@@ -179,13 +180,23 @@ public final class EquipmentSkillHud {
             if (held <= 0) {
                 continue;
             }
-            // 目前装备段只有虚衡坠护落地（蓄能疾骋待其耗能量数值）；将来多技能时这里按槽位取各自的 config。
-            FallGuardConfigs.Config config = FallGuardConfigs.config(level);
-            int cost = ArmorSkillRuntime.holdCost(held, config.holdSeconds(), config.holdTotalCost());
+            // 每个槽位有自己的数值源：槽位 1 = 虚衡坠护、槽位 2 = 蓄能疾骋（别拿一套配置套所有槽位）
+            int holdSeconds;
+            int holdTotalCost;
+            if (index == 1) {
+                ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
+                holdSeconds = config.holdSeconds();
+                holdTotalCost = config.holdTotalCost();
+            } else {
+                FallGuardConfigs.Config config = FallGuardConfigs.config(level);
+                holdSeconds = config.holdSeconds();
+                holdTotalCost = config.holdTotalCost();
+            }
+            int cost = ArmorSkillRuntime.holdCost(held, holdSeconds, holdTotalCost);
             lines.add(new Line(Component.translatable(HOLD_PREVIEW_KEY,
                 oneDecimal(held / 20.0F),
-                oneDecimal(config.holdSeconds()),
-                cost, config.holdTotalCost()), COLOR_SKILL));
+                oneDecimal(holdSeconds),
+                cost, holdTotalCost), COLOR_SKILL));
         }
         return lines;
     }

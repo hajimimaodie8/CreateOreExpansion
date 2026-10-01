@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.HoeConfigs;
@@ -142,6 +143,19 @@ public final class AllSkills {
                     // ArmorSkillRuntime（长按语义），数值由 FallGuardConfigs 按等级直接取，
                     // 不经内核的 config 解析链。这里只登记 id / 类型 / 等级上限。
                     .maxLevel(FallGuardConfigs.MAX_LEVEL)
+                    .register();
+
+    /**
+     * 蓄能疾骋（翠玉套 · 槽位 2）：长按蓄力，松手按到达段数给对应时长与等级的<b>迅捷</b>。
+     *
+     * <p>与虚衡坠护同样：执行在 {@code ArmorSkillRuntime}（长按语义）、数值在
+     * {@link ChargeDashConfigs}，这里只登记 id / 类型 / 等级上限，不走内核的 config 解析链。</p>
+     *
+     * <p>⚠ 能量总量（300 / 250 / 200）是<b>我给的默认值</b>；用户确认后只改 {@code ChargeDashConfigs} 一个文件。</p>
+     */
+    public static final RegisteredDataSkill CHARGE_DASH =
+            skill("charge_dash", SkillType.USE_SKILL)
+                    .maxLevel(ChargeDashConfigs.MAX_LEVEL)
                     .register();
 
     // ========== 工具方法 ==========
