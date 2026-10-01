@@ -162,6 +162,7 @@
   "createoreexpansion.hud.equipment.set_incomplete": "Not a full set - wear four matching pieces (Loose Convergence can cover one)",
   "createoreexpansion.hud.equipment.set_none": "No modded armor worn",
   "createoreexpansion.hud.equipment.skill_line": "Skill %s  %s  [%s]",
+  "createoreexpansion.hud.equipment.skill_line_cooldown": "Skill %s  %s  [%s]  cooldown %ss",
   "createoreexpansion.hud.equipment.title": "Equipment Skills (hold %s)",
   "createoreexpansion.jade.charge_negative": "Negative",
   "createoreexpansion.jade.charge_positive": "Positive",

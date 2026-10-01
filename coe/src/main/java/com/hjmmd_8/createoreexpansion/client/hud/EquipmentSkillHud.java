@@ -79,6 +79,9 @@ public final class EquipmentSkillHud {
 
     /** 标题行（含修饰键名）。 */
     private static final String TITLE_KEY = "createoreexpansion.hud.equipment.title";
+    /** 技能行（冷却中）：技能序号 + 技能名 + 按键 + 剩余秒数。 */
+    private static final String SKILL_LINE_COOLDOWN_KEY = "createoreexpansion.hud.equipment.skill_line_cooldown";
+
     /** 长按实时预览行（已按住多少秒 / 该级上限多少秒 → 预计扣多少 / 满额多少）。 */
     private static final String HOLD_PREVIEW_KEY = "createoreexpansion.hud.equipment.hold_preview";
     /** 成套生效行（套名 + 等级）。 */
@@ -223,31 +226,42 @@ public final class EquipmentSkillHud {
      */
     private static List<Line> skillLines(Player player) {
         List<Line> lines = new ArrayList<>();
+        ArmorSet activeSet = ArmorSet.effectiveSet(player);
+        if (activeSet == null) {
+            lines.add(new Line(Component.translatable(NO_SKILL_KEY), COLOR_INACTIVE));
+            return lines;
+        }
         // 等级配色与工具 tooltip 共用一处（用户 2026-10-01："装备栏 2 级绿、3 级蓝，工具里已经这么写了"）。
         // 装备技能等级是**套级**的（逐件算完取最大），所以整段用同一个等级色。
-        ArmorSet activeSet = ArmorSet.effectiveSet(player);
-        int setLevel = activeSet == null ? 1 : ArmorSkillRuntime.effectiveLevel(player, activeSet);
+        int setLevel = ArmorSkillRuntime.effectiveLevel(player, activeSet);
         int levelColor = SkillsTooltipHandler.levelColor(setLevel);
-        SkillComponent component = ClientSkillCache.skills;
-        Map<Integer, SkillBundle> bindings = component == null ? Map.of() : component.bindings();
-        for (int index = 0; index < ArmorSkillProvider.SLOT_COUNT; index++) {
-            SkillBundle bundle = bindings.get(ArmorSkillProvider.SLOT_BASE + index);
-            if (bundle == null) {
-                continue;
-            }
-            Component name = skillName(bundle);
-            if (name == null) {
-                continue;
-            }
+        // 技能清单直接读 ArmorSkillProvider（**唯一真源**）：不依赖内核技能缓存是否就绪，
+        // 因此"冷却中"这类状态也一定显示得出来（用户 2026-10-01："干嘛不把冷却时间写在上面？我好知道"）。
+        List<net.minecraft.resources.ResourceLocation> ids = ArmorSkillProvider.skillIdsOf(activeSet);
+        for (int index = 0; index < ids.size(); index++) {
+            net.minecraft.resources.ResourceLocation id = ids.get(index);
+            Component name = Component.translatable("skill." + id.getNamespace() + "." + id.getPath());
             AllKeys key = CoeSkillClient.skillKeyForEquipmentSlot(ArmorSkillProvider.SLOT_BASE + index);
             Component keyName = key == null ? Component.empty() : key.getKeybind().getTranslatedKeyMessage();
-            lines.add(new Line(Component.translatable(SKILL_LINE_KEY, index + 1, name, keyName), levelColor));
+            String skillId = id.getPath();
+            int cooldownSeconds = (ArmorSkillRuntime.cooldownLeft(player, skillId) + 19) / 20;
+            if (cooldownSeconds > 0) {
+                // 冷却中：**必须显示还剩多少秒**（否则玩家只会觉得"按了没反应"）
+                lines.add(new Line(Component.translatable(SKILL_LINE_COOLDOWN_KEY,
+                    index + 1, name, keyName, cooldownSeconds), COLOR_COOLDOWN));
+            } else {
+                lines.add(new Line(Component.translatable(SKILL_LINE_KEY,
+                    index + 1, name, keyName), levelColor));
+            }
         }
         if (lines.isEmpty()) {
             lines.add(new Line(Component.translatable(NO_SKILL_KEY), COLOR_INACTIVE));
         }
         return lines;
     }
+
+    /** 技能行的冷却态颜色（偏暗的红，与"就绪"的等级色区分开）。 */
+    private static final int COLOR_COOLDOWN = 0xFFB06060;
 
     /**
      * 技能包里的显示名。

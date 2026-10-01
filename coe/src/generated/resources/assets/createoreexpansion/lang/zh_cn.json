@@ -166,6 +166,7 @@
   "createoreexpansion.hud.equipment.set_incomplete": "未成套 · 需同套四件（散构聚能可补一件）",
   "createoreexpansion.hud.equipment.set_none": "未穿戴本模组护甲",
   "createoreexpansion.hud.equipment.skill_line": "技能%s  %s  [%s]",
+  "createoreexpansion.hud.equipment.skill_line_cooldown": "技能%s  %s  [%s]  冷却中 %ss",
   "createoreexpansion.hud.equipment.title": "装备技能（按住 %s）",
   "createoreexpansion.jade.charge_negative": "负电荷",
   "createoreexpansion.jade.charge_positive": "正电荷",

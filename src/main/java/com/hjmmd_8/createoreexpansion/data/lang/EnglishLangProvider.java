@@ -336,6 +336,7 @@ public class EnglishLangProvider extends LanguageProvider {
             "Not a full set - wear four matching pieces (Loose Convergence can cover one)");
         add("createoreexpansion.hud.equipment.set_none", "No modded armor worn");
         add("createoreexpansion.hud.equipment.no_skill", "No set skills yet");
+        add("createoreexpansion.hud.equipment.skill_line_cooldown", "Skill %s  %s  [%s]  cooldown %ss");
         add("createoreexpansion.hud.equipment.skill_line", "Skill %s  %s  [%s]");
         add("createoreexpansion.hud.equipment.energy", "Energy %s / %s");
         add("createoreexpansion.tooltip.armor_energy_total", "Set total %s / %s");
