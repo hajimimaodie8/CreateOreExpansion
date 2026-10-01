@@ -135,7 +135,7 @@ public enum ArmorSet {
 
     /**
      * 按<b>材质</b>找套 —— 给"只有材质、还没有 ItemStack"的注册期用
-     * （{@code CoeArmorItems} 要给物品写默认能量组件；{@link #of(ItemStack)} 那时用不了）。
+     * （{@code CoeItems#armor(...)} 要给物品写默认能量组件；{@link #of(ItemStack)} 那时用不了）。
      *
      * @param material 护甲材质；不是本模组四套之一 ⇒ {@code null}
      */

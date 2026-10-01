@@ -3,7 +3,6 @@ package com.hjmmd_8.createoreexpansion.data.lang;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeArmorItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
@@ -276,22 +275,22 @@ public class EnglishLangProvider extends LanguageProvider {
 
         // ========== Four armour sets (4 sets x 4 pieces; added W13, named by the user 2026-09-30) ==========
         // Set names are the user's: Jade (翠玉) / Gem (宝石) / Astral (星界) / Thunder (雷鸣).
-        add(CoeArmorItems.JADE_HELMET.get(), "Jade Helmet");
-        add(CoeArmorItems.JADE_CHESTPLATE.get(), "Jade Chestplate");
-        add(CoeArmorItems.JADE_LEGGINGS.get(), "Jade Leggings");
-        add(CoeArmorItems.JADE_BOOTS.get(), "Jade Boots");
-        add(CoeArmorItems.GEM_HELMET.get(), "Gem Helmet");
-        add(CoeArmorItems.GEM_CHESTPLATE.get(), "Gem Chestplate");
-        add(CoeArmorItems.GEM_LEGGINGS.get(), "Gem Leggings");
-        add(CoeArmorItems.GEM_BOOTS.get(), "Gem Boots");
-        add(CoeArmorItems.ASTRAL_HELMET.get(), "Astral Helmet");
-        add(CoeArmorItems.ASTRAL_CHESTPLATE.get(), "Astral Chestplate");
-        add(CoeArmorItems.ASTRAL_LEGGINGS.get(), "Astral Leggings");
-        add(CoeArmorItems.ASTRAL_BOOTS.get(), "Astral Boots");
-        add(CoeArmorItems.THUNDER_HELMET.get(), "Thunder Helmet");
-        add(CoeArmorItems.THUNDER_CHESTPLATE.get(), "Thunder Chestplate");
-        add(CoeArmorItems.THUNDER_LEGGINGS.get(), "Thunder Leggings");
-        add(CoeArmorItems.THUNDER_BOOTS.get(), "Thunder Boots");
+        add(CoeItems.JADE_HELMET.get(), "Jade Helmet");
+        add(CoeItems.JADE_CHESTPLATE.get(), "Jade Chestplate");
+        add(CoeItems.JADE_LEGGINGS.get(), "Jade Leggings");
+        add(CoeItems.JADE_BOOTS.get(), "Jade Boots");
+        add(CoeItems.GEM_HELMET.get(), "Gem Helmet");
+        add(CoeItems.GEM_CHESTPLATE.get(), "Gem Chestplate");
+        add(CoeItems.GEM_LEGGINGS.get(), "Gem Leggings");
+        add(CoeItems.GEM_BOOTS.get(), "Gem Boots");
+        add(CoeItems.ASTRAL_HELMET.get(), "Astral Helmet");
+        add(CoeItems.ASTRAL_CHESTPLATE.get(), "Astral Chestplate");
+        add(CoeItems.ASTRAL_LEGGINGS.get(), "Astral Leggings");
+        add(CoeItems.ASTRAL_BOOTS.get(), "Astral Boots");
+        add(CoeItems.THUNDER_HELMET.get(), "Thunder Helmet");
+        add(CoeItems.THUNDER_CHESTPLATE.get(), "Thunder Chestplate");
+        add(CoeItems.THUNDER_LEGGINGS.get(), "Thunder Leggings");
+        add(CoeItems.THUNDER_BOOTS.get(), "Thunder Boots");
 
         // ========== Medallion Shift summary ==========
         add("item.createoreexpansion.medallion.hold_shift", "Hold [%1$s] for Summary");

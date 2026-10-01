@@ -24,7 +24,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  * <p><b>这类文件干什么</b>：{@code Registries.ARMOR_MATERIAL} 是<b>原版注册表</b>（不是 Registrate
  * 管的 Item/Block），所以盔甲材质用 {@link DeferredRegister} 注册——与 {@code AllDataComponents} /
  * {@code AllModPotions} / {@code TransmutationEffects} 同一手法。物品本体仍走 {@code CoeRegistrate}
- * （见 {@link CoeArmorItems}）。</p>
+ * （见 {@link CoeItems} —— 2026-10-01 起四套盔甲的 16 件物品也统一声明在那里）。</p>
  *
  * <p><b>接线两处，缺一不可</b>：① 本类静态字段声明材质；② {@link #register(IEventBus)} 由
  * {@code CreateOreExpansion} 构造器调用（与 {@code AllDataComponents.register} 同处，最早一批）；

@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.data.lang;
 
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeArmorItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
@@ -168,22 +167,22 @@ public class ChineseLangProvider extends LanguageProvider {
 
         // ========== 四套盔甲（4 套 × 4 件；W13 新增，用户 2026-09-30 定名）==========
         // 套名由用户指定：翠玉 / 宝石 / 星界 / 雷鸣（不是矿物名，与凝能佩的套装效果口径一致）。
-        add(CoeArmorItems.JADE_HELMET.get(), "翠玉头盔");
-        add(CoeArmorItems.JADE_CHESTPLATE.get(), "翠玉胸甲");
-        add(CoeArmorItems.JADE_LEGGINGS.get(), "翠玉护腿");
-        add(CoeArmorItems.JADE_BOOTS.get(), "翠玉靴子");
-        add(CoeArmorItems.GEM_HELMET.get(), "宝石头盔");
-        add(CoeArmorItems.GEM_CHESTPLATE.get(), "宝石胸甲");
-        add(CoeArmorItems.GEM_LEGGINGS.get(), "宝石护腿");
-        add(CoeArmorItems.GEM_BOOTS.get(), "宝石靴子");
-        add(CoeArmorItems.ASTRAL_HELMET.get(), "星界头盔");
-        add(CoeArmorItems.ASTRAL_CHESTPLATE.get(), "星界胸甲");
-        add(CoeArmorItems.ASTRAL_LEGGINGS.get(), "星界护腿");
-        add(CoeArmorItems.ASTRAL_BOOTS.get(), "星界靴子");
-        add(CoeArmorItems.THUNDER_HELMET.get(), "雷鸣头盔");
-        add(CoeArmorItems.THUNDER_CHESTPLATE.get(), "雷鸣胸甲");
-        add(CoeArmorItems.THUNDER_LEGGINGS.get(), "雷鸣护腿");
-        add(CoeArmorItems.THUNDER_BOOTS.get(), "雷鸣靴子");
+        add(CoeItems.JADE_HELMET.get(), "翠玉头盔");
+        add(CoeItems.JADE_CHESTPLATE.get(), "翠玉胸甲");
+        add(CoeItems.JADE_LEGGINGS.get(), "翠玉护腿");
+        add(CoeItems.JADE_BOOTS.get(), "翠玉靴子");
+        add(CoeItems.GEM_HELMET.get(), "宝石头盔");
+        add(CoeItems.GEM_CHESTPLATE.get(), "宝石胸甲");
+        add(CoeItems.GEM_LEGGINGS.get(), "宝石护腿");
+        add(CoeItems.GEM_BOOTS.get(), "宝石靴子");
+        add(CoeItems.ASTRAL_HELMET.get(), "星界头盔");
+        add(CoeItems.ASTRAL_CHESTPLATE.get(), "星界胸甲");
+        add(CoeItems.ASTRAL_LEGGINGS.get(), "星界护腿");
+        add(CoeItems.ASTRAL_BOOTS.get(), "星界靴子");
+        add(CoeItems.THUNDER_HELMET.get(), "雷鸣头盔");
+        add(CoeItems.THUNDER_CHESTPLATE.get(), "雷鸣胸甲");
+        add(CoeItems.THUNDER_LEGGINGS.get(), "雷鸣护腿");
+        add(CoeItems.THUNDER_BOOTS.get(), "雷鸣靴子");
 
         // ========== 构件与杂项 ==========
         add(CoeItems.LUCKY_DUST.get(), "幸运之尘");
