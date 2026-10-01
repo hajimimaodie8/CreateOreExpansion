@@ -74,6 +74,9 @@ public final class ArmorSkillRuntime {
     /** 服务端长按计数：玩家 UUID → (槽位 → 已按住 tick 数)。 */
     private static final Map<UUID, Map<Integer, Integer>> HOLD_TICKS = new HashMap<>();
 
+    /** 【临时诊断】玩家#槽位 → 上一次读到的按下状态（只在变化时打日志）。 */
+    private static final Map<String, Boolean> DIAG_PRESSED = new HashMap<>();
+
     /** 当前处于"长按生效中"的玩家与技能（虚衡坠护的主动豁免要读它）。 */
     private static final Map<UUID, String> ACTIVE = new HashMap<>();
 
@@ -93,6 +96,20 @@ public final class ArmorSkillRuntime {
         UUID id = player.getUUID();
         ArmorSet set = ArmorSet.effectiveSet(player);
         Map<Integer, Integer> held = HOLD_TICKS.computeIfAbsent(id, k -> new HashMap<>());
+
+        // 【临时诊断，定位"按住 Alt+R 服务端毫无反应"】只在状态变化时打印，不刷屏；定位后删掉。
+        for (int index = 0; index < ArmorSkillProvider.SLOT_COUNT; index++) {
+            int slot = ArmorSkillProvider.SLOT_BASE + index;
+            boolean now = PlayerPressedKeys.isPressed(player, slot);
+            String diagKey = id + "#" + slot;
+            Boolean before = DIAG_PRESSED.get(diagKey);
+            if (before == null || before != now) {
+                DIAG_PRESSED.put(diagKey, now);
+                com.hjmmd_8.createoreexpansion.common.CoeCore.LOGGER.info(
+                    "[装备技能诊断] 槽位={} 服务端读到按下={} 套装={} 技能={} 能量合计={}",
+                    slot, now, set, set == null ? null : skillId(set, index), ArmorEnergy.totalEnergy(player));
+            }
+        }
 
         for (int index = 0; index < ArmorSkillProvider.SLOT_COUNT; index++) {
             int slot = ArmorSkillProvider.SLOT_BASE + index;
