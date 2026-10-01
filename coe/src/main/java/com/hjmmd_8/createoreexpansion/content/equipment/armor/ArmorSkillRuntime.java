@@ -99,22 +99,40 @@ public final class ArmorSkillRuntime {
             boolean pressed = PlayerPressedKeys.isPressed(player, slot);
             Integer previous = held.get(slot);
             if (pressed) {
-                // 开始条件：这一套生效、且这一套在这个槽位真的有技能
+                // 开始条件：这一套生效、这一套在这个槽位真的有技能、冷却已过、还有能量
                 if (previous == null) {
                     if (set == null || !hasSkill(set, index)) {
                         continue;
                     }
-                    if (skillId(set, index).equals(FALL_GUARD) && ArmorEnergy.totalEnergy(player) <= 0) {
-                        continue; // 一分能量都没有：按下去不生效（避免"免了摔落却付不起"）
+                    String skill = skillId(set, index);
+                    // 冷却中按住无效（冷却在松手时起，之前这里漏判 ⇒ 冷却形同虚设）
+                    if (!isReady(player, skill) || ArmorEnergy.totalEnergy(player) <= 0) {
+                        continue;
                     }
                     held.put(slot, 0);
-                    ACTIVE.put(id, skillId(set, index));
+                    ACTIVE.put(id, skill);
                 } else {
-                    held.put(slot, previous + 1);
+                    int ticks = previous + 1;
+                    held.put(slot, ticks);
+                    String skill = skillId(set, index);
+                    if (CHARGE_DASH.equals(skill)) {
+                        // 用户 2026-10-01 修正：**一边按一边产生疾跑 buff**（不是松手才给）
+                        applyChargeDash(player, set, ticks);
+                    }
+                    // 用户 2026-10-01 口径：能量消耗到"见底"⇒ 自动断停 + 把能量清空
+                    if (set != null && skill != null && isExhausted(player, set, index, ticks)) {
+                        held.remove(slot);
+                        ACTIVE.remove(id);
+                        DASH_SEGMENT.remove(id);
+                        ArmorEnergy.consume(player, ArmorEnergy.totalEnergy(player)); // 见底即清空
+                        startCooldown(player, skill, cooldownSecondsOf(player, set, index));
+                        continue;
+                    }
                 }
             } else if (previous != null) {
                 held.remove(slot);
                 ACTIVE.remove(id);
+                DASH_SEGMENT.remove(id);
                 release(player, set, index, previous);
             }
         }
@@ -196,19 +214,68 @@ public final class ArmorSkillRuntime {
             // 冷却：松手后开始计（记在玩家持久数据里）
             startCooldown(player, skillId, config.cooldownSeconds());
         } else if (skillId.equals(CHARGE_DASH)) {
-            // 蓄能疾骋：按落到第几段给对应时长的迅捷（段号 1..N ⇒ 迅捷 I..N），再扣能、起冷却。
+            // 蓄能疾骋：**迅捷在按住期间就已经逐段生效**（用户 2026-10-01 修正：
+            // "按住 R 之后必须按完才有疾跑 buff，我想让它一边按一边产生"）。
+            // 因此松手只结算能量与冷却，**不再补发效果** —— 否则松手等于白送一整段时长。
             ChargeDashConfigs.Config config = ChargeDashConfigs.config(effectiveLevel(player, set));
-            int cost = holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
-            ArmorEnergy.consume(player, cost);
-            int segment = ChargeDashConfigs.segmentOf(heldTicks, config);
-            int seconds = config.segmentSeconds()[segment - 1];
-            if (seconds > 0) {
-                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
-                    net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED,
-                    seconds * 20, segment - 1, false, true, true));
-            }
+            ArmorEnergy.consume(player, holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost()));
             startCooldown(player, skillId, config.cooldownSeconds());
         }
+    }
+
+    /** 蓄能疾骋的"当前段位"（只在段位往上爬时重新施加效果，避免每 tick 重置时长）。 */
+    private static final Map<UUID, Integer> DASH_SEGMENT = new HashMap<>();
+
+    /**
+     * 按住期间施加/升级<b>迅捷</b>（用户口径：一边按一边产生）。
+     *
+     * <p>只在<b>段位变化</b>时重新施加：每 tick 重置时长会让"松手后剩余时间"永远等于整段，
+     * 那等于无限续杯。</p>
+     */
+    private static void applyChargeDash(ServerPlayer player, ArmorSet set, int heldTicks) {
+        ChargeDashConfigs.Config config = ChargeDashConfigs.config(effectiveLevel(player, set));
+        int segment = ChargeDashConfigs.segmentOf(heldTicks, config);
+        Integer last = DASH_SEGMENT.get(player.getUUID());
+        if (last != null && last == segment) {
+            return;
+        }
+        DASH_SEGMENT.put(player.getUUID(), segment);
+        int seconds = config.segmentSeconds()[segment - 1];
+        if (seconds > 0) {
+            player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED,
+                seconds * 20, segment - 1, false, true, true));
+        }
+    }
+
+    /** 该技能在该等级下、按住这么多 tick 时的累计花费（与松手结算同一个公式）。 */
+    private static int accumulatedCost(ServerPlayer player, ArmorSet set, int index, int heldTicks) {
+        int level = effectiveLevel(player, set);
+        if (FALL_GUARD.equals(skillId(set, index))) {
+            FallGuardConfigs.Config config = FallGuardConfigs.config(level);
+            return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
+        }
+        ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
+        return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
+    }
+
+    /** 该技能该起的冷却秒数（给"能量见底自动断停"用，与松手结算同一处取值）。 */
+    private static int cooldownSecondsOf(ServerPlayer player, ArmorSet set, int index) {
+        int level = effectiveLevel(player, set);
+        if (FALL_GUARD.equals(skillId(set, index))) {
+            return FallGuardConfigs.config(level).cooldownSeconds();
+        }
+        return ChargeDashConfigs.config(level).cooldownSeconds();
+    }
+
+    /**
+     * 累计花费是否已经<b>见底</b>（用户 2026-10-01："能量消耗到 100 的时候要自动断停，然后把能量全都清空"）。
+     *
+     * <p>判据 = 累计花费 ≥ 当前可用合计能量（等于 0 也视为见底）。</p>
+     */
+    private static boolean isExhausted(ServerPlayer player, ArmorSet set, int index, int heldTicks) {
+        int available = ArmorEnergy.totalEnergy(player);
+        return available <= 0 || accumulatedCost(player, set, index, heldTicks) >= available;
     }
 
     /**
