@@ -267,6 +267,12 @@ public class ChineseLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.charge_dash", "蓄能疾骋");
         add("skill.createoreexpansion.last_stand", "绝境守护");
         add("skill.createoreexpansion.field_charge", "临域充力");
+        // 临域充力的两条"发动失败"原因（规格 §8 第 3 层：判定不过 / 放不下注入器都不扣能、不进冷却）。
+        add("createoreexpansion.equip_skill.field_charge_no_source", "周围没有可赋能的动力源方块（手摇曲柄）");
+        add("createoreexpansion.equip_skill.field_charge_no_space", "动力源方块旁边没有可放置应力注入器的空位");
+        // 应力注入器（不可获取的内部方块，规格 §4.2）：**只在被赋能时**可能被护目镜/调试看到名字。
+        // 它没有物品形态，所以这个名字永远不会出现在创造页/JEI/搜索里。
+        add(CoeBlocks.STRESS_INJECTOR.get(), "应力注入器（内部）");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");

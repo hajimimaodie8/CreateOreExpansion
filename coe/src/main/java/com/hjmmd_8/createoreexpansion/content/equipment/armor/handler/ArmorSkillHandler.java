@@ -50,6 +50,12 @@ public final class ArmorSkillHandler {
     public static void onServerTick(ServerTickEvent.Post event) {
         for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
             ArmorSkillRuntime.tick(player);
+            // 宝石套 · 临域充力（规格 §8 第 3 层）的会话心跳兜底：长按状态是"按槽位"的，
+            // 而技能 id 按**当前生效的那一套**解析 —— 玩家中途脱甲/换套时这个槽位就不再是
+            // field_charge 了，那条收尾路径也就没人走。这里给每个在线玩家兜一次：
+            // 会话超过 5 tick 没被续期 ⇒ 强制"移除注入器 + 曲柄静止"。
+            // （用户最强调的一条：漏一处退出路径就会留下一个永远在转的曲柄。）
+            com.hjmmd_8.createoreexpansion.content.equipment.armor.field.FieldChargeRuntime.watchdog(player);
         }
     }
 
@@ -102,5 +108,18 @@ public final class ArmorSkillHandler {
     @SubscribeEvent
     public static void onClone(PlayerEvent.Clone event) {
         ArmorSkillRuntime.forget(event.getOriginal());
+    }
+
+    /**
+     * 服务器关闭：把临域充力还活着的会话全部收尾（移除注入器 + 曲柄归零）。
+     *
+     * <p>{@code ServerStoppingEvent} 在存档写盘<b>之前</b>触发 ⇒ 干净关服的存档里不会留下
+     * 孤儿注入器，也不会留下一个 inUse 仍为 10 的曲柄（硬崩溃才走"注入器闲置自愈 +
+     * inUse 自减到 0"那条兜底路径）。</p>
+     */
+    @SubscribeEvent
+    public static void onServerStopping(net.neoforged.neoforge.event.server.ServerStoppingEvent event) {
+        com.hjmmd_8.createoreexpansion.content.equipment.armor.field.FieldChargeRuntime
+            .finishAll(event.getServer());
     }
 }

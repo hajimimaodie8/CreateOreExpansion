@@ -12,6 +12,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.tooltip.SkillsTooltipHandler;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.FieldChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.LastStandConfigs;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
@@ -194,14 +195,18 @@ public final class EquipmentSkillHud {
             int level = skillId == null ? 0 : ArmorSkillRuntime.levelOf(player, skillId.getPath());
             // 每个槽位有自己的数值源，且**按套装分家**（别拿一张配置表套所有槽位/所有套）：
             //   翠玉：槽位 1 = 虚衡坠护、槽位 2 = 蓄能疾骋
-            //   宝石：槽位 1 = 绝境守护；槽位 2 = 临域充力（行为是第 3 层 ⇒ 此刻 0/0，
-            //         不借别的技能的数值来显示，免得预览行报一个不存在的账）
+            //   宝石：槽位 1 = 绝境守护；槽位 2 = 临域充力（规格 §8 第 3 层起有真实数值：
+            //         时长 30/45/60 秒、耗能 100/60/50 点/秒 ⇒ 总量 = 时长 × 每秒）
             int holdSeconds;
             int holdTotalCost;
             if (active == ArmorSet.GEM) {
                 if (index == 1) {
-                    holdSeconds = 0;
-                    holdTotalCost = 0;
+                    FieldChargeConfigs.Config config = FieldChargeConfigs.config(level);
+                    holdSeconds = config.durationSeconds();
+                    // 总量 = 按满整段要花的能量（时长 × 点/秒）。下面的 holdCost 用的就是这个
+                    // 比例式，而 FieldChargeConfigs#costAfter 与它**逐值等价**（推导见该类的注释）
+                    // ⇒ 预览行报的数与真正扣掉的数永远一致。
+                    holdTotalCost = config.totalCost();
                 } else {
                     LastStandConfigs.Config config = LastStandConfigs.config(level);
                     holdSeconds = config.holdSeconds();

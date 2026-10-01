@@ -371,6 +371,13 @@ public class EnglishLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.charge_dash", "Charge Dash");
         add("skill.createoreexpansion.last_stand", "Last Stand");
         add("skill.createoreexpansion.field_charge", "Field Charge");
+        // Field Charge: the two "cannot start" reasons (spec section 8 layer 3: neither costs
+        // energy nor starts a cooldown).  -- no Chinese here on purpose: this is the EN file.
+        add("createoreexpansion.equip_skill.field_charge_no_source", "No energizable stress source nearby");
+        add("createoreexpansion.equip_skill.field_charge_no_space", "No free spot for the stress injector");
+        // Stress Injector (the unobtainable internal block, spec section 4.2). Its name can only
+        // ever be seen through goggles while it is energized; there is no item form at all.
+        add(CoeBlocks.STRESS_INJECTOR.get(), "Stress Injector (internal)");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");

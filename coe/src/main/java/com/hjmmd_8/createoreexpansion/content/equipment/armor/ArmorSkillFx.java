@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.armor;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
@@ -61,6 +62,28 @@ public final class ArmorSkillFx {
     private static final double MIN_STEP = 0.035D;
 
     public static void dashTrail(ServerPlayer player) {
+        trail(player, DASH_TAIL_YELLOW, DASH_HEAD_GREEN);
+    }
+
+    /**
+     * <b>宝石套（蓝 → 红）的拖尾</b> —— 用户 2026-10-01 规格 §0.3：
+     * "第二个技能（临域充力）的拖尾与『加移速那条』**完全一致**（用户：第二个不需要你复效）"。
+     *
+     * <p>因此形态逐字复用 {@link #dashTrail} 的私有实现 {@link #trail}（同样的分段数、同样的
+     * 左右双列、同样的"只在水平移动时发"、同样的亮闪点缀），<b>只换两端色</b>为宝石套的
+     * {@link #GEM_BLUE} → {@link #GEM_RED}（同源于 {@code ArmorEnergyColors.GEM_STOPS}）。</p>
+     */
+    public static void gemTrail(ServerPlayer player) {
+        trail(player, GEM_BLUE, GEM_RED);
+    }
+
+    /**
+     * 拖尾的<b>唯一实现</b>（形态由 {@link #dashTrail} / {@link #gemTrail} 共用，只有颜色不同）。
+     *
+     * @param tailColor 尾端色（越靠后越接近它）
+     * @param headColor 头端色（越靠玩家越接近它）
+     */
+    private static void trail(ServerPlayer player, Vec3 tailColor, Vec3 headColor) {
         if (player == null) {
             return;
         }
@@ -82,9 +105,9 @@ public final class ArmorSkillFx {
         int segments = 5;
         for (int i = 0; i < segments; i++) {
             double t = (double) i / (segments - 1);
-            Vec3 color = DASH_TAIL_YELLOW.lerp(DASH_HEAD_GREEN, t);
+            Vec3 color = tailColor.lerp(headColor, t);
             double back = TRAIL_STEP * (i + 1);
-            // 每个断面：左边一颗、右边一颗（越靠后越黄、越靠前越绿）
+            // 每个断面：左边一颗、右边一颗（越靠后越接近尾端色、越靠前越接近头端色）
             for (int s = -1; s <= 1; s += 2) {
                 level.sendParticles(dust(color, 1.15F),
                     player.getX() - look.x * back + side.x * 0.42D * s,
@@ -149,15 +172,62 @@ public final class ArmorSkillFx {
     /**
      * 宝石套的两个端点色：<b>蓝 → 红</b>。
      *
-     * <p>与宝石套能量条<b>同一对数值</b>（{@code ArmorEnergyColors.GEM_STOPS} 的
-     * {@code 0x55AAFF} / {@code 0xFF4A4A}）—— 用户 2026-10-01："宝石套能量条同色系：
-     * 蓝 {@code 0x55AAFF} → 红 {@code 0xFF4A4A}"。换算成 0~1 三元组后写在这里，
-     * 改色只改这四个常量（{@code 0x55} / 255 = 0.3333…，{@code 0xAA} / 255 = 0.6667…，
-     * {@code 0xFF} = 1.0，{@code 0x4A} / 255 = 0.2902…）。</p>
+     * <p><b>直接从色源取</b>（用户 2026-10-01 第二次补充 + 规格 §8 第 4 层）：宝石套的蓝红
+     * 只有一处定义 —— {@code ArmorEnergyColors.GEM_STOPS} 的 {@code 0x55AAFF} / {@code 0xFF4A4A}
+     * （与宝石套能量条同源）。这里用公开查询 {@link ArmorEnergyColors#stopsOf(ArmorSet)}
+     * 取回来再转成 0~1 三维色，<b>不再抄一份字面量</b>：以后谁改了宝石套的配色，
+     * 技能粒子跟着变（把关卡 {@code check-armor-sets.ps1} 第 14 节也钉住了那对数值）。</p>
      */
-    private static final Vec3 GEM_BLUE = new Vec3(0x55 / 255.0D, 0xAA / 255.0D, 0xFF / 255.0D);
+    private static final java.util.List<java.awt.Color> GEM_SOURCE =
+        ArmorEnergyColors.stopsOf(ArmorSet.GEM);
 
-    private static final Vec3 GEM_RED = new Vec3(0xFF / 255.0D, 0x4A / 255.0D, 0x4A / 255.0D);
+    private static final Vec3 GEM_BLUE = toVec(GEM_SOURCE.get(0));
+
+    private static final Vec3 GEM_RED = toVec(GEM_SOURCE.get(GEM_SOURCE.size() - 1));
+
+    /** {@code java.awt.Color}（0~255）→ 粒子用的 0~1 三维色。 */
+    private static Vec3 toVec(java.awt.Color color) {
+        return new Vec3(color.getRed() / 255.0D, color.getGreen() / 255.0D, color.getBlue() / 255.0D);
+    }
+
+    /** 应力注入器环绕粒子：每圈几颗。 */
+    private static final int RING_POINTS = 14;
+
+    /** 应力注入器环绕粒子：圈半径（格）。 */
+    private static final double RING_RADIUS = 0.80D;
+
+    /**
+     * <b>被赋能的动力源方块周围：蓝 → 红渐变的圈状环绕粒子</b>（规格 §2.1 第 3 条）。
+     *
+     * <p>观感 = <b>绕方块转的两圈</b>：下圈贴方块底部、上圈抬到中高，两圈相位错开 180°、
+     * 半径略小 ⇒ 看着像"能量在方块周围打转"。颜色沿<b>角度</b>从宝石套蓝插值到红
+     * （与能量条的左蓝右红同一对端点色），相位随时间推进 ⇒ 环在转。</p>
+     *
+     * @param level 服务端世界
+     * @param pos   被赋能的动力源方块位置
+     * @param phase 时间相位（调用方给 {@code tickCount × 0.25} 之类的连续值）
+     */
+    public static void fieldChargeRing(ServerLevel level, BlockPos pos, double phase) {
+        if (level == null || pos == null) {
+            return;
+        }
+        double x = pos.getX() + 0.5D;
+        double y = pos.getY();
+        double z = pos.getZ() + 0.5D;
+        for (int i = 0; i < RING_POINTS; i++) {
+            double t = (double) i / RING_POINTS;
+            double angle = Math.PI * 2.0D * t + phase;
+            Vec3 color = GEM_BLUE.lerp(GEM_RED, t);
+            double dx = Math.cos(angle) * RING_RADIUS;
+            double dz = Math.sin(angle) * RING_RADIUS;
+            // 下圈（贴底、细）
+            level.sendParticles(dust(color, 0.85F), x + dx, y + 0.20D, z + dz,
+                1, 0.0D, 0.0D, 0.0D, 0.0D);
+            // 上圈（半高、更亮、相位差 180°、半径略小）
+            level.sendParticles(dust(color, 1.20F), x - dx * 0.72D, y + 0.85D, z - dz * 0.72D,
+                1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
+    }
 
     /** 长按光环每圈几颗（越大越"流动"，太小会看着像静止的点）。 */
     private static final int AURA_POINTS = 14;

@@ -5,9 +5,11 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.integration.skiller.ArmorSkillProvider;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.field.FieldChargeRuntime;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.handler.LastStandHandler;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.FieldChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.LastStandConfigs;
 import com.leaf.skiller.server.PlayerPressedKeys;
 
@@ -164,6 +166,19 @@ public final class ArmorSkillRuntime {
                         notifyBlocked(player, slot, "createoreexpansion.equip_skill.no_energy", 0);
                         continue;
                     }
+                    // 临域充力（宝石套槽位 2）：发动前要过"§2.1 判定"（半径内至少一个动力源方块）
+                    // 与"注入器放得下吗"两道关；任何一道不过 ⇒ 按**发动失败**处理：
+                    // 不进长按状态（⇒ 不扣能、不进冷却），只提示原因。
+                    if (FIELD_CHARGE.equals(skill)) {
+                        FieldChargeRuntime.StartResult started =
+                            FieldChargeRuntime.start(player, effectiveLevel(player, set, skill));
+                        if (started != FieldChargeRuntime.StartResult.OK) {
+                            notifyBlocked(player, slot, started == FieldChargeRuntime.StartResult.NO_SOURCE
+                                ? "createoreexpansion.equip_skill.field_charge_no_source"
+                                : "createoreexpansion.equip_skill.field_charge_no_space", 0);
+                            continue;
+                        }
+                    }
                     held.put(slot, 0);
                     ACTIVE.put(id, skill);
                 } else {
@@ -177,17 +192,37 @@ public final class ArmorSkillRuntime {
                         // 绝境守护：同样"一边按一边给"—— 段位推进时施加/升级不死图腾 buff
                         // （规格 §8 第 2 层"段位随长按推进"，松手不再补发，理由同蓄能疾骋）
                         applyLastStand(player, set, ticks);
+                    } else if (FIELD_CHARGE.equals(skill)) {
+                        // 临域充力（规格 §8 第 3 层）：每 tick 续期"曲柄在转 + 注入器在 + 容量挂在网上"，
+                        // 并按"点/秒"累计扣能。非 ACTIVE = 这一 tick 已经收尾（到限 / 见底 / 失效）。
+                        FieldChargeRuntime.HoldResult result = FieldChargeRuntime.hold(player, ticks);
+                        if (result != FieldChargeRuntime.HoldResult.ACTIVE) {
+                            held.remove(slot);
+                            ACTIVE.remove(id);
+                            if (result == FieldChargeRuntime.HoldResult.ENERGY_OUT) {
+                                // 与"能量见底自动断停"同一条口径：见底即把剩余能量清空
+                                ArmorEnergy.consume(player, ArmorEnergy.totalEnergy(player));
+                            }
+                            startCooldown(player, skill, cooldownSecondsOf(player, set, index));
+                            continue;
+                        }
+                    } else if (skill == null) {
+                        // 中途脱甲/换套 ⇒ 这个槽位解析不出技能了。**别的手段都不管，
+                        // 但临域充力留下的会话必须收尾**（否则曲柄永远在转、注入器永远在世界里）。
+                        FieldChargeRuntime.finish(player);
                     }
-                    // 用户 2026-10-01 口径：能量消耗到"见底"⇒ 自动断停 + 把能量清空
-                    // ⚠ 只在"这条技能真的有耗能曲线"时判：宝石套槽位 2（临域充力）的行为是
-                    // **第 3 层**，它此刻只是被登记进套件表（客户端会轮询、HUD 会列行），
-                    // 按住它不该把护甲能量清空 —— 见 accumulatedCost 对它的 0 返回。
-                    if (set != null && skill != null && !FIELD_CHARGE.equals(skill)
+                    // 用户 2026-10-01 口径：能量消耗到"见底"⇒ 自动断停 + 把能量清空。
+                    // 临域充力（宝石套槽位 2）从第 3 层起也走这条分支（它的"见底"判据见 isExhausted：
+                    // 它是**边按边扣**，所以判的是"下一步还扣得起吗"）。
+                    if (set != null && skill != null
                             && isExhausted(player, set, index, ticks)) {
                         held.remove(slot);
                         ACTIVE.remove(id);
                         DASH_SEGMENT.remove(id);
                         LAST_STAND_SEGMENT.remove(id);
+                        if (FIELD_CHARGE.equals(skill)) {
+                            FieldChargeRuntime.finish(player); // 能量见底也要把注入器与曲柄收干净
+                        }
                         ArmorEnergy.consume(player, ArmorEnergy.totalEnergy(player)); // 见底即清空
                         startCooldown(player, skill, cooldownSecondsOf(player, set, index));
                         continue;
@@ -226,6 +261,10 @@ public final class ArmorSkillRuntime {
         }
         HOLD_TICKS.remove(player.getUUID());
         ACTIVE.remove(player.getUUID());
+        // 宝石套 · 临域充力（规格 §8 第 3 层）：登出/死亡也在退出路径里 ——
+        // 会话里存着"被赋能的曲柄 + 注入器"两个坐标，不收尾就会留下一个永远在转的曲柄
+        // 和一个永远留在世界里的隐藏方块。
+        FieldChargeRuntime.forget(player);
     }
 
     /** 该玩家此刻是否正在长按某个装备技能（虚衡坠护的"按住 = 100% 豁免"读它）。 */
@@ -281,11 +320,20 @@ public final class ArmorSkillRuntime {
      */
     private static void release(ServerPlayer player, @Nullable ArmorSet set, int index, int heldTicks) {
         if (set == null) {
+            // 中途脱甲/换套 ⇒ 这个槽位解析不出技能 id 了。别的手段照旧（这一支以前就是直接返回），
+            // 但**临域充力留下的会话必须收尾**：否则曲柄会一直转、注入器会一直留在世界里。
+            FieldChargeRuntime.finish(player);
             return;
         }
         String skillId = skillId(set, index);
         if (skillId == null) {
+            FieldChargeRuntime.finish(player);
             return;
+        }
+        if (!FIELD_CHARGE.equals(skillId)) {
+            // 长按期间换了套（槽位号相同、技能却不是临域充力了）：同样必须收尾。
+            // 幂等：没有会话时什么都不做。
+            FieldChargeRuntime.finish(player);
         }
         if (skillId.equals(FALL_GUARD)) {
             FallGuardConfigs.Config config = FallGuardConfigs.config(effectiveLevel(player, set, skillId));
@@ -307,6 +355,13 @@ public final class ArmorSkillRuntime {
             // 补发会让"按住 1 tick 再松手"白拿一整段时长。
             LastStandConfigs.Config config = LastStandConfigs.config(effectiveLevel(player, set, skillId));
             ArmorEnergy.consume(player, holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost()));
+            startCooldown(player, skillId, config.cooldownSeconds());
+        } else if (skillId.equals(FIELD_CHARGE)) {
+            // 临域充力（宝石套 · 槽位 2，规格 §8 第 3 层）：用户明确"**中途松开即终止**供能"。
+            // 能量是**边按边扣**的（见 FieldChargeRuntime#hold），所以松手只需补上最后不足一步的零头，
+            // 随后收尾（移除注入器 + 曲柄立刻静止）并起冷却 25/20/15 秒。
+            FieldChargeConfigs.Config config = FieldChargeConfigs.config(effectiveLevel(player, set, skillId));
+            FieldChargeRuntime.release(player, heldTicks);
             startCooldown(player, skillId, config.cooldownSeconds());
         }
     }
@@ -399,13 +454,13 @@ public final class ArmorSkillRuntime {
     /** 该技能在该等级下、按住这么多 tick 时的累计花费（与松手结算同一个公式）。 */
     private static int accumulatedCost(ServerPlayer player, ArmorSet set, int index, int heldTicks) {
         String skill = skillId(set, index);
-        if (FIELD_CHARGE.equals(skill)) {
-            // 临域充力（宝石套槽位 2）：行为是第 3 层，此刻**没有耗能曲线**（规格 §2.2 的
-            // 点/秒要等第 3 层接）。返回 0 才能让"能量见底自动断停"不误触发，
-            // 否则按住槽位 2 会把满套能量一次性清空。
-            return 0;
-        }
         int level = effectiveLevel(player, set, skill);
+        if (FIELD_CHARGE.equals(skill)) {
+            // 临域充力（宝石套槽位 2，规格 §8 第 3 层）：数值源 = FieldChargeConfigs 的"点/秒"，
+            // 累计口径 = floor(heldTicks × energyPerSecond / 20)（见 FieldChargeConfigs#costAfter 的推导：
+            // 与 holdCost(held, durationSeconds, durationSeconds × energyPerSecond) 逐值等价）。
+            return FieldChargeConfigs.costAfter(heldTicks, FieldChargeConfigs.config(level));
+        }
         if (FALL_GUARD.equals(skill)) {
             FallGuardConfigs.Config config = FallGuardConfigs.config(level);
             return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
@@ -421,11 +476,11 @@ public final class ArmorSkillRuntime {
     /** 该技能该起的冷却秒数（给"能量见底自动断停"用，与松手结算同一处取值）。 */
     private static int cooldownSecondsOf(ServerPlayer player, ArmorSet set, int index) {
         String skill = skillId(set, index);
-        if (FIELD_CHARGE.equals(skill)) {
-            // 同上：行为是第 3 层 ⇒ 此刻不起冷却（第 3 层会补 25/20/15 秒那张表）
-            return 0;
-        }
         int level = effectiveLevel(player, set, skill);
+        if (FIELD_CHARGE.equals(skill)) {
+            // 临域充力（宝石套槽位 2，规格 §2.2"释放后冷却"）：25 / 20 / 15 秒
+            return FieldChargeConfigs.config(level).cooldownSeconds();
+        }
         if (FALL_GUARD.equals(skill)) {
             return FallGuardConfigs.config(level).cooldownSeconds();
         }
@@ -439,10 +494,25 @@ public final class ArmorSkillRuntime {
      * 累计花费是否已经<b>见底</b>（用户 2026-10-01："能量消耗到 100 的时候要自动断停，然后把能量全都清空"）。
      *
      * <p>判据 = 累计花费 ≥ 当前可用合计能量（等于 0 也视为见底）。</p>
+     *
+     * <p><b>临域充力是唯一的例外，它比的是"下一步"</b>：其它装备技能都是"松手时一次性按比例扣"，
+     * 所以"累计应付 ≥ 可用"就是"付不起了"；而临域充力<b>边按边扣</b>
+     * （见 {@code FieldChargeRuntime#hold}，每 tick 只扣增量）⇒ 累计应付那部分<b>已经扣掉了</b>，
+     * 再拿它跟"剩下的可用能量"比会在能量还剩一半时就误停。所以它比的是
+     * <b>下一 tick 的那一步（{@code FieldChargeConfigs#stepCost}）还扣得起吗</b>。</p>
      */
     private static boolean isExhausted(ServerPlayer player, ArmorSet set, int index, int heldTicks) {
         int available = ArmorEnergy.totalEnergy(player);
-        return available <= 0 || accumulatedCost(player, set, index, heldTicks) >= available;
+        if (available <= 0) {
+            return true;
+        }
+        String skill = skillId(set, index);
+        if (FIELD_CHARGE.equals(skill)) {
+            FieldChargeConfigs.Config config =
+                FieldChargeConfigs.config(effectiveLevel(player, set, skill));
+            return FieldChargeConfigs.stepCost(heldTicks, config) > available;
+        }
+        return accumulatedCost(player, set, index, heldTicks) >= available;
     }
 
     /**

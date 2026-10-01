@@ -198,6 +198,14 @@ public class CreateOreExpansion {
         CoeChargerBlocks.register();
         CoeChargerBlockEntityTypes.register();
 
+        // ── 宝石套 · 临域充力（规格 §8 第 3 层）：登记"第一个动力源方块" ──────────────
+        // 用户 2026-10-01 规格 §2.1 第 4 条要求"必须暴露公开接口"给后续扩展登记动力源方块；
+        // 本模组内建的第一个实现就是 Create 的手摇曲柄。
+        // ⚠ **Create 的类只出现在 HandCrankStressSource 一个文件里**（判定/驱动/续期/静止/注入器候选位），
+        // 技能侧只通过 StressSourceRegistry 拿接口 ⇒ 别的模组照同一个入口登记自己的动力源即可。
+        // 这里显式触发它的类初始化（不写这一行，"扫曲柄"会永远找不到任何动力源）。
+        com.hjmmd_8.createoreexpansion.content.equipment.armor.field.HandCrankStressSource.register();
+
         // Curios 可选联动（凝能佩/凝能之佩）：Curios 已从 required 降为 optional，因此
         // ① mods.toml 里 type=optional；② 所有 Curios API 调用只存在于 compat.curios 下的
         //    CurioMedallionBridge / CurioMedallionItems；③ 仅当 Curios 已安装时才 Class.forName
