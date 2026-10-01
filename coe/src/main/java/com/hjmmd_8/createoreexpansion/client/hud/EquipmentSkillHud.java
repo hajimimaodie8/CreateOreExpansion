@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.client.hud;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
@@ -182,11 +183,24 @@ public final class EquipmentSkillHud {
             FallGuardConfigs.Config config = FallGuardConfigs.config(level);
             int cost = ArmorSkillRuntime.holdCost(held, config.holdSeconds(), config.holdTotalCost());
             lines.add(new Line(Component.translatable(HOLD_PREVIEW_KEY,
-                String.format("%.1f", held / 20.0F),
-                String.format("%.1f", config.holdSeconds()),
+                oneDecimal(held / 20.0F),
+                oneDecimal(config.holdSeconds()),
                 cost, config.holdTotalCost()), COLOR_SKILL));
         }
         return lines;
+    }
+
+    /**
+     * 一位小数（<b>参数类型必须是 {@code float}</b>）。
+     *
+     * <p>2026-10-01 实测崩溃（{@code IllegalFormatConversionException: f != java.lang.Integer}）：
+     * 直接写 {@code String.format("%.1f", 某个int)} 会在**运行期**炸 —— 编译期完全看不出来。
+     * 把参数定成 {@code float} 后，传 int 会**自动加宽**，这类错误从此写不出来。</p>
+     *
+     * <p>用 {@link Locale#ROOT}：否则某些区域设置会把小数点写成逗号（预览行会变得很奇怪）。</p>
+     */
+    private static String oneDecimal(float value) {
+        return String.format(Locale.ROOT, "%.1f", value);
     }
 
     /**
