@@ -8,6 +8,7 @@ import com.hjmmd_8.createoreexpansion.common.charger.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.CoeArmorItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.BaseStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.NetheriteStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.SapphireStressMedallionItem;
@@ -35,12 +36,14 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
 import net.neoforged.neoforge.common.Tags;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -182,89 +185,20 @@ public final class CoeItems {
     // 注册期按"Curios 在不在"选两支物品类之一（MedallionCurios.item）：装了 Curios → 饰品支线
     // （compat.curios.CurioMedallionItems，implements ICurioItem）；没装 → 纯物品支线（本包里的基类）。
     // 两支的注册 id / 显示名 / 贴图 / 组件完全相同 —— 玩家侧无感，存档读进来还是同一个物品。
-    public static final ItemEntry<JadeStressMedallionItem> JADE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
-            .item("jade_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_JADE, JadeStressMedallionItem::new))
-            .properties(p -> p
-                    .component(AllDataComponents.ENERGY, 1000)
-                    .component(AllDataComponents.MAX_ENERGY, 1000)
-                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.JADE.light.getRGB())
-                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.JADE.dark.getRGB())
-                    .component(AllDataComponents.MEDALLION_MODE, false)
-                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.JADE.light.getRGB()))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-    static { ChargingRecipeTools.register(JADE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
+    public static final ItemEntry<JadeStressMedallionItem> JADE_STRESS_MEDALLION = stressMedallion(
+        "jade_stress_medallion", MedallionCurios.KIND_JADE, JadeStressMedallionItem::new,
+        1000, ToolEnergyColorConfig.JADE, null);
 
-    public static final ItemEntry<Item> TOPAZ_INGOT = CoeRegistrate.REGISTRATE
-            .item("topaz_ingot", Item::new)
-            .tag(CREATE_INGOTS.tag)
-            .tag(Tags.Items.INGOTS)
-            .tag(AllGemTags.TOPAZ.ingots)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> RAW_TOPAZ = CoeRegistrate.REGISTRATE
-            .item("raw_topaz", Item::new)
-            .tag(Tags.Items.RAW_MATERIALS)
-            .tag(AllGemTags.TOPAZ.rawOres)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> TOPAZ_NUGGET = CoeRegistrate.REGISTRATE
-            .item("topaz_nugget", Item::new)
-            .tag(Tags.Items.NUGGETS)
-            .tag(AllGemTags.TOPAZ.nuggets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> CRUSHED_TOPAZ_ORE = CoeRegistrate.REGISTRATE
-            .item("crushed_topaz_ore", Item::new)
-            .tag(CRUSHED_RAW_MATERIALS.tag)
-            .tag(AllGemTags.TOPAZ.crushedRawOres)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> TOPAZ_SMALL_SHARD = CoeRegistrate.REGISTRATE
-            .item("topaz_small_shard", Item::new)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> TOPAZ_BIG_SHARD = CoeRegistrate.REGISTRATE
-            .item("topaz_big_shard", Item::new)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> TOPAZ_SHEET = CoeRegistrate.REGISTRATE
-            .item("topaz_sheet", Item::new)
-            .tag(AllGemTags.TOPAZ.sheets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> TOPAZ_ROD = CoeRegistrate.REGISTRATE
-            .item("topaz_rod", Item::new)
-            .tag(AllGemTags.TOPAZ.rods)
-            .tag(AllTags.AllItemTags.RODS.tag)
-            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> TOPAZ_WIRE = CoeRegistrate.REGISTRATE
-            .item("topaz_wire", Item::new)
-            .tag(AllGemTags.TOPAZ.wires)
-            .tag(AllTags.AllItemTags.WIRES.tag)
-            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
+    // ---- 黄玉族（topaz）：注册链收进族级 helper，声明处一行一件 ----
+    public static final ItemEntry<Item> TOPAZ_INGOT = gemIngot("topaz_ingot", AllGemTags.TOPAZ);
+    public static final ItemEntry<Item> RAW_TOPAZ = gemRaw("raw_topaz", AllGemTags.TOPAZ);
+    public static final ItemEntry<Item> TOPAZ_NUGGET = gemNugget("topaz_nugget", AllGemTags.TOPAZ);
+    public static final ItemEntry<Item> CRUSHED_TOPAZ_ORE = gemCrushed("crushed_topaz_ore", AllGemTags.TOPAZ);
+    public static final ItemEntry<Item> TOPAZ_SMALL_SHARD = gemPart("topaz_small_shard");
+    public static final ItemEntry<Item> TOPAZ_BIG_SHARD = gemPart("topaz_big_shard");
+    public static final ItemEntry<Item> TOPAZ_SHEET = gemSheet("topaz_sheet", AllGemTags.TOPAZ);
+    public static final ItemEntry<Item> TOPAZ_ROD = gemRod("topaz_rod", AllGemTags.TOPAZ);
+    public static final ItemEntry<Item> TOPAZ_WIRE = gemWire("topaz_wire", AllGemTags.TOPAZ);
 
     public static final ItemEntry<SwordItem> TOPAZ_SWORD = CoeRegistrate.REGISTRATE
             .item("topaz_sword", p -> new SwordItem(AllTiers.TOPAZ, p))
@@ -369,89 +303,20 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<TopazStressMedallionItem> TOPAZ_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
-            .item("topaz_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_TOPAZ, TopazStressMedallionItem::new))
-            .properties(p -> p
-                    .component(AllDataComponents.ENERGY, 2500)
-                    .component(AllDataComponents.MAX_ENERGY, 2500)
-                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.TOPAZ.light.getRGB())
-                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.TOPAZ.dark.getRGB())
-                    .component(AllDataComponents.MEDALLION_MODE, false)
-                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.TOPAZ.light.getRGB()))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-    static { ChargingRecipeTools.register(TOPAZ_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
+    public static final ItemEntry<TopazStressMedallionItem> TOPAZ_STRESS_MEDALLION = stressMedallion(
+        "topaz_stress_medallion", MedallionCurios.KIND_TOPAZ, TopazStressMedallionItem::new,
+        2500, ToolEnergyColorConfig.TOPAZ, null);
 
-    public static final ItemEntry<Item> SAPPHIRE_INGOT = CoeRegistrate.REGISTRATE
-            .item("sapphire_ingot", Item::new)
-            .tag(CREATE_INGOTS.tag)
-            .tag(Tags.Items.INGOTS)
-            .tag(AllGemTags.SAPPHIRE.ingots)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> RAW_SAPPHIRE = CoeRegistrate.REGISTRATE
-            .item("raw_sapphire", Item::new)
-            .tag(Tags.Items.RAW_MATERIALS)
-            .tag(AllGemTags.SAPPHIRE.rawOres)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> SAPPHIRE_NUGGET = CoeRegistrate.REGISTRATE
-            .item("sapphire_nugget", Item::new)
-            .tag(Tags.Items.NUGGETS)
-            .tag(AllGemTags.SAPPHIRE.nuggets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> CRUSHED_SAPPHIRE_ORE = CoeRegistrate.REGISTRATE    
-            .item("crushed_sapphire_ore", Item::new)
-            .tag(CRUSHED_RAW_MATERIALS.tag)
-            .tag(AllGemTags.SAPPHIRE.crushedRawOres)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> SAPPHIRE_SMALL_SHARD = CoeRegistrate.REGISTRATE
-            .item("sapphire_small_shard", Item::new)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> SAPPHIRE_BIG_SHARD = CoeRegistrate.REGISTRATE
-            .item("sapphire_big_shard", Item::new)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> SAPPHIRE_SHEET = CoeRegistrate.REGISTRATE
-            .item("sapphire_sheet", Item::new)
-            .tag(AllGemTags.SAPPHIRE.sheets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> SAPPHIRE_ROD = CoeRegistrate.REGISTRATE
-            .item("sapphire_rod", Item::new)
-            .tag(AllGemTags.SAPPHIRE.rods)
-            .tag(AllTags.AllItemTags.RODS.tag)
-            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> SAPPHIRE_WIRE = CoeRegistrate.REGISTRATE
-            .item("sapphire_wire", Item::new)
-            .tag(AllGemTags.SAPPHIRE.wires)
-            .tag(AllTags.AllItemTags.WIRES.tag)
-            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
+    // ---- 蓝宝石族（sapphire）：注册链收进族级 helper，声明处一行一件 ----
+    public static final ItemEntry<Item> SAPPHIRE_INGOT = gemIngot("sapphire_ingot", AllGemTags.SAPPHIRE);
+    public static final ItemEntry<Item> RAW_SAPPHIRE = gemRaw("raw_sapphire", AllGemTags.SAPPHIRE);
+    public static final ItemEntry<Item> SAPPHIRE_NUGGET = gemNugget("sapphire_nugget", AllGemTags.SAPPHIRE);
+    public static final ItemEntry<Item> CRUSHED_SAPPHIRE_ORE = gemCrushed("crushed_sapphire_ore", AllGemTags.SAPPHIRE);
+    public static final ItemEntry<Item> SAPPHIRE_SMALL_SHARD = gemPart("sapphire_small_shard");
+    public static final ItemEntry<Item> SAPPHIRE_BIG_SHARD = gemPart("sapphire_big_shard");
+    public static final ItemEntry<Item> SAPPHIRE_SHEET = gemSheet("sapphire_sheet", AllGemTags.SAPPHIRE);
+    public static final ItemEntry<Item> SAPPHIRE_ROD = gemRod("sapphire_rod", AllGemTags.SAPPHIRE);
+    public static final ItemEntry<Item> SAPPHIRE_WIRE = gemWire("sapphire_wire", AllGemTags.SAPPHIRE);
 
     public static final ItemEntry<SwordItem> SAPPHIRE_SWORD = CoeRegistrate.REGISTRATE
             .item("sapphire_sword", p -> new SwordItem(AllTiers.SAPPHIRE, p))
@@ -557,155 +422,39 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<SapphireStressMedallionItem> SAPPHIRE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
-            .item("sapphire_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_SAPPHIRE, SapphireStressMedallionItem::new))
-            .properties(p -> p
-                    .component(AllDataComponents.ENERGY, 5000)
-                    .component(AllDataComponents.MAX_ENERGY, 5000)
-                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.SAPPHIRE.light.getRGB())
-                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.SAPPHIRE.dark.getRGB())
-                    .component(AllDataComponents.MEDALLION_MODE, false)
-                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.SAPPHIRE.light.getRGB()))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-    static { ChargingRecipeTools.register(SAPPHIRE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
+    public static final ItemEntry<SapphireStressMedallionItem> SAPPHIRE_STRESS_MEDALLION = stressMedallion(
+        "sapphire_stress_medallion", MedallionCurios.KIND_SAPPHIRE, SapphireStressMedallionItem::new,
+        5000, ToolEnergyColorConfig.SAPPHIRE, null);
 
-    public static final ItemEntry<NetheriteStressMedallionItem> NETHERITE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
-            .item("netherite_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_NETHERITE, NetheriteStressMedallionItem::new))
-            .properties(p -> p
-                    .component(AllDataComponents.ENERGY, 5000)
-                    .component(AllDataComponents.MAX_ENERGY, 5000)
-                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.NETHERITE.light.getRGB())
-                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.NETHERITE.dark.getRGB())
-                    .component(AllDataComponents.MEDALLION_MODE, false)
-                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.NETHERITE.light.getRGB()))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-    static { ChargingRecipeTools.register(NETHERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
+    public static final ItemEntry<NetheriteStressMedallionItem> NETHERITE_STRESS_MEDALLION = stressMedallion(
+        "netherite_stress_medallion", MedallionCurios.KIND_NETHERITE, NetheriteStressMedallionItem::new,
+        5000, ToolEnergyColorConfig.NETHERITE, null);
 
-    public static final ItemEntry<Item> RUBY_INGOT = CoeRegistrate.REGISTRATE
-            .item("ruby_ingot", Item::new)
-            .tag(CREATE_INGOTS.tag)
-            .tag(Tags.Items.INGOTS)
-            .tag(AllGemTags.RUBY.ingots)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
+    // ---- 红宝石族（ruby，无粗矿/粒/粉碎/碎片形态）：一行一件 ----
+    public static final ItemEntry<Item> RUBY_INGOT = gemIngot("ruby_ingot", AllGemTags.RUBY);
+    public static final ItemEntry<Item> RUBY_SHEET = gemSheet("ruby_sheet", AllGemTags.RUBY);
+    public static final ItemEntry<Item> RUBY_ROD = gemRod("ruby_rod", AllGemTags.RUBY);
+    public static final ItemEntry<Item> RUBY_WIRE = gemWire("ruby_wire", AllGemTags.RUBY);
 
-    public static final ItemEntry<Item> RUBY_SHEET = CoeRegistrate.REGISTRATE
-            .item("ruby_sheet", Item::new)
-            .tag(AllGemTags.RUBY.sheets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> RUBY_ROD = CoeRegistrate.REGISTRATE
-            .item("ruby_rod", Item::new)
-            .tag(AllGemTags.RUBY.rods)
-            .tag(AllTags.AllItemTags.RODS.tag)
-            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> RUBY_WIRE = CoeRegistrate.REGISTRATE
-            .item("ruby_wire", Item::new)
-            .tag(AllGemTags.RUBY.wires)
-            .tag(AllTags.AllItemTags.WIRES.tag)
-            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> STELLARSTONE_INGOT = CoeRegistrate.REGISTRATE
-            .item("stellarstone_ingot", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(CREATE_INGOTS.tag)
-            .tag(Tags.Items.INGOTS)
-            .tag(AllGemTags.STELLARSTONE.ingots)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> RAW_STELLARSTONE = CoeRegistrate.REGISTRATE
-            .item("raw_stellarstone", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(Tags.Items.RAW_MATERIALS)
-            .tag(AllGemTags.STELLARSTONE.rawOres)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> STELLARSTONE_NUGGET = CoeRegistrate.REGISTRATE
-            .item("stellarstone_nugget", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(Tags.Items.NUGGETS)
-            .tag(AllGemTags.STELLARSTONE.nuggets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> CRUSHED_STELLARSTONE_ORE = CoeRegistrate.REGISTRATE
-            .item("crushed_stellarstone_ore", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(CRUSHED_RAW_MATERIALS.tag)
-            .tag(AllGemTags.STELLARSTONE.crushedRawOres)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> STELLARSTONE_SMALL_SHARD = CoeRegistrate.REGISTRATE
-            .item("stellarstone_small_shard", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> STELLARSTONE_BIG_SHARD = CoeRegistrate.REGISTRATE
-            .item("stellarstone_big_shard", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> STELLARSTONE_SHEET = CoeRegistrate.REGISTRATE
-            .item("stellarstone_sheet", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.STELLARSTONE.sheets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> STELLARSTONE_ROD = CoeRegistrate.REGISTRATE
-            .item("stellarstone_rod", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.STELLARSTONE.rods)
-            .tag(AllTags.AllItemTags.RODS.tag)
-            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> STELLARSTONE_WIRE = CoeRegistrate.REGISTRATE
-            .item("stellarstone_wire", Item::new)
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.STELLARSTONE.wires)
-            .tag(AllTags.AllItemTags.WIRES.tag)
-            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
+    // ---- 星辉石族（stellarstone）：系列族（每件都挂系列标签 + 少见稀有度）⇒ GemDecor.series(...) ----
+    public static final ItemEntry<Item> STELLARSTONE_INGOT = gemIngot(
+        "stellarstone_ingot", AllGemTags.STELLARSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> RAW_STELLARSTONE = gemRaw(
+        "raw_stellarstone", AllGemTags.STELLARSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> STELLARSTONE_NUGGET = gemNugget(
+        "stellarstone_nugget", AllGemTags.STELLARSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> CRUSHED_STELLARSTONE_ORE = gemCrushed(
+        "crushed_stellarstone_ore", AllGemTags.STELLARSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> STELLARSTONE_SMALL_SHARD = gemPart(
+        "stellarstone_small_shard", GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> STELLARSTONE_BIG_SHARD = gemPart(
+        "stellarstone_big_shard", GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> STELLARSTONE_SHEET = gemSheet(
+        "stellarstone_sheet", AllGemTags.STELLARSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> STELLARSTONE_ROD = gemRod(
+        "stellarstone_rod", AllGemTags.STELLARSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
+    public static final ItemEntry<Item> STELLARSTONE_WIRE = gemWire(
+        "stellarstone_wire", AllGemTags.STELLARSTONE, GemDecor.series(AllModItemTags.STELLARSTONE_ITEMS));
 
     public static final ItemEntry<SwordItem> STELLARSTONE_SWORD = CoeRegistrate.REGISTRATE
             .item("stellarstone_sword", p -> new SwordItem(AllTiers.STELLARSTONE, p))
@@ -821,108 +570,28 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<StellarstoneStressMedallionItem> STELLARSTONE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
-            .item("stellarstone_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_STELLARSTONE, StellarstoneStressMedallionItem::new))
-            .tag(AllModItemTags.STELLARSTONE_ITEMS)
-            .properties(p -> p
-                    .component(AllDataComponents.ENERGY, 10000)
-                    .component(AllDataComponents.MAX_ENERGY, 10000)
-                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.STELLARSTONE.light.getRGB())
-                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.STELLARSTONE.dark.getRGB())
-                    .component(AllDataComponents.MEDALLION_MODE, false)
-                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.STELLARSTONE.light.getRGB()))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-    static { ChargingRecipeTools.register(STELLARSTONE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
+    public static final ItemEntry<StellarstoneStressMedallionItem> STELLARSTONE_STRESS_MEDALLION = stressMedallion(
+        "stellarstone_stress_medallion", MedallionCurios.KIND_STELLARSTONE, StellarstoneStressMedallionItem::new,
+        10000, ToolEnergyColorConfig.STELLARSTONE, AllModItemTags.STELLARSTONE_ITEMS);
 
-    public static final ItemEntry<Item> SANCTSTONE_INGOT = CoeRegistrate.REGISTRATE
-            .item("sanctstone_ingot", Item::new)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(CREATE_INGOTS.tag)
-            .tag(Tags.Items.INGOTS)
-            .tag(AllGemTags.SANCTSTONE.ingots)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
+    // ---- 灵石族（sanctstone，4 个形态）：每件都提稀有度，但**不是**系列（无系列物品标签）----
+    public static final ItemEntry<Item> SANCTSTONE_INGOT = gemIngot("sanctstone_ingot", AllGemTags.SANCTSTONE, GemDecor.UNCOMMON);
+    public static final ItemEntry<Item> SANCTSTONE_SHEET = gemSheet("sanctstone_sheet", AllGemTags.SANCTSTONE, GemDecor.UNCOMMON);
+    public static final ItemEntry<Item> SANCTSTONE_ROD = gemRod("sanctstone_rod", AllGemTags.SANCTSTONE, GemDecor.UNCOMMON);
+    public static final ItemEntry<Item> SANCTSTONE_WIRE = gemWire("sanctstone_wire", AllGemTags.SANCTSTONE, GemDecor.UNCOMMON);
 
-    public static final ItemEntry<Item> SANCTSTONE_SHEET = CoeRegistrate.REGISTRATE
-            .item("sanctstone_sheet", Item::new)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.SANCTSTONE.sheets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
+    // ---- 雷鸣合金族（thunderite）：系列族（系列标签 + 少见稀有度）；"碎屑"是无形态标签的中间产物 ----
+    public static final ItemEntry<Item> THUNDERITE_INGOT = gemIngot(
+        "thunderite_ingot", AllGemTags.THUNDERITE, GemDecor.series(AllModItemTags.THUNDERITE_ITEMS));
+    public static final ItemEntry<Item> THUNDERITE_SCRAP = gemPart(
+        "thunderite_scrap", GemDecor.series(AllModItemTags.THUNDERITE_ITEMS));
+    public static final ItemEntry<Item> THUNDERITE_SHEET = gemSheet(
+        "thunderite_sheet", AllGemTags.THUNDERITE, GemDecor.series(AllModItemTags.THUNDERITE_ITEMS));
+    public static final ItemEntry<Item> THUNDERITE_ROD = gemRod(
+        "thunderite_rod", AllGemTags.THUNDERITE, GemDecor.series(AllModItemTags.THUNDERITE_ITEMS));
+    public static final ItemEntry<Item> THUNDERITE_WIRE = gemWire(
+        "thunderite_wire", AllGemTags.THUNDERITE, GemDecor.series(AllModItemTags.THUNDERITE_ITEMS));
 
-    public static final ItemEntry<Item> SANCTSTONE_ROD = CoeRegistrate.REGISTRATE
-            .item("sanctstone_rod", Item::new)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.SANCTSTONE.rods)
-            .tag(AllTags.AllItemTags.RODS.tag)
-            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> SANCTSTONE_WIRE = CoeRegistrate.REGISTRATE
-            .item("sanctstone_wire", Item::new)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.SANCTSTONE.wires)
-            .tag(AllTags.AllItemTags.WIRES.tag)
-            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> THUNDERITE_INGOT = CoeRegistrate.REGISTRATE
-            .item("thunderite_ingot", Item::new)
-            .tag(AllModItemTags.THUNDERITE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(CREATE_INGOTS.tag)
-            .tag(Tags.Items.INGOTS)
-            .tag(AllGemTags.THUNDERITE.ingots)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> THUNDERITE_SCRAP = CoeRegistrate.REGISTRATE
-            .item("thunderite_scrap", Item::new)
-            .tag(AllModItemTags.THUNDERITE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> THUNDERITE_SHEET = CoeRegistrate.REGISTRATE
-            .item("thunderite_sheet", Item::new)
-            .tag(AllModItemTags.THUNDERITE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.THUNDERITE.sheets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> THUNDERITE_ROD = CoeRegistrate.REGISTRATE
-            .item("thunderite_rod", Item::new)
-            .tag(AllModItemTags.THUNDERITE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.THUNDERITE.rods)
-            .tag(AllTags.AllItemTags.RODS.tag)
-            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> THUNDERITE_WIRE = CoeRegistrate.REGISTRATE
-            .item("thunderite_wire", Item::new)
-            .tag(AllModItemTags.THUNDERITE_ITEMS)
-            .properties(p -> p.rarity(Rarity.UNCOMMON))
-            .tag(AllGemTags.THUNDERITE.wires)
-            .tag(AllTags.AllItemTags.WIRES.tag)
-            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
 
     public static final ItemEntry<SwordItem> THUNDERITE_SWORD = CoeRegistrate.REGISTRATE
             .item("thunderite_sword", p -> new SwordItem(AllTiers.THUNDERITE, p))
@@ -1043,20 +712,9 @@ public final class CoeItems {
             .build()
             .register();
 
-    public static final ItemEntry<ThunderiteStressMedallionItem> THUNDERITE_STRESS_MEDALLION = CoeRegistrate.REGISTRATE
-            .item("thunderite_stress_medallion", MedallionCurios.item(MedallionCurios.KIND_THUNDERITE, ThunderiteStressMedallionItem::new))
-            .tag(AllModItemTags.THUNDERITE_ITEMS)
-            .properties(p -> p
-                    .component(AllDataComponents.ENERGY, 10000)
-                    .component(AllDataComponents.MAX_ENERGY, 10000)
-                    .component(AllDataComponents.ENERGY_COLOR, ToolEnergyColorConfig.THUNDERITE.light.getRGB())
-                    .component(AllDataComponents.ENERGY_COLOR_DARK, ToolEnergyColorConfig.THUNDERITE.dark.getRGB())
-                    .component(AllDataComponents.MEDALLION_MODE, false)
-                    .component(AllDataComponents.BIND_COLOR, ToolEnergyColorConfig.THUNDERITE.light.getRGB()))
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-    static { ChargingRecipeTools.register(THUNDERITE_STRESS_MEDALLION); } // 凝能佩：加入工具充能配方
+    public static final ItemEntry<ThunderiteStressMedallionItem> THUNDERITE_STRESS_MEDALLION = stressMedallion(
+        "thunderite_stress_medallion", MedallionCurios.KIND_THUNDERITE, ThunderiteStressMedallionItem::new,
+        10000, ToolEnergyColorConfig.THUNDERITE, AllModItemTags.THUNDERITE_ITEMS);
 
     public static final ItemEntry<Item> LUCKY_DUST = CoeRegistrate.REGISTRATE
             .item("lucky_dust", Item::new)
@@ -1169,61 +827,154 @@ public final class CoeItems {
     // 声明处变成一行。原来这段链在文件里逐字重复了 57 次（审计计数）。
     // 每个 helper 顺带把「矿物」分区声明掉（分区归属写在注册处，见 CoeCreativeSections#section）。
 
-    /** 普通宝石物品的公共收尾：基础模型 + 「矿物」分区声明。 */
-    private static <T extends Item, P> ItemBuilder<T, P> oreItem(ItemBuilder<T, P> builder) {
+    /**
+     * <b>族级装饰</b>：一个族里"每件都有的额外待遇"（系列物品标签、少见稀有度）。
+     *
+     * <p>为什么要这个值对象：直接给 8 个 helper 各加两个参数会变成 16 个签名；
+     * 收成一个值对象后，每个 helper 只需"短签名（无装饰）+ 长签名（带装饰）"两个，
+     * 调用处读起来也自解释：{@code GemDecor.series(...)} / {@code GemDecor.UNCOMMON}。</p>
+     *
+     * @param seriesTag 系列物品标签（可空：不是"系列"的族传 null）
+     * @param uncommon  是否把稀有度设为 {@code UNCOMMON}
+     */
+    private record GemDecor(@Nullable TagKey<Item> seriesTag, boolean uncommon) {
+        /** 无装饰（绝大多数族）。 */
+        static final GemDecor NONE = new GemDecor(null, false);
+        /** 只提稀有度（灵石族：每件 UNCOMMON，但没有系列标签）。 */
+        static final GemDecor UNCOMMON = new GemDecor(null, true);
+        /** 系列族（星辉石 / 雷鸣）：挂系列物品标签 + 少见。 */
+        static GemDecor series(TagKey<Item> tag) {
+            return new GemDecor(tag, true);
+        }
+    }
+
+    /** 普通宝石物品的公共收尾：装饰 → 基础模型 → 「矿物」分区声明。 */
+    private static <T extends Item, P> ItemBuilder<T, P> oreItem(ItemBuilder<T, P> builder, GemDecor decor) {
+        if (decor.seriesTag() != null) {
+            builder = builder.tag(decor.seriesTag());
+        }
+        if (decor.uncommon()) {
+            builder = builder.properties(p -> p.rarity(Rarity.UNCOMMON));
+        }
         return builder
             .model((ctx, provider) -> provider.basicItem(ctx.get()))
             .transform(CoeCreativeSections.section(CoeCreativeSections.CreativeSection.ORE));
     }
 
+    // 下面每个形态都是"短签名（无装饰）+ 长签名（带装饰）"：已迁移的普通族调用点因此一行都不用改。
+
     /** 锭（Create 锭 + 原版锭 + 本族锭标签）。 */
     private static ItemEntry<Item> gemIngot(String id, AllGemTags gem) {
+        return gemIngot(id, gem, GemDecor.NONE);
+    }
+
+    private static ItemEntry<Item> gemIngot(String id, AllGemTags gem, GemDecor decor) {
         return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
-            .tag(CREATE_INGOTS.tag).tag(Tags.Items.INGOTS).tag(gem.ingots)).register();
+            .tag(CREATE_INGOTS.tag).tag(Tags.Items.INGOTS).tag(gem.ingots), decor).register();
     }
 
     /** 粗矿（原版粗矿 + 本族粗矿标签）。 */
     private static ItemEntry<Item> gemRaw(String id, AllGemTags gem) {
+        return gemRaw(id, gem, GemDecor.NONE);
+    }
+
+    private static ItemEntry<Item> gemRaw(String id, AllGemTags gem, GemDecor decor) {
         return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
-            .tag(Tags.Items.RAW_MATERIALS).tag(gem.rawOres)).register();
+            .tag(Tags.Items.RAW_MATERIALS).tag(gem.rawOres), decor).register();
     }
 
     /** 粒（原版粒 + 本族粒标签）。 */
     private static ItemEntry<Item> gemNugget(String id, AllGemTags gem) {
+        return gemNugget(id, gem, GemDecor.NONE);
+    }
+
+    private static ItemEntry<Item> gemNugget(String id, AllGemTags gem, GemDecor decor) {
         return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
-            .tag(Tags.Items.NUGGETS).tag(gem.nuggets)).register();
+            .tag(Tags.Items.NUGGETS).tag(gem.nuggets), decor).register();
     }
 
     /** 粉碎矿（Create 粉碎原料 + 本族粉碎标签）。 */
     private static ItemEntry<Item> gemCrushed(String id, AllGemTags gem) {
+        return gemCrushed(id, gem, GemDecor.NONE);
+    }
+
+    private static ItemEntry<Item> gemCrushed(String id, AllGemTags gem, GemDecor decor) {
         return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
-            .tag(CRUSHED_RAW_MATERIALS.tag).tag(gem.crushedRawOres)).register();
+            .tag(CRUSHED_RAW_MATERIALS.tag).tag(gem.crushedRawOres), decor).register();
     }
 
     /** 无标签的宝石零件（小碎片 / 大碎片这类中间产物）。 */
     private static ItemEntry<Item> gemPart(String id) {
-        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)).register();
+        return gemPart(id, GemDecor.NONE);
+    }
+
+    private static ItemEntry<Item> gemPart(String id, GemDecor decor) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new), decor).register();
     }
 
     /** 板。 */
     private static ItemEntry<Item> gemSheet(String id, AllGemTags gem) {
-        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new).tag(gem.sheets)).register();
+        return gemSheet(id, gem, GemDecor.NONE);
+    }
+
+    private static ItemEntry<Item> gemSheet(String id, AllGemTags gem, GemDecor decor) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new).tag(gem.sheets), decor).register();
     }
 
     /** 杆（Create 杆标签一并挂上，参与 Create 的配方识别）。 */
     private static ItemEntry<Item> gemRod(String id, AllGemTags gem) {
+        return gemRod(id, gem, GemDecor.NONE);
+    }
+
+    private static ItemEntry<Item> gemRod(String id, AllGemTags gem, GemDecor decor) {
         return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
             .tag(gem.rods)
             .tag(AllTags.AllItemTags.RODS.tag)
-            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)).register();
+            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag), decor).register();
     }
 
     /** 线（Create 线标签一并挂上）。 */
     private static ItemEntry<Item> gemWire(String id, AllGemTags gem) {
+        return gemWire(id, gem, GemDecor.NONE);
+    }
+
+    private static ItemEntry<Item> gemWire(String id, AllGemTags gem, GemDecor decor) {
         return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
             .tag(gem.wires)
             .tag(AllTags.AllItemTags.WIRES.tag)
-            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)).register();
+            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag), decor).register();
+    }
+
+    /**
+     * <b>凝能佩</b>（Curios 项链/手饰槽位；Curios 为 optional，注册期按"在不在"选两支物品类之一
+     * —— 见 {@link MedallionCurios}，玩家侧无感、存档里还是同一个物品）。
+     *
+     * <p>六族<b>同形</b>，只有五处不同：物品类 / 佩种标识 / 能量上限 / 配色 / 可选的系列物品标签。
+     * 原来每族各写 15 行（共 ~90 行），现在收进这一个 helper，声明处三行。</p>
+     *
+     * <p>「加入工具充能配方」从过去的 `static { ChargingRecipeTools.register(X); }` 改成
+     * {@code onRegister} 回调：语义相同（注册即登记），但不必再为每件写一个静态块，
+     * 也不依赖"静态块与字段初始化的先后"这种隐式约定。</p>
+     */
+    private static <T extends BaseStressMedallionItem> ItemEntry<T> stressMedallion(
+            String id, String kind, NonNullFunction<Item.Properties, T> ctor,
+            int energy, ToolEnergyColorConfig color, @Nullable TagKey<Item> seriesTag) {
+        var builder = CoeRegistrate.REGISTRATE.item(id, MedallionCurios.item(kind, ctor));
+        if (seriesTag != null) {
+            builder = builder.tag(seriesTag);
+        }
+        return builder
+            .properties(p -> p
+                .component(AllDataComponents.ENERGY, energy)
+                .component(AllDataComponents.MAX_ENERGY, energy)
+                .component(AllDataComponents.ENERGY_COLOR, color.light.getRGB())
+                .component(AllDataComponents.ENERGY_COLOR_DARK, color.dark.getRGB())
+                .component(AllDataComponents.MEDALLION_MODE, false)
+                .component(AllDataComponents.BIND_COLOR, color.light.getRGB()))
+            .model((ctx, provider) -> provider.basicItem(ctx.get()))
+            .transform(CoeCreativeSections.section(CoeCreativeSections.CreativeSection.GEAR))
+            .onRegister(ChargingRecipeTools::register)
+            .register();
     }
 
     public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, SkillItemBuilder<T, P>> skillItem() {
