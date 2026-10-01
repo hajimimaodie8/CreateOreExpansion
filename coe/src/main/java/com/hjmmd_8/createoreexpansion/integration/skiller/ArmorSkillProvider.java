@@ -97,15 +97,18 @@ public final class ArmorSkillProvider implements SkillProvider {
     }
 
     /**
-     * 玩家当前完整穿着那一套的技能组件（槽位 = {@link #SLOT_BASE} + 表内下标）。
+     * 玩家当前<b>生效</b>那一套的技能组件（槽位 = {@link #SLOT_BASE} + 表内下标）。
      *
-     * @param player 目标玩家；{@code null}、未成套、或该套尚无技能时返回 {@link SkillComponent#EMPTY}
+     * <p>用 {@link ArmorSet#effectiveSet(Player)} 而不是 {@code wornSet}：3 件同套 + 散构聚能
+     * 时前者才是"生效的套"（后者为 {@code null}）。</p>
+     *
+     * @param player 目标玩家；{@code null}、无生效套、或该套尚无技能时返回 {@link SkillComponent#EMPTY}
      */
     public static SkillComponent componentOf(@Nullable Player player) {
         if (player == null) {
             return SkillComponent.EMPTY;
         }
-        ArmorSet worn = ArmorSet.wornSet(player);
+        ArmorSet worn = ArmorSet.effectiveSet(player);
         if (worn == null) {
             return SkillComponent.EMPTY;
         }

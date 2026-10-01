@@ -74,6 +74,8 @@ public final class EquipmentSkillHud {
     private static final String TITLE_KEY = "createoreexpansion.hud.equipment.title";
     /** 成套生效行（套名 + 等级）。 */
     private static final String SET_ACTIVE_KEY = "createoreexpansion.hud.equipment.set_active";
+    /** 散构聚能补齐行（套名 + 等级）。 */
+    private static final String SET_BY_ENCHANT_KEY = "createoreexpansion.hud.equipment.set_by_enchant";
     /** 穿了本模组护甲但不成套。 */
     private static final String SET_INCOMPLETE_KEY = "createoreexpansion.hud.equipment.set_incomplete";
     /** 一件本模组护甲都没穿。 */
@@ -120,13 +122,20 @@ public final class EquipmentSkillHud {
         lines.add(new Line(Component.translatable(TITLE_KEY, modifierName()), COLOR_TITLE));
 
         ArmorSet worn = ArmorSet.wornSet(player);
-        if (worn == null) {
-            boolean anyArmor = ArmorSet.wearsAnyOurArmor(player);
-            lines.add(new Line(Component.translatable(anyArmor ? SET_INCOMPLETE_KEY : SET_NONE_KEY),
-                COLOR_INACTIVE));
-        } else {
+        if (worn != null) {
             lines.add(new Line(Component.translatable(SET_ACTIVE_KEY, wornName(worn), worn.wornLevel(player)),
                 COLOR_ACTIVE));
+        } else {
+            // 严格全套之外还有一条：3 件同套 + 散构聚能补齐（生效等级与全套相同）
+            ArmorSet assembled = ArmorSet.effectiveSet(player);
+            if (assembled != null) {
+                lines.add(new Line(
+                    Component.translatable(SET_BY_ENCHANT_KEY, wornName(assembled), assembled.wornLevel(player)),
+                    COLOR_ACTIVE));
+            } else {
+                lines.add(new Line(Component.translatable(
+                    ArmorSet.wearsAnyOurArmor(player) ? SET_INCOMPLETE_KEY : SET_NONE_KEY), COLOR_INACTIVE));
+            }
         }
         lines.addAll(skillLines());
 

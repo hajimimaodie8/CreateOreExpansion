@@ -45,12 +45,17 @@ import org.jetbrains.annotations.Nullable;
  *       也不会出现"换了装备但缓存没刷新"的隐蔽 bug。</li>
  * </ul>
  *
- * <h2>未定项（等用户裁定，别自己发明）</h2>
+ * <h2>「散构聚能」放宽带门槛（用户 2026-10-01 第二轮裁定，已落地）</h2>
+ * <p>原本的分区判据只有"四件同套"。现在多一条：<b>本套恰好 3 件</b>（只差一件）且穿戴中
+ * <b>任意一件护甲</b>带 {@link ArmorEnchantments#LOOSE_CONVERGENCE} ⇒ 视为齐全；<b>2 件无效</b>。
+ * 该附魔是<b>宝藏附魔、只有 1 级、可附在任意护甲上</b>（含原版/他模组），判定在
+ * {@link #isCompletedByEnchant(Player)}。</p>
+ *
+ * <h2>仍未定项（别自己发明）</h2>
  * <ul>
- *   <li>装了散构聚能附魔、且四件混搭时，{@link #wornLevel(Player)} 该返回几：
- *       取"身上最高那一套的基准等级"？还是"件数最多那一套"？还是"最高等级减去缺的件数"？</li>
- *   <li>散构聚能的<b>等级数 / 获取途径 / 每级作用范围</b>（附魔本身还没注册）。</li>
  *   <li>各套装技能<b>每一级的具体效果</b>（用户 2026-10-01 明确"等级效果还没定义"）。</li>
+ *   <li>装备技能的<b>能量来源</b>（护甲是否也挂 {@code ToolEnergy}）—— 挡住
+ *       {@code ArmorSkillProvider} 里的实例构造。</li>
  * </ul>
  *
  * @see CoeArmorMaterials 四套材质与"套名"常量的真源（本类的 {@link #setName} 与它同源）
@@ -152,19 +157,81 @@ public enum ArmorSet {
     }
 
     /**
+     * 玩家当前<b>生效</b>的那一套：优先严格全套，其次「散构聚能补齐」的那一套。
+     *
+     * <p><b>技能来源与提示层都必须问这个</b>（不是 {@link #wornSet(Player)}）：
+     * 3 件 + 散构聚能时 {@code wornSet} 为 {@code null}，但那一套是生效的。</p>
+     *
+     * @return 生效的套；没有（未成套且无补齐）返回 {@code null}
+     */
+    public static @Nullable ArmorSet effectiveSet(Player player) {
+        ArmorSet strict = wornSet(player);
+        if (strict != null) {
+            return strict;
+        }
+        for (ArmorSet set : VALUES) {
+            if (set.isCompletedByEnchant(player)) {
+                return set;
+            }
+        }
+        return null;
+    }
+
+    /**
      * <b>「必须佩戴全套才有效果」的唯一判定入口。</b>
      *
-     * @return 玩家完整穿着本套 ⇒ 本套基准等级（1~4）；否则 <b>0</b>（= 未生效）
+     * <p>两条路径（用户 2026-10-01 定义）：</p>
+     * <ol>
+     *     <li><b>严格全套</b>：四槽同套 ⇒ 基准等级；</li>
+     *     <li><b>散构聚能补齐</b>：本套 <b>恰好 3 件</b>（就只差一件）且穿戴中<b>任意一件护甲</b>
+     *         带该附魔 ⇒ 也算生效（等级同样取基准等级）；<b>只有 2 件时无效</b>
+     *         —— 用户原话："如果身上只有两件配套装备，这个是不起作用的"。</li>
+     * </ol>
+     *
+     * @return 生效等级（1~4）；未生效返回 <b>0</b>
      */
     public int wornLevel(Player player) {
-        return wornSet(player) == this ? this.baseLevel : 0;
+        return effectiveSet(player) == this ? this.baseLevel : 0;
+    }
+
+    /**
+     * 本套是否靠「散构聚能」补上了缺的那一件（3 件同套 + 穿戴中任意一件带该附魔）。
+     *
+     * <p>提示层用它区分「全套生效」与「散构聚能补齐」两种来源；两者生效等级相同。</p>
+     */
+    public boolean isCompletedByEnchant(Player player) {
+        if (player == null || countWorn(player) != 3) {
+            // 只差一件才算补齐：4 件走严格全套，2 件及以下按用户裁定无效
+            return false;
+        }
+        for (EquipmentSlot slot : ARMOR_SLOTS) {
+            if (ArmorEnchantments.looseConvergenceLevel(player.getItemBySlot(slot)) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 玩家四个护甲槽里属于本套的件数（0~4；空槽与他模组护甲都不计）。 */
+    public int countWorn(Player player) {
+        if (player == null) {
+            return 0;
+        }
+        int count = 0;
+        for (EquipmentSlot slot : ARMOR_SLOTS) {
+            if (of(player.getItemBySlot(slot)) == this) {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**
      * 玩家护甲槽里是否至少有一件本模组护甲（<b>不要求成套</b>）。
      *
-     * <p>这是预告里散构聚能附魔那条例外的<b>门槛</b>："打破全套强制限制，但仍需要装备栏中至少有一件
-     * 本模组的特殊装备部分才能生效"。本轮只提供查询，放松后的等级口径等用户裁定后再接。</p>
+     * <p><b>它不是生效门槛</b>（2026-10-01 第二轮裁定后，门槛是"同套 3 件 + 散构聚能"，见
+     * {@link #isCompletedByEnchant(Player)}）。它只用来<b>区分提示文案</b>：
+     * 一件本模组护甲都没穿 / 穿了但不够 3 件，这两种情况该说的话不一样。</p>
      */
     public static boolean wearsAnyOurArmor(Player player) {
         if (player == null) {

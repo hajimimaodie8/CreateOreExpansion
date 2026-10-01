@@ -330,7 +330,10 @@ public class EnglishLangProvider extends LanguageProvider {
         // ========== Equipment skill hint (shown above the hotbar while the modifier is held) ==
         add("createoreexpansion.hud.equipment.title", "Equipment Skills (hold %s)");
         add("createoreexpansion.hud.equipment.set_active", "%s Set - full bonus active, Lv%s");
-        add("createoreexpansion.hud.equipment.set_incomplete", "Not a full set - wear four matching pieces");
+        add("createoreexpansion.hud.equipment.set_by_enchant",
+            "%s Set - completed by Loose Convergence, Lv%s");
+        add("createoreexpansion.hud.equipment.set_incomplete",
+            "Not a full set - wear four matching pieces (Loose Convergence can cover one)");
         add("createoreexpansion.hud.equipment.set_none", "No modded armor worn");
         add("createoreexpansion.hud.equipment.no_skill", "No set skills yet");
         add("createoreexpansion.hud.equipment.skill_line", "Skill %s  %s  [%s]");
@@ -356,6 +359,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add("enchantment.createoreexpansion.swift_start", "Swift Start");
         add("enchantment.createoreexpansion.skill_boost", "Artistry Boost");
         add("enchantment.createoreexpansion.skill_regression", "Artistry Regression");
+        add("enchantment.createoreexpansion.loose_convergence", "Loose Convergence");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");
