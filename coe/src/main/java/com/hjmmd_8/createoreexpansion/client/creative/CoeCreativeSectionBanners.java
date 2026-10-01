@@ -19,6 +19,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 
+import org.joml.Matrix4f;
+
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -65,8 +67,12 @@ import net.neoforged.neoforge.client.event.ContainerScreenEvent;
  *         （static ⇒ {@code Field.get(null)}）；</li>
  *     <li>{@code CreativeModeInventoryScreen.scrollOffs} —— {@code private float}（实例字段）。</li>
  * </ul>
- * <p>物品区左上角与尺寸走公开 API（{@code getGuiLeft()/getGuiTop()}），<b>不需要</b>反射。
- * 反射失败一律<b>静默降级</b>（拿不到就不画）—— <b>绝不能因为装饰性渲染把客户端搞崩</b>。</p>
+ * <p>物品区左上角<b>不用</b> {@code getGuiLeft()/getGuiTop()}：本事件在
+ * {@code AbstractContainerScreen#render} 内部发出，那一帧的姿态已被
+ * {@code translate(leftPos, topPos)} 平移过，面板相对坐标才是它的原生坐标系
+ * （详见 {@link #ITEM_AREA_X} 与事件处理里的"坐标系陷阱"注释）。反射只用于
+ * {@code selectedTab} 与 {@code scrollOffs} 两个字段。反射失败一律<b>静默降级</b>
+ * （拿不到就不画）—— <b>绝不能因为装饰性渲染把客户端搞崩</b>。</p>
  *
  * @see CoeCreativeSections 分区规则、排布与行号记录
  */
@@ -130,9 +136,29 @@ public final class CoeCreativeSectionBanners {
             }
 
             int firstVisibleRow = firstVisibleRow(menu.items.size(), scrollOffs(screen));
-            int left = screen.getGuiLeft() + ITEM_AREA_X;
-            int top = screen.getGuiTop() + ITEM_AREA_Y;
+            // ⚠⚠ 坐标系陷阱（2026-10-01 实测踩到，别再犯）：本事件由
+            // AbstractContainerScreen#render 在**姿态已被 translate(leftPos, topPos) 平移之后**发出。
+            // javap 实证的顺序：pushPose@96 → translate(leftPos,topPos)@110 → 槽位循环@165 →
+            // renderLabels@216 → **Foreground 事件@222** → popPose@528。
+            // 所以这里必须用**面板相对坐标**（= 本事件的坐标系）。
+            //
+            // 曾经的写法是 `getGuiLeft() + ITEM_AREA_X`（绝对坐标）—— 那是上一个挂点
+            // ScreenEvent.Render.Post 的正确写法（它在整个界面渲染完之后、姿态已复位），
+            // 换成 Foreground 之后就成了**平移两次**：横幅整体偏右下、右边溢出到背包区，
+            // 而且 {@link #isRowEmpty} 校验的是槽位坐标系、绘制的却是平移过的坐标系 ⇒
+            // **校验的行与被盖住的行不是同一行**（自适应判定因此完全失效）。
+            //
+            // 现在不靠"记住哪个挂点用哪套坐标"，而是**每帧量一次姿态**：
+            // 姿态确实被平移了 (leftPos, topPos) ⇒ 用面板相对坐标；否则退回绝对坐标。
+            // 这样把挂点换回去（或将来换到别的钩子）也不会静默错位。
+            int guiLeft = screen.getGuiLeft();
+            int guiTop = screen.getGuiTop();
             GuiGraphics graphics = event.getGuiGraphics();
+            Matrix4f pose = graphics.pose().last().pose();
+            boolean poseTranslatedByPanel =
+                Math.abs(pose.m30() - (float) guiLeft) < 0.5F && Math.abs(pose.m31() - (float) guiTop) < 0.5F;
+            int left = poseTranslatedByPanel ? ITEM_AREA_X : guiLeft + ITEM_AREA_X;
+            int top = poseTranslatedByPanel ? ITEM_AREA_Y : guiTop + ITEM_AREA_Y;
 
             String prefix = CoeCreativeSections.BASE_TAB_KEY + "|";
             for (Map.Entry<String, Integer> entry : rows.entrySet()) {
