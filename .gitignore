@@ -57,6 +57,9 @@ run/
 /docs/
 /content/
 /tools/
+# 只跑 COE 的**独立客户端实例**（2026-09-30 用户要求：与 run/ 分开，用来验缺 CEWS 的降级表现）。
+# 放仓库根而不是 build/ 下：`gradle clean` 不会碰它，里面建的世界才留得住。
+/run-coe-only/
 /.tmp-ca
 /net/
 # 本地依赖目录：从 bundled jar 提取的航空学编译期 jar 等（不提交，重新提取即可）

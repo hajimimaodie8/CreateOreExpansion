@@ -28,7 +28,7 @@
   2. 改动语言/资源时：`.\gradlew.bat runData`（同时兼作 Bootstrap / mixin 冒烟测试）
   3. `.\gradlew.bat processResources jar --rerun-tasks`
   4. 校验 `build\libs\createoreexpansion-1.0.0.jar` 的时间与大小，再用 `dsh_im_return_file` 交付给用户
-- **测试启动项（dev，按模块组合）**：`runCoeOnly` / `runCoeCews` —— `loadedMods` 收窄本次加载的本模组 mod 文件，各自独立 gameDir `build/run-*`；⚠ **必须含 `coe_integration`**（dev 里 `core` 由它携带，去掉即 NoClassDefFoundError）。加组合照抄 `build.gradle` 的 W13 段。
+- **测试启动项（dev，按模块组合）**：`runCoeOnly`（独立新实例 `run-coe-only/`）/ `runCoeCews`（**与 `runClient` 共用 `run/`** ⇒ 直接载入已有世界）—— `loadedMods` 收窄本次加载的本模组 mod 文件；⚠ **必须含 `coe_integration`**（dev 里 `core` 由它携带，去掉即 NoClassDefFoundError）；⚠ 共用 `run/` 的启动项**别同时开两个**。加组合照抄 `build.gradle` 的 W13 段。
 - 崩溃排查：`run/crash-reports/*.txt`、`run/logs/latest.log`
 - 可选依赖（Jade / JEI / CC&A / Create Optical / Vintage Improvements / Aeronautics / Sable）一律通过 `compat/*` 层的 `ModList.isLoaded` + 反射隔离，**绝不在 `content` 包直接 import 可选模组类**。
 

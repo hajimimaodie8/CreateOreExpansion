@@ -323,10 +323,21 @@ neoForge {
 // 想连集成层之外的东西一起加载，把 neoForge.mods.getByName('<条目名>') 加进列表即可。
 //
 // 以后要加组合（例如 COE+CEWS+嬗化、或只 CEWS）：照抄一段、改名字与 mod 列表、换 gameDirectory。
-// 每个启动项用**各自独立的 gameDirectory**，所以世界/配置/日志互不干扰（run\ 那份是共享的，
-// 多个实例同时开才会抢；这里天然避开）。
-// 日志里搜 "Found mod file" 可一眼确认本次启动到底加载了哪几个 mod 文件
-// （LogMarkers.SCAN 默认 DENY，所以下面显式打开）。
+//
+// ── gameDirectory 的分工（2026-09-30 用户裁定，别"顺手统一"） ──────────────────────────
+//   `coeCews` → **`run/`**：即**你一直在玩的那个实例**（`run/saves/` 里有「测试世界」「新的世界 ×12」
+//               等 14 个存档，最后游玩时间 09-30 23:24 实测）。目的：**把这套组合载入你已经建好的
+//               世界**，看 CEWS 那 12 台机器在你的建筑里出现/工作。
+//               与 `runClient`/`runServer`/`runData` **共用同一个目录**——这是有意的：键位、配置、
+//               存档、日志全都接着上一份，不需要重新设置。
+//               ⚠ 共用目录 ⇒ **别同时开两个**（另开一个客户端/服务端会抢 `run/logs/latest.log`、
+//               `options.txt`、世界文件；症状是卡在 100% 或 "Unable to delete file latest.log"）。
+//   `coeOnly` → **`run-coe-only/`**（仓库根目录，全新独立的一份）：用户要求「只跑 COE 要单独独立
+//               开一个新的 Minecraft」—— 用来验**缺 CEWS 时的降级表现**，不能污染上面那个世界。
+//               ⚠ 放在**仓库根**而不是 `build/` 下：`gradle clean` 会清掉 `build/`，
+//               那样你辛苦建的世界就没了。`.gitignore` 里已加 `/run-coe-only/`。
+//   日志里搜 "Found mod file" 可一眼确认本次启动到底加载了哪几个 mod 文件
+//   （LogMarkers.SCAN 默认 DENY，所以下面显式打开）。
 neoForge {
     runs {
         // 只装 COE：createoreexpansion 本体（矿物/宝石/工具/技能 + 波引擎 + 嬗化内容）
@@ -334,15 +345,16 @@ neoForge {
         coeOnly {
             client()
             loadedMods.set([neoForge.mods.getByName('coe_integration'), neoForge.mods.getByName('coe')])
-            gameDirectory.set(project.file('build/run-coe-only'))
+            gameDirectory.set(project.file('run-coe-only'))
             systemProperty 'forge.logging.marker.scan', 'ACCEPT'
         }
         // COE + CEWS：再加能量波阵学那一层（差波器/调级器/波速调节器/变器/场控制器/查询仪）
+        // gameDirectory = run/ ⇒ 与 runClient 同一个实例，直接载入你已有的世界
         coeCews {
             client()
             loadedMods.set([neoForge.mods.getByName('coe_integration'), neoForge.mods.getByName('coe'),
                             neoForge.mods.getByName('cews')])
-            gameDirectory.set(project.file('build/run-coe-cews'))
+            gameDirectory.set(project.file('run'))
             systemProperty 'forge.logging.marker.scan', 'ACCEPT'
         }
     }
