@@ -2,7 +2,9 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.client.SkillSettingsScreen;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
+import com.hjmmd_8.createoreexpansion.integration.skiller.ArmorSkillProvider;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
@@ -16,6 +18,8 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -53,6 +57,9 @@ public final class CoeSkillClient {
     /** 上一次看到的技能组件（技能表/槽位的唯一来源；只比较它，不比较整个物品堆） */
     private static SkillsComponent lastSkills;
 
+    /** 上一次完整穿着的那一套（换护甲 ⇒ 可能成套/不成套翻转 ⇒ 必须重算槽位声明） */
+    private static ArmorSet lastWornSet;
+
     /** 键位注入只需要做一次 */
     private static boolean keySourceInjected;
 
@@ -68,6 +75,7 @@ public final class CoeSkillClient {
         if (player == null || minecraft.level == null) {
             // 离开世界：清掉记录，下次进世界重新注入/刷新
             lastSkills = null;
+            lastWornSet = null;
             return;
         }
 
@@ -85,6 +93,14 @@ public final class CoeSkillClient {
 
         if (!Objects.equals(lastSkills, current)) {
             lastSkills = current;
+            ClientSkillCache.refresh(player);
+        }
+
+        // 装备段同理：护甲换一件就可能"成套/不成套"翻转，而槽位 3/4/5 是在 refresh 时
+        // 由 ArmorSkillProvider.collectKeys 声明出来的 —— 不重算的话那段槽位永远不会被轮询。
+        ArmorSet worn = ArmorSet.wornSet(player);
+        if (worn != lastWornSet) {
+            lastWornSet = worn;
             ClientSkillCache.refresh(player);
         }
     }
@@ -121,14 +137,65 @@ public final class CoeSkillClient {
             return;
         }
         keySourceInjected = true;
-        // 槽位越界一律视为未按下（内核契约要求）
-        ClientSkillCache.setKeySource(slot ->
-                slot >= 0 && slot < SLOT_KEYS.length && SLOT_KEYS[slot].isPressed());
+        ClientSkillCache.setKeySource(CoeSkillClient::isSlotPressed);
         // 本模组没有总开关：关掉内核的开关键闸，避免按 R（= 槽位 2 的键）弹出启用提示
         ClientSkillCache.setToggleKeysEnabled(false);
         // 策略渲染器注册：必须早于 ClientSkillCache.enable(...)（enable 内部会 schedule()）
         StrategyRenderers.register(CoeAreaAoeStrategy.RENDERER_ID, new CoeBlockOutlineRenderer());
         // 生物描边（skin / plunder）：id 与 CoeEntityStrategy.getRendererId() 对齐
         StrategyRenderers.register(CoeEntityStrategy.RENDERER_ID, new CoeEntityOutlineRenderer());
+    }
+
+    /**
+     * <b>键源：工具段与装备段的模式切换</b>（用户 2026-10-01 的"装备辅助按键"设计）。
+     *
+     * <p>内核会为「每个来源声明过的槽位号」各问一次"这个槽位现在按下没有"。两段槽位空间是分开的
+     * （工具 0/1/2、装备 3/4/5，见 {@link ArmorSkillProvider}），所以这里只做分流：</p>
+     * <ul>
+     *     <li><b>按住装备修饰键（默认左 Alt）</b>：槽位 3/4/5 映射到物理键一/二/三，而槽位 0/1/2
+     *         <b>一律报未按下</b> —— 这就是"抑制工具技能"。不抑制的话，服务端遍历时会同时命中
+     *         槽位 0 的工具技能与槽位 3 的装备技能，两个一起放（能量双扣、效果同 tick）。</li>
+     *     <li><b>松开修饰键</b>：槽位 0/1/2 照常映射物理键，装备段一律未按下。</li>
+     * </ul>
+     *
+     * <p>刻意<b>不</b>做"两段同时按下"：那正是用户担心的紊乱形态。</p>
+     *
+     * @param slot 内核询问的槽位号（来自各 Provider 的 {@code collectKeys}）
+     */
+    private static boolean isSlotPressed(int slot) {
+        boolean equipmentMode = isEquipmentModifierDown();
+        if (ArmorSkillProvider.isEquipmentSlot(slot)) {
+            return equipmentMode && SLOT_KEYS[slot - ArmorSkillProvider.SLOT_BASE].isPressed();
+        }
+        if (ArmorSkillProvider.isHeldItemSlot(slot) && slot < SLOT_KEYS.length) {
+            return !equipmentMode && SLOT_KEYS[slot].isPressed();
+        }
+        return false; // 越界或未知槽位：内核契约里一律视为未按下
+    }
+
+    /**
+     * 装备修饰键是否按下（客户端）。
+     *
+     * <p>键位对象只在客户端由 {@code RegisterKeyMappingsEvent} 赋值，因此照 {@link AllKeys}
+     * 的既有约定做 null 保护（未注册时视为没按）。提示层
+     * （{@code client.hud.EquipmentSkillHud}）也复用它，保证"能放"与"提示"同源。</p>
+     */
+    public static boolean isEquipmentModifierDown() {
+        return AllKeys.EQUIPMENT_MODIFIER.isPressed();
+    }
+
+    /**
+     * 装备段某个槽位对应的技能键（给提示层显示"这个技能绑哪个键"用）。
+     *
+     * <p>键位表只此一份（{@link #SLOT_KEYS}），提示层不再自己列一遍 —— 否则改键或加键时两边会漂移。</p>
+     *
+     * @param slot 内核槽位号；不属于装备段或越界时返回 {@code null}
+     */
+    public static @Nullable AllKeys skillKeyForEquipmentSlot(int slot) {
+        if (!ArmorSkillProvider.isEquipmentSlot(slot)) {
+            return null;
+        }
+        int index = slot - ArmorSkillProvider.SLOT_BASE;
+        return index < SLOT_KEYS.length ? SLOT_KEYS[index] : null;
     }
 }

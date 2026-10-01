@@ -222,6 +222,21 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.skill_settings", "技能设置");
         // 机器旋转的修饰键（默认左 Ctrl；与"扳手右键"组合 = 旋转本模组无模式机器）
         add("createoreexpansion.keyinfo.rotate_modifier", "旋转机器（修饰键）");
+        // 装备技能修饰键（默认左 Alt；与技能键组合 = 释放装备的技能，见 EquipmentSkillHud）
+        add("createoreexpansion.keyinfo.equipment_modifier", "装备技能（修饰键）");
+
+        // ========== 装备技能提示层（按住装备修饰键时显示在快捷栏上方） ==========
+        add("createoreexpansion.hud.equipment.title", "装备技能（按住 %s）");
+        add("createoreexpansion.hud.equipment.set_active", "%s套 · 全套生效 Lv%s");
+        add("createoreexpansion.hud.equipment.set_incomplete", "未成套 · 需同套四件");
+        add("createoreexpansion.hud.equipment.set_none", "未穿戴本模组护甲");
+        add("createoreexpansion.hud.equipment.no_skill", "暂无套装技能");
+        add("createoreexpansion.hud.equipment.skill_line", "技能%s  %s  [%s]");
+        // 套名（与护甲物品名同源；提示层用 createoreexpansion.armor_set.<set> 拼键）
+        add("createoreexpansion.armor_set.jade", "翠玉");
+        add("createoreexpansion.armor_set.gem", "宝石");
+        add("createoreexpansion.armor_set.astral", "星界");
+        add("createoreexpansion.armor_set.thunder", "雷鸣");
 
         // ========== 技能设置界面 ==========
         add("createoreexpansion.skill_settings.title", "技能设置");

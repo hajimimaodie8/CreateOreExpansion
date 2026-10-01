@@ -323,6 +323,22 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.skill_settings", "Skill Settings");
         // 机器旋转的修饰键（默认左 Ctrl；与"扳手右键"组合 = 旋转本模组无模式机器）
         add("createoreexpansion.keyinfo.rotate_modifier", "Rotate Machine (Modifier)");
+        // Equipment skill modifier (default Left Alt; hold it with a skill key to release an
+        // equipment skill - see EquipmentSkillHud)
+        add("createoreexpansion.keyinfo.equipment_modifier", "Equipment Skill (Modifier)");
+
+        // ========== Equipment skill hint (shown above the hotbar while the modifier is held) ==
+        add("createoreexpansion.hud.equipment.title", "Equipment Skills (hold %s)");
+        add("createoreexpansion.hud.equipment.set_active", "%s Set - full bonus active, Lv%s");
+        add("createoreexpansion.hud.equipment.set_incomplete", "Not a full set - wear four matching pieces");
+        add("createoreexpansion.hud.equipment.set_none", "No modded armor worn");
+        add("createoreexpansion.hud.equipment.no_skill", "No set skills yet");
+        add("createoreexpansion.hud.equipment.skill_line", "Skill %s  %s  [%s]");
+        // Set names (same source as the armor item names)
+        add("createoreexpansion.armor_set.jade", "Jade");
+        add("createoreexpansion.armor_set.gem", "Gem");
+        add("createoreexpansion.armor_set.astral", "Astral");
+        add("createoreexpansion.armor_set.thunder", "Thunder");
 
         // ========== Skill settings screen ==========
         add("createoreexpansion.skill_settings.title", "Skill Settings");

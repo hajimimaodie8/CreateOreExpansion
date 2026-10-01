@@ -41,6 +41,19 @@ public enum AllKeys implements Translatable {
     /** 机器旋转的修饰键：与"扳手右键"组合 = 旋转本模组无模式机器（交互规则第 4 条）。
      * 默认左 Ctrl，<b>玩家可在"控制"里自定义</b>（原先写死在 core 里，改不了）。 */
     ROTATE_MODIFIER("rotate_modifier", GLFW.GLFW_KEY_LEFT_CONTROL, "Rotate Machine (Modifier)"),
+    /**
+     * <b>装备技能修饰键</b>（用户 2026-10-01 定稿）：按住它 + 任一技能键 = 释放<b>装备</b>的技能。
+     *
+     * <p>为什么要这个修饰键：工具与装备的<b>技能槽位号必须分开</b>（工具 0/1/2、装备 3/4/5）。
+     * 若不分开，按下键一时 {@code CoeSkillRelease.release} 会遍历到<b>两个</b>槽位 0 的绑定
+     * （工具的和装备的）并同时释放 —— 能量双扣、两个效果同一 tick 生效、预览也不知显示哪个。
+     * 修饰键把客户端键源切成"模式"：<b>按住时槽位 0/1/2 一律报未按下</b>，于是工具技能被抑制、
+     * 装备技能独占按键（服务端与内核都不需要认识这个键，见 {@code CoeSkillClient}）。</p>
+     *
+     * <p>默认左 Alt：左手拇指自然位置，与 Shift/R/G（技能键）和左 Ctrl（旋转修饰键）都不冲突；
+     * 玩家可在"控制"里自定义。</p>
+     */
+    EQUIPMENT_MODIFIER("equipment_modifier", GLFW.GLFW_KEY_LEFT_ALT, "Equipment Skill (Modifier)"),
     ;
 
     public static final Translatable MOD_NAME_TRANSLATABLE = () -> "createoreexpansion.mod_name";

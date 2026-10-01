@@ -67,8 +67,11 @@ public final class SkillerIntegration {
         // ── 一次性：Provider（与具体注册表无关，只做一次）────────────────────
         if (!initialized) {
             initialized = true;
-            // 技能候选来源：读取本模组旧组件并转成新内核的技能组件
+            // 技能候选来源：读取本模组旧组件并转成新内核的技能组件（槽位 0/1/2 = 主手）
             SkillProviders.register(new CoeSkillProvider());
+            // 装备技能来源（槽位 3/4/5 = 完整穿着的那一套；2026-10-01 用户裁定）：
+            // 必须与工具段分开，否则按一次键会同时释放两个技能（能量双扣）。见 ArmorSkillProvider。
+            SkillProviders.register(new ArmorSkillProvider());
             // 2026-09-30 第 4 阶段：迁移闸门（SkillMigrationGate）已删除 ——
             // 旧框架的执行入口（SkillsComponent#releaseSkills/releaseSkillAt）与两个旧触发点
             // 一并拔掉了，没有"旧路径可能重复执行"的窗口，闸门不再需要。
