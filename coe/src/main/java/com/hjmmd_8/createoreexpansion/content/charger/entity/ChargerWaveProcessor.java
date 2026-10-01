@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import net.minecraft.core.BlockPos;
@@ -57,6 +58,22 @@ public final class ChargerWaveProcessor {
 	 */
 	public boolean processItemEntity(ItemEntity item) {
 		ItemStack stack = item.getItem();
+
+		// ── 护甲支线（2026-10-01 用户要求："翡翠玉系列套装能量充能机制不生效"）──────────
+		// 本模组四套护甲、以及"带散构聚能的任意护甲"都能储能，但它们**不写 MAX_ENERGY
+		// 组件**：容量取决于"有没有那个附魔"，而附魔会被铁砧随时加减 ⇒ 必须现算
+		// （见 ArmorEnergy#maxOf）。由此有两条必须在这里拦住的原因：
+		//   ① ToolEnergy.hasEnergy(护甲) 恒为 false ⇒ 若走到下面"普通物品"分支，
+		//      护甲会被当成**原料消耗掉**（消耗 1 个再产出 1 个），这是错的；
+		//   ② 也<b>不走 charging 配方</b>：能否充能 = "能不能储能"（ArmorEnergy.stores），
+		//      它是动态的；写死成"每个物品 × 5 级"的静态配方覆盖不到
+		//      "原版/他模组护甲附上散构聚能后也能充"这种情况，反而会漂移。
+		if (ArmorEnergy.stores(stack)) {
+			ArmorEnergy.addEnergy(stack, ChargingRecipe.energyForLevel(waveLevel));
+			item.setItem(stack.copy());
+			return true;
+		}
+
 		ChargingRecipe recipe = findRecipe(stack);
 		if (recipe == null)
 			return false;

@@ -422,28 +422,27 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			return;
 		}
 
-		// 命中生物：<b>只有攻击态</b>才造成伤害（伤害值沿用原普通能量波的公式）；
-		// 普通态（只会充能加工）与变体态从生物身上穿过——它们专事加工，不兼职武器。
-		if (getWaveType().dealsDamage()) {
-			List<LivingEntity> entities = level().getEntitiesOfClass(LivingEntity.class, hitBox, e -> e.isAlive());
-			if (!entities.isEmpty()) {
-				LivingEntity target = entities.get(0);
-				if (!(target instanceof Player player) || !player.isCreative()) {
-					target.hurt(level().damageSources()
-						.indirectMagic(this, null), getDamage());
-				}
-				// 2026-10-01（用户定稿的充能路径②）：能量波打中<b>穿戴护甲的玩家</b> ⇒ 给穿戴中的
-				// 四件护甲充能，额度与"波给物品充能"完全一致（ChargingRecipe.energyForLevel）。
-				// 刻意放在创造模式判定之外：创造玩家也照充（方便测试与建造）。
-				// 非攻击态波从生物身上穿过（上面那句注释），因此只有攻击态能这么充 —— 与用户
-				// "让能量波去打你自己"的描述一致。
-				if (target instanceof Player wearer) {
-					ArmorEnergy.chargeWorn(wearer, ChargingRecipe.energyForLevel(this.waveLevel));
-				}
-				ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
-				discard();
-				return;
+		// 命中生物：<b>所有波型都碰撞消散</b>（用户 2026-10-01："能量波碰到实体后应该立刻消失，
+		// 而不是穿过去，这是非常不合常理的"）。伤害仍然<b>只有攻击态</b>造成 ——
+		// 普通态专事加工、变体态走远程加工，它们只是"撞上就消失"，不兼职武器。
+		List<LivingEntity> entities = level().getEntitiesOfClass(LivingEntity.class, hitBox, e -> e.isAlive());
+		if (!entities.isEmpty()) {
+			LivingEntity target = entities.get(0);
+			if (getWaveType().dealsDamage()
+				&& (!(target instanceof Player player) || !player.isCreative())) {
+				target.hurt(level().damageSources()
+					.indirectMagic(this, null), getDamage());
 			}
+			// 2026-10-01（用户定稿的充能路径②）：能量波打中<b>穿戴护甲的玩家</b> ⇒ 给穿戴中的
+			// 四件护甲充能，额度与"波给物品充能"完全一致（ChargingRecipe.energyForLevel）。
+			// 现在所有波型都会撞上实体，所以这条对所有波型都生效 —— 正是用户要的
+			// "让能量波去打你自己来充能"。刻意放在创造模式判定之外：创造玩家也照充。
+			if (target instanceof Player wearer) {
+				ArmorEnergy.chargeWorn(wearer, ChargingRecipe.energyForLevel(this.waveLevel));
+			}
+			ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
+			discard();
+			return;
 		}
 
 		// 命中掉落物：给能量工具充能 / 普通物品按配方转化（检测范围覆盖移动路径，避免高速跳过）。
@@ -465,15 +464,20 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 变体波（星辉波变器产物）覆写本方法执行链式远程加工并管理携带载荷。
 	 */
 	protected void onItemHit(List<ItemEntity> items) {
-		// 充能加工是"普通态专属"：攻击态是纯攻击（不理掉落物、不消散），
-		// 变体态则覆写本方法走远程加工（见 StellarWaveEntity）。
-		if (!getWaveType().allowsChargingProcessing())
-			return;
-		// 核心加工逻辑已抽取至 ChargerWaveProcessor（配方匹配 → 消耗输入 → 产出结果）
-		if (processor.processItemEntity(items.get(0))) {
-			ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
-			discard();
+		// 加工：只有"允许充能加工"的波型才真的去处理（攻击态是纯攻击；变体态覆写本方法走远程加工，
+		// 见 StellarWaveEntity）。加工失败也不影响下面的消散 —— 见下一段。
+		if (getWaveType().allowsChargingProcessing()) {
+			// 核心加工逻辑已抽取至 ChargerWaveProcessor（配方匹配 → 消耗输入 → 产出结果 / 护甲充能）
+			processor.processItemEntity(items.get(0));
 		}
+		// 消散：<b>撞到掉落物一律绽放并消失</b>（用户 2026-10-01："能量波遇到不会被加工的物品
+		// 会直接穿过去，这是不行的"）。
+		// 旧写法只有 processItemEntity 返回 true（= 配方匹配成功）才消散，于是：
+		//   · 不匹配任何 charging 配方的掉落物 ⇒ 波直接穿过（用户报的这条）；
+		//   · 攻击态波 ⇒ 提前 return，连碰都不碰。
+		// 现在改为"物理碰撞"语义：波是实体，撞到东西就该没。
+		ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
+		discard();
 	}
 
 	/**
