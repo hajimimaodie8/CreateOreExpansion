@@ -113,6 +113,53 @@ public class BarTooltipRender {
         return bar;
     }
 
+    /**
+     * <b>多段渐变能量条</b>（2026-10-01 为「星界套」的四段配色而加）。
+     *
+     * <p>与两段版同一套口径：渐变只铺在<b>已填充</b>格子上（未填充仍深灰），
+     * 参数 {@code t ∈ [0,1]} 表示"该格子在已填充区里的相对位置"，
+     * 差别只是 {@code t} 会在<b>多个色标之间</b>分段线性插值。</p>
+     *
+     * <p>色标顺序 = 从左到右；两段时结果与
+     * {@link #energyGradient(int, int, int, Color, Color)} 完全一致。
+     * 少于 2 个色标时退化成单色条，不会抛异常（装饰性渲染不许崩）。</p>
+     *
+     * @param current 当前能量
+     * @param max     最大能量
+     * @param total   总格数
+     * @param stops   色标（左 → 右）
+     */
+    public static Component energyGradient(int current, int max, int total, java.util.List<Color> stops) {
+        if (stops == null || stops.isEmpty()) {
+            return energy(current, max, total);
+        }
+        if (stops.size() == 1) {
+            return energy(current, max, total, stops.get(0));
+        }
+        float ratio = max > 0 ? (float) current / max : 0;
+        float clamped = Math.clamp(ratio, 0f, 1f);
+        int filled = (int) (clamped * total);
+        int emptyRgb = 0x333333;
+        int segments = stops.size() - 1;
+
+        MutableComponent bar = Component.empty();
+        for (int i = 0; i < total; i++) {
+            int rgb;
+            if (i < filled) {
+                // 已填充段：该格子在 [0,1] 上的位置（单格填充时取最左色标）
+                float t = filled <= 1 ? 0f : (float) i / (filled - 1);
+                float scaled = t * segments;
+                int index = Math.min((int) scaled, segments - 1);
+                float local = scaled - index;
+                rgb = lerpColor(stops.get(index), stops.get(index + 1), local).getRGB() & 0xFFFFFF;
+            } else {
+                rgb = emptyRgb;
+            }
+            bar.append(Component.literal("|").withStyle(Style.EMPTY.withColor(rgb)));
+        }
+        return bar;
+    }
+
     private static Color lerpColor(Color a, Color b, float t) {
         int r = (int) (a.getRed()   + (b.getRed()   - a.getRed())   * t);
         int g = (int) (a.getGreen() + (b.getGreen() - a.getGreen()) * t);

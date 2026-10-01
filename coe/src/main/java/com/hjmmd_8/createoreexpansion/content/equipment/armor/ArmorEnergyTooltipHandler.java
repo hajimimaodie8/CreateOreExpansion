@@ -1,9 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.armor;
 
-import java.awt.Color;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.util.BarTooltipRender;
 
 import net.minecraft.ChatFormatting;
@@ -43,12 +41,6 @@ public final class ArmorEnergyTooltipHandler {
     /** 套装合计行。 */
     private static final String SET_TOTAL_TRANSLATE_KEY = "createoreexpansion.tooltip.armor_energy_total";
 
-    /** 渐变起点色（绿）—— 与翠玉之弓那条逐字同值。 */
-    private static final Color GRADIENT_START = new Color(0x55FF55);
-
-    /** 渐变终点色（黄）—— 与翠玉之弓那条逐字同值。 */
-    private static final Color GRADIENT_END = new Color(0xFFFF55);
-
     /** 与工具能量条同一格数（见 {@code EnergyTooltipHandler#BAR_SLOTS}）。 */
     private static final int BAR_SLOTS = 20;
 
@@ -77,12 +69,12 @@ public final class ArmorEnergyTooltipHandler {
         }
         tip.add(index++, Component.translatable(ENERGY_TRANSLATE_KEY).append(":").withStyle(ChatFormatting.GRAY));
 
-        // 进度条样式与**翠玉之弓**逐字一致（用户 2026-10-01："你看翠玉之弓的进度条样式是什么样，
-        // 翠玉套的样式也是这个样"）：从左（绿 0x55FF55）到右（黄 0xFFFF55）的渐变，
-        // 同一个 BarTooltipRender.energyGradient 与同样的两个端色（见 EnergyTooltipHandler 里
-        // 那条 `stack.getItem() instanceof EnergyGradientTool` 的分支）。
-        // 四套护甲统一用这个样式（不按套分色）—— 想只让翠玉套渐变、其余单色的话改这一处即可。
-        tip.add(index++, BarTooltipRender.energyGradient(energy, max, BAR_SLOTS, GRADIENT_START, GRADIENT_END));
+        // 进度条配色：**按套**（用户 2026-10-01 逐套指定，色标表见 ArmorEnergyColors）——
+        //   翠玉 = 与翠玉之弓同款的绿→黄；宝石 = 蓝→红；星界 = 偏绿的黄→绿→蓝→粉紫（四段）；
+        //   雷鸣 = 与雷鸣合金能量条同源（直接读 ToolEnergyColorConfig.THUNDERITE）。
+        // 多段能力由 BarTooltipRender 的多色标重载提供（两段时与弓那条完全等价）。
+        tip.add(index++, BarTooltipRender.energyGradient(energy, max, BAR_SLOTS,
+            ArmorEnergyColors.stopsOf(stack)));
 
         // 套装合计：只在玩家身上穿着成套（或散构聚能补齐）时才有意义 —— 它是技能扣能的"池子"
         if (event.getEntity() != null) {
