@@ -79,3 +79,12 @@ package-lock.json
 # 根目录下的 logs/：某些 gradle 任务以工程根为工作目录时，日志框架会在这里建（空的）日志文件
 # ——正常游玩日志在 run/logs。同样锚定根目录，避免影响任何 src/ 下的同名目录。
 /logs/
+
+# 根目录的 com/ META-INF/ assets/ data/ skiller.mixins.json 永远不是正当内容：
+# 真正的 mod 元数据在 src/main/templates/、语言/模型在 src/generated/ 或各模块下。
+# 2026-10-01 事故：用 `jar xf <jar>` 解压时忘了先切目录，jar 内容被解到仓库根并被 git add -A 提交（96 文件）。
+# 锚定忽略（`/` 前缀）让这种误提交不可能再发生。
+/com/
+/META-INF/
+/assets/
+/skiller.mixins.json
