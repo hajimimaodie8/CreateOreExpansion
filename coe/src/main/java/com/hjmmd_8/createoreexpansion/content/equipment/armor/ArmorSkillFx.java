@@ -47,12 +47,33 @@ public final class ArmorSkillFx {
      *
      * <p>调用点已经做过"是否在水平移动"的判定，这里再兜一次底，避免原地站着也喷粒子。</p>
      */
+    /**
+     * 上一 tick 的脚底水平坐标（玩家 UUID → x/z）：用来判定"到底有没有在水平走动"。
+     *
+     * <p>2026-10-01 用户实测"有 buff 却没有拖尾"：原先读 {@code getDeltaMovement()} 判定移动，
+     * 而服务端玩家实体的 {@code deltaMovement} 并不总是反映当帧真实位移（客户端权威位置、
+     * 同步时机不一）⇒ 判定偶尔恒为"没动"。改成**自己记上一 tick 的位置**，服务端算差值，
+     * 这条判定就与同步时机无关了。</p>
+     */
+    private static final java.util.Map<java.util.UUID, double[]> LAST_POS = new java.util.HashMap<>();
+
+    /** 水平位移超过这个距离（格/tick）才算"在走"（约等于 1/3 的潜行速度）。 */
+    private static final double MIN_STEP = 0.035D;
+
     public static void dashTrail(ServerPlayer player) {
         if (player == null) {
             return;
         }
-        if (player.getDeltaMovement().horizontalDistanceSqr() < MOVING_EPSILON) {
-            return;
+        double[] last = LAST_POS.get(player.getUUID());
+        double x = player.getX();
+        double z = player.getZ();
+        LAST_POS.put(player.getUUID(), new double[] { x, z });
+        if (last != null) {
+            double dx = x - last[0];
+            double dz = z - last[1];
+            if (dx * dx + dz * dz < MIN_STEP * MIN_STEP) {
+                return; // 没在水平移动：不发拖尾（用户要求"水平面移动时才有"）
+            }
         }
         ServerLevel level = player.serverLevel();
         Vec3 look = player.getLookAngle();

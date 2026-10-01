@@ -79,8 +79,11 @@ public final class EquipmentSkillHud {
 
     /** 标题行（含修饰键名）。 */
     private static final String TITLE_KEY = "createoreexpansion.hud.equipment.title";
-    /** 技能行（冷却中）：技能序号 + 技能名 + 按键 + 剩余秒数。 */
-    private static final String SKILL_LINE_COOLDOWN_KEY = "createoreexpansion.hud.equipment.skill_line_cooldown";
+    /** 冷却行（替换掉"按住/预计扣能"那行）："（蓄能疾骋 冷却中：还需 43 秒）"。 */
+    private static final String COOLDOWN_LINE_KEY = "createoreexpansion.hud.equipment.cooldown_line";
+
+    /** 冷却行的颜色（暗红，与就绪时的等级色区分）。 */
+    private static final int COOLDOWN_LINE_COLOR = 0xFFB06060;
 
     /** 长按实时预览行（已按住多少秒 / 该级上限多少秒 → 预计扣多少 / 满额多少）。 */
     private static final String HOLD_PREVIEW_KEY = "createoreexpansion.hud.equipment.hold_preview";
@@ -196,6 +199,19 @@ public final class EquipmentSkillHud {
                 holdSeconds = config.holdSeconds();
                 holdTotalCost = config.holdTotalCost();
             }
+            // 冷却中：**替换掉"按住多少秒 / 预计扣多少"那一行**，改成括号里的冷却说明
+            //（用户 2026-10-01 的原话：不要覆盖技能行，把预估算那行换成"（技能X 冷却中：还有 N 秒）"）。
+            List<net.minecraft.resources.ResourceLocation> skillIds = ArmorSkillProvider.skillIdsOf(active);
+            if (index < skillIds.size()) {
+                net.minecraft.resources.ResourceLocation skillId = skillIds.get(index);
+                int cooldownSeconds = (ArmorSkillRuntime.cooldownLeft(player, skillId.getPath()) + 19) / 20;
+                if (cooldownSeconds > 0) {
+                    lines.add(new Line(Component.translatable(COOLDOWN_LINE_KEY,
+                        Component.translatable("skill." + skillId.getNamespace() + "." + skillId.getPath()),
+                        cooldownSeconds), COOLDOWN_LINE_COLOR));
+                    continue;
+                }
+            }
             int cost = ArmorSkillRuntime.holdCost(held, holdSeconds, holdTotalCost);
             lines.add(new Line(Component.translatable(HOLD_PREVIEW_KEY,
                 oneDecimal(held / 20.0F),
@@ -243,25 +259,16 @@ public final class EquipmentSkillHud {
             Component name = Component.translatable("skill." + id.getNamespace() + "." + id.getPath());
             AllKeys key = CoeSkillClient.skillKeyForEquipmentSlot(ArmorSkillProvider.SLOT_BASE + index);
             Component keyName = key == null ? Component.empty() : key.getKeybind().getTranslatedKeyMessage();
-            String skillId = id.getPath();
-            int cooldownSeconds = (ArmorSkillRuntime.cooldownLeft(player, skillId) + 19) / 20;
-            if (cooldownSeconds > 0) {
-                // 冷却中：**必须显示还剩多少秒**（否则玩家只会觉得"按了没反应"）
-                lines.add(new Line(Component.translatable(SKILL_LINE_COOLDOWN_KEY,
-                    index + 1, name, keyName, cooldownSeconds), COLOR_COOLDOWN));
-            } else {
-                lines.add(new Line(Component.translatable(SKILL_LINE_KEY,
-                    index + 1, name, keyName), levelColor));
-            }
+            // 技能行**保持原样**（用户 2026-10-01：不要把冷却硬塞进这一行覆盖掉它）；
+            // 冷却另起一行、用括号表示，见 holdPreviewLines。
+            lines.add(new Line(Component.translatable(SKILL_LINE_KEY,
+                index + 1, name, keyName), levelColor));
         }
         if (lines.isEmpty()) {
             lines.add(new Line(Component.translatable(NO_SKILL_KEY), COLOR_INACTIVE));
         }
         return lines;
     }
-
-    /** 技能行的冷却态颜色（偏暗的红，与"就绪"的等级色区分开）。 */
-    private static final int COLOR_COOLDOWN = 0xFFB06060;
 
     /**
      * 技能包里的显示名。

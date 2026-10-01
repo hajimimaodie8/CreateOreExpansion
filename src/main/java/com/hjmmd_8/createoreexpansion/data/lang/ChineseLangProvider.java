@@ -232,7 +232,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.hud.equipment.set_incomplete", "未成套 · 需同套四件（散构聚能可补一件）");
         add("createoreexpansion.hud.equipment.set_none", "未穿戴本模组护甲");
         add("createoreexpansion.hud.equipment.no_skill", "暂无套装技能");
-        add("createoreexpansion.hud.equipment.skill_line_cooldown", "技能%s  %s  [%s]  冷却中 %ss");
+        add("createoreexpansion.hud.equipment.cooldown_line", "（%s 冷却中：还需 %s 秒）");
         add("createoreexpansion.hud.equipment.skill_line", "技能%s  %s  [%s]");
         add("createoreexpansion.hud.equipment.energy", "能量 %s / %s");
         add("createoreexpansion.tooltip.armor_energy_total", "套装合计 %s / %s");
