@@ -310,10 +310,8 @@ public final class ArmorSkillRuntime {
             return;
         }
         BLOCK_NOTIFY_TICK.put(key, now);
-        net.minecraft.network.chat.Component message = seconds > 0
-            ? net.minecraft.network.chat.Component.translatable(langKey, seconds)
-            : net.minecraft.network.chat.Component.translatable(langKey);
-        player.displayClientMessage(message, true);
+        // 2026-10-01 用户否掉动作栏字幕（"单独来一个字幕，把装备的 tooltip 全都盖住"）：
+        // 冷却信息现在只出现在 HUD 的括号冷却行，这里只留日志。
         com.hjmmd_8.createoreexpansion.common.CoeCore.LOGGER.info(
             "[装备技能] 槽位 {} 发动被挡：{}（冷却剩余 {} 秒，能量合计 {}）",
             slot, langKey, seconds, ArmorEnergy.totalEnergy(player));
