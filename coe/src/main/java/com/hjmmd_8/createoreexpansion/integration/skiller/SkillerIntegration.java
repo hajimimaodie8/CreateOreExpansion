@@ -12,7 +12,7 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemContext
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemSkillContext;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
-import com.hjmmd_8.createoreexpansion.integration.skiller.skill.FallGuardItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.EquipmentSkillStub;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BowShootItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.HoeItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.PlunderItemSkill;
@@ -143,12 +143,12 @@ public final class SkillerIntegration {
      * <p><b>为什么挂 USE 类型 + 空壳实现</b>：内核的注册条目必须带"类型 + 上下文工厂 + 技能实现"
      * 三件套。装备技能的执行在 {@code ArmorSkillRuntime}（长按语义），这两个方法与策略都不会被调用
      * （内核释放路径显式跳过装备段槽位，见 {@code CoeSkillRelease}）。挂 USE 是因为"按键触发的
-     * 主动效果"在语义上最接近；空壳实现见 {@link FallGuardItemSkill} 的类注释。</p>
+     * 主动效果"在语义上最接近；空壳实现见 {@link EquipmentSkillStub}（所有装备技能共用同一个单例，不必一技能一类）。</p>
      */
     private static void registerArmorSkills(RegisterEvent event) {
         event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.FALL_GUARD_ID,
                 () -> new ItemSkillRegistration<UseItemSkillContext>(
-                        CoeSkillTypes.USE, UseItemContextFactory.KEY, new FallGuardItemSkill()));
+                        CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));
     }
 
     /**

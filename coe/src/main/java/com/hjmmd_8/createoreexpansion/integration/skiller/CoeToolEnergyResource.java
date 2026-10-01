@@ -2,13 +2,11 @@ package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
-import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.SkillResource;
-import net.minecraft.resources.ResourceKey;
+
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import com.hjmmd_8.createoreexpansion.common.CoeCore;
 
 /**
  * 工具能量资源（新内核版）——把模组既有的「主手工具 FE + 凝能佩兜底」接成 Skiller 的 {@link SkillResource}。
@@ -25,60 +23,59 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
  * <p>注册键为 {@code createoreexpansion:tool_energy}，注册进 {@code skiller:skill_resource}；
  * 技能实例的 NBT 里用键 {@code "resource"} 写入 {@link #ID} 的字符串形式，
  * Skiller 的 {@code NbtSkillInstanceFactory.createFromData} 据此把实例恢复成消耗本资源。</p>
+ *
+ * <p>骨架（ID/KEY 样板、null 判断、扣款失败的日志与物品栏同步）由
+ * {@link AbstractEnergySkillResource} 承担 —— 本类只回答"多少 / 够不够 / 怎么扣"。</p>
+ *
+ * @since 1.0.0
  */
-public class CoeToolEnergyResource implements SkillResource {
+public class CoeToolEnergyResource extends AbstractEnergySkillResource {
 
-    /** 注册路径（完整 id = {@code createoreexpansion:tool_energy}） */
+    /** 注册路径（完整 id = {@code createoreexpansion:tool_energy}）。 */
     public static final String PATH = "tool_energy";
 
-    /** 完整资源 id */
+    /** 完整资源 id（注册与实例 NBT 都用它；实现见基类，这里保留常量以免改动既有引用点）。 */
     public static final ResourceLocation ID =
-            ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, PATH);
+            ResourceLocation.fromNamespaceAndPath(com.hjmmd_8.createoreexpansion.common.CoeCore.REGISTRY_NAMESPACE, PATH);
 
-    /** 该资源在 {@code skiller:skill_resource} 注册表中的键 */
-    public static final ResourceKey<SkillResource> KEY =
-            ResourceKey.create(SkillerRegistries.SKILL_RESOURCE, ID);
-
-    @Override
-    public ResourceKey<SkillResource> key() {
-        return KEY;
+    public CoeToolEnergyResource() {
+        super(PATH);
     }
 
     @Override
-    public int getAmount(Player player) {
-        if (player == null) {
-            return 0;
-        }
+    protected int amountOf(Player player) {
         return ToolEnergy.getAvailable(player, player.getMainHandItem());
     }
 
     @Override
-    public boolean canConsume(Player player, int amount) {
-        if (amount <= 0) {
-            return true;
-        }
-        return player != null && ToolEnergy.canAfford(player, player.getMainHandItem(), amount);
+    protected boolean canPay(Player player, int amount) {
+        return ToolEnergy.canAfford(player, player.getMainHandItem(), amount);
     }
 
-    /** 注意：Skiller 的 {@link SkillResource#consume(Player, int)} 返回 void，失败状态由 {@link #canConsume} 前置把关。 */
     @Override
-    public void consume(Player player, int amount) {
-        if (player == null || amount <= 0) {
-            return;
-        }
-        ItemStack stack = player.getMainHandItem();
-        if (!ToolEnergy.consume(player, stack, amount)) {
-            // 理论上不该发生（canConsume 已通过）：留一条日志，避免"扣费静默失败"难以定位
-            CoeCore.LOGGER.warn("[Skiller] 工具能量扣减失败：player={}, amount={}（主手={}）",
-                    player.getName().getString(), amount, stack.getHoverName().getString());
-            return;
-        }
-        // 下面两步是旧 ToolEnergy.tryConsume 扣完后一定会做的，属于"玩家能看见的反馈"，
-        // 漏掉它们的症状就是：能量条不刷新、护目镜的"剩余能量"读数整片消失。
-        // 1) 强制物品栏同步，客户端立刻看到能量变化
-        player.getInventory().setChanged();
-        // 2) 剩余能量读数（护目镜限定；有凝能佩时佩行在上、工具行在下）
-        ToolEnergy.sendRemainingEnergyWithMedallion(player, stack, IMedallion.findBoundMedallion(player, stack));
+    protected boolean pay(Player player, int amount) {
+        return ToolEnergy.consume(player, player.getMainHandItem(), amount);
     }
 
+    /** 工具能源的失败日志多带"是哪件主手物品"，便于定位（基类只打 path 与数量）。 */
+    @Override
+    protected void logPayFailure(Player player, int amount) {
+        ItemStack stack = player.getMainHandItem();
+        com.hjmmd_8.createoreexpansion.common.CoeCore.LOGGER.warn(
+            "[Skiller] 工具能量扣减失败：player={}, amount={}（主手={}）",
+            player.getName().getString(), amount, stack.getHoverName().getString());
+    }
+
+    /**
+     * 扣款成功后的**附加**反馈：剩余能量读数（护目镜限定；有凝能佩时佩行在上、工具行在下）。
+     *
+     * <p>覆写的是基类的<b>钩子</b>而不是 {@code consume} 骨架 —— 骨架已经做了
+     * "扣成功 ⇒ {@code setChanged()}"，这里只补工具侧特有的读数播报。</p>
+     */
+    @Override
+    protected void afterPaid(Player player, int amount) {
+        ItemStack stack = player.getMainHandItem();
+        ToolEnergy.sendRemainingEnergyWithMedallion(player, stack,
+            IMedallion.findBoundMedallion(player, stack));
+    }
 }

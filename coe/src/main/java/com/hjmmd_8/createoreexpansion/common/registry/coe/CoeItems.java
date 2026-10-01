@@ -64,76 +64,16 @@ public final class CoeItems {
 
     // 这个变量名可以随便写，好理解就行，一般是item id的大写
     // 这里调用了MoreCreateOre类的static field(字段？ REGSITRATE？
-    public static final ItemEntry<Item> JADE_INGOT = CoeRegistrate.REGISTRATE
-            // 调用方式？
-            .item("jade_ingot", Item::new)
-            .tag(CREATE_INGOTS.tag)
-            .tag(Tags.Items.INGOTS)
-            .tag(AllGemTags.JADE.ingots)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> RAW_JADE = CoeRegistrate.REGISTRATE
-            .item("raw_jade", Item::new)
-            .tag(Tags.Items.RAW_MATERIALS)
-            .tag(AllGemTags.JADE.rawOres)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> JADE_NUGGET = CoeRegistrate.REGISTRATE
-            .item("jade_nugget", Item::new)
-            .tag(Tags.Items.NUGGETS)
-            .tag(AllGemTags.JADE.nuggets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> CRUSHED_JADE_ORE = CoeRegistrate.REGISTRATE
-            .item("crushed_jade_ore", Item::new)
-            .tag(CRUSHED_RAW_MATERIALS.tag)
-            .tag(AllGemTags.JADE.crushedRawOres)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> JADE_SMALL_SHARD = CoeRegistrate.REGISTRATE
-            .item("jade_small_shard", Item::new)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> JADE_BIG_SHARD = CoeRegistrate.REGISTRATE
-            .item("jade_big_shard", Item::new)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> JADE_SHEET = CoeRegistrate.REGISTRATE
-            .item("jade_sheet", Item::new)
-            .tag(AllGemTags.JADE.sheets)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> JADE_ROD = CoeRegistrate.REGISTRATE
-            .item("jade_rod", Item::new)
-            .tag(AllGemTags.JADE.rods)
-            .tag(AllTags.AllItemTags.RODS.tag)
-            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
-
-    public static final ItemEntry<Item> JADE_WIRE = CoeRegistrate.REGISTRATE
-            .item("jade_wire", Item::new)
-            .tag(AllGemTags.JADE.wires)
-            .tag(AllTags.AllItemTags.WIRES.tag)
-            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)
-            .model((ctx, provider) ->
-                    provider.basicItem(ctx.get()))
-            .register();
+    // ---- 翠玉族（jade）：注册链收进族级 helper，声明处一行一件 ----
+    public static final ItemEntry<Item> JADE_INGOT = gemIngot("jade_ingot", AllGemTags.JADE);
+    public static final ItemEntry<Item> RAW_JADE = gemRaw("raw_jade", AllGemTags.JADE);
+    public static final ItemEntry<Item> JADE_NUGGET = gemNugget("jade_nugget", AllGemTags.JADE);
+    public static final ItemEntry<Item> CRUSHED_JADE_ORE = gemCrushed("crushed_jade_ore", AllGemTags.JADE);
+    public static final ItemEntry<Item> JADE_SMALL_SHARD = gemPart("jade_small_shard");
+    public static final ItemEntry<Item> JADE_BIG_SHARD = gemPart("jade_big_shard");
+    public static final ItemEntry<Item> JADE_SHEET = gemSheet("jade_sheet", AllGemTags.JADE);
+    public static final ItemEntry<Item> JADE_ROD = gemRod("jade_rod", AllGemTags.JADE);
+    public static final ItemEntry<Item> JADE_WIRE = gemWire("jade_wire", AllGemTags.JADE);
 
     public static final ItemEntry<SwordItem> JADE_SWORD = CoeRegistrate.REGISTRATE
             .item("jade_sword", p -> new SwordItem(AllTiers.JADE, p))
@@ -1223,6 +1163,68 @@ public final class CoeItems {
             "netherite_grinding_wheel",
             AllTags.AllItemTags.GRINDING_WHEELS_TIER_3,
             () -> Blocks.NETHERITE_BLOCK);
+
+    // ========== 宝石族物品的注册辅助 ==========
+    // 用户 2026-10-01：「别一个代码复制粘贴用一堆，能继承就继承」——同一族物品的注册链只写一遍，
+    // 声明处变成一行。原来这段链在文件里逐字重复了 57 次（审计计数）。
+    // 每个 helper 顺带把「矿物」分区声明掉（分区归属写在注册处，见 CoeCreativeSections#section）。
+
+    /** 普通宝石物品的公共收尾：基础模型 + 「矿物」分区声明。 */
+    private static <T extends Item, P> ItemBuilder<T, P> oreItem(ItemBuilder<T, P> builder) {
+        return builder
+            .model((ctx, provider) -> provider.basicItem(ctx.get()))
+            .transform(CoeCreativeSections.section(CoeCreativeSections.CreativeSection.ORE));
+    }
+
+    /** 锭（Create 锭 + 原版锭 + 本族锭标签）。 */
+    private static ItemEntry<Item> gemIngot(String id, AllGemTags gem) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
+            .tag(CREATE_INGOTS.tag).tag(Tags.Items.INGOTS).tag(gem.ingots)).register();
+    }
+
+    /** 粗矿（原版粗矿 + 本族粗矿标签）。 */
+    private static ItemEntry<Item> gemRaw(String id, AllGemTags gem) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
+            .tag(Tags.Items.RAW_MATERIALS).tag(gem.rawOres)).register();
+    }
+
+    /** 粒（原版粒 + 本族粒标签）。 */
+    private static ItemEntry<Item> gemNugget(String id, AllGemTags gem) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
+            .tag(Tags.Items.NUGGETS).tag(gem.nuggets)).register();
+    }
+
+    /** 粉碎矿（Create 粉碎原料 + 本族粉碎标签）。 */
+    private static ItemEntry<Item> gemCrushed(String id, AllGemTags gem) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
+            .tag(CRUSHED_RAW_MATERIALS.tag).tag(gem.crushedRawOres)).register();
+    }
+
+    /** 无标签的宝石零件（小碎片 / 大碎片这类中间产物）。 */
+    private static ItemEntry<Item> gemPart(String id) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)).register();
+    }
+
+    /** 板。 */
+    private static ItemEntry<Item> gemSheet(String id, AllGemTags gem) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new).tag(gem.sheets)).register();
+    }
+
+    /** 杆（Create 杆标签一并挂上，参与 Create 的配方识别）。 */
+    private static ItemEntry<Item> gemRod(String id, AllGemTags gem) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
+            .tag(gem.rods)
+            .tag(AllTags.AllItemTags.RODS.tag)
+            .tag(AllTags.AllItemTags.RODS_ALL_METAL.tag)).register();
+    }
+
+    /** 线（Create 线标签一并挂上）。 */
+    private static ItemEntry<Item> gemWire(String id, AllGemTags gem) {
+        return oreItem(CoeRegistrate.REGISTRATE.item(id, Item::new)
+            .tag(gem.wires)
+            .tag(AllTags.AllItemTags.WIRES.tag)
+            .tag(AllTags.AllItemTags.WIRES_ALL_METAL.tag)).register();
+    }
 
     public static <T extends Item, P> NonNullFunction<ItemBuilder<T, P>, SkillItemBuilder<T, P>> skillItem() {
         return SkillItemBuilder::new;
