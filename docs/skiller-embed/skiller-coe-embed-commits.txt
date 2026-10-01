@@ -1,6 +1,0 @@
-﻿- `e0f1275` 2026-09-19  为 COE 嵌入修复 Skiller 的硬阻塞（序列化往返 / Dist 边界 / 空表 NPE / 空组件崩溃 / JarJar 模块名）
-- `c107681` 2026-09-19  ClientSkillCache 增加 refresh，供换工具后重算技能与按键槽位
-- `9e74158` 2026-09-19  ClientSkillCache 按键状态比较补默认值，修 Boolean 拆箱 NPE
-- `06aa4a9` 2026-09-19  新增 SkillKeySource 注入点与总开关闸开关，便于消费方使用自己的键位
-- `67a2394` 2026-09-19  为 COE 嵌入修复 Skiller 的硬阻塞（序列化往返 / Dist 边界 / 空表 NPE / 空组件崩溃 / JarJar 模块名）
-- `5525381` 2026-09-30  修死锁：onKeyInput 未启用时回退到内置键位全范围（此前所有技能静默失效）

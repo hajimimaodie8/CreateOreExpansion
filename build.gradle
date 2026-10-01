@@ -261,6 +261,8 @@ neoForge {
 //   ④ 本段**不碰**上面任何一条 mod 绑定，也不改 processResources / jar：只多一个空 source set
 //      与两个 run 任务。产物条目集与逐条目哈希前后不变（build/patch/w3-jar-hashes-*.txt）。
 // 准备脚本（幂等）：tools\prepare-run-published.ps1
+//   ⚠ 2026-09-30 起 `tools/` **不入公共仓库**（只在本机保留，见 .gitignore）：
+//   新 clone 的人要跑这两个发布形态启动项，得自备该脚本；编译与普通启动不受影响。
 sourceSets {
     // 空 source set：唯一用途是给下面两个 run 提供一个「不是 main」的 runtimeClasspath 容器。
     // 故意不登记任何 srcDir / resources ⇒ 它的输出目录都不存在。

@@ -42,11 +42,21 @@ run/
 /repo/
 !**/src/**/repo/
 /_create_src
-# markdown_output/：**已有文件已全部纳入跟踪**（2026-09-30 用 git add -f 提交，29 个文件）。
-# 这里保留忽略规则是**刻意的**：新增文档要显式 `git add -f markdown_output/<文件>` 才进库，
-# 避免 `git add -A` 把一次性脚本/临时产物顺手带进来。
-# 自检：`git ls-files markdown_output | Measure-Object` 应看到那批文件仍在库里。
-/markdown_output
+# ── 2026-09-30（用户要求「仓库要像别的模组仓库一样干净」）：以下四类**只在本机保留** ────────
+# 全部用**前导 / 锚定根目录**（理由见上面那条教训：裸写会匹配任意层级）。
+# 本地文件一个都没删，只是不进版本库；`git rm --cached` 已完成，故不再有"已跟踪"的文件。
+#   /markdown_output/  内部工作文档（交接提示词、变更史、决策链、复盘、代码审查… 含 .docx）
+#   /docs/             支援方的工程笔记 + skiller 嵌入补丁（63 KB）+ 验收清单
+#   /content/          顶层 content/ 不是源码目录（源码在 <模块>/src/main/java/**/content/），
+#                      里面只有一份孤立的 energyfield 设计文档
+#   /tools/            11 道工程关卡脚本 + 发布形态测试台（本机自用；不进公共仓库）
+# 影响（有意接受）：新 clone 的人**没有**这些关卡与测试台脚本，但**不影响编译**——
+# 编译必需的 skiller jar 在 libs-maven/（不受本段影响，仍随仓库提交）。
+# ⚠ 别用 `git add -f` 把它们塞回来；要恢复跟踪就先删掉这里的对应几行。
+/markdown_output/
+/docs/
+/content/
+/tools/
 /.tmp-ca
 /net/
 # 本地依赖目录：从 bundled jar 提取的航空学编译期 jar 等（不提交，重新提取即可）
