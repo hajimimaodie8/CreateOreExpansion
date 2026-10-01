@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.armor.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.handler.LastStandHandler;
@@ -64,26 +65,30 @@ public final class ArmorSkillHandler {
      *
      * <p>顺序刻意"先主动后被动"：主动是确定性的 100%，先短路掉就不必掷骰子（也避免
      * 主动期间因为随机数失败而掉血这种明显不合理的表现）。</p>
+     *
+     * <p><b>落地粒子按"这次豁免由哪一套提供"上色</b>（规格 §8 第 4 层，用户 2026-10-01）：
+     * ① 段传 {@link ArmorSet#JADE}（黄绿，与本层之前逐字相同）；② 段传 {@link ArmorSet#GEM}
+     * （蓝红）——宝石套继承虚衡坠护的摔落豁免，落地<b>不再</b>显示翠玉的黄绿。</p>
      */
     @SubscribeEvent
     public static void onFall(LivingFallEvent event) {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        // ① 翠玉套 · 虚衡坠护（**保持原样，一行判定都不动**）
+        // ① 翠玉套 · 虚衡坠护（**保持原样，一行判定都不动**；只有粒子多带一个"我是翠玉"的套参）
         int level = ArmorSkillRuntime.levelOf(player, ArmorSkillRuntime.FALL_GUARD);
         if (level > 0) {
             if (ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.FALL_GUARD)) {
                 event.setCanceled(true);
-                // 落地特效（用户 2026-10-01）：按住技能键落地 ⇒ "黄绿交加"加强版
-                ArmorSkillFx.landingImpact(player, true);
+                // 落地特效（用户 2026-10-01）：按住技能键落地 ⇒ "两色交加"加强版
+                ArmorSkillFx.landingImpact(player, true, ArmorSet.JADE);
                 return;
             }
             FallGuardConfigs.Config config = FallGuardConfigs.config(level);
             if (player.getRandom().nextDouble() < config.passiveChance()) {
                 event.setCanceled(true);
                 // 基础落地特效（用户 2026-10-01）：被动豁免摔落伤害时也有
-                ArmorSkillFx.landingImpact(player, false);
+                ArmorSkillFx.landingImpact(player, false, ArmorSet.JADE);
                 return;
             }
         }
@@ -92,9 +97,13 @@ public final class ArmorSkillHandler {
         // （概率沿用虚衡坠护同级那一档，见 LastStandConfigs.passiveFallChance）。
         // ⚠ **不**判 LastStand 的冷却：摔落豁免是"继承来的被动"，与主动长按的内置冷却无关，
         // 冷却中按住技能键仍然该 100% 豁免（与虚衡坠护一致）。
+        // 走到这里说明生效的那一套提供了 LAST_STAND ⇒ 那一套就是宝石套（levelOf 内部按
+        // ArmorSet.effectiveSet 解析），所以粒子按宝石套蓝红上色。
         if (LastStandHandler.shouldNegateFall(player)) {
             event.setCanceled(true);
-            ArmorSkillFx.landingImpact(player, ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.LAST_STAND));
+            boolean holding = ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.LAST_STAND);
+            // 宝石套：蓝红落地（不再借翠玉的黄绿 —— 规格 §8 第 4 层）
+            ArmorSkillFx.landingImpact(player, holding, ArmorSet.GEM);
         }
     }
 

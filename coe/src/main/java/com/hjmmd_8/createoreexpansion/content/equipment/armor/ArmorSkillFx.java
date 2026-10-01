@@ -5,6 +5,7 @@ import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 import org.joml.Vector3f;
@@ -14,12 +15,29 @@ import org.joml.Vector3f;
  * 与本仓波系统同一套路，见 {@code ChargerWaveFx}）。
  *
  * <ul>
- *   <li><b>迅捷拖尾</b>：{@link #dashTrail} —— <b>黄 → 绿渐变</b>的拖尾，只在玩家<b>水平移动</b>时发。</li>
- *   <li><b>落地特效</b>：{@link #landingImpact} —— 虚衡坠护豁免一次摔落伤害的瞬间，脚下炸一圈黄绿；
- *       <b>按住技能键落地</b>时升级为"黄绿交加"（黄绿交替 + 亮闪点缀）。</li>
+ *   <li><b>迅捷拖尾</b>：{@link #dashTrail} —— 翠玉套<b>黄 → 绿渐变</b>的拖尾，只在玩家<b>水平移动</b>时发。</li>
+ *   <li><b>落地特效</b>：{@link #landingImpact} —— 摔落伤害被豁免的瞬间，脚下炸一圈；
+ *       <b>按住技能键落地</b>时升级为"两色交加"（两色交替 + 亮闪点缀）。颜色按<b>调用方传进来的那一套</b>走。</li>
  * </ul>
  *
- * <p>颜色一律用 0~1 的 RGB 三元组（{@link DustParticleOptions} 的口径），改色只改下面几个常量。</p>
+ * <h2>装备技能粒子的<b>唯一颜色源</b>（规格 §8 第 4 层，用户 2026-10-01）</h2>
+ *
+ * <p>任何装备技能粒子都<b>不许自己定色</b>，一律问 {@link #trailColors(ArmorSet)} /
+ * {@link #impactColors(ArmorSet)}：</p>
+ * <ol>
+ *   <li><b>宝石套</b>（{@link ArmorSet#GEM}）⇒ <b>蓝 → 红</b>，<b>直接取</b>
+ *       {@link ArmorEnergyColors#stopsOf(ArmorSet)} 的两端（与宝石套能量条同源，见下方
+ *       {@code GEM_SOURCE}）——本文件<b>不抄字面量</b>；</li>
+ *   <li><b>翠玉套</b>（{@link ArmorSet#JADE}）⇒ 现有黄→绿，<b>逐字保留</b>（本层观感零变化）；</li>
+ *   <li><b>其它套</b>（星界 / 雷鸣，以及未知）⇒ 回落到该套
+ *       {@code ArmorEnergyColors.stopsOf(set)} 的<b>首尾两色</b>，不另定色。</li>
+ * </ol>
+ *
+ * <p>⚠ 宝石套继承了虚衡坠护的摔落豁免，落地时曾经走翠玉的黄绿常量
+ * （{@code LAND_YELLOW} / {@code LAND_GREEN}）—— 那是用户看到的 bug。关卡
+ * {@code tools/check-armor-sets.ps1} 第 24 节钉住了"宝石段不得再出现这两个标识符"。</p>
+ *
+ * <p>颜色一律用 0~1 的 RGB 三元组（{@link DustParticleOptions} 的口径）。</p>
  *
  * @since 1.0.0
  */
@@ -29,9 +47,41 @@ public final class ArmorSkillFx {
     private static final Vec3 DASH_TAIL_YELLOW = new Vec3(1.00D, 0.82D, 0.12D);
     private static final Vec3 DASH_HEAD_GREEN = new Vec3(0.34D, 0.96D, 0.26D);
 
-    /** 落地特效的两色（按住技能键时黄绿交替 = "黄绿交加"）。 */
+    /** 落地特效的两色（按住技能键时两色交替 = "两色交加"）。 */
     private static final Vec3 LAND_YELLOW = new Vec3(1.00D, 0.85D, 0.18D);
     private static final Vec3 LAND_GREEN = new Vec3(0.38D, 0.95D, 0.30D);
+
+    /** 翠玉套的两对端点色：拖尾 / 落地（数值就是上面那四个常量，本层<b>逐字没动</b>）。 */
+    private static final Duo JADE_TRAIL = new Duo(DASH_TAIL_YELLOW, DASH_HEAD_GREEN);
+    private static final Duo JADE_IMPACT = new Duo(LAND_YELLOW, LAND_GREEN);
+
+    /**
+     * <b>一对端点色</b>（0~1 的 RGB）：{@code from} = 尾端 / 第一色，{@code to} = 头端 / 第二色。
+     *
+     * <p>落地特效的用法是"两者交替"（{@code i % 2}），拖尾的用法是"沿距离插值"。</p>
+     */
+    public record Duo(Vec3 from, Vec3 to) {
+    }
+
+    /**
+     * <b>拖尾的端点色</b>（唯一颜色源，按套装解析）—— 翠玉黄→绿逐字保留，宝石蓝红取自能量条，
+     * 其它套回落该套能量条色标的首尾两色。
+     *
+     * @param set 当前生效的套；{@code null} 视为"没有套"⇒ 回落默认色
+     */
+    public static Duo trailColors(ArmorSet set) {
+        return set == ArmorSet.JADE ? JADE_TRAIL : energyDuo(set);
+    }
+
+    /**
+     * <b>落地特效的两色</b>（唯一颜色源，按套装解析）—— 口径同 {@link #trailColors(ArmorSet)}，
+     * 只有"翠玉套落地那对黄绿"与拖尾那对略有差别（今天的观感就是这么定的，本层不改）。
+     *
+     * @param set 当前生效的套；{@code null} 视为"没有套"⇒ 回落默认色
+     */
+    public static Duo impactColors(ArmorSet set) {
+        return set == ArmorSet.JADE ? JADE_IMPACT : energyDuo(set);
+    }
 
     /** 拖尾每段的间距（格）：越靠后越黄。 */
     private static final double TRAIL_STEP = 0.38D;
@@ -62,7 +112,9 @@ public final class ArmorSkillFx {
     private static final double MIN_STEP = 0.035D;
 
     public static void dashTrail(ServerPlayer player) {
-        trail(player, DASH_TAIL_YELLOW, DASH_HEAD_GREEN);
+        // 翠玉套的黄→绿：走唯一颜色源（数值就是上面那两个常量，观感与本层之前逐字相同）
+        Duo colors = trailColors(ArmorSet.JADE);
+        trail(player, colors.from(), colors.to());
     }
 
     /**
@@ -71,10 +123,12 @@ public final class ArmorSkillFx {
      *
      * <p>因此形态逐字复用 {@link #dashTrail} 的私有实现 {@link #trail}（同样的分段数、同样的
      * 左右双列、同样的"只在水平移动时发"、同样的亮闪点缀），<b>只换两端色</b>为宝石套的
-     * {@link #GEM_BLUE} → {@link #GEM_RED}（同源于 {@code ArmorEnergyColors.GEM_STOPS}）。</p>
+     * {@link #GEM_BLUE} → {@link #GEM_RED}（同源于 {@code ArmorEnergyColors.stopsOf(ArmorSet.GEM)}）。</p>
      */
     public static void gemTrail(ServerPlayer player) {
-        trail(player, GEM_BLUE, GEM_RED);
+        // 宝石套的蓝→红：同样走唯一颜色源（与 dashTrail 同一条实现，只有颜色不同）
+        Duo colors = trailColors(ArmorSet.GEM);
+        trail(player, colors.from(), colors.to());
     }
 
     /**
@@ -125,15 +179,23 @@ public final class ArmorSkillFx {
     }
 
     /**
-     * 落地特效（虚衡坠护豁免摔落伤害的瞬间）。
+     * 落地特效（摔落伤害被豁免的瞬间：翠玉套的虚衡坠护 / 宝石套继承来的绝境守护那条豁免）。
      *
-     * @param holding 落地时是否正按住虚衡坠护技能键；为 {@code true} 时升级成"黄绿交加"版
+     * <p><b>颜色按 {@code set} 走唯一颜色源</b>（规格 §8 第 4 层，用户 2026-10-01）：翠玉套 = 黄绿
+     * （与第 3 层之前逐字相同）、宝石套 = 蓝红。形态（圈半径、颗数、上扬、亮闪）<b>不随套变化</b>。</p>
+     *
+     * @param player  落地的玩家
+     * @param holding 落地时是否正按住该套的摔落豁免技能键；为 {@code true} 时升级成"两色交加"版
+     * @param set     这次豁免由哪一套提供（{@link ArmorSet#JADE} / {@link ArmorSet#GEM}）——
+     *                调用点各传自己的套，别再让宝石套借用翠玉的黄绿
      */
-    public static void landingImpact(net.minecraft.world.entity.player.Player player, boolean holding) {
+    public static void landingImpact(Player player, boolean holding, ArmorSet set) {
         // 只在服务端发粒子：调用点来自 LivingFallEvent（两侧都会触发），客户端侧直接忽略。
         if (!(player instanceof ServerPlayer server)) {
             return;
         }
+        // 唯一颜色源：翠玉拿回 LAND_YELLOW/LAND_GREEN（逐字不变），宝石拿回蓝红
+        Duo colors = impactColors(set);
         ServerLevel level = server.serverLevel();
         double x = server.getX();
         double y = server.getY();
@@ -142,17 +204,17 @@ public final class ArmorSkillFx {
         for (int i = 0; i < ring; i++) {
             double angle = Math.PI * 2.0D / ring * i;
             // 用户 2026-10-01 报"免疫摔落的粒子只有黄色，没有绿色"：
-            // 现在**两种情况都黄绿交替**（被动豁免也有一半绿），按住时再叠亮闪与更密的圈。
-            Vec3 color = (i % 2 == 1) ? LAND_GREEN : LAND_YELLOW;
+            // 现在**两种情况都两色交替**（被动豁免也有一半第二色），按住时再叠亮闪与更密的圈。
+            Vec3 color = (i % 2 == 1) ? colors.to() : colors.from();
             level.sendParticles(dust(color, 1.25F),
                 x + Math.cos(angle) * 0.9D,
                 y + 0.05D,
                 z + Math.sin(angle) * 0.9D,
                 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
-        // 冲击中心：黄绿各一半地向上扬（不是清一色黄）
+        // 冲击中心：两色各一半地向上扬（不是清一色第一色）
         for (int i = 0; i < 8; i++) {
-            Vec3 color = (i % 2 == 1) ? LAND_GREEN : LAND_YELLOW;
+            Vec3 color = (i % 2 == 1) ? colors.to() : colors.from();
             level.sendParticles(dust(color, 1.45F), x, y + 0.10D, z, 1, 0.28D, 0.06D, 0.28D, 0.02D);
         }
         if (holding) {
@@ -167,10 +229,16 @@ public final class ArmorSkillFx {
             new Vector3f((float) color.x, (float) color.y, (float) color.z), scale);
     }
 
+    // ===== GEM SET COLOURS (blue -> red, straight from ArmorEnergyColors) =====
+    // 上面那段是"唯一颜色源"的分发（按套解析）；这一段是宝石侧的取色实现。
+    // 关卡 check-armor-sets.ps1 第 24 节按**方法体**判定（注释先被剥掉，提到常量不算数）：
+    // 这些取色/发色路径都不得出现翠玉的 LAND_YELLOW / LAND_GREEN，且取色只走
+    // ArmorEnergyColors.stopsOf —— 宝石套落地必须是蓝红。
+
     // ===================== 宝石套 · 绝境守护（用户 2026-10-01，槽位 1） =====================
 
     /**
-     * 宝石套的两个端点色：<b>蓝 → 红</b>。
+     * 宝石套的两个端点色：<b>蓝 → 红</b>（也是"唯一颜色源"里宝石那一支的真源）。
      *
      * <p><b>直接从色源取</b>（用户 2026-10-01 第二次补充 + 规格 §8 第 4 层）：宝石套的蓝红
      * 只有一处定义 —— {@code ArmorEnergyColors.GEM_STOPS} 的 {@code 0x55AAFF} / {@code 0xFF4A4A}
@@ -184,6 +252,22 @@ public final class ArmorSkillFx {
     private static final Vec3 GEM_BLUE = toVec(GEM_SOURCE.get(0));
 
     private static final Vec3 GEM_RED = toVec(GEM_SOURCE.get(GEM_SOURCE.size() - 1));
+
+    /** 宝石套的端点色对（拖尾与落地<b>共用同一对</b>：蓝 → 红）。 */
+    private static final Duo GEM_DUO = new Duo(GEM_BLUE, GEM_RED);
+
+    /**
+     * 非翠玉套的取色：<b>一律取该套能量条色标的首尾两色</b>（宝石 / 星界 / 雷鸣 / 未知），
+     * 本文件不另定任何颜色（规格 §8 第 4 层第 3 条）。
+     */
+    private static Duo energyDuo(ArmorSet set) {
+        if (set == ArmorSet.GEM) {
+            // 宝石套用已经缓存好的那一对（与能量条同源，见 GEM_SOURCE）
+            return GEM_DUO;
+        }
+        java.util.List<java.awt.Color> stops = ArmorEnergyColors.stopsOf(set);
+        return new Duo(toVec(stops.get(0)), toVec(stops.get(stops.size() - 1)));
+    }
 
     /** {@code java.awt.Color}（0~255）→ 粒子用的 0~1 三维色。 */
     private static Vec3 toVec(java.awt.Color color) {
