@@ -56,22 +56,27 @@ public final class ArmorSkillFx {
         }
         ServerLevel level = player.serverLevel();
         Vec3 look = player.getLookAngle();
-        int segments = 3;
+        // 侧向单位向量：第一人称下"正后方"看不见，所以拖尾**同时向两侧铺**
+        Vec3 side = new Vec3(-look.z, 0.0D, look.x);
+        int segments = 5;
         for (int i = 0; i < segments; i++) {
-            double t = segments == 1 ? 1.0D : (double) i / (segments - 1);
+            double t = (double) i / (segments - 1);
             Vec3 color = DASH_TAIL_YELLOW.lerp(DASH_HEAD_GREEN, t);
             double back = TRAIL_STEP * (i + 1);
-            level.sendParticles(dust(color, 1.05F),
-                player.getX() - look.x * back,
-                player.getY() + 0.18D,
-                player.getZ() - look.z * back,
-                1, 0.04D, 0.02D, 0.04D, 0.0D);
+            // 每个断面：左边一颗、右边一颗（越靠后越黄、越靠前越绿）
+            for (int s = -1; s <= 1; s += 2) {
+                level.sendParticles(dust(color, 1.15F),
+                    player.getX() - look.x * back + side.x * 0.42D * s,
+                    player.getY() + 0.25D + 0.06D * i,
+                    player.getZ() - look.z * back + side.z * 0.42D * s,
+                    2, 0.06D, 0.05D, 0.06D, 0.0D);
+            }
         }
         // 点缀：偶尔一颗亮闪，让拖尾"活"一点
-        if (player.getRandom().nextFloat() < 0.35F) {
+        if (player.getRandom().nextFloat() < 0.45F) {
             level.sendParticles(ParticleTypes.END_ROD,
-                player.getX(), player.getY() + 0.12D, player.getZ(),
-                1, 0.16D, 0.05D, 0.16D, 0.01D);
+                player.getX(), player.getY() + 0.20D, player.getZ(),
+                2, 0.22D, 0.08D, 0.22D, 0.01D);
         }
     }
 
@@ -89,21 +94,25 @@ public final class ArmorSkillFx {
         double x = server.getX();
         double y = server.getY();
         double z = server.getZ();
-        int ring = holding ? 24 : 14;
+        int ring = holding ? 24 : 16;
         for (int i = 0; i < ring; i++) {
             double angle = Math.PI * 2.0D / ring * i;
-            // 按住技能键 ⇒ 黄绿交替（"黄绿交加"）；被动豁免 ⇒ 统一黄绿尘土
-            Vec3 color = holding && (i % 2 == 1) ? LAND_GREEN : LAND_YELLOW;
+            // 用户 2026-10-01 报"免疫摔落的粒子只有黄色，没有绿色"：
+            // 现在**两种情况都黄绿交替**（被动豁免也有一半绿），按住时再叠亮闪与更密的圈。
+            Vec3 color = (i % 2 == 1) ? LAND_GREEN : LAND_YELLOW;
             level.sendParticles(dust(color, 1.25F),
                 x + Math.cos(angle) * 0.9D,
                 y + 0.05D,
                 z + Math.sin(angle) * 0.9D,
                 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
-        // 冲击中心：一圈向上扬起的尘土
-        level.sendParticles(dust(LAND_YELLOW, 1.45F), x, y + 0.10D, z, 8, 0.28D, 0.06D, 0.28D, 0.02D);
+        // 冲击中心：黄绿各一半地向上扬（不是清一色黄）
+        for (int i = 0; i < 8; i++) {
+            Vec3 color = (i % 2 == 1) ? LAND_GREEN : LAND_YELLOW;
+            level.sendParticles(dust(color, 1.45F), x, y + 0.10D, z, 1, 0.28D, 0.06D, 0.28D, 0.02D);
+        }
         if (holding) {
-            level.sendParticles(ParticleTypes.END_ROD, x, y + 0.20D, z, 10, 0.42D, 0.10D, 0.42D, 0.03D);
+            level.sendParticles(ParticleTypes.END_ROD, x, y + 0.20D, z, 12, 0.45D, 0.12D, 0.45D, 0.03D);
         }
         level.sendParticles(ParticleTypes.CRIT, x, y + 0.15D, z, holding ? 12 : 6, 0.35D, 0.05D, 0.35D, 0.08D);
     }

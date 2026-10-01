@@ -135,10 +135,6 @@ public final class ArmorSkillRuntime {
                     if (CHARGE_DASH.equals(skill)) {
                         // 用户 2026-10-01 修正：**一边按一边产生疾跑 buff**（不是松手才给）
                         applyChargeDash(player, set, ticks);
-                        // 迅捷拖尾（黄→绿渐变，用户 2026-10-01）：隔 2 tick 铺一段，只在水平移动时发
-                        if (ticks % 2 == 0) {
-                            ArmorSkillFx.dashTrail(player);
-                        }
                     }
                     // 用户 2026-10-01 口径：能量消耗到"见底"⇒ 自动断停 + 把能量清空
                     if (set != null && skill != null && isExhausted(player, set, index, ticks)) {
@@ -157,6 +153,19 @@ public final class ArmorSkillRuntime {
                 release(player, set, index, previous);
             }
         }
+        // 迅捷拖尾（用户 2026-10-01 报"移速加成期间没有拖尾"）：
+        // 拖尾跟着**迅捷 buff 的存续期**走，而不是只在按住的那几 tick —— 松手后 buff 还在（最多 120 秒），
+        // 那段时间跑动同样应该有拖尾。到期自动清掉标记。
+        Long dashUntil = DASH_UNTIL.get(id);
+        if (dashUntil != null) {
+            if (dashUntil == null || player.level().getGameTime() >= dashUntil) {
+                DASH_UNTIL.remove(id);
+            } else if (player.tickCount % 2 == 0) {
+                // 不限定"正在按住"：buff 有效期内跑动就该有拖尾（是否在移动由 dashTrail 自己判）
+                ArmorSkillFx.dashTrail(player);
+            }
+        }
+
         if (held.isEmpty()) {
             HOLD_TICKS.remove(id);
         }
@@ -244,6 +253,9 @@ public final class ArmorSkillRuntime {
         }
     }
 
+    /** 迅捷 buff 的到期时刻（gameTime）：拖尾跟着它走，松手后 buff 还在就仍有拖尾。 */
+    private static final Map<UUID, Long> DASH_UNTIL = new HashMap<>();
+
     /** 蓄能疾骋的"当前段位"（只在段位往上爬时重新施加效果，避免每 tick 重置时长）。 */
     private static final Map<UUID, Integer> DASH_SEGMENT = new HashMap<>();
 
@@ -263,6 +275,10 @@ public final class ArmorSkillRuntime {
         DASH_SEGMENT.put(player.getUUID(), segment);
         int seconds = config.segmentSeconds()[segment - 1];
         if (seconds > 0) {
+            // 登记"拖尾存续到什么时候"：拖尾要覆盖整个迅捷 buff，而不只是按住的那几 tick
+            long now = player.level().getGameTime();
+            long until = now + seconds * 20L;
+            DASH_UNTIL.merge(player.getUUID(), until, Math::max);
             player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                 net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED,
                 seconds * 20, segment - 1, false, true, true));
