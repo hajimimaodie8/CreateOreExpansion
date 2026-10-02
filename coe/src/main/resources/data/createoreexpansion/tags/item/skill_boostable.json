@@ -2,6 +2,10 @@
   "replace": false,
   "values": [
     "#createoreexpansion:skill_tools",
-    "#minecraft:enchantable/armor"
+    "#minecraft:enchantable/armor",
+    "createoreexpansion:jade_topaz_boomerang",
+    "createoreexpansion:sapphire_ruby_boomerang",
+    "createoreexpansion:astral_boomerang",
+    "createoreexpansion:thunder_boomerang"
   ]
 }

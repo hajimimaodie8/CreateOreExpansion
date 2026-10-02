@@ -781,6 +781,11 @@ public final class CoeItems {
      *       {@code build()} 声明为 {@code GEAR}；本批<b>不绑技能</b>，技能是第二批的事）。</li>
      *   <li>{@code .addEnergy()} —— 能量走现成路径（{@code defaultEnergy == maxEnergy} = 初始即满），
      *       注册时自动挂进工具充能配方（{@code ChargingRecipeTools}）。</li>
+     *   <li><b>耐久（2026-10-02 批 1）</b> —— <b>不在这条链上</b>：它由 {@link BoomerangItem} 的构造器
+     *       写进 {@code Item.Properties#durability(tier.durability())}（形态照
+     *       {@code JadeTopazBowItem:76}）⇒ 上限随档走（1000 / 2000 / 3500 / 3500）、出生即满耐久。
+     *       读写在 {@code BoomerangItem#getDurability/setDurability/addWear}（<b>不用
+     *       {@code hurtAndBreak}</b>）；扣减时机与回程批量结算是批 2 的事。</li>
      * </ul>
      *
      * @param id         注册 id（同时是图标贴图名 {@code item/<id>}）
