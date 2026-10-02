@@ -169,6 +169,12 @@ public class StarShockWaveEntity extends ChargerWaveEntity {
 	private void setOrbitParent(@Nullable java.util.UUID parentUuid) {
 		long most = parentUuid == null ? 0L : parentUuid.getMostSignificantBits();
 		long least = parentUuid == null ? 0L : parentUuid.getLeastSignificantBits();
+		if (parentUuid != null && (int) (most >>> 32) == 0 && (int) (least >>> 32) == 0) {
+			// 重建出来会是全零（= 同步值的两个 int 都是 0）= 被当成"没有父波"。
+			// 这种 UUID 实际不可能出现（UUID v4 随机），但把它抬成 most=1 只花一行，
+			// 换掉"环绕波静默退化成普通波"这一整类歧义。
+			most = 1L << 32;
+		}
 		this.entityData.set(ORBIT_PARENT_MOST, (int) (most >>> 32));
 		this.entityData.set(ORBIT_PARENT_LEAST, (int) (least >>> 32));
 	}
@@ -177,9 +183,13 @@ public class StarShockWaveEntity extends ChargerWaveEntity {
 	 * 本波环绕的那颗主波（{@code null} = 不是环绕波）。
 	 *
 	 * <p>从<b>两半 int</b>重建 UUID —— 同步字段没有 UUID 序列化器，所以父波身份用
-	 * "UUID 的高 32 位 ×2"承载。<b>位宽说明（我定的，可一句话改）</b>：只比较 64 位里的高 64 位组合，
-	 * 同一维度内同时存在的波数量远小于碰撞概率可忽略的量级；真要严格，换成
-	 * {@code ENTITY_DATA} 的 ordinal 或再加两个字段即可，判据口径不变。</p>
+	 * "UUID 的最高 32 位 + 次高 32 位"承载（两个 {@code >>> 32} 的 int）。
+	 * <b>位宽说明（我定的，可一句话改）</b>：比较只用这 64 位；同一维度内同时存在的波数量
+	 * 远小于碰撞概率可忽略的量级。真要严格，改成再补两个 int（低 64 位）即可，判据口径不变。</p>
+	 *
+	 * <p><b>全零 UUID 的兜底</b>：同步值的两个 int 都是 0 时本方法返回 {@code null}（= 不是环绕波），
+	 * 所以"重建出来恰好是全零 UUID"的主波会被当成没有父波。这种主波的环绕波会退化成普通技能波
+	 * （单独飞、按寿命消散，不会崩），但为了避免任何歧义，写入侧把那一种情况抬成 {@code most = 1}。</p>
 	 */
 	public @Nullable java.util.UUID getOrbitParent() {
 		long hi = Integer.toUnsignedLong(this.entityData.get(ORBIT_PARENT_MOST));
