@@ -25,10 +25,11 @@ public final class CoeBlockEntityTypes {
 	/**
 	 * <b>应力注入器方块实体</b>（临域充力临时放置的隐藏方块，规格 §4.2 方案 A）。
 	 *
-	 * <p>刻意<b>不</b>注册渲染器：它的方块状态是原版玻璃模型（{@code minecraft:block/glass}），
-	 * 不需要方块实体渲染；Flywheel 侧没有 visualizer 时
-	 * {@code VisualizationHelper#queueUpdate} 会走 {@code BlockEntityStorage#willAccept}
-	 * 直接 return（已核 flywheel 1.0.6 源码）⇒ 不会 NPE、也不会被跳过渲染。</p>
+	 * <p>刻意<b>不</b>注册渲染器：方块走 {@code RenderShape.INVISIBLE}（完全不渲染，用户
+	 * 2026-10-02："我想把这个方块的材质设置成全透明"），不需要方块实体渲染；Flywheel 侧没有
+	 * visualizer 时 {@code VisualizationHelper#queueUpdate} 会走
+	 * {@code BlockEntityStorage#willAccept} 直接 return（已核 flywheel 1.0.6 源码）
+	 * ⇒ 不会 NPE、也不会被跳过渲染。</p>
 	 */
 	public static final BlockEntityEntry<StressInjectorBlockEntity> STRESS_INJECTOR = CoeRegistrate.REGISTRATE
 		.blockEntity("stress_injector", StressInjectorBlockEntity::new)

@@ -44,6 +44,40 @@ import net.minecraft.world.level.block.state.BlockState;
  *       ⇒ <b>立刻静止</b>（不是"等它自己衰减到 0"）。</li>
  * </ul>
  *
+ * <h2>★ 客户端 {@code inUse} 会自己衰减 —— 用户 2026-10-02"护目镜读数是 0 SU"的根因</h2>
+ * <p>用户实测原话："我通过工程师护目镜显示得到，这个时候手摇曲柄上的应力量仍然是 0 Su，
+ * 不是 8192 Su"。这不是应力没进网络，是<b>曲柄那两行读数被客户端的 {@code inUse} 骗了</b>：</p>
+ * <ol>
+ *   <li>{@code HandCrankBlockEntity#tick()} 在<b>两侧</b>都执行
+ *       {@code if (inUse > 0) { inUse--; ... }}；</li>
+ *   <li>而 {@code HandCrankBlockEntity#turn(boolean)} 只在
+ *       {@code getGeneratedSpeed() == 0 || back != backwards} 时才调
+ *       {@code updateGeneratedRotation()}（→ {@code sendData()}）。<b>技能驱动是纯服务端的</b>
+ *       （{@code turn(false)} 由 {@code FieldChargeRuntime} 调，客户端那份 {@code useItemOn}
+ *       从来没有跑过）⇒ 第一次同步之后服务端再也不发包，客户端那份 {@code inUse}
+ *       每 tick 自减，10 tick 后就恒为 0；</li>
+ *   <li>于是客户端算护目镜时走进
+ *       {@code GeneratingKineticBlockEntity#addToGoggleTooltip}：
+ *       <pre>
+ * float stressBase = calculateAddedStressCapacity();   // 8.0（Create 的曲柄容量表）
+ * float speed = getTheoreticalSpeed();                 // 32（这个是同步过来的，没错）
+ * if (speed != getGeneratedSpeed() &amp;&amp; speed != 0)      // 客户端 getGeneratedSpeed() == 0
+ *     stressBase *= getGeneratedSpeed() / speed;       // 8 * 0/32 = 0
+ * float stressTotal = Math.abs(stressBase * speed);    // ← 0 SU，用户看到的那一行
+ *       </pre></li>
+ * </ol>
+ * <p>注意<b>视觉上曲柄照转</b>：手柄角度走 {@code getIndependentAngle()} ← {@code chasingAngularVelocity}
+ * ← {@code convertToAngular(getSpeed())} ← 同步过来的 {@code speed} 字段，与 {@code inUse} 无关
+ * （{@code HandCrankRenderer} / {@code HandCrankVisual} 都只用角度）。所以玩家会看到"曲柄在转、
+ * 读数却是 0"这种自相矛盾的画面。</p>
+ * <p>修法：按住期间<b>每 {@link #SYNC_PERIOD_TICKS} tick 补一次 {@code sendData()}</b>，
+ * 让客户端的 {@code inUse} 始终停在 5~10 之间（周期必须 &lt; 10，即 &lt; 客户端一次自减到 0 的 tick 数），
+ * 曲柄那两行读数就恢复成真实的 {@code 8 SU/RPM × 32 RPM = 256 SU}。
+ * 网络总量（{@code 256 + 8192 = 8448 SU}）本来就在服务端算对了，但 Create 的护目镜
+ * <b>只给动力部件显示它自己的容量</b>（只有应力表显示网络总量，见 Create 自己的提示文案
+ * {@code item.create.goggles.tooltip.behaviour1}）—— 所以"对着曲柄读 8192"这件事由
+ * {@code StressInjectorBlockEntity#addToGoggleTooltip} + {@code HandCrankGoggleProxyMixin} 提供。</p>
+ *
  * <h2>注入器放哪：六个相邻格</h2>
  * <p>手摇曲柄<b>只有背向一个轴面</b>（{@code HandCrankBlock#hasShaftTowards(face == FACING.getOpposite())}），
  * 而那一面正是它挂载的那一格 —— {@code HandCrankBlock#canSurvive} 要求那一格有碰撞箱，
@@ -66,6 +100,12 @@ public final class HandCrankStressSource implements StressSourceKind {
      * 纪律留成可读的一行（见类注释"为什么不能维持为 1"）。
      */
     public static final int MAX_IN_USE = 10;
+
+    /**
+     * 客户端 {@code inUse} 补发周期（tick）：必须 < {@link #MAX_IN_USE}（客户端每 tick 自减 1，
+     * 补发慢了就会见到 0 ⇒ 护目镜读数被乘成 0）。5 留了一倍余量。
+     */
+    public static final int SYNC_PERIOD_TICKS = 5;
 
     private static final HandCrankStressSource INSTANCE = new HandCrankStressSource();
 
@@ -128,6 +168,13 @@ public final class HandCrankStressSource implements StressSourceKind {
         if (crank.getTheoreticalSpeed() == 0 && crank.getGeneratedSpeed() != 0) {
             // 速度字段被清零但生成转速还在（例如网络重算把它当成了消费者又解绑）⇒ 重新挂上。
             crank.updateGeneratedRotation();
+        }
+        // ★ 客户端 inUse 保鲜（2026-10-02 实测根因，见类注释"★"那一节）：
+        //   客户端那份 inUse 每 tick 自减、而 turn() 在速度不变时不发包 ⇒ 10 tick 后客户端
+        //   getGeneratedSpeed() 归零，护目镜读出的"容量"就被乘成 0。这里按周期补发一次，
+        //   保证客户端的 inUse 永远见不到 0（周期必须 < 10）。
+        if (level.getGameTime() % SYNC_PERIOD_TICKS == 0L) {
+            crank.sendData();
         }
     }
 

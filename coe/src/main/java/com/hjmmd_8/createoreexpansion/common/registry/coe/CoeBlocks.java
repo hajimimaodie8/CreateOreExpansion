@@ -441,25 +441,30 @@ public final class CoeBlocks {
 	//   ② **.properties(p -> p.noLootTable())** ⇒ Block#getLootTable() = BuiltInLootTables.EMPTY
 	//      ⇒ Registrate 的战利品回调被跳过、BlockLootSubProvider 也跳过它 ⇒ **一个战利品表文件都不生成**，
 	//      被挖/被炸也不掉任何东西；
-	//   ③ 方块状态直接指向**原版**的 minecraft:block/glass ⇒ 不新增贴图、不新增模型文件
-	//      （美术红线"一张图都不要改、也不要自己画"因此零触碰；asset 归属关卡只判本命名空间的引用）。
-	// 半透明 + noCollission/noOcclusion，存在感极低；命名空间仍是 createoreexpansion（红线），
-	// id 取内部风格。完整说明见 content/equipment/armor/field/StressInjectorBlock 的类注释。
+	//   ③ 方块状态指向**原版**的 minecraft:block/air（其模型就是一个空的 "{}"，零贴图）——
+	//      不新增贴图、不新增模型文件，也不引用任何 png（美术红线"一张图都不要改、也不要自己画"
+	//      因此零触碰）；方块本身由 StressInjectorBlock#getRenderShape = RenderShape.INVISIBLE
+	//      完全跳过渲染（用户 2026-10-02："我想把这个方块的材质设置成全透明"⇒ 做到"看不到任何东西"），
+	//      并且 getShape 返回空形状 ⇒ 连选中描边都没有、射线也打不到它。
+	// 命名空间仍是 createoreexpansion（红线），id 取内部风格。完整说明见
+	// content/equipment/armor/field/StressInjectorBlock 的类注释。
 	public static final BlockEntry<StressInjectorBlock> STRESS_INJECTOR = CoeRegistrate.REGISTRATE
 		.block("stress_injector", StressInjectorBlock::new)
 		.properties(p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE)
 			.noCollission()
 			.noOcclusion()
 			.noLootTable())
-		// 每个 FACING 各一条变体（都指向原版玻璃模型）：方块带属性时**不要**用空 key 的
-		// "全状态"写法，逐值列出来最稳（本仓 reinforced_lightning_rod / 水晶都是这个写法）。
+		// 每个 FACING 各一条变体，一律指向**原版空气模型**（minecraft:block/air 的内容就是空的 "{}"，
+		// 零贴图、零引用）：方块带属性时**不要**用空 key 的"全状态"写法，逐值列出来最稳
+		// （本仓 reinforced_lightning_rod / 水晶都是这个写法）。这条 blockstate 只是"有定义"，
+		// 因为 RenderShape.INVISIBLE 根本不进渲染管线 ⇒ 玩家一个像素都看不到。
 		.blockstate((ctx, prov) -> {
 			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
 			for (Direction dir : Direction.values()) {
 				vb.partialState()
 					.with(StressInjectorBlock.FACING, dir)
 					.modelForState()
-					.modelFile(new UncheckedModelFile("minecraft:block/glass"))
+					.modelFile(new UncheckedModelFile("minecraft:block/air"))
 					.addModel();
 			}
 		})

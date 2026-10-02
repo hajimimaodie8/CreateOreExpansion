@@ -38,10 +38,14 @@ import net.minecraft.world.level.block.state.BlockState;
  *       （{@link StressSourceRegistry}；手摇曲柄是第一个实现）。一个都没有 ⇒ {@code NO_SOURCE}，
  *       调用方只提示、<b>不扣能、不进冷却</b>（规格 §2.1 第 1 条 + 第 3 层清单）。</li>
  *   <li><b>随机抽一个</b>曲柄（洗牌后逐个试，试不通就换下一个），先看它<b>有没有空位放注入器</b>
- *       （纯判定），再 {@code drive} 它真转起来。</li>
- *   <li><b>放注入器</b>：{@link StressSourceRegistry} 给出的候选位里挑第一个可替换的格子，
- *       放上 {@code stress_injector} 并给它赋能（容量按等级 8192/16384/32768 SU，
- *       登记进曲柄所在的动力网络）。</li>
+ *       （纯判定），再按下面的顺序落子。</li>
+ *   <li><b>先放注入器、再驱动曲柄、最后赋能</b>（2026-10-02 重做的顺序，逐条理由见 {@link #start}）：
+ *       放注入器这一步会让相邻曲柄吃到一次 {@code KineticBlock#updateIndirectNeighbourShapes}
+ *       （清空它的速度与网络字段），所以必须先放、再驱动 —— 否则注入器会有一 tick 并不进网络。
+ *       赋能走 {@link StressInjectorBlockEntity#energize}，即
+ *       {@code KineticBlockEntity#setNetwork} → {@code KineticNetwork#add}：注入器成为
+ *       <b>曲柄那张网络的正式成员</b>（{@code sources} 与 {@code members} 都进），
+ *       容量按等级 8192/16384/32768 SU。</li>
  *   <li>全都放不下 ⇒ {@code NO_SPACE}，同样<b>不扣能、不进冷却</b>（用户："放不下就换位置/换曲柄，
  *       全都放不下按发动失败处理"）。</li>
  * </ol>
@@ -167,12 +171,24 @@ public final class FieldChargeRuntime {
             if (socket == null) {
                 continue;
             }
-            // ② 驱动它**真转**（驱动不了就换下一个；此刻还没有副作用需要回滚）。
-            if (!kind.drive(world, source)) {
+            // ② 先<b>只放置</b>注入器（不赋能）。⚠ 顺序承重（2026-10-02 重做）：
+            //    Level#setBlock 会让相邻的动能方块吃到一次 KineticBlock#updateIndirectNeighbourShapes
+            //    （它里面 clearKineticInformation() + updateSpeed = true），也就是**会把曲柄刚刚
+            //    建立的网络字段与速度清掉**。所以"放注入器"必须排在"驱动曲柄"之前 ——
+            //    这样驱动那一步建出来的网络才是干净的、注入器才能立刻并进去（否则会空转一 tick）。
+            StressInjectorBlockEntity injector = placeInjector(world, socket, source);
+            if (injector == null) {
                 continue;
             }
-            // ③ 放注入器 + 赋能（容量登记进曲柄的网络）。失败 ⇒ 回滚驱动，换下一个。
-            if (!placeInjector(world, socket, source, config)) {
+            // ③ 驱动它**真转**（驱动不了就把刚放的注入器撤掉，换下一个曲柄）。
+            if (!kind.drive(world, source)) {
+                removeInjector(world, socket);
+                continue;
+            }
+            // ④ 最后赋能：并入曲柄那张动力网络（Create: KineticBlockEntity#setNetwork → KineticNetwork#add）。
+            //    失败（方块实体没建起来，理论上不会）⇒ 注入器与曲柄一起回滚。
+            if (!energizeInjector(injector, source, config)) {
+                removeInjector(world, socket);
                 kind.halt(world, source);
                 continue;
             }
@@ -224,21 +240,31 @@ public final class FieldChargeRuntime {
     }
 
     /**
-     * 放注入器并赋能。
+     * <b>只放置</b>注入器（不赋能、不驱动）—— 顺序承重见 {@link #start} 的 ②。
      *
-     * @return {@code false} = 放不下（已回滚，没留下任何痕迹）
+     * @return 放好的方块实体；{@code false} 情形（放不下 / 方块实体没建起来）返回 {@code null}
+     *         并保证不留半成品
      */
-    private static boolean placeInjector(ServerLevel world, BlockPos socket, BlockPos source,
-                                         FieldChargeConfigs.Config config) {
+    private static @Nullable StressInjectorBlockEntity placeInjector(ServerLevel world, BlockPos socket,
+                                                                     BlockPos source) {
         BlockState state = CoeBlocks.STRESS_INJECTOR.get()
             .defaultBlockState()
             .setValue(StressInjectorBlock.FACING, facingTowards(socket, source));
         if (!world.setBlock(socket, state, Block.UPDATE_ALL)) {
-            return false;
+            return null;
         }
         if (!(world.getBlockEntity(socket) instanceof StressInjectorBlockEntity injector)) {
             // 方块实体没建起来（理论上不会）：立刻把方块撤掉，不留半成品
             world.removeBlock(socket, false);
+            return null;
+        }
+        return injector;
+    }
+
+    /** 赋能（把容量并入源方块的动力网络）；方块实体已经不存在 ⇒ {@code false}。 */
+    private static boolean energizeInjector(StressInjectorBlockEntity injector, BlockPos source,
+                                            FieldChargeConfigs.Config config) {
+        if (injector.isRemoved()) {
             return false;
         }
         injector.energize(source, config.stressSu(), StressInjectorBlockEntity.HEARTBEAT_TICKS);
