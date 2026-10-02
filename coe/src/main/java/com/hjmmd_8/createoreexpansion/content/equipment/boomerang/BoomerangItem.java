@@ -64,7 +64,8 @@ import net.minecraft.world.phys.Vec3;
  *       显示，就是给玩家的反馈）；</li>
  *   <li>能量不够 ⇒ {@code ToolEnergy.sendLowEnergy} + 不投掷、<b>不扣耐久</b>（现状口径）；</li>
  *   <li>都过了 ⇒ <b>同一处</b>算总消耗（{@link #throwCost(ItemStack, Player, boolean)} =
- *       模式消耗 + 穿刺附加费 20L，批 4 再加环绕 15L）→ 扣 → 造实体 → 记耐久损耗 → 上冷却。</li>
+ *       模式消耗 + 穿刺附加费 20L + 环绕附加费 15L）→ 扣 → 造实体 → 记耐久损耗 →
+ *       入世界 → 生成环绕波 → 上冷却。</li>
  * </ol>
  * <p>⚠ <b>点按与长按共用同一条 {@code ItemCooldowns} 键</b>（原版按物品计）⇒ 两组冷却
  * <b>互相覆盖</b>：点按之后 5 秒内连长按也投不出去。这是<b>预期行为</b>（一条右键操作路径，
@@ -120,12 +121,14 @@ import net.minecraft.world.phys.Vec3;
  *       批 1 已把四把镖加进 {@code #skill_boostable}（需求 §3.7 的前置）。</li>
  * </ul>
  *
- * <h2>七、技能（2026-10-02 批 3：穿刺；需求 §3.5 / §3.7；裁定 D11）</h2>
- * <p>四把镖都绑了 <b>{@code createoreexpansion:pierce}</b>（穿刺），基准等级取本档
+ * <h2>七、技能（2026-10-02 批 3 穿刺 / 批 4 环绕；需求 §3.5 / §3.6 / §3.7；裁定 D11）</h2>
+ * <p>四把镖都绑了 <b>{@code createoreexpansion:pierce}</b>（穿刺）与
+ * <b>{@code createoreexpansion:orbit}</b>（环绕），基准等级都取本档
  * {@link BoomerangTier#baseSkillLevel()}（1 / 2 / 3 / 3），<b>不需要开关</b>：只要投掷就生效
  * （需求 §六 推断值 #9）。等级的实际读取点是
  * {@link #effectiveSkillLevel(ItemStack, int)}（唯一一处），消费点是
- * {@link #throwCost(ItemStack, Player, boolean)}（附加费 20L）与实体侧的穿透额度（3L / 5L）。</p>
+ * {@link #throwCost(ItemStack, Player, boolean)}（附加费 20L + 15L）、实体侧的穿透额度
+ * （3L / 5L）与环绕波生成（数量 L、单枚伤害 2L）。</p>
  * <p>⚠ <b>为什么右键投掷不会"顺带释放"这条技能</b>：技能类型是
  * {@code SkillType.USE_SKILL}，而 {@code UseItemHandler} 会在
  * {@code PlayerInteractEvent.RightClickItem} 上把主手物品的 USE 族技能送进内核释放 ——
@@ -284,6 +287,17 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 		boomerang.addFlightWear(tier.throwWear(longHold));
 		level.addFreshEntity(boomerang);
 
+		// 环绕技能（2026-10-02 批 4；需求 §3.6）：投掷时挂上 L 枚环绕波（L = 有效技能等级）。
+		// **点按与长按都生成**（需求 §六 推断值 #9"不需要开关"；§3.5 对穿刺说的
+		// "点按和长按都是可以生效的"对环绕同样成立）。
+		// 放在 addFreshEntity 之后：环绕波第一 tick 就要按 UUID 在世界上找到这枚锚点。
+		// 出手方向：点按 = 镖刚拿到的速度向量；长按 = 投掷那一刻的准心方向
+		// （花瓣段第一 tick 还没有位移，getDeltaMovement() 还是零）。
+		// ⚠ 数量/半径/角速度/伤害一律在实体侧从 BoomerangSkillConfigs 读（同一份数值口径），
+		// 本行只负责"投出去了，把技能挂上"。
+		boomerang.spawnOrbitWaves(stack,
+			longHold ? player.getLookAngle() : boomerang.getDeltaMovement());
+
 		// 手上那一格清空：镖在回程交还时才不会凭空多出一把
 		player.setItemInHand(hand, ItemStack.EMPTY);
 		player.getCooldowns().addCooldown(this, tier.cooldownTicks(longHold));
@@ -314,8 +328,10 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 	 * <b>本次投掷的总能量消耗（唯一一处）</b>：模式消耗 + 技能附加费。
 	 *
 	 * <p>批 2 只有模式消耗那一项（点按 10/9/8/8、长按 50/45/40/40）。批 3 把<b>穿刺</b>的附加费
-	 * 加进来（{@code 20×等级}，需求 §3.7）——批 4 的环绕（{@code 15×等级}）也加在这一行。
-	 * 这样"判合计"与"扣合计"永远在同一处（需求 §3.7 的 ⚠，也是陷阱清单 #7）。</p>
+	 * 加进来（{@code 20×等级}，需求 §3.7），批 4 再把<b>环绕</b>的（{@code 15×等级}）加进同一行。
+	 * 这样"判合计"与"扣合计"永远在同一处（需求 §3.7 的 ⚠，也是陷阱清单 #7）：
+	 * 全仓 {@code pierceEnergyCost(} 与 {@code orbitEnergyCost(} 各<b>只有这一次调用</b>，
+	 * 关卡 {@code boomerang-pierce-skill} / {@code boomerang-orbit-skill} 钉着它。</p>
 	 *
 	 * <p>⚠ <b>签名在批 3 多了一个 {@code stack}</b>：技能等级要读这条栈上的附魔
 	 * （技艺提升 / 技艺回溯），而等级又决定附加费 —— 少一个入参就只能去别处读，
@@ -325,9 +341,14 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 	 * @param longHold {@code true} = 长按（花瓣曲线）
 	 */
 	public int throwCost(ItemStack stack, Player player, boolean longHold) {
-		// 模式消耗（档位表）+ 穿刺附加费（20×等级）。player 目前不参与计算，
-		// 留着是因为"谁投的"将来可能进折扣/状态判定（批 4 的环绕也走这一行）。
-		return tier.throwCost(longHold) + BoomerangSkillConfigs.pierceEnergyCost(effectiveSkillLevel(stack));
+		// 模式消耗（档位表）+ 穿刺附加费（20×等级）+ 环绕附加费（15×等级）。player 目前不参与计算，
+		// 留着是因为"谁投的"将来可能进折扣/状态判定。
+		// ⚠ 技能等级**只读一次**（effectiveSkillLevel(stack) 的唯一调用点就在这里），
+		// 两个附加费共用它 ⇒ 不会出现"按一个等级收费、按另一个等级给效果"。
+		int level = effectiveSkillLevel(stack);
+		return tier.throwCost(longHold)
+			+ BoomerangSkillConfigs.pierceEnergyCost(level)
+			+ BoomerangSkillConfigs.orbitEnergyCost(level);
 	}
 
 	// ========== 技能等级（2026-10-02 批 3：穿刺；读取点唯一） ==========

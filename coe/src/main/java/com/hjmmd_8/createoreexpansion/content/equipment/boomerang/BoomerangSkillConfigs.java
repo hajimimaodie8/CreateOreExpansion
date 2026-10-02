@@ -1,16 +1,20 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 
 /**
- * <b>回旋镖技能的数值真源</b>（穿刺；环绕是批 4）—— 与 {@code FellingConfigs} / {@code SkinConfigs}
+ * <b>回旋镖技能的数值真源</b>（穿刺 + 环绕）—— 与 {@code FellingConfigs} / {@code SkinConfigs}
  * 同形：本类只写数字与纯算术，<b>不进任何 Minecraft 类型</b>，每一个魔数在这里只出现一次。
  *
- * <p>需求依据：开工需求 2026-10-02 §3.5（穿刺）、§3.7（技能等级与消耗）、§六 推断值 #6（id 与语言键）。
- * 消费方只有两处，各自读它的一段：</p>
+ * <p>需求依据：开工需求 2026-10-02 §3.5（穿刺）、§3.6（环绕）、§3.7（技能等级与消耗）、
+ * §六 推断值 #6（id 与语言键）、§六 推断值 #7（环绕参数沿用既有）。消费方各自读它的一段：</p>
  * <ul>
- *   <li>{@link #pierceEnergyCost(int)} —— 由 {@code BoomerangItem#throwCost} 读
- *       （<b>唯一的能量消耗出口</b>，需求 §3.7 的 ⚠：判合计与扣合计必须在同一处）；</li>
+ *   <li>{@link #pierceEnergyCost(int)} / {@link #orbitEnergyCost(int)} —— 由
+ *       {@code BoomerangItem#throwCost} 读（<b>唯一的能量消耗出口</b>，需求 §3.7 的 ⚠：
+ *       判合计与扣合计必须在同一处）；</li>
  *   <li>{@link #pierceMobQuota(int)} / {@link #pierceBlockQuota(int)} —— 由
- *       {@code AbstractBoomerangEntity} 在命中判定里读（投掷时一次性算好、记在实体上）。</li>
+ *       {@code AbstractBoomerangEntity} 在命中判定里读（投掷时一次性算好、记在实体上）；</li>
+ *   <li>{@link #orbitCount(int)} / {@link #orbitDamage(int)} / {@link #ORBIT_RADIUS} /
+ *       {@link #ORBIT_ANGULAR_SPEED} / {@link #ORBIT_PHASE} —— 由
+ *       {@code AbstractBoomerangEntity#spawnOrbitWaves} 读（投掷时按等级生成 L 枚环绕波）。</li>
  * </ul>
  *
  * <h2>一、穿透额度（需求 §3.5：作者原话"至多可穿透 3×技能等级 个生物，以及 5×技能等级 个方块"）</h2>
@@ -93,5 +97,91 @@ public final class BoomerangSkillConfigs {
      */
     public static int pierceEnergyCost(int level) {
         return PIERCE_ENERGY_PER_LEVEL * clampLevel(level);
+    }
+
+    // ==================================================================================
+    // 环绕技能（需求 §3.6）—— 2026-10-02 批 4
+    // ==================================================================================
+
+    /**
+     * 每级追加的<b>环绕能量消耗</b>（需求 §3.7 的 15）。
+     *
+     * <p>与穿刺同样：它是"额外"那一项，追加在模式消耗上；两者相加的<b>唯一一处</b>是
+     * {@code BoomerangItem#throwCost(ItemStack, Player, boolean)}（需求 §3.7 陷阱 #7）。</p>
+     */
+    public static final int ORBIT_ENERGY_PER_LEVEL = 15;
+
+    /**
+     * 每级环绕波的<b>单枚伤害</b>（需求 §3.6 第 3 条：{@code 2 × 技能等级}）。
+     *
+     * <p>这个数不走既有波级表（波级表是 4/6/8/10/12），而是作为
+     * {@code ChargerWaveEntity} 的"自定义伤害"要素写进环绕波（作者裁定 D9 = A：
+     * 环绕波<b>必须</b>复用既有实体，所以伤害改成可覆写，默认仍是波级表）。</p>
+     */
+    public static final int ORBIT_DAMAGE_PER_LEVEL = 2;
+
+    /**
+     * <b>环绕半径</b>（格；需求 §3.6 第 2 条给死 <b>1.5</b>）。
+     *
+     * <p>与星芒嬗震的 0.80 是两个不同的数（那是星界轮需求 §3.3(b) 的值，本类不引用它）。</p>
+     */
+    public static final double ORBIT_RADIUS = 1.5D;
+
+    /** <b>环绕角速度</b>：需求 §3.6 第 2 条"其他环绕参数和那个差不多" ⇒ 沿用既有的 <b>1 圈/秒</b>。 */
+    public static final double ORBIT_TURNS_PER_SECOND = 1.0D;
+
+    /**
+     * <b>环绕角速度（弧度/tick）</b> = 2π × 圈/秒 ÷ 20；1 圈/秒 时 = <b>2π/20 ≈ 0.3142</b>。
+     *
+     * <p>与 {@code StarShockRuntime} 的同名常量<b>同一个算式、同一个值</b>
+     * （需求 §六 推断值 #7："沿用现有 {@code applyOrbitElement()} 的值"）——
+     * 刻意<b>不</b>跨类引用 StarShockRuntime 的私有常量（那是星界套的类，
+     * 回旋镖不该依赖它），而是让两处算式逐字相同、并由关卡各自钉住这个值。</p>
+     */
+    public static final double ORBIT_ANGULAR_SPEED = 2.0D * Math.PI * ORBIT_TURNS_PER_SECOND / 20.0D;
+
+    /**
+     * <b>环绕初始相位</b>（弧度；需求 §3.6 第 2 条给死 <b>0</b>）。
+     *
+     * <p>它是<b>基相位</b>：第 {@code i} 枚环绕波的实际初始相位是
+     * {@code ORBIT_PHASE + 2π·i/数量} —— 相位全等会让 L 枚小波<b>完全重合成一枚</b>
+     * （"数量 = 等级"就白写了），而均匀分配是"绕成一圈"的唯一读法；
+     * 第 0 枚的相位恰好就是 {@value #ORBIT_PHASE}（= 需求给的那个 0）。
+     * 见报告 §⑥（需求没写死、由我定的部分）。</p>
+     */
+    public static final double ORBIT_PHASE = 0.0D;
+
+    /**
+     * 环绕波自己的<b>波级</b>（α = 1，见 {@code WaveLevels.LOW}）。
+     *
+     * <p>波级对环绕波<b>只剩观感意义</b>（颜色 / 粒子 / 拖尾风格）：伤害由自定义伤害要素给
+     * （{@link #orbitDamage(int)}），位置由环绕要素每 tick 改写（速度表用不上）。
+     * 取 α 是与星芒嬗震的环绕波（1~2 级）同一个量级，也是"粒子/波形对标那套"的一部分。</p>
+     */
+    public static final int ORBIT_WAVE_LEVEL = 1;
+
+    /**
+     * 本次投掷生成的<b>环绕波数量</b> = 技能等级（需求 §3.6 第 1 条：Lv1..5 ⇒ 1~5 枚）。
+     *
+     * <p>与额度/消耗共用同一条 {@link #clampLevel(int)} 钳位。</p>
+     */
+    public static int orbitCount(int level) {
+        return clampLevel(level);
+    }
+
+    /** 环绕波的<b>单枚伤害</b> = {@code 2 × 等级}（Lv1..5 ⇒ 2 / 4 / 6 / 8 / 10）。 */
+    public static int orbitDamage(int level) {
+        return ORBIT_DAMAGE_PER_LEVEL * clampLevel(level);
+    }
+
+    /**
+     * 环绕的<b>额外</b>投掷消耗 = {@code 15 × 等级}（Lv1..5 ⇒ 15 / 30 / 45 / 60 / 75）。
+     *
+     * <p>它是"追加在模式消耗上"的那一项（需求 §3.7）：模式消耗仍由
+     * {@code BoomerangTier#throwCost(boolean)} 给，穿刺与环绕两项相加的唯一一处是
+     * {@code BoomerangItem#throwCost(ItemStack, Player, boolean)}。</p>
+     */
+    public static int orbitEnergyCost(int level) {
+        return ORBIT_ENERGY_PER_LEVEL * clampLevel(level);
     }
 }

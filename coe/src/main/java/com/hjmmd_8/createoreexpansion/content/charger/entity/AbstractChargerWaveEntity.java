@@ -76,7 +76,7 @@ import org.jetbrains.annotations.Nullable;
  * {@code wave-renderer-coverage} 守着这一条）。</p>
  */
 public abstract class AbstractChargerWaveEntity extends Entity
-	implements com.hjmmd_8.createoreexpansion.content.energyfield.FieldedEntity {
+	implements com.hjmmd_8.createoreexpansion.content.energyfield.FieldedEntity, OrbitAnchor {
 
 	/**
 	 * 最大存活 tick（200 tick = 10 秒）：能量波飞出充能器后即使不撞墙也会自动消散，
@@ -299,13 +299,21 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	// ==================================================================================
 
 	/**
-	 * <b>环绕波要素</b>之一：父波 UUID（{@code null} = <b>不环绕</b>，即默认关闭）。
+	 * <b>环绕波要素</b>之一：<b>锚点实体</b> UUID（{@code null} = <b>不环绕</b>，即默认关闭）。
 	 *
-	 * <p>设了它以后，本波每 tick 的位置被改写成「父波位置 + r × (u·cosθ + v·sinθ)」
-	 * （见 {@link #applyOrbitElement()}）；父波不存在/已消散时本波<b>立刻 discard</b>，
-	 * 不留孤立波。要求：发射方在设本要素的同时<b>必须</b>把父波的批次号一并继承
-	 * （{@link #setFiringBatch(int)}）——环绕波出生点与父波重合（相距 0），飞起来后 0.8 格半径
+	 * <p>设了它以后，本波每 tick 的位置被改写成「锚点位置 + r × (u·cosθ + v·sinθ)」
+	 * （见 {@link #applyOrbitElement()}）；锚点不存在/已消散时本波<b>立刻 discard</b>，
+	 * 不留孤立波。要求：发射方在设本要素的同时<b>必须</b>把"同一批"的批次号一并继承
+	 * （{@link #setFiringBatch(int)}）——环绕波出生点与锚点重合（相距 0），飞起来后 0.8 格半径
 	 * 在斜相位（两轴分量 0.566）也落进对方命中盒（按轴判据 0.6），不同批就是"第一圈就互相湮灭"。</p>
+	 *
+	 * <p><b>2026-10-02 批 4（作者裁定 D9 = A）：字段名沿用了 {@code orbitAnchorUuid}，但语义已从
+	 * "父波 UUID"放宽成"任意实体的 UUID"</b>——回旋镖的环绕技能（需求 §3.6）就是要拿
+	 * <b>那枚镖</b>当锚点（镖是 {@code Projectile}，不是波）。旧口径"必须是
+	 * {@code AbstractChargerWaveEntity}"会让这种环绕波<b>出生即死</b>，故判据放宽成
+	 * {@code anchor != null && anchor.isAlive()}，运动方向改走契约
+	 * {@link OrbitAnchor#orbitDirection()}（波与镖各实现一次）。既有调用方（星芒嬗震传父波）
+	 * 走的仍是同一条路径、同一行取值 ⇒ 行为逐字不变。</p>
 	 */
 	@Nullable
 	private UUID orbitAnchorUuid;
@@ -533,17 +541,25 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 	/**
 	 * <b>环绕波要素</b>（可选、默认关闭，见 {@link #orbitAnchorUuid}）：把自身位置改写成
-	 * <b>{@code 父波位置 + r × (u·cosθ + v·sinθ)}</b>。
+	 * <b>{@code 锚点位置 + r × (u·cosθ + v·sinθ)}</b>。
 	 *
-	 * <h2>坐标基（环平面垂直于父波运动方向）</h2>
-	 * <p>取父波运动方向 {@code d}（单位向量），再取一个与本方向不平行的参考轴
+	 * <p><b>2026-10-02 批 4（作者裁定 D9 = A）</b>：本文档原先逐字写的是"父波"——
+	 * 锚点判据已从 {@code instanceof AbstractChargerWaveEntity} 放宽成
+	 * {@code anchor != null && anchor.isAlive()}（见 {@link OrbitAnchor}），
+	 * 锚点可以是<b>任何实体</b>（回旋镖的环绕技能就是拿镖当锚点）。
+	 * 下文的"父波"一律读作"锚点"；对既有调用方（星芒嬗震传的是父波）两者是同一个对象，
+	 * 取值与判据<b>逐字不变</b>。</p>
+	 *
+	 * <h2>坐标基（环平面垂直于锚点运动方向）</h2>
+	 * <p>取锚点运动方向 {@code d}（{@link OrbitAnchor#orbitDirection()}；单位向量），
+	 * 再取一个与本方向不平行的参考轴
 	 * {@code reference}（{@code |d.y| > 0.9} 时用 +X，否则用 +Y——避免叉乘退化），
 	 * 然后</p>
 	 * <pre>
 	 *   u = normalize(reference × d)      // 垂直于 d 的平面基之一
 	 *   v = normalize(d × u)              // 与 u、d 都垂直（u × v = d，右手系）
 	 * </pre>
-	 * <p>于是 {@code u}、{@code v} 张成的平面<b>垂直于运动方向</b>，圆周点落在"以父波为圆心、
+	 * <p>于是 {@code u}、{@code v} 张成的平面<b>垂直于运动方向</b>，圆周点落在"以锚点为圆心、
 	 * 垂直于飞行方向的环"上：θ = 0 时在 {@code u} 正方向一侧，θ 增大时按 u→v 方向旋转。
 	 * 时间基用 {@code tickCount}（θ = 初始相位 + 角速度 × 已存活 tick）⇒ 不额外占字段。</p>
 	 *
@@ -553,12 +569,13 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 *       ——机器波 / 变器波 / 一切既有波的行为与改造前逐字相同；</li>
 	 *   <li>客户端 / Ponder 场景（不是 {@link ServerLevel}）⇒ 不动位置（客户端位置由服务端同步，
 	 *       客户端 tick 本来就在移动之前 return）；</li>
-	 *   <li>父波取不到或已消散（{@code isAlive() == false}）⇒ 返回 {@code false}，
-	 *       调用方<b>立刻 {@code discard()}</b> ⇒ "主波消散 ⇒ 环绕波一起收尾"只有这一条实现，
-	 *       不再叠第二层机制，也不会留下孤立波。</li>
+	 *   <li>锚点取不到或已消散（{@code isAlive() == false}）⇒ 返回 {@code false}，
+	 *       调用方<b>立刻 {@code discard()}</b> ⇒ "锚点消散 ⇒ 环绕波一起收尾"只有这一条实现，
+	 *       不再叠第二层机制，也不会留下孤立波（对镖同样成立：镖 {@code discard()} 后
+	 *       环绕波下一 tick 自己收尾）。</li>
 	 * </ul>
 	 *
-	 * @return {@code false} = 父波已不存在，调用方必须 discard 自己
+	 * @return {@code false} = 锚点已不存在，调用方必须 discard 自己
 	 */
 	private boolean applyOrbitElement() {
 		if (this.orbitAnchorUuid == null) {
@@ -568,10 +585,16 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			return true;
 		}
 		Entity anchor = server.getEntity(this.orbitAnchorUuid);
-		if (!(anchor instanceof AbstractChargerWaveEntity parent) || !parent.isAlive()) {
+		// ★ 批 4（作者裁定 D9 = A）：锚点判据从"必须是另一枚波"放宽成"是个活着的实体"——
+		// 回旋镖的环绕技能要拿**那枚镖**当锚点，而镖是 Projectile、不是波；旧判据会让环绕波
+		// 出生即死（第一 tick 就查不到"父波"）。既有调用方（星芒嬗震）传的仍是波 ⇒ 走的还是
+		// 下面同一条路径，行为逐字不变。
+		if (anchor == null || !anchor.isAlive()) {
 			return false;
 		}
-		Vec3 dir = parent.getMovement();
+		// ★ "取运动方向"抽成契约（OrbitAnchor#orbitDirection）：波 = getMovement()（与改造前
+		// 逐字同源）、镖 = getDeltaMovement()。非 OrbitAnchor 的实体回落到原版速度向量。
+		Vec3 dir = orbitDirectionOf(anchor);
 		if (dir.lengthSqr() < 1.0E-9D) {
 			dir = movement;
 		}
@@ -583,7 +606,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		Vec3 u = axes[0];
 		Vec3 v = axes[1];
 		double theta = orbitPhase + orbitAngularSpeed * (double) tickCount;
-		Vec3 anchorPos = parent.position();
+		Vec3 anchorPos = anchor.position();
 		Vec3 offset = u.scale(orbitRadius * Math.cos(theta)).add(v.scale(orbitRadius * Math.sin(theta)));
 		setPos(anchorPos.add(offset));
 		// 只记三个原始事实，供粒子/日志用（见三个字段的说明）；位置公式本身仍只有上面这一处。
@@ -592,6 +615,39 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		this.orbitRingNormal = dir;
 		logOrbitDiag(anchorPos);
 		return true;
+	}
+
+	/**
+	 * <b>环绕波锚点契约（{@link OrbitAnchor}）的"取运动方向"实现 —— 波这一侧</b>
+	 * （2026-10-02 批 4；作者裁定 D9 = A）。
+	 *
+	 * <p>实现体<b>只有一行</b>，而且就是改造前 {@code applyOrbitElement()} 里那一行
+	 * （{@code Vec3 dir = parent.getMovement();}）—— 所以"波当锚点"的环平面法向与改造前
+	 * <b>逐字相同</b>（这是"既有波行为不变"最直接的一条证据）。</p>
+	 *
+	 * <p>刻意<b>不</b>返回 {@code getDeltaMovement()}：波的手写位移只走 {@code setPos}，
+	 * 从不写原版速度字段（那个字段对波恒为零向量）—— 换成它等于把环平面的法向换成"永远退化"，
+	 * 既有环绕波会立刻歪到 +Z 平面上。</p>
+	 */
+	@Override
+	public Vec3 orbitDirection() {
+		return getMovement();
+	}
+
+	/**
+	 * <b>取锚点运动方向的唯一一处</b>（环绕波几何的第二个入口，
+	 * 与 {@link #orbitPlaneAxes(Vec3)} 一起构成"环平面几何只有一处实现"）：
+	 * 锚点实现了 {@link OrbitAnchor} 就问它（波 / 镖各一处实现），
+	 * 否则回落到原版速度向量（任何实体的通用运动方向）。
+	 *
+	 * <p><b>为什么抽成静态方法而不是把三元表达式写进 {@link #applyOrbitElement()}</b>：
+	 * 关卡要能钉住"镖与波各实现一次"，而不是钉住某一个调用点的写法。</p>
+	 */
+	public static Vec3 orbitDirectionOf(Entity anchor) {
+		if (anchor instanceof OrbitAnchor orbitAnchor) {
+			return orbitAnchor.orbitDirection();
+		}
+		return anchor.getDeltaMovement();
 	}
 
 	/**
@@ -998,9 +1054,34 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * （{@code createoreexpansion:lightning_block}）也能被波远程执行
 	 * （否则只有带物品槽的方块会走 {@link #handleItemInventoryBlock}，普通方块永远吃不到雷）。</p>
 	 *
-	 * <p>调用时机：波即将因撞墙而绽放消散之前，只在此处调用一次；波仍按原逻辑消散。</p>
+	 * <p><b>2026-10-02 批 4 新增：环绕波 + "会挖方块的锚点"</b>（作者裁定 D9 = A；
+	 * 需求 §3.6 第 4 条"环绕波撞方块 ⇒ 把它挖掘并使其消失"）。本方法在既有引雷之外，
+	 * 追加一次<b>可选</b>的回调：环绕波的锚点若实现了
+	 * {@link OrbitAnchor#orbitMineBlock(net.minecraft.core.BlockPos)}
+	 * （回旋镖就是；波的默认实现返回 {@code false}、什么都不做），就在这里把它挖掉。</p>
+	 * <ul>
+	 *   <li><b>未设环绕要素</b>（{@code orbitAnchorUuid == null}）⇒ <b>第一句就返回</b>，
+	 *       机器波 / 变器波 / 一切既有波一个字节都不变；</li>
+	 *   <li><b>环着一枚波</b>（星芒嬗震）⇒ 走 {@link OrbitAnchor} 的默认实现（不挖），
+	 *       行为与改造前逐字相同；</li>
+	 *   <li><b>波照旧消散</b>：本回调不改变调用方（{@code WaveHitResolver} 的"撞墙"分支）
+	 *       紧随其后的 {@code burst + discard} ⇒ "环绕波撞方块 ⇒ 挖掉 + 该枚消失"。</li>
+	 * </ul>
+	 *
+	 * <p>调用时机：波即将因撞墙而绽放消散之前，只在此处调用一次。</p>
 	 */
 	public void onSolidBlockHit(BlockPos pos) {
+		// 环绕波要素未设 ⇒ 与改造前逐字相同（第一道闸；见 applyOrbitElement 的同形守卫）。
+		if (this.orbitAnchorUuid == null || pos == null) {
+			return;
+		}
+		if (!(level() instanceof ServerLevel server)) {
+			return;
+		}
+		Entity anchor = server.getEntity(this.orbitAnchorUuid);
+		if (anchor instanceof OrbitAnchor orbitAnchor) {
+			orbitAnchor.orbitMineBlock(pos);
+		}
 	}
 
 	/**

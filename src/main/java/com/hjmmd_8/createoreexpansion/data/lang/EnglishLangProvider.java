@@ -313,9 +313,10 @@ public class EnglishLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.hoe", "Tend");
         add("skill.createoreexpansion.bow_curse", "Wither Curse");
         add("skill.createoreexpansion.bow_disarm", "Disarm Storm");
-        // 回旋镖技能（2026-10-02 批 3 穿刺；环绕是批 4）。id 与语言键照需求 §六 推断值 #6：
-        // pierce + skill.createoreexpansion.pierce（本仓 snake_case 风格，与 fall_guard 同形）。
+        // 回旋镖技能（2026-10-02 批 3 穿刺 / 批 4 环绕）。id 与语言键照需求 §六 推断值 #6：
+        // pierce / orbit + skill.createoreexpansion.<id>（本仓 snake_case 风格，与 fall_guard 同形）。
         add("skill.createoreexpansion.pierce", "Pierce");
+        add("skill.createoreexpansion.orbit", "Orbit");
 
         // ========== 技能类型 ==========
         add("skillType.createoreexpansion.excavation_skill", "Excavation Skill");

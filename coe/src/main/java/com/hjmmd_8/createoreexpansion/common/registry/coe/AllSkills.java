@@ -216,7 +216,7 @@ public final class AllSkills {
                     .maxLevel(ArmorSkillRuntime.MAX_EQUIPMENT_SKILL_LEVEL)
                     .register();
 
-    // ========== 回旋镖技能（2026-10-02 批 3：穿刺；环绕是批 4）—— 数值统一在 BoomerangSkillConfigs ==========
+    // ========== 回旋镖技能（2026-10-02 批 3 穿刺 / 批 4 环绕）—— 数值统一在 BoomerangSkillConfigs ==========
     /**
      * 穿刺（回旋镖四把共用）：投掷出去的镖可以<b>穿过</b>至多 {@code 3×等级} 个生物与
      * {@code 5×等级} 个方块（需求 §3.5），额度用完就掉头；点按与长按都生效，无独立冷却。
@@ -237,6 +237,31 @@ public final class AllSkills {
      */
     public static final RegisteredDataSkill PIERCE =
             skill("pierce", SkillType.USE_SKILL)
+                    .maxLevel(BoomerangSkillConfigs.MAX_SKILL_LEVEL)
+                    .register();
+
+    /**
+     * 环绕（回旋镖四把共用；2026-10-02 批 4）：投掷出去的镖身边环着 {@code 等级} 枚小能量波
+     * （半径 1.5、垂面、单枚伤害 {@code 2×等级}、撞方块挖掉并入回环镖）——需求 §3.6。
+     *
+     * <p>与 {@link #PIERCE} <b>逐条同形</b>（同一个"执行不住在内核"的形状）：</p>
+     * <ul>
+     *   <li><b>数值</b>在 {@link BoomerangSkillConfigs}（数量 = 等级 / 半径 1.5 / 伤害 2L /
+     *       消耗 15L / 上限 5）；</li>
+     *   <li><b>执行</b>在 {@code AbstractBoomerangEntity#spawnOrbitWaves}（投掷时生成 L 枚
+     *       环绕波）+ 环绕波自己的既有命中链（撞生物 2L 伤害、撞方块挖掘）——
+     *       这里<b>刻意不挂</b> {@code .config(...)} / {@code .configsByLevel(...)}；</li>
+     *   <li><b>内核白名单</b>必须登记（{@code SkillerIntegration#registerUseSkills}，
+     *       与穿刺/装备技能共用同一个无操作壳）：漏了 ⇒ 物品上这个技能实例反序列化不出来
+     *       （症状是"看着接好了、其实没绑上"）。</li>
+     * </ul>
+     *
+     * <p>⚠ 它与穿刺一样是 {@code USE_SKILL} ⇒ 右键投掷会被 {@code UseItemHandler}
+     * 当成一次技能释放，而那里按<b>类型</b>（{@code BoomerangItem}）开的豁免<b>同时覆盖两者</b>
+     * （它是类型判据、不是技能 id 白名单）——见该处注释（裁定 D11）。</p>
+     */
+    public static final RegisteredDataSkill ORBIT =
+            skill("orbit", SkillType.USE_SKILL)
                     .maxLevel(BoomerangSkillConfigs.MAX_SKILL_LEVEL)
                     .register();
 

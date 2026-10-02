@@ -778,9 +778,10 @@ public final class CoeItems {
      *       （{@code parent: item/generated} + {@code layer0 = item/<id>}），不手写；
      *       贴图就是作者给的那四张（逐字节复制，未改一像素）。</li>
      *   <li>{@code .transform(skillItem())} —— 进模组统一的物品构建链（创造页分区由它的
-     *       {@code build()} 声明为 {@code GEAR}）。<b>批 3 起绑技能</b>：
-     *       {@code .addSkills(AllSkills.PIERCE, tier.baseSkillLevel())} 就在两次 {@code build()}
-     *       之间那一行（基准等级 1/2/3/3 来自档位表，这一行不出现等级字面量）。</li>
+     *       {@code build()} 声明为 {@code GEAR}）。<b>批 3 起绑技能、批 4 起两条</b>：
+     *       {@code .addSkills(AllSkills.PIERCE / AllSkills.ORBIT, tier.baseSkillLevel())}
+     *       就在两次 {@code build()} 之间那两行（基准等级 1/2/3/3 来自档位表，
+     *       这两行都不出现等级字面量）。</li>
      *   <li>{@code .addEnergy()} —— 能量走现成路径（{@code defaultEnergy == maxEnergy} = 初始即满），
      *       注册时自动挂进工具充能配方（{@code ChargingRecipeTools}）。</li>
      *   <li><b>耐久（2026-10-02 批 1）</b> —— <b>不在这条链上</b>：它由 {@link BoomerangItem} 的构造器
@@ -809,11 +810,14 @@ public final class CoeItems {
             // 第二次收尾技能段（SkillItemBuilder → ItemBuilder，同时把创造页分区与充能配方挂上），
             // 于是链末尾的 .register() 是 ItemBuilder 的 ⇒ 拿到的才是 ItemEntry（与剑/弓同一个形状）。
             .build()
-            // 技能段（2026-10-02 批 3）：穿刺。**基准等级来自档位**（BoomerangTier#baseSkillLevel()
-            // = 翠玉 1 / 宝石 2 / 星界 3 / 雷鸣 3，需求 §3.1 给死 ⇒ 不在这一行写字面量）；
-            // 有效等级 = 基准 ± 技艺提升/技艺回溯 再钳到 5，读取点唯一
-            // （BoomerangItem#effectiveSkillLevel）。批 4 的环绕加在旁边同一段里。
+            // 技能段（2026-10-02 批 3 穿刺 / 批 4 环绕）。**基准等级来自档位**
+            // （BoomerangTier#baseSkillLevel() = 翠玉 1 / 宝石 2 / 星界 3 / 雷鸣 3，需求 §3.1 给死
+            // ⇒ 不在这一行写字面量），两把技能共用同一个基准；有效等级 = 基准 ± 技艺提升/技艺回溯
+            // 再钳到 5，读取点唯一（BoomerangItem#effectiveSkillLevel）。
+            // 穿刺：穿透 3L 生物 / 5L 方块（实体侧）+ 20L 消耗（throwCost）；
+            // 环绕：L 枚环绕波（实体侧）+ 15L 消耗（throwCost）。
             .addSkills(AllSkills.PIERCE, tier.baseSkillLevel())
+            .addSkills(AllSkills.ORBIT, tier.baseSkillLevel())
             .build()
             .register();
     }

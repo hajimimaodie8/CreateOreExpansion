@@ -198,8 +198,8 @@ public final class SkillerIntegration {
     }
 
     /**
-     * 注册使用系（右键）技能：{@code hoe}（锄头四优先级）、{@code pierce}（回旋镖穿刺）、
-     * 弓类两条（{@code bow_curse} / {@code bow_disarm}）。
+     * 注册使用系（右键）技能：{@code hoe}（锄头四优先级）、{@code pierce} / {@code orbit}
+     * （回旋镖穿刺 + 环绕）、弓类两条（{@code bow_curse} / {@code bow_disarm}）。
      *
      * <p>触发点是 {@code content/skill/handler/UseItemHandler}（已经接过新内核）。
      * 弓类两个技能属于"松手射出 → 箭命中"的两段式，不走右键瞬间，另行处理。</p>
@@ -217,6 +217,17 @@ public final class SkillerIntegration {
         // （那就是"投一次扣两次能量"）—— 所以那里按**类型**（BoomerangItem）开了豁免，
         // 理由与弓的同形，见 UseItemHandler#release 的注释（裁定 D11）。
         event.register(SkillerRegistries.SKILL, skillId("pierce"),
+                () -> new ItemSkillRegistration<UseItemSkillContext>(
+                        CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));
+        // 环绕（回旋镖 · 2026-10-02 批 4）：与上面那条**逐条同形** —— 执行不在内核里
+        // （生成在 BoomerangItem#releaseUsing → AbstractBoomerangEntity#spawnOrbitWaves，
+        // 伤害/挖掘在环绕波自己的既有命中链上），这里登记的目的只有两个：
+        //   1) skiller:skill 是数据驱动白名单，漏了 ⇒ 物品上这个技能实例反序列化返回 null；
+        //   2) 客户端据此知道主手还有第二个 USE 族技能（HUD 那一行）。
+        // ⚠ 同样是 USE 族 ⇒ 右键投掷会被 UseItemHandler 当成一次技能释放；那里按**类型**
+        // （BoomerangItem）开的豁免**同时覆盖穿刺与环绕**（判据是类、不是技能 id），
+        // 所以这里不需要（也不许）再加一条按 id 的白名单。
+        event.register(SkillerRegistries.SKILL, skillId("orbit"),
                 () -> new ItemSkillRegistration<UseItemSkillContext>(
                         CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));
         // 弓的两个技能：只迁"松手射击"这一段（耗能/冷却/写标记），"箭命中"那段仍在旧 handler 上

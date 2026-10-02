@@ -1,6 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.OrbitAnchor;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -14,6 +17,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -156,8 +160,34 @@ import net.minecraft.world.phys.Vec3;
  * <p>⚠ <b>撞上挖不动的方块不掉额度但会掉头</b>（点按段）：{@link #mineBlock} 的三关
  * （硬度 / 挖掘等级 / 原版进度）没过 ⇒ 不消耗额度、也不穿墙（批 1/2 的"撞墙即回"照旧）。
  * 花瓣段则穿过（曲线是固定路径，与批 2 的花瓣段行为一致）。</p>
+ *
+ * <h2>七、批 4（2026-10-02）：环绕技能（需求 §3.6 / §3.7）</h2>
+ * <p>投掷时挂上 <b>L 枚环绕波</b>（L = 有效技能等级，1..5），锚点就是<b>这枚镖</b>：
+ * 镖实现 {@link OrbitAnchor}（契约由作者裁定 D9 = A 放宽："锚点不必是波"），
+ * 于是既有的环绕波要素（半径 / 角速度 / 相位 / 垂面几何 / "锚点没了就收尾"）
+ * <b>一个字都不用改</b>就服务了回旋镖。要点：</p>
+ * <ul>
+ *   <li><b>数量 = L</b>（{@code BoomerangSkillConfigs#orbitCount}）；
+ *       <b>半径 1.5</b>、<b>角速度 1 圈/秒</b>、基相位 0、第 i 枚相位 {@code 2π·i/L}
+ *       （均匀铺满一圈，否则 L 枚会重合成一枚）；</li>
+ *   <li><b>平面 = 镖运动方向的垂面</b>（{@link #orbitDirection()} = {@code getDeltaMovement()}，
+ *       既有几何负责把它变成两个基向量）；</li>
+ *   <li><b>同批豁免</b>：L 枚共用一个<b>负数</b>批次号（见 {@link #nextOrbitBatch()}）——
+ *       镖不是波、没有批次号，所以这里自造一个来源；负数是为了与星芒嬗震的<b>正数</b>序列
+ *       永不相等（否则两组批次可能撞号 ⇒ 两枚本该湮灭的波互相豁免）。机器波仍是批次 0
+ *       （= "不属于任何批次"）⇒ 长期口径不变；</li>
+ *   <li><b>伤害 2×L</b>：走 {@code ChargerWaveEntity} 的"自定义伤害"要素（波形仍是既有实体、
+ *       仍是 ATTACK 波型），<b>撞生物 ⇒ 该枚消失</b>（既有波的命中语义，不需要新代码）；</li>
+ *   <li><b>撞方块 ⇒ 挖掉 + 该枚消失</b>：{@link #orbitMineBlock(BlockPos)} 直接复用
+ *       {@link #mineBlock}（同一条 {@code maxHardness} / {@code miningLevel} / 原版进度判定，
+ *       同样 −1 耐久）；掉落物与经验由原版生成在世界里，靠镖既有的回程吸附
+ *       （{@link #pickUpItems()}）带走、{@link #finishFlight(boolean)} 交给玩家（零新机制）；</li>
+ *   <li><b>收尾</b>：镖 {@code discard()} 后环绕波下一 tick 自己收尾（既有
+ *       "锚点没了即 discard"语义）；</li>
+ *   <li><b>消耗 15×L</b>：与模式消耗、穿刺 20×L 相加在 {@code BoomerangItem#throwCost} 同一处。</li>
+ * </ul>
  */
-public abstract class AbstractBoomerangEntity extends Projectile {
+public abstract class AbstractBoomerangEntity extends Projectile implements OrbitAnchor {
 
 	/** 渲染与交还都用的那一份镖（同步数据；写入只有 {@link #setItemStack} 一处）。 */
 	private static final EntityDataAccessor<ItemStack> DATA_STACK =
@@ -340,6 +370,122 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	public int getPierceBlocksLeft() {
 		ensurePierceQuota();
 		return this.pierceBlocksLeft;
+	}
+
+	// ================= 环绕技能（2026-10-02 批 4；需求 §3.6 / §3.7） =================
+
+	/**
+	 * <b>环绕波批次号计数器</b>（服务端权威、进程内自减 ⇒ 分配出来的批次号<b>恒为负数</b>）。
+	 *
+	 * <p><b>为什么自造一个来源</b>：豁免判据 {@code sameFiringBatch} 比较的是"两枚波是不是
+	 * 同一次发射"，而<b>镖不是波、根本没有批次号</b>（唯一既有的分配器
+	 * {@code StarShockRuntime#nextBatch()} 是星界套的私有实现，本项目口径也不让回旋镖依赖它）。
+	 * 所以这里造一个只用给"这一次投掷的 L 枚环绕波"的号，让它们<b>彼此不湮灭</b>。</p>
+	 *
+	 * <p><b>为什么是负数（与"批次 0"和星芒嬗震都不撞号）</b>：{@code sameFiringBatch} 要求
+	 * 双方都非 0 且相等，而<b>机器波恒为 0</b>（"不属于任何批次"）⇒ 负数天然不等于 0；
+	 * 星芒嬗震的序列是<b>正数</b>（{@code BATCH_SEQUENCE++}，从 1 起）⇒
+	 * 两个来源的值域不相交，永远不可能出现"一次星界技能发射与一次回旋镖投掷撞号"，
+	 * 也就不会出现"两枚本应互相湮灭的波互相豁免"（长期口径：任意两波相交即爆炸湮灭）。</p>
+	 *
+	 * <p>位宽 32 位、只在同一次投掷内部比较 ⇒ 与既有批次号同一种"进程内短标识"口径。</p>
+	 */
+	private static int ORBIT_BATCH_SEQUENCE = 0;
+
+	/**
+	 * 分配一个<b>环绕波批次号</b>（{@link #ORBIT_BATCH_SEQUENCE}；<b>恒 &lt; 0</b> ⇒ 恒非 0）。
+	 *
+	 * <p>回绕兜底：{@code int} 减到 {@code Integer.MIN_VALUE} 再减会变成正数
+	 * （= 可能与星芒嬗震的序列撞号），所以到 0 就绕回 {@code -1}。正常游戏里不可能发生，
+	 * 但"绕回正数"这条路径正是必须堵掉的（它与"批次号 0"是同一类静默失效）。</p>
+	 */
+	private static synchronized int nextOrbitBatch() {
+		ORBIT_BATCH_SEQUENCE--;
+		if (ORBIT_BATCH_SEQUENCE >= 0) {
+			ORBIT_BATCH_SEQUENCE = -1;
+		}
+		return ORBIT_BATCH_SEQUENCE;
+	}
+
+	/**
+	 * <b>环绕波锚点契约（{@link OrbitAnchor}）的"取运动方向"实现 —— 镖这一侧</b>
+	 * （作者裁定 D9 = A）：镖的手写位移就写在原版速度字段上
+	 * （点按的 {@code shootFromRotation} / 花瓣段的 {@code setDeltaMovement(target - position)}，
+	 * 见 {@link #tickOutbound()} / {@link #tickPetal()}），所以"镖的运动方向"就是
+	 * {@code getDeltaMovement()}。环绕波的环平面<b>垂直于它</b> ⇒ 与需求 §3.6 第 2 条
+	 * "环绕运动轨迹 = 回旋镖当前运动轨迹的垂面"逐字同形。</p>
+	 */
+	@Override
+	public Vec3 orbitDirection() {
+		return getDeltaMovement();
+	}
+
+	/**
+	 * <b>环绕波撞到普通方块时的回调</b>（{@link OrbitAnchor#orbitMineBlock(BlockPos)} 的镖侧实现）：
+	 * 直接复用 {@link #mineBlock(BlockPos)} —— 同一条判定链（硬度 ≥ 0、≤ 本档
+	 * {@code maxHardness}、不在本档 {@code INCORRECT_FOR_*_TOOL}、原版挖掘进度
+	 * {@code digSpeed/(hardness*i)} 达标），同一条唯一破坏入口
+	 * （{@code player.gameMode.destroyBlock}），以及同一条耐久记账
+	 * （挖掉 ⇒ {@code addFlightWear(WEAR_PER_HIT)}，<b>挖不动不计</b>）。</p>
+	 *
+	 * <p><b>挖不动 ⇒ 什么都不做</b>（返回 {@code false}），环绕波照旧按"撞墙"消散 ——
+	 * 需求 §3.6 只写了"碰方块 ⇒ 挖掘并使其消失"，没写"挖不动怎么办"；
+	 * 这里取最小偏差的读法：<b>不挖、但该枚照样消失</b>（撞上方块就是碰撞），
+	 * 与既有波的撞墙语义一致。见报告 §⑥。</p>
+	 */
+	@Override
+	public boolean orbitMineBlock(BlockPos pos) {
+		return mineBlock(pos);
+	}
+
+	/**
+	 * ★ <b>投掷时挂上环绕技能：生成 L 枚环绕波</b>（需求 §3.6；批 4 的唯一生成处）。
+	 *
+	 * <p>由 {@code BoomerangItem#releaseUsing} 在镖<b>已入世界之后</b>调用一次
+	 * （点按与长按<b>都</b>调 —— 需求 §六 推断值 #9：技能不需要开关、两种模式都生效）。</p>
+	 *
+	 * <p>每一枚都是<b>既有波实体</b>（{@code ChargerWaveEntity}，与充能器/星芒嬗震同一种），
+	 * 只设三个要素：</p>
+	 * <ol>
+	 *   <li><b>波型 = ATTACK</b>（{@code trySetWaveType}）：既有命中链里"造成伤害"那一支的
+	 *       门槛就是 {@code getWaveType().dealsDamage()}，不设它环绕波就只是个观光粒子；</li>
+	 *   <li><b>自定义伤害 = 2 × 等级</b>（{@code ChargerWaveEntity#setCustomDamage}）——
+	 *       正是作者裁定 D9(A) 的"伤害可覆写"，<b>不</b>另写一套波级表；</li>
+	 *   <li><b>环绕要素</b>（{@code setOrbitAnchor}）：锚点 = 这枚镖的 UUID、半径 1.5、
+	 *       角速度 1 圈/秒、相位 {@code 基相位 + 2π·i/L}（均匀铺满一圈）。</li>
+	 * </ol>
+	 * <p>外加<b>同一个批次号</b>（同一次投掷的 L 枚彼此不湮灭；见 {@link #nextOrbitBatch()}）。</p>
+	 *
+	 * <p>⚠ <b>不新增实体类型 / 贴图 / 模型 / 渲染器</b>：用的是既有 {@code charger_wave}，
+	 * 视觉仍走既有的环绕波粒子（关卡守着这一条）。</p>
+	 *
+	 * @param stack     投掷的那一把镖（读取有效技能等级：基准等级取本档 + 技艺提升/回溯，钳 1..5）
+	 * @param flightDir 出手方向（点按 = 镖刚拿到的速度向量；长按 = 投掷那一刻的准心方向，
+	 *                  因为花瓣段第一 tick 还没有位移）——它同时是环绕波的出生朝向，
+	 *                  而每 tick 的环平面法向仍从锚点<b>实时</b>取（镖转弯时环跟着转）
+	 */
+	public void spawnOrbitWaves(ItemStack stack, Vec3 flightDir) {
+		if (!(level() instanceof ServerLevel server)) {
+			return; // 实体由服务端生成（两端各造一枚就成双份）
+		}
+		int level = BoomerangItem.effectiveSkillLevel(stack, tier().baseSkillLevel());
+		int count = BoomerangSkillConfigs.orbitCount(level);
+		float damage = BoomerangSkillConfigs.orbitDamage(level);
+		int batch = nextOrbitBatch();
+		Vec3 dir = flightDir == null ? Vec3.ZERO : flightDir;
+		for (int i = 0; i < count; i++) {
+			// 既有波实体、既有构造（与充能器/星芒嬗震同一个）：
+			// 出生点 = 镖此刻的位置（第一 tick 就会被环绕要素改写到环上）。
+			ChargerWaveEntity orbit = new ChargerWaveEntity(level(), position(), dir,
+				BoomerangSkillConfigs.ORBIT_WAVE_LEVEL);
+			orbit.setFiringBatch(batch); // 同一次投掷的 L 枚共用一个（负数）批次号
+			orbit.trySetWaveType(WaveTypes.ATTACK); // 要素 4：伤害那一支的门槛
+			orbit.setCustomDamage(damage); // 2 × 等级（既有实体的可选自定义伤害）
+			orbit.setOrbitAnchor(getUUID(), BoomerangSkillConfigs.ORBIT_RADIUS,
+				BoomerangSkillConfigs.ORBIT_ANGULAR_SPEED,
+				BoomerangSkillConfigs.ORBIT_PHASE + Math.PI * 2.0D * (double) i / (double) count);
+			server.addFreshEntity(orbit);
+		}
 	}
 
 	/**

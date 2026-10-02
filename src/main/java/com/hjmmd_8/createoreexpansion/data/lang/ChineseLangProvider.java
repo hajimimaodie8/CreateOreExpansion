@@ -212,8 +212,9 @@ public class ChineseLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.hoe", "耕作");
         add("skill.createoreexpansion.bow_curse", "凋零诅咒");
         add("skill.createoreexpansion.bow_disarm", "缴械风暴");
-        // 回旋镖技能（2026-10-02 批 3 穿刺；环绕是批 4）：需求 §3.5 的技能名。
+        // 回旋镖技能（2026-10-02 批 3 穿刺 / 批 4 环绕）：需求 §3.5 / §3.6 的技能名。
         add("skill.createoreexpansion.pierce", "穿刺");
+        add("skill.createoreexpansion.orbit", "环绕");
 
         // ========== 技能类型 ==========
         add("skillType.createoreexpansion.excavation_skill", "挖掘技能");
