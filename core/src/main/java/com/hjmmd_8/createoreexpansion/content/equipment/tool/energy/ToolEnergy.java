@@ -6,6 +6,7 @@ import com.hjmmd_8.createoreexpansion.common.energy.ToolDataComponents;
 import com.simibubi.create.content.equipment.goggles.GogglesItem;
 
 import java.awt.Color;
+import java.util.List;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -291,14 +292,22 @@ public final class ToolEnergy {
 	}
 
 	/**
-	 * 工具行的剩余能量文案。翠玉之弓（传说武器）做黄→绿渐变，其余工具保持单色（工具能量色）。
-	 * 仅对弓生效：其它工具显示不受影响。
+	 * 工具行的剩余能量文案。谁实现 {@link EnergyGradientTool} 谁做渐变（翠玉之弓 + 回旋镖四把）；
+	 * 其余工具保持单色（工具能量色）。
+	 *
+	 * <p>色标由物品自报（{@code energyGradientStops}，左→右）；<b>文本行沿用历史方向（右→左）</b>，
+	 * 所以从色标末端往回取：弓不覆写 ⇒ 落到历史默认，逐字仍是黄 {@code 0xFFFF55} → 绿
+	 * {@code 0x55FF55}（与改动前完全一致）；回旋镖四把则各自取到自己档位的两端色。</p>
 	 */
 	private static Component toolLineComponent(ItemStack tool, int energy, int max) {
 		String text = tool.getHoverName().getString() + "：" + energy + "/" + max;
-		if (tool.getItem() instanceof EnergyGradientTool) {
-			// 黄（起点）→ 绿（终点）逐字符渐变
-			return gradientText(text, new Color(0xFFFF55), new Color(0x55FF55));
+		if (tool.getItem() instanceof EnergyGradientTool gradientTool) {
+			List<Color> stops = gradientTool.energyGradientStops(tool);
+			if (stops.isEmpty()) {
+				// 未覆写 ⇒ 历史默认（翠玉之弓）：黄（起点）→ 绿（终点）逐字符渐变
+				return gradientText(text, new Color(0xFFFF55), new Color(0x55FF55));
+			}
+			return gradientText(text, stops.get(stops.size() - 1), stops.get(0));
 		}
 		return Component.literal(text)
 			.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(getEnergyColor(tool))));

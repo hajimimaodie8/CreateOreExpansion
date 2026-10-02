@@ -72,10 +72,15 @@ public class EnergyTooltipHandler {
             fillColor = new Color(color % 0xFFFFFF);
         }
 
-        // 翠玉之弓（传说武器）：能量条从左（绿）到右（黄）渐变，其余工具保持单色
-        if (stack.getItem() instanceof EnergyGradientTool) {
-            tip.add(index, BarTooltipRender.energyGradient(
-                    energy, max, BAR_SLOTS, new Color(0x55FF55), new Color(0xFFFF55)));
+        // 谁实现 EnergyGradientTool 谁做渐变条（翠玉之弓 + 回旋镖四把）；其余工具保持单色。
+        // 色标由物品自报（energyGradientStops）：回旋镖四把给的是各自档位的配色，
+        // 弓不覆写 ⇒ 用下面这条历史默认（绿 0x55FF55 -> 黄 0xFFFF55，本文件是它的唯一出处）。
+        if (stack.getItem() instanceof EnergyGradientTool gradientTool) {
+            List<Color> stops = gradientTool.energyGradientStops(stack);
+            if (stops.isEmpty()) {
+                stops = List.of(new Color(0x55FF55), new Color(0xFFFF55));
+            }
+            tip.add(index, BarTooltipRender.energyGradient(energy, max, BAR_SLOTS, stops));
             return index + 1;
         }
 

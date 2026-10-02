@@ -3,6 +3,8 @@ package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 import com.hjmmd_8.createoreexpansion.common.energy.EnergyGradientTool;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
+import java.awt.Color;
+import java.util.List;
 import java.util.function.Supplier;
 
 import net.minecraft.stats.Stats;
@@ -38,7 +40,8 @@ import net.minecraft.world.level.block.state.BlockState;
  *       镖挖石头/矿石<b>什么都不会掉</b>。</li>
  * </ul>
  *
- * <p>能量文案走 {@link EnergyGradientTool}（与翠玉之弓同一种"黄→绿渐变"呈现）。</p>
+ * <p>能量条与能量文案走 {@link EnergyGradientTool}：渐变两端色取<b>本档自己的配色</b>
+ * （{@link #energyGradientStops} → {@link BoomerangTier#color()}），四把各不相同。</p>
  */
 public class BoomerangItem extends Item implements EnergyGradientTool {
 
@@ -59,6 +62,23 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 
 	public BoomerangTier tier() {
 		return tier;
+	}
+
+	/**
+	 * <b>能量条/能量文案的渐变色标 = 本档自己的配色</b>（左→右：亮色 → 暗色）。
+	 *
+	 * <p>两端色一律读 {@link BoomerangTier#color()}，也就是
+	 * {@code ToolEnergyColorConfig.JADE / SAPPHIRE / STELLARSTONE / THUNDERITE}
+	 * 这四个常量本身（与同材质工具/盔甲同一个数据源，这里不复制任何一个色值）。</p>
+	 *
+	 * <p>⚠ 这个方法就是作者 2026-10-02 报的那个 bug（"剩下那三种类型的回旋镖的能量条并不与
+	 * 它们的类型匹配"）的修复点：{@link EnergyGradientTool} 原先没有取色方法，两个消费方
+	 * 各自写死翠玉之弓那条黄绿渐变，于是<b>四把镖共用同一条颜色</b>——翠玉那把"看着对"，
+	 * 只是因为它的档位色恰好等于那条渐变的起点。删掉这个覆写 = 四把又变回同一个色。</p>
+	 */
+	@Override
+	public List<Color> energyGradientStops(ItemStack stack) {
+		return List.of(tier.color().light, tier.color().dark);
 	}
 
 	/**
