@@ -2,7 +2,7 @@
   "description": {
     "translate": "enchantment.createoreexpansion.swift_start"
   },
-  "supported_items": "#createoreexpansion:cooldown_tools",
+  "supported_items": "#createoreexpansion:skill_boostable",
   "weight": 5,
   "max_level": 4,
   "min_cost": {
@@ -15,7 +15,8 @@
   },
   "anvil_cost": 2,
   "slots": [
-    "mainhand"
+    "mainhand",
+    "armor"
   ],
   "effects": {}
 }

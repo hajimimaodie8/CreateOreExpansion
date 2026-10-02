@@ -15,7 +15,8 @@
   },
   "anvil_cost": 8,
   "slots": [
-    "mainhand"
+    "mainhand",
+    "armor"
   ],
   "effects": {}
 }
