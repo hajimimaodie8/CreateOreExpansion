@@ -7,7 +7,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 
 /**
- * <b>回旋镖四档材质的数值真源</b>（唯一出处：物品注册、实体伤害、挖掘判定、能量扣减全读这里）。
+ * <b>回旋镖四档材质的数值真源</b>（唯一出处：物品注册、实体伤害、挖掘判定、投掷/命中/挖掘的耐久扣减全读这里）。
  *
  * <p>四档与既有工具线同一顺序：<b>翠玉（jade_topaz）→ 宝石（sapphire_ruby）→ 星界（astral）→ 雷鸣（thunder）</b>。
  * 数值不是我凭空拍的，而是<b>逐条挂到既有梯度上</b>：</p>
@@ -19,27 +19,58 @@ import net.minecraft.world.level.block.Block;
  *       （600 / 3000 / 4500 / 5000）」——那是按<b>工具</b>挂梯度，本轮按<b>同档盔甲全套的一半</b>重挂。
  *       依据：开工需求 2026-10-02 §3.1 数值表 + §3.9「{@code BoomerangTier.energy()} = 600/3000/4500/5000
  *       ⇒ 作废 ⇒ 改 500/2000/5000/5000」。</li>
- *   <li>{@link #durability()} —— <b>本轮（2026-10-02 批 1）新增</b>：1000 / 2000 / 3500 / 3500（需求 §3.1 给死）。
+ *   <li>{@link #durability()} —— <b>2026-10-02 批 1 新增</b>：1000 / 2000 / 3500 / 3500（需求 §3.1 给死）。
  *       它由物品注册走原版 {@code Item.Properties#durability}（{@code BoomerangItem} 构造器），
  *       但<b>扣减一律不走 {@code hurtAndBreak}</b>——那会把栈当场打成空，做不到需求 §3.8 的
  *       「不立即归零、不当场销毁，等回程批量结算」；读写走 {@code BoomerangItem} 自己的
- *       {@code getDurability / setDurability / addWear}（批 1 只搭接口，扣减时机在批 2）。
- *       <br>⚠ 同一处旧口径（{@code mineCost} 上的「耐久 → 能量：这就是"耐久"的替代品」）也被本轮推翻，
- *       逐字标注见 {@link #mineCost()}。</li>
+ *       {@code getDurability / setDurability / addWear}。
+ *       <br>⚠ 同一处旧口径（{@code mineCost} 上的「耐久 → 能量：这就是"耐久"的替代品」）也被本轮推翻。</li>
  *   <li>{@link #miningLevel()} / {@link #incorrectBlocks()} —— 与 {@code AllTiers} <b>同一条原版标签</b>：
  *       翠玉用 {@code INCORRECT_FOR_DIAMOND_TOOL}（= 钻石级，与 {@code AllTiers.JADE/TOPAZ} 一致），
  *       其余三档用 {@code INCORRECT_FOR_NETHERITE_TOOL}（= 下界合金级，与 {@code AllTiers.SAPPHIRE/
  *       STELLARSTONE/THUNDERITE} 一致）。</li>
  *   <li>{@link #damage()} —— 按四档拉开（6 / 8 / 10 / 12），落在既有工具的"材质加成 3.5 / 4.5 / 5 / 5"
  *       与剑的"加成 +4"这两条线之间（镖是投掷物，既不叠手部攻击、也不吃蓄力）。</li>
- *   <li>{@link #throwCost()} / {@link #mineCost()} / {@link #cooldownTicks()} —— 我定的（作者可一句话改）。
- *       <br>⚠ 作者 2026-10-02（需求 §3.2 / §3.8 / §3.9）已把这三条的<b>口径</b>拆掉：投掷费与冷却拆成
- *       「点按 / 长按」两套、挖方块不再扣能量而改扣耐久。这三个字段的数值<b>在批 1 未动</b>
- *       （批 1 只做数值面 + 物品侧基础），拆分与调用点改道排在批 2；关卡 §29h-1 逐值钉着它们的现值。</li>
  *   <li>{@link #returnDistance()} —— 作者 2026-10-02 报的 bug（"扔远了会自动消失"）的<b>主判据</b>：
- *       单位<b>格</b>，翠玉 5 / 宝石 10 / 星界 15 / 雷鸣 20。去程一旦离主人超过这个距离就<b>立刻掉头</b>
- *       （不是消失、也不是掉地上）——执行处在 {@code AbstractBoomerangEntity#outboundRangeExceeded}。</li>
+ *       单位<b>格</b>，翠玉 5 / 宝石 10 / 星界 15 / 雷鸣 20。点按去程一旦离主人超过这个距离就<b>立刻掉头</b>
+ *       （不是消失、也不是掉地上）——执行处在 {@code AbstractBoomerangEntity#outboundRangeExceeded}；
+ *       长按（花瓣）不用它当结束条件，但花瓣的<b>最远距离</b>就是它
+ *       （{@link BoomerangCurveConfigs} 的 {@code R}）。</li>
  * </ul>
+ *
+ * <h2>两种投掷模式（2026-10-02 批 2：需求 §3.2 逐值给死）</h2>
+ * <table border="1">
+ *   <caption>点按 / 长按 的消耗与冷却（每一档都从这张表进代码）</caption>
+ *   <tr><th>档</th><th>点按消耗</th><th>点按冷却</th><th>长按消耗</th><th>长按冷却</th></tr>
+ *   <tr><td>翠玉</td><td>10 点</td><td>5.0 s = 100 tick</td><td>50 点</td><td>10.0 s = 200 tick</td></tr>
+ *   <tr><td>宝石</td><td>9 点</td><td>4.5 s = 90 tick</td><td>45 点</td><td>9.0 s = 180 tick</td></tr>
+ *   <tr><td>星界</td><td>8 点</td><td>4.0 s = 80 tick</td><td>40 点</td><td>8.0 s = 160 tick</td></tr>
+ *   <tr><td>雷鸣</td><td>8 点</td><td>4.0 s = 80 tick</td><td>40 点</td><td>8.0 s = 160 tick</td></tr>
+ * </table>
+ * <p>递减口径（作者原话）：翠玉为基准、宝石降 10%、星界与雷鸣降 20%。
+ * <b>秒一律先换成 tick 再判整</b>（{@code mcmod_experience.md} §1.12）：{@code 5 × 0.9 = 4.5 s = 90 tick}、
+ * {@code 5 × 0.8 = 4.0 s = 80 tick}，两者都是整 tick，<b>零取整歧义</b>——所以代码里存的就是 tick，
+ * 秒只在注释与需求文档里出现。</p>
+ *
+ * <h2>⚠ 被推翻并删除的三个旧字段（需求 §3.9；作者 2026-10-02）</h2>
+ * <p>本枚举原来有 {@code throwCost} / {@code mineCost} / {@code cooldownTicks} 三个 {@code int} 字段，
+ * 批 2 已<b>整体删除</b>（不是改值、也不是留着不用）。被删掉的现值与推翻依据逐条留档在这里，
+ * 免得下一个人按旧口径理解：</p>
+ * <table border="1">
+ *   <caption>已删除的字段（旧值 → 现行口径）</caption>
+ *   <tr><th>旧字段</th><th>旧值（批 1 时仍在）</th><th>推翻依据</th><th>取代者</th></tr>
+ *   <tr><td>{@code throwCost()}</td><td>25 / 50 / 75 / 100</td>
+ *       <td>需求 §3.2 + §3.9：「拆成"点按消耗 / 长按消耗"两组」</td>
+ *       <td>{@link #tapCost()} / {@link #holdCost()}</td></tr>
+ *   <tr><td>{@code cooldownTicks()}</td><td>20 / 15 / 10 / 10</td>
+ *       <td>需求 §3.2 + §3.9：「拆成两组」</td>
+ *       <td>{@link #tapCooldownTicks()} / {@link #holdCooldownTicks()}</td></tr>
+ *   <tr><td>{@code mineCost()}</td><td>5 / 10 / 15 / 20</td>
+ *       <td>需求 §3.8 + §3.9：「挖方块<b>不再扣能量</b>，改扣耐久」</td>
+ *       <td>{@link #WEAR_PER_HIT}（每挖一个方块 −1 耐久）</td></tr>
+ * </table>
+ * <p>同一处旧注释「<b>耐久 → 能量：这就是"耐久"的替代品</b>"也随之作废：本轮给镖加了
+ * <b>真正的耐久</b>（{@link #durability()}），挖方块与命中生物都扣<b>耐久</b>而不是能量。</p>
  *
  * <h2>为什么 {@link #digSpeed()} 长这个样子</h2>
  * <p>挖掘判定整段照搬原版的口径（见 {@code AbstractBoomerangEntity#mineBlock}）：
@@ -54,17 +85,35 @@ import net.minecraft.world.level.block.Block;
  */
 public enum BoomerangTier {
 
-    /** 翠玉镖：钻石级（与 {@code AllTiers.JADE/TOPAZ} 同标签）、硬度上限 10、能量 500、耐久 1000、收回距离 5 格。 */
-    JADE_TOPAZ(6.0F, 500, 1000, 10.0F, 3, 25, 5, 20, 5, ToolEnergyColorConfig.JADE),
+    /** 翠玉镖：钻石级（与 {@code AllTiers.JADE/TOPAZ} 同标签）、硬度上限 10、能量 500、耐久 1000、收回距离 5 格；点按 10 点/100 tick、长按 50 点/200 tick。 */
+    JADE_TOPAZ(6.0F, 500, 1000, 10.0F, 3, 10, 50, 100, 200, 5, ToolEnergyColorConfig.JADE),
 
-    /** 宝石镖：下界合金级（与 {@code AllTiers.SAPPHIRE} 同标签）、硬度上限 20（= Quark 默认值）、能量 2000、耐久 2000、收回距离 10 格。 */
-    SAPPHIRE_RUBY(8.0F, 2000, 2000, 20.0F, 4, 50, 10, 15, 10, ToolEnergyColorConfig.SAPPHIRE),
+    /** 宝石镖：下界合金级（与 {@code AllTiers.SAPPHIRE} 同标签）、硬度上限 20（= Quark 默认值）、能量 2000、耐久 2000、收回距离 10 格；点按 9 点/90 tick、长按 45 点/180 tick。 */
+    SAPPHIRE_RUBY(8.0F, 2000, 2000, 20.0F, 4, 9, 45, 90, 180, 10, ToolEnergyColorConfig.SAPPHIRE),
 
-    /** 星界镖：下界合金级、硬度上限 30（够到远古残骸的 30）、能量 5000、耐久 3500、收回距离 15 格。 */
-    ASTRAL(10.0F, 5000, 3500, 30.0F, 4, 75, 15, 10, 15, ToolEnergyColorConfig.STELLARSTONE),
+    /** 星界镖：下界合金级、硬度上限 30（够到远古残骸的 30）、能量 5000、耐久 3500、收回距离 15 格；点按 8 点/80 tick、长按 40 点/160 tick。 */
+    ASTRAL(10.0F, 5000, 3500, 30.0F, 4, 8, 40, 80, 160, 15, ToolEnergyColorConfig.STELLARSTONE),
 
-    /** 雷鸣镖：下界合金级、硬度上限 40（仍够不到黑曜石的 50）、能量 5000、耐久 3500、收回距离 20 格。 */
-    THUNDER(12.0F, 5000, 3500, 40.0F, 4, 100, 20, 10, 20, ToolEnergyColorConfig.THUNDERITE);
+    /** 雷鸣镖：下界合金级、硬度上限 40（仍够不到黑曜石的 50）、能量 5000、耐久 3500、收回距离 20 格；点按 8 点/80 tick、长按 40 点/160 tick。 */
+    THUNDER(12.0F, 5000, 3500, 40.0F, 4, 8, 40, 80, 160, 20, ToolEnergyColorConfig.THUNDERITE);
+
+    /**
+     * <b>点按投掷的耐久损耗</b>（需求 §3.8：点按抛出 −2）。
+     *
+     * <p>它<b>与档位无关</b>（四档同值），所以是常量而不是构造参数；但它是本族自己的数值，
+     * 所以<b>只在这里写一遍</b>——{@code AbstractBoomerangEntity} 与 {@code BoomerangItem}
+     * 都不许出现 {@code 2} 这个字面量。</p>
+     */
+    public static final int TAP_THROW_WEAR = 2;
+    /** <b>长按（花瓣）投掷的耐久损耗</b>（需求 §3.8：长按抛出 −5）。同 {@link #TAP_THROW_WEAR}，与档位无关。 */
+    public static final int HOLD_THROW_WEAR = 5;
+    /**
+     * <b>每命中一个生物 / 每挖掉一个方块的额外耐久损耗</b>（需求 §3.8：各额外追加 −1）。
+     *
+     * <p>两条计数共用同一个常量：作者原话是"期间每攻击一次生物或挖一个方块，额外追加 1 点耐久扣除"，
+     * 并没有把两者分开（需求 §六 推断值 #4 也只说"穿刺的穿透也照扣"）⇒ 一个常量、两个调用点。</p>
+     */
+    public static final int WEAR_PER_HIT = 1;
 
     /** 命中生物的伤害（{@code hurt} 的原始值，不叠手部攻击/附魔）。 */
     private final float damage;
@@ -74,42 +123,26 @@ public enum BoomerangTier {
      * 耐久上限（2026-10-02 批 1 新增）。
      *
      * <p>它是<b>数值真源</b>：物品注册读它写进原版 {@code MAX_DAMAGE} 组件，实体的回程批量结算
-     * （需求 §3.8，批 2）也读它。<b>不</b>走 {@code hurtAndBreak}。</p>
+     * （需求 §3.8）也读它。<b>不</b>走 {@code hurtAndBreak}。</p>
      */
     private final int durability;
     /** 能挖动的最大方块硬度（挖方块那条判定的唯一门槛）。 */
     private final float maxHardness;
     /** 挖掘等级 1~4 = 原版石/铁/钻/合金（决定 {@link #incorrectBlocks()}，也用于报告里的对照表）。 */
     private final int miningLevel;
+    /** <b>点按</b>一次投掷的能量消耗（10 / 9 / 8 / 8；需求 §3.2）。 */
+    private final int tapCost;
+    /** <b>长按</b>一次投掷的能量消耗（50 / 45 / 40 / 40；需求 §3.2）。 */
+    private final int holdCost;
+    /** <b>点按</b>投掷冷却（100 / 90 / 80 / 80 tick = 5.0 / 4.5 / 4.0 / 4.0 秒；需求 §3.2）。 */
+    private final int tapCooldownTicks;
+    /** <b>长按</b>投掷冷却（200 / 180 / 160 / 160 tick = 10.0 / 9.0 / 8.0 / 8.0 秒；需求 §3.2）。 */
+    private final int holdCooldownTicks;
     /**
-     * 一次投掷的能量消耗（25 / 50 / 75 / 100）。
+     * 收回距离（格）：点按去程离主人超过这个距离就立刻掉头（作者 2026-10-02）；
+     * 长按的花瓣曲线也把它当最远距离 {@code R}（{@link BoomerangCurveConfigs}）。
      *
-     * <p>⚠ 作者 2026-10-02 已把投掷费拆成「点按 / 长按」两套（需求 §3.2：点按 10/9/8/8、长按 50/45/40/40），
-     * 本字段在批 2 作废；<b>批 1 数值不动</b>（关卡逐值钉着现值）。</p>
-     */
-    private final int throwCost;
-    /**
-     * 成功挖掉一个方块的能量消耗（5 / 10 / 15 / 20）。
-     *
-     * <p>⚠ <b>本字段的口径已被作者 2026-10-02 推翻（批 1 只标注、不改数值与调用点）</b>。
-     * 旧注释原文是「<b>耐久 → 能量：这就是"耐久"的替代品</b>」——本轮给镖加了<b>真正的耐久</b>
-     * （{@link #durability()}）之后那句话不再成立。依据：开工需求 2026-10-02 §3.8
-     * （投掷 −2/−5、每命中一个生物/挖掉一个方块各额外 −1，耐久见底<b>不当场归零</b>，回到玩家身上才批量结算）
-     * + §3.9（「{@code mineCost()} = 5/10/15/20 ⇒ 作废 ⇒ 挖方块<b>不再扣能量</b>，改扣耐久」）。
-     * 挖方块改扣耐久与 {@code mineCost} 的删除都排在<b>批 2</b>。</p>
-     */
-    private final int mineCost;
-    /**
-     * 投掷冷却（20 / 15 / 10 / 10 tick）。
-     *
-     * <p>⚠ 作者 2026-10-02 已把冷却拆成「点按 / 长按」两套（需求 §3.2：点按 100/90/80/80、
-     * 长按 200/180/160/160 tick），本字段在批 2 作废；<b>批 1 数值不动</b>。</p>
-     */
-    private final int cooldownTicks;
-    /**
-     * 收回距离（格）：去程离主人超过这个距离就立刻掉头（作者 2026-10-02）。
-     *
-     * <p>它是<b>主判据</b>；去程的时间上限（{@code AbstractBoomerangEntity#MAX_OUTBOUND_TICKS}）
+     * <p>点按侧它是<b>主判据</b>；去程的时间上限（{@code AbstractBoomerangEntity#MAX_OUTBOUND_TICKS}）
      * 只是"距离判据万一失效"时的兜底。</p>
      */
     private final int returnDistance;
@@ -117,16 +150,17 @@ public enum BoomerangTier {
     private final ToolEnergyColorConfig color;
 
     BoomerangTier(float damage, int energy, int durability, float maxHardness, int miningLevel,
-                  int throwCost, int mineCost, int cooldownTicks, int returnDistance,
-                  ToolEnergyColorConfig color) {
+                  int tapCost, int holdCost, int tapCooldownTicks, int holdCooldownTicks,
+                  int returnDistance, ToolEnergyColorConfig color) {
         this.damage = damage;
         this.energy = energy;
         this.durability = durability;
         this.maxHardness = maxHardness;
         this.miningLevel = miningLevel;
-        this.throwCost = throwCost;
-        this.mineCost = mineCost;
-        this.cooldownTicks = cooldownTicks;
+        this.tapCost = tapCost;
+        this.holdCost = holdCost;
+        this.tapCooldownTicks = tapCooldownTicks;
+        this.holdCooldownTicks = holdCooldownTicks;
         this.returnDistance = returnDistance;
         this.color = color;
     }
@@ -158,23 +192,67 @@ public enum BoomerangTier {
         return miningLevel;
     }
 
-    public int throwCost() {
-        return throwCost;
+    /**
+     * <b>点按</b>投掷的能量消耗（10 / 9 / 8 / 8）。
+     *
+     * <p>批 2 起取代已删除的 {@code throwCost()}（25 / 50 / 75 / 100，见类注释的作废表）。
+     * 模式由 {@code BoomerangItem} 的按键时长判定（&lt; 10 tick = 点按、≥ 10 tick = 长按）。</p>
+     */
+    public int tapCost() {
+        return tapCost;
     }
 
-    public int mineCost() {
-        return mineCost;
+    /** <b>长按</b>投掷的能量消耗（50 / 45 / 40 / 40）。取代已删除的 {@code throwCost()}。 */
+    public int holdCost() {
+        return holdCost;
     }
 
-    public int cooldownTicks() {
-        return cooldownTicks;
+    /**
+     * 按模式取投掷能量消耗（<b>唯一一处"模式 → 消耗"的映射</b>）。
+     *
+     * @param longHold {@code true} = 长按（花瓣曲线），{@code false} = 点按（直线）
+     */
+    public int throwCost(boolean longHold) {
+        return longHold ? holdCost : tapCost;
+    }
+
+    /** <b>点按</b>投掷冷却（100 / 90 / 80 / 80 tick = 5.0 / 4.5 / 4.0 / 4.0 秒）。取代已删除的 {@code cooldownTicks()}。 */
+    public int tapCooldownTicks() {
+        return tapCooldownTicks;
+    }
+
+    /** <b>长按</b>投掷冷却（200 / 180 / 160 / 160 tick = 10.0 / 9.0 / 8.0 / 8.0 秒）。取代已删除的 {@code cooldownTicks()}。 */
+    public int holdCooldownTicks() {
+        return holdCooldownTicks;
+    }
+
+    /**
+     * 按模式取投掷冷却（tick；<b>唯一一处"模式 → 冷却"的映射</b>）。
+     *
+     * <p>⚠ 点按与长按<b>共用同一条</b> {@code ItemCooldowns} 键（原版按物品计）⇒ 两组冷却
+     * <b>互相覆盖</b>：点按之后 5 秒内连长按也投不出去（谁后投谁把剩余冷却改成自己那一档）。
+     * 这是<b>预期行为</b>（作者口径："直接右键操作"只有一条操作路径，不按模式分键）。</p>
+     */
+    public int cooldownTicks(boolean longHold) {
+        return longHold ? holdCooldownTicks : tapCooldownTicks;
+    }
+
+    /**
+     * 按模式取<b>投掷一次的耐久损耗</b>（点按 −2 / 长按 −5；需求 §3.8）。
+     *
+     * <p>与能量消耗<b>不是</b>同一件事的两半：能量在投掷那一瞬间进 {@code ToolEnergy} 的账，
+     * 耐久则只累计在实体上、等回到玩家手里才结算（{@code AbstractBoomerangEntity#settleWear}）。</p>
+     */
+    public int throwWear(boolean longHold) {
+        return longHold ? HOLD_THROW_WEAR : TAP_THROW_WEAR;
     }
 
     /**
      * 这一档的收回距离（格）—— <b>实体侧唯一能拿到它的地方</b>（实体里不许出现距离字面量）。
      *
-     * <p>去程"离主人超过它 ⇒ {@code setReturning(true)}"由
-     * {@code AbstractBoomerangEntity#outboundRangeExceeded} 执行。</p>
+     * <p>点按：去程"离主人超过它 ⇒ {@code setReturning(true)}"由
+     * {@code AbstractBoomerangEntity#outboundRangeExceeded} 执行。
+     * 长按：它同时是花瓣曲线的 {@code R}（最远距离 = 收回距离，需求 §3.4.2）。</p>
      */
     public int returnDistance() {
         return returnDistance;

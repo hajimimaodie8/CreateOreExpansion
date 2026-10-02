@@ -1,12 +1,13 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.joml.Vector3f;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -14,6 +15,8 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -96,6 +99,42 @@ import net.minecraft.world.phys.Vec3;
  * 而字段初始化器在<b>之后</b>才跑。因此 {@link #defineSynchedData} 与 {@link #tier()} 都不许碰
  * 对象字段：{@code defineSynchedData} 只用静态成员与参数，{@link #tier()} 由子类返回枚举常量。
  * 本类<b>不覆写</b> {@code setPos}/{@code getBoundingBox}/{@code defineSynchedData} 以外的构造期方法。</p>
+ *
+ * <h2>五、批 2（2026-10-02）：两种飞行模式 · 花瓣曲线 · 耐久只累计、回程一次结算</h2>
+ *
+ * <p><b>a. 点按 = 逐字沿用现状（直线）</b>。去程仍是"实体射线 + 方块射线取近者 ⇒ 命中方块即
+ * {@link #setReturning}、命中生物只伤不回头（靠 {@code entitiesHit} 去重）"，主判据仍是
+ * {@link #outboundRangeExceeded}。<b>这一支一个字都没改</b>（需求 §3.2 / §5.3 陷阱 #6）。</p>
+ *
+ * <p><b>b. 长按 = 花瓣曲线</b>（需求 §3.4；数学与常数全在 {@link BoomerangCurveConfigs}）。
+ * 分支在 {@link #tickOutbound()} 的第一行：{@code isPetalFlight() ⇒ tickPetal()}。
+ * 曲线用<b>弧长参数化</b>推进（{@code Δs = v(s)/L_total}，每 tick 一次），
+ * <b>s 走到 1 才 {@code setReturning(true)}</b>（"必须飞完一瓣才能返回"）；
+ * 长按<b>不参与</b>命中判定（碰到方块/生物既不掉头也不挖不伤——穿刺与环绕是批 3/4 的技能），
+ * 也<b>不受</b>距离判据约束（否则主人一挪步就会把花瓣从中间掐断），只剩
+ * {@link #MAX_OUTBOUND_TICKS} 兜底。</p>
+ *
+ * <p>曲线的锚点是<b>出手那一刻的位置</b>（{@link #startPetalFlight} 由物品传入，
+ * 走同步数据 {@link #DATA_PETAL_ORIGIN} 所以客户端也能自己算出同一条曲线），
+ * 基准角 ψ 是出手那一刻玩家水平朝向的数学角 ⇒ 与需求 §3.4.3 的
+ * {@code x = P.x + r(φ)·cos(ψ+φ)} 逐字同形。⚠ 需求把 {@code P} 写成"玩家位置"这个常量：
+ * 出手之后玩家再走动，花瓣<b>不会</b>跟着平移（想改成跟随主人只需在 {@link #tickPetal}
+ * 里把锚点换成主人的当前位置，一行）。</p>
+ *
+ * <p><b>c. 耐久：飞行期间只累计、不写回</b>（需求 §3.8，本类最容易做错的一处）。
+ * 损耗累计在 {@link #flightWear} 上：投掷那次由物品给（点按 −2 / 长按 −5，
+ * {@link BoomerangTier#throwWear(boolean)}），此后每命中一个生物 / 每挖掉一个方块各
+ * {@code +}{@link BoomerangTier#WEAR_PER_HIT}。<b>整段飞行里一次都不碰物品的 {@code DAMAGE}</b>
+ * （逐次写回会把耐久提前打到 0，正是 §3.8 禁止的"当场归零"）。</p>
+ *
+ * <p><b>d. 结算只有一处</b>（裁定 D14）：{@link #collect}（交还）/
+ * {@link #returnTimedOut}（回程超时）/ {@link #ownerGone}（主人失效）三条尾路径
+ * <b>全部只调</b> {@link #finishFlight(boolean)}，由它调 {@link #settleWear(ItemStack)}：
+ * 累计 &lt; 剩余 ⇒ 扣一次写回（活下来的镖恒有 ≥ 1 点耐久，绝不留下 0 耐久物品）；
+ * 累计 ≥ 剩余 ⇒ <b>爆掉</b>（播放 {@code ITEM_BREAK} + <b>不 {@code spawnAtLocation}</b>，
+ * 物品就此消失）。<b>爆掉时乘客/并入物照样先交给玩家</b>（需求 §六 推断值 #5，
+ * "不给会白丢一次挖掘收益"），拿不到玩家时照旧落地、绝不销毁。冷却不受爆掉影响：
+ * 冷却是在投掷那一刻就上好的（{@code BoomerangItem#releaseUsing}）。</p>
  */
 public abstract class AbstractBoomerangEntity extends Projectile {
 
@@ -106,6 +145,36 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	/** 是否处于回程段（同步数据：客户端 tick 也读它）。 */
 	private static final EntityDataAccessor<Boolean> DATA_RETURNING =
 		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.BOOLEAN);
+
+	/**
+	 * <b>本次飞行是不是长按（花瓣曲线）</b>（同步数据）。
+	 *
+	 * <p>客户端也必须知道：去程的位移在两端各自算（{@link #tickPetal}），而位置包每
+	 * {@code updateInterval} 才来一次（实体类型上的 10 tick）——只靠位置包会让花瓣一顿一顿。
+	 * 所以曲线本身走"两端用同一组常数现算"，由本标志 + {@link #DATA_PETAL_ORIGIN} +
+	 * {@link #DATA_PETAL_ANGLE} 三个同步值一起决定它长什么样。</p>
+	 */
+	private static final EntityDataAccessor<Boolean> DATA_PETAL =
+		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.BOOLEAN);
+
+	/**
+	 * 花瓣曲线的<b>锚点 P</b>（同步数据；出手那一刻镖的出生点 = 玩家眼睛下方 0.1 格）。
+	 *
+	 * <p>用 {@code VECTOR3} 而不是"让客户端自己记出生点"：客户端的那一份位置是位置包给的，
+	 * 与出生点之间可能有若干 tick 的误差；锚点直接抄服务端的值，两端才会画出同一条曲线。</p>
+	 */
+	private static final EntityDataAccessor<Vector3f> DATA_PETAL_ORIGIN =
+		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.VECTOR3);
+
+	/**
+	 * 花瓣曲线的<b>基准角 ψ</b>（同步数据；弧度，= {@code atan2(出手时朝向.z, 出手时朝向.x)}）。
+	 *
+	 * <p>存"数学角"而不是玩家 yaw：需求 §3.4.3 的公式是 {@code r·cos(ψ+φ)} / {@code r·sin(ψ+φ)}
+	 * （x/z 平面上的数学极角），而 MC 的 yaw 是以 +Z 为 0、绕 -Y 转的另一套约定——
+	 * 在这里换算一次，实体里就不会再出现"那到底是哪个角"的歧义。</p>
+	 */
+	private static final EntityDataAccessor<Float> DATA_PETAL_ANGLE =
+		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.FLOAT);
 
 	/** 去程单 tick 内"实体 ⇄ 方块"交替判定的循环上限（需求 2；超了写日志，不崩）。 */
 	public static final int MAX_IMPACT_LOOPS = 100;
@@ -168,6 +237,26 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	private boolean originRecorded;
 	/** 本次飞行已经打过的实体 id（<b>只在内存</b>，防止同一只怪被同一把镖反复打）。 */
 	private final Set<Integer> entitiesHit = new HashSet<>();
+	/**
+	 * <b>本次飞行累计的耐久损耗</b>（进 NBT；需求 §3.8 的"只累计、不写回"就落在这个字段上）。
+	 *
+	 * <p>投掷那一次由 {@code BoomerangItem} 给（点按 −2 / 长按 −5），此后每命中一个生物 / 每挖掉
+	 * 一个方块各 +{@link BoomerangTier#WEAR_PER_HIT}。<b>整段飞行不碰物品的 {@code DAMAGE}</b>——
+	 * 逐次写回会把耐久提前打到 0，那正是需求 §3.8 禁止的"当场归零"；
+	 * 唯一一次写回在 {@link #settleWear(ItemStack)}。</p>
+	 *
+	 * <p>进 NBT 的理由与 {@link #returnTicks} 同一条：跨区块重载不许把账抹掉，
+	 * 否则"飞出去一趟把耐久欠账躲掉"就成了可行策略。</p>
+	 */
+	private int flightWear;
+	/**
+	 * 花瓣曲线的<b>归一化弧长进度 s</b>（0 = 刚出手、1 = 走完一瓣；只在内存 + NBT）。
+	 *
+	 * <p>不进同步数据：两端从 0 开始、每 tick 各推进一次（推进公式只依赖
+	 * {@link BoomerangCurveConfigs} 的常数与 R），所以它天然同步；
+	 * 进 NBT 则是为了区块重载后不从头再飞一瓣。</p>
+	 */
+	private double petalProgress;
 
 	protected AbstractBoomerangEntity(EntityType<? extends AbstractBoomerangEntity> type, Level level) {
 		super(type, level);
@@ -180,6 +269,9 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 		builder.define(DATA_STACK, ItemStack.EMPTY);
 		builder.define(DATA_RETURNING, false);
+		builder.define(DATA_PETAL, false);
+		builder.define(DATA_PETAL_ORIGIN, new Vector3f());
+		builder.define(DATA_PETAL_ANGLE, 0.0F);
 	}
 
 	// ================= 同步数据读写 =================
@@ -223,6 +315,45 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 
 	public int getHitCount() {
 		return hitCount;
+	}
+
+	// ================= 两种模式：花瓣飞行 + 耐久累计（2026-10-02 批 2） =================
+
+	/**
+	 * <b>把本次飞行标记成长按（花瓣曲线）</b>并记下曲线锚点与基准角 —— <b>唯一入口</b>，
+	 * 由 {@code BoomerangItem#releaseUsing} 在长按投掷时调用（服务端）。
+	 *
+	 * @param origin    曲线锚点 {@code P}（= 镖的出生点：玩家眼睛下方 0.1 格）
+	 * @param baseAngle 基准角 ψ（弧度）—— 出手那一刻水平朝向的<b>数学角</b>
+	 *                  {@code atan2(朝向.z, 朝向.x)}，与需求 §3.4.3 的极坐标公式同源
+	 */
+	public void startPetalFlight(Vec3 origin, double baseAngle) {
+		this.entityData.set(DATA_PETAL, true);
+		this.entityData.set(DATA_PETAL_ORIGIN, new Vector3f((float) origin.x, (float) origin.y, (float) origin.z));
+		this.entityData.set(DATA_PETAL_ANGLE, (float) baseAngle);
+		this.petalProgress = 0.0D;
+	}
+
+	/** 本次飞行是不是长按（花瓣曲线）。点按（直线）恒 {@code false}。 */
+	public boolean isPetalFlight() {
+		return this.entityData.get(DATA_PETAL);
+	}
+
+	/** 本次飞行累计的耐久损耗（需求 §3.8 的账；只在 {@link #settleWear(ItemStack)} 一次写回）。 */
+	public int getFlightWear() {
+		return flightWear;
+	}
+
+	/**
+	 * 往本次飞行的耐久账上记一笔（投掷 −2/−5、每命中一个生物 / 每挖掉一个方块各 −1）。
+	 *
+	 * <p><b>只记账</b>：不碰物品、不判爆。判爆与写回都在 {@link #settleWear(ItemStack)}。
+	 * 非正数直接忽略（调用点不必自己判）。</p>
+	 */
+	public void addFlightWear(int amount) {
+		if (amount > 0) {
+			this.flightWear += amount;
+		}
 	}
 
 	// ================= tick 骨架 =================
@@ -271,8 +402,17 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		}
 	}
 
-	/** 去程：命中判定 + 位移。返回 true 表示"本 tick 已转入回程，别再前进"。 */
+	/**
+	 * 去程：命中判定 + 位移（<b>两端各跑一次</b>）。返回 true 表示"本 tick 已转入回程，别再前进"。
+	 *
+	 * <p><b>第一行就是模式分岔</b>（2026-10-02 批 2）：长按（花瓣曲线）走 {@link #tickPetal()}，
+	 * 点按逐字沿用下面这一支（射线命中 + 阻力位移）。⚠ 长按那支<b>不经过</b> {@link #checkImpact()}——
+	 * 需求 §3.2："必须飞完一瓣才返回，不是碰到东西就结束"（穿刺/环绕是批 3/4 的技能）。</p>
+	 */
 	private boolean tickOutbound() {
+		if (isPetalFlight()) {
+			return tickPetal();
+		}
 		if (!level().isClientSide && checkImpact()) {
 			return true;
 		}
@@ -280,6 +420,46 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		double drag = isInWater() ? WATER_DRAG : AIR_DRAG;
 		setDeltaMovement(motion.scale(drag));
 		setPos(getX() + motion.x, getY() + motion.y, getZ() + motion.z);
+		updateRotation();
+		return false;
+	}
+
+	/**
+	 * <b>长按的花瓣曲线飞行</b>（需求 §3.4；数学与常数全在 {@link BoomerangCurveConfigs}）。
+	 *
+	 * <p>每 tick 三步，顺序固定：</p>
+	 * <ol>
+	 *   <li><b>推进弧长</b> {@code s += v(s)/L_total}（{@code Δt = 1 tick}；v(s) 关于 s=0.5 对称）；</li>
+	 *   <li>{@code s ≥ 1} ⇒ <b>飞完一瓣</b>，服务端 {@link #setReturning(boolean)} 转回程，本 tick 不再前进
+	 *       （"必须飞完一瓣才能返回"；客户端不写同步值，等服务端那一份推回来）；</li>
+	 *   <li>否则把 {@code s} 反查成 φ（{@link BoomerangCurveConfigs#phiAt}），按
+	 *       {@code P + r(φ)·(cos(ψ+φ), 0, sin(ψ+φ))} 求新位置，位移写进 {@code deltaMovement}
+	 *       并 {@code setPos}（{@code updateRotation} 靠这个位移反算朝向）。</li>
+	 * </ol>
+	 *
+	 * <p>锚点用同步数据里的 {@link #DATA_PETAL_ORIGIN}（<b>不是</b> {@link #originX}）：
+	 * 前者出手时就同步给了客户端，两端才画得出同一条曲线；后者是服务端第一条 tick 记的、
+	 * 给"距离判据改基准"留的后路（见 {@link #outboundRangeExceeded}）。</p>
+	 */
+	private boolean tickPetal() {
+		BoomerangCurveConfigs.Petal petal = BoomerangCurveConfigs.petal(tier().returnDistance());
+		double next = BoomerangCurveConfigs.stepProgress(this.petalProgress, petal);
+		if (next >= 1.0D) {
+			this.petalProgress = 1.0D;
+			if (!level().isClientSide) {
+				setReturning(true); // 一瓣走完 ⇒ 回程（不是消失、也不是掉地上）
+			}
+			return true;
+		}
+		this.petalProgress = next;
+		Vector3f origin = this.entityData.get(DATA_PETAL_ORIGIN);
+		double baseAngle = this.entityData.get(DATA_PETAL_ANGLE);
+		Vec3 target = new Vec3(
+			origin.x() + BoomerangCurveConfigs.offsetX(next, petal.radius(), baseAngle),
+			origin.y(), // 不抬升：整瓣在同一水平面内（需求 §六 推断值 #3）
+			origin.z() + BoomerangCurveConfigs.offsetZ(next, petal.radius(), baseAngle));
+		setDeltaMovement(target.subtract(position()));
+		setPos(target.x, target.y, target.z);
 		updateRotation();
 		return false;
 	}
@@ -312,8 +492,16 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	 *
 	 * <p><b>若要改成按投掷原点判</b>（原点已在 {@link #recordThrowOrigin} 记下并进 NBT）：
 	 * 只改下面那一行 {@code distSqr}，换成 {@code position().distanceToSqr(originX, originY, originZ)} 即可。</p>
+	 *
+	 * <p><b>长按（花瓣）不参与这条判据</b>（2026-10-02 批 2）：花瓣的最远点离锚点恰好 R，
+	 * 而锚点是"出手那一刻的主人"——主人但凡挪一步，这条判据就会在花瓣飞到一半时判超距、
+	 * 把"必须飞完一瓣"当场掐断。所以长按直接返回 {@code false}，交给
+	 * {@link #MAX_OUTBOUND_TICKS} 兜底（一瓣 ≈ 70 tick，远在 200 以内）。</p>
 	 */
 	private boolean outboundRangeExceeded(Entity owner) {
+		if (isPetalFlight()) {
+			return false;
+		}
 		int limit = tier().returnDistance();
 		// ⇩ 基准行（要改成按投掷原点判，只改这一行）
 		double distSqr = position().distanceToSqr(owner.position().add(0.0D, 1.0D, 0.0D));
@@ -388,7 +576,13 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		return false;
 	}
 
-	/** 命中生物：只伤一次、记个数。返回 false 表示"这只已经打过了"。 */
+	/**
+	 * 命中生物：只伤一次、记个数。返回 false 表示"这只已经打过了"。
+	 *
+	 * <p>耐久（2026-10-02 批 2：需求 §3.8）：每命中一个生物<b>额外记一笔 −1</b>
+	 * （{@link BoomerangTier#WEAR_PER_HIT}）。<b>只记账</b>——见 {@link #flightWear}：
+	 * 飞行期间一次都不写回物品，回到玩家手里才由 {@link #settleWear(ItemStack)} 一次结算。</p>
+	 */
 	private boolean onHitEntity(Entity target) {
 		if (target == getOwner() || !entitiesHit.add(target.getId())) {
 			return false;
@@ -397,6 +591,7 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		// （需求 9：要"玩家攻击"语义的话必须先问作者）。
 		target.hurt(damageSources().indirectMagic(this, null), tier().damage());
 		hitCount++;
+		addFlightWear(BoomerangTier.WEAR_PER_HIT);
 		return true;
 	}
 
@@ -423,8 +618,11 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	 *   <li>{@code finally} 还原那一格（<b>无论如何</b>都要还原，异常也不能把玩家的物品换掉）。</li>
 	 * </ol>
 	 *
-	 * <p>能量：挖成功才扣 {@link ToolEnergy}（先 {@code canAfford} 预检，成功后再 {@code consume}
-	 * ——预检与扣减都在 {@code ToolEnergy} 里，本类不自己读写组件）。</p>
+	 * <p><b>代价（2026-10-02 批 2 改口径）</b>：挖掉一个方块<b>不再扣能量</b>，改记一笔
+	 * <b>−1 耐久</b>（{@link BoomerangTier#WEAR_PER_HIT}）。
+	 * ⚠ 旧的 {@code BoomerangTier#mineCost()}（5/10/15/20 点）已被作者推翻并删除（需求 §3.8 + §3.9），
+	 * 本方法里那一行 {@code ToolEnergy.canAfford/consume} 也随之删掉——能量只花在投掷那一处。
+	 * 与命中生物一样，这里<b>只记账</b>（{@link #flightWear}），不写回物品。</p>
 	 */
 	private void mineBlock(BlockPos pos) {
 		if (!(getOwner() instanceof ServerPlayer player)) {
@@ -454,8 +652,8 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 			return;
 		}
 		ItemStack stack = getItemStack();
-		if (stack.isEmpty() || !ToolEnergy.canAfford(player, stack, tier.mineCost())) {
-			return;
+		if (stack.isEmpty()) {
+			return; // 没有镖就没有"临时塞进手里"这一步（能量已不再参与挖掘判定）
 		}
 
 		Inventory inventory = player.getInventory();
@@ -472,11 +670,9 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 			player.setItemInHand(InteractionHand.MAIN_HAND, saved);
 		}
 		if (destroyed) {
-			// 耐久 → 能量：挖掉一个方块扣一次（扣在镖自己身上，回程交还的就是扣过的那一份）
-			ToolEnergy.consume(player, stack, tier.mineCost());
-			// consume 是就地改组件（改的是同步数据里那个对象），这里再写一次让 SynchedEntityData
-			// 明确标脏 —— 客户端那份跟着更新，别只靠"交还时背包同步"这一条兜底。
-			setItemStack(stack);
+			// 需求 §3.8：挖掉一个方块 ⇒ 额外 −1 耐久。**只记账、不写回**（见 flightWear 的注释）：
+			// 这里绝不能调 BoomerangItem#addWear —— 那正是"耐久被提前打到 0"的那条错路。
+			addFlightWear(BoomerangTier.WEAR_PER_HIT);
 		}
 	}
 
@@ -514,36 +710,17 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		return super.getPassengerRidingPosition(passenger).subtract(0.0D, PASSENGER_OFFSET_Y, 0.0D);
 	}
 
-	// ================= 交还与兜底 =================
+	// ================= 交还与兜底：三条尾路径 = 同一处结算（裁定 D14） =================
 
 	/**
-	 * 抵达主人：乘客逐个 {@code playerTouch(player)}，镖本身走三步交还（需求 5）——
-	 * 原槽空就放回原槽，否则 {@code inventory.add}，再不行 {@code player.drop}。
+	 * 抵达主人 ⇒ 走 {@link #finishFlight(boolean)}（{@code landInWorld = false}：镖交回手里）。
+	 *
+	 * <p>为什么本方法只留一行：需求 §3.8 的批量结算必须<b>三条尾路径共用同一处</b>，
+	 * 否则"跑得比镖快"（回程超时）与"主人没了"（ownerGone）就会绕开结算，玩家可以靠跑位
+	 * 逃避爆掉。语义（乘客 playerTouch 吸收、镖走原槽→背包→掉落三步）仍与批 1 逐字一致。</p>
 	 */
 	private void collect(Entity owner) {
-		if (owner instanceof Player player) {
-			for (Entity passenger : new ArrayList<>(getPassengers())) {
-				passenger.stopRiding();
-				if (passenger instanceof ItemEntity item) {
-					// 刚上船时设了拾取延迟；这里是我们主动交付，先把延迟清掉，
-					// 否则 playerTouch 会因为延迟而什么都不做、东西就跟着镖一起消失了。
-					item.setPickUpDelay(0);
-				}
-				passenger.playerTouch(player);
-			}
-			ItemStack stack = getItemStack().copy();
-			if (!stack.isEmpty()) {
-				giveToPlayer(player, stack);
-			}
-		} else {
-			// 理论上到不了（只有玩家能投掷）；真到了也别把东西吞掉
-			dropPassengers();
-			ItemStack stack = getItemStack().copy();
-			if (!stack.isEmpty()) {
-				spawnAtLocation(stack, 0.0F);
-			}
-		}
-		discard();
+		finishFlight(false);
 	}
 
 	/** 交还三步（需求 5）：原槽 → 背包 → 掉在地上。 */
@@ -560,19 +737,15 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	}
 
 	/**
-	 * owner 失效兜底（需求 6）：主人没了/死了 ⇒ 先把自己从墙里拔出来，再把镖丢在地上，然后消散。
-	 * 宁可掉在墙上，也不让物品随实体一起消失。
+	 * owner 失效兜底（需求 6）：主人没了/死了 ⇒ 先把自己从墙里拔出来，再走
+	 * {@link #finishFlight(boolean)}（{@code landInWorld = true}：镖落在世界上）。
+	 * 宁可掉在墙上，也不让物品随实体一起消失（<b>除非耐久结算判它爆掉</b>）。
 	 */
 	private void ownerGone() {
 		while (isInWall()) {
 			setPos(getX(), getY() + 1.0D, getZ());
 		}
-		dropPassengers();
-		ItemStack stack = getItemStack().copy();
-		if (!stack.isEmpty()) {
-			spawnAtLocation(stack, 0.0F);
-		}
-		discard();
+		finishFlight(true);
 	}
 
 	/**
@@ -580,15 +753,91 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	 *
 	 * <p>不写 {@code discard()} 之外的花样：玩家跑得比镖快时，"追不上"的正确结果是
 	 * <b>东西还在世界上</b>（原地掉落），而不是永远穿墙追、永不消散。</p>
+	 *
+	 * <p>⚠ 但<b>耐久结算照样要走</b>（2026-10-02 批 2 / 裁定 D14）：它就是那条"玩家跑得比镖快"
+	 * 的路径，绕开它等于给了一条免费躲避爆掉的捷径。</p>
 	 */
 	private void returnTimedOut() {
 		CoeCore.LOGGER.debug("[回旋镖] 回程超时（{} tick）就地落地：{}", MAX_RETURN_TICKS, this);
-		dropPassengers();
+		finishFlight(true);
+	}
+
+	/**
+	 * ★ <b>三条收尾路径的唯一汇合处</b>（{@link #collect} / {@link #returnTimedOut} / {@link #ownerGone}）
+	 * —— 耐久在这里<b>一次</b>结算，乘客与镖本身在这里按同一条口径交付。
+	 *
+	 * <p>顺序固定：<b>先结算耐久</b>（判爆与写回都在 {@link #settleWear(ItemStack)}），
+	 * <b>再交付乘客</b>，最后交付镖本身。</p>
+	 *
+	 * @param landInWorld {@code true} = 镖落在世界上（超时 / 主人没了）；{@code false} = 交还到手里
+	 */
+	private void finishFlight(boolean landInWorld) {
 		ItemStack stack = getItemStack().copy();
-		if (!stack.isEmpty()) {
-			spawnAtLocation(stack, 0.0F);
+		boolean exploded = settleWear(stack);
+		Player player = getOwner() instanceof Player owner ? owner : null;
+		if (player != null && (exploded || !landInWorld)) {
+			// 交还路径：乘客交给玩家（原有语义：playerTouch 吸收）。
+			// 爆掉：**并入物也必须先交给玩家**（需求 §3.8 第 4 条 + §六 推断值 #5：
+			// "返回时被玩家吸收"，爆掉就不给等于白丢一次挖掘收益）。
+			handPassengersToPlayer(player);
+		} else {
+			// 落地路径（或拿不到玩家）：乘客照旧落地，绝不销毁。
+			dropPassengers();
 		}
+		if (!exploded && !stack.isEmpty()) {
+			if (player == null || landInWorld) {
+				spawnAtLocation(stack, 0.0F);
+			} else {
+				giveToPlayer(player, stack);
+			}
+		}
+		// 爆掉时 stack 被丢弃在这里（**不** spawnAtLocation）：物品就此消失，见 settleWear。
 		discard();
+	}
+
+	/**
+	 * ★ <b>本次飞行的耐久结算 —— 全程唯一一次写回</b>（需求 §3.8；裁定 D14）。
+	 *
+	 * <p>公式：{@code remaining = 耐久上限 − DAMAGE}（= {@code BoomerangItem#getDurability}），
+	 * 与累计损耗 {@link #flightWear} 相比：</p>
+	 * <ul>
+	 *   <li>{@code 累计 < 剩余} ⇒ {@link BoomerangItem#addWear(ItemStack, int)} 写回一次
+	 *       ⇒ 结果恒 <b>≥ 1</b>（不留 0 耐久物品）；</li>
+	 *   <li>{@code 累计 >= 剩余} ⇒ <b>爆掉</b>：播放 {@code ITEM_BREAK} + 返回 {@code true}。
+	 *       调用方负责让物品消失（<b>不</b> {@code spawnAtLocation}）。
+	 *       <br>⚠ 判据取 {@code >=} 而不是需求字面的 {@code >}：需求同一段里还钉着
+	 *       "不要留下一个耐久为 0 的物品"，而 {@code 累计 == 剩余} 恰好会造出那个 0。
+	 *       两条要求在这里只能保一条 ⇒ 保"绝不留 0 耐久"（活着的镖恒有 ≥ 1 点），
+	 *       偏差只有"恰好扣完"这一个点，见报告 §⑥ 与待作者确认清单。</li>
+	 * </ul>
+	 *
+	 * @return {@code true} = 镖因耐久不足爆掉（物品必须消失）
+	 */
+	private boolean settleWear(ItemStack stack) {
+		if (this.flightWear <= 0 || stack.isEmpty() || !(stack.getItem() instanceof BoomerangItem boomerang)) {
+			return false; // 没磨损 / 不是本模组的镖（老存档兜底）：原样交还
+		}
+		int remaining = boomerang.getDurability(stack);
+		if (this.flightWear >= remaining) {
+			level().playSound(null, getX(), getY(), getZ(), SoundEvents.ITEM_BREAK, SoundSource.PLAYERS, 0.8F, 1.0F);
+			CoeCore.LOGGER.debug("[回旋镖] 耐久不足爆掉：累计损耗 {} ≥ 剩余 {}：{}", this.flightWear, remaining, this);
+			return true;
+		}
+		boomerang.addWear(stack, this.flightWear); // ← 唯一一处写回（结果 ≥ 1）
+		return false;
+	}
+
+	/** 把船上的乘客逐个交给玩家（{@code playerTouch} 吸收；掉落物先清掉拾取延迟，否则它什么都不做）。 */
+	private void handPassengersToPlayer(Player player) {
+		for (Entity passenger : new ArrayList<>(getPassengers())) {
+			passenger.stopRiding();
+			if (passenger instanceof ItemEntity item) {
+				// 刚上船时设了拾取延迟；这里是我们主动交付，先把延迟清掉，
+				// 否则 playerTouch 会因为延迟而什么都不做、东西就跟着镖一起消失了。
+				item.setPickUpDelay(0);
+			}
+			passenger.playerTouch(player);
+		}
 	}
 
 	/** 把还在船上的掉落物放回世界（别让镖一消散，乘客跟着一起蒸发）。 */
@@ -612,6 +861,18 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		this.returnTicks = tag.getInt("ReturnTicks");
 		this.hitCount = tag.getInt("HitCount");
 		this.slot = tag.getInt("Slot");
+		// 本次飞行的耐久账（批 2）：不读回来 = 重载一次就能把欠的耐久一笔勾销。
+		this.flightWear = tag.getInt("FlightWear");
+		// 花瓣曲线状态（批 2）：模式 + 锚点 + 基准角 + 进度（写侧见 addAdditionalSaveData）。
+		if (tag.getBoolean("PetalFlight")) {
+			this.entityData.set(DATA_PETAL, true);
+			this.entityData.set(DATA_PETAL_ORIGIN, new Vector3f(
+				(float) tag.getDouble("PetalOriginX"),
+				(float) tag.getDouble("PetalOriginY"),
+				(float) tag.getDouble("PetalOriginZ")));
+			this.entityData.set(DATA_PETAL_ANGLE, (float) tag.getDouble("PetalAngle"));
+			this.petalProgress = tag.getDouble("PetalProgress");
+		}
 		// 投掷原点（可选键：键在 ⇒ 已记录。重载后不许重记，否则基准会被挪到重载点）
 		if (tag.contains("ThrowOriginX")) {
 			this.originX = tag.getDouble("ThrowOriginX");
@@ -636,6 +897,21 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		tag.putInt("ReturnTicks", this.returnTicks);
 		tag.putInt("HitCount", this.hitCount);
 		tag.putInt("Slot", this.slot);
+		// 本次飞行的耐久账（2026-10-02 批 2）：跨区块重载不许把欠账抹掉，否则
+		// "飞出去一趟正好让区块卸载"就成了躲避爆掉的捷径。
+		tag.putInt("FlightWear", this.flightWear);
+		// 花瓣曲线状态（2026-10-02 批 2）：模式 + 锚点 + 基准角 + 进度。
+		// ⚠ 这三项平时走同步数据（两端要一起算曲线），但同步数据不进存档 ⇒ 重载一次就会
+		// 退化成"点按直线"（进度归零 = 从头再飞一瓣），所以必须各自落一份 NBT。
+		if (isPetalFlight()) {
+			Vector3f petalOrigin = this.entityData.get(DATA_PETAL_ORIGIN);
+			tag.putBoolean("PetalFlight", true);
+			tag.putDouble("PetalOriginX", petalOrigin.x());
+			tag.putDouble("PetalOriginY", petalOrigin.y());
+			tag.putDouble("PetalOriginZ", petalOrigin.z());
+			tag.putDouble("PetalAngle", this.entityData.get(DATA_PETAL_ANGLE));
+			tag.putDouble("PetalProgress", this.petalProgress);
+		}
 		// 投掷原点：记过才写（没记过就不写键，读回来仍是"未记录"）
 		if (this.originRecorded) {
 			tag.putDouble("ThrowOriginX", this.originX);
