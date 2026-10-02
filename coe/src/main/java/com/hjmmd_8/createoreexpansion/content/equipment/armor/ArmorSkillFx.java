@@ -15,7 +15,10 @@ import org.joml.Vector3f;
  * 与本仓波系统同一套路，见 {@code ChargerWaveFx}）。
  *
  * <ul>
- *   <li><b>迅捷拖尾</b>：{@link #dashTrail} —— 翠玉套<b>黄 → 绿渐变</b>的拖尾，只在玩家<b>水平移动</b>时发。</li>
+ *   <li><b>迅捷拖尾</b>：{@link #dashTrail} —— 两端色<b>按调用方传进来的那一套</b>取
+ *       （翠玉 = 黄 → 绿，宝石 = 蓝 → 红），只在玩家<b>水平移动</b>时发。
+ *       ⚠ 入口<b>必须带套参数</b>：这条拖尾在松手之后仍会持续（跟着迅捷 buff 的存续期），
+ *       所以色源绝不能是"玩家此刻穿的套"（见 {@link #dashTrail}）。</li>
  *   <li><b>落地特效</b>：{@link #landingImpact} —— 摔落伤害被豁免的瞬间，脚下炸一圈；
  *       <b>按住技能键落地</b>时升级为"两色交加"（两色交替 + 亮闪点缀）。颜色按<b>调用方传进来的那一套</b>走。</li>
  * </ul>
@@ -94,11 +97,6 @@ public final class ArmorSkillFx {
     }
 
     /**
-     * 迅捷拖尾：黄→绿渐变的几段染色粒子铺在玩家身后（+ 少量亮闪点缀）。
-     *
-     * <p>调用点已经做过"是否在水平移动"的判定，这里再兜一次底，避免原地站着也喷粒子。</p>
-     */
-    /**
      * 上一 tick 的脚底水平坐标（玩家 UUID → x/z）：用来判定"到底有没有在水平走动"。
      *
      * <p>2026-10-01 用户实测"有 buff 却没有拖尾"：原先读 {@code getDeltaMovement()} 判定移动，
@@ -111,23 +109,45 @@ public final class ArmorSkillFx {
     /** 水平位移超过这个距离（格/tick）才算"在走"（约等于 1/3 的潜行速度）。 */
     private static final double MIN_STEP = 0.035D;
 
-    public static void dashTrail(ServerPlayer player) {
-        // 翠玉套的黄→绿：走唯一颜色源（数值就是上面那两个常量，观感与本层之前逐字相同）
-        Duo colors = trailColors(ArmorSet.JADE);
+    /**
+     * 迅捷拖尾：按 <b>{@code set}</b> 取色的几段染色粒子铺在玩家身后（+ 少量亮闪点缀）。
+     *
+     * <p>形态（分段数、左右双列、"只在水平移动时发"、亮闪点缀）<b>不随套变化</b>，
+     * 只有两端色按套走 {@link #trailColors(ArmorSet)}：翠玉 = 黄 → 绿（数值就是上面那两个常量，
+     * 逐字未动），宝石 = 蓝 → 红。</p>
+     *
+     * <p><b>为什么套由调用方传进来</b>：这条拖尾跟着<b>迅捷 buff 的存续期</b>走 ——
+     * 松手之后 buff 还在（最多 120 秒）的那段时间照样要发，而颜色必须<b>还是长按那一刻那一套的</b>。
+     * 调用点 {@code ArmorSkillRuntime#tick} 因此传的是<b>登记拖尾时记住的那一套</b>，
+     * 而不是"玩家此刻穿的套"；本方法也<b>不</b>自己去问 {@code ArmorSet.effectiveSet}，
+     * 否则 buff 期间换甲会让拖尾颜色当场跳变。</p>
+     *
+     * <p>调用点已经做过"是否在水平移动"的判定，这里再兜一次底，避免原地站着也喷粒子。</p>
+     *
+     * @param player 服务端玩家
+     * @param set    这次拖尾属于哪一套（{@code null} 视为"没有套"⇒ 回落到该套默认取色）
+     */
+    public static void dashTrail(ServerPlayer player, ArmorSet set) {
+        // 按套取色（唯一颜色源，见 trailColors）：翠玉 = 黄→绿（数值逐字未动）、宝石 = 蓝→红
+        Duo colors = trailColors(set);
         trail(player, colors.from(), colors.to());
     }
 
     /**
      * <b>宝石套（蓝 → 红）的拖尾</b> —— 用户 2026-10-01 规格 §0.3：
-     * "第二个技能（临域充力）的拖尾与『加移速那条』**完全一致**（用户：第二个不需要你复效）"。
+     * "第三个技能（临域充力）的拖尾同样用**同一形态的实现**、只换颜色"。
      *
-     * <p>因此形态逐字复用 {@link #dashTrail} 的私有实现 {@link #trail}（同样的分段数、同样的
-     * 左右双列、同样的"只在水平移动时发"、同样的亮闪点缀），<b>只换两端色</b>为宝石套的
-     * {@link #GEM_BLUE} → {@link #GEM_RED}（同源于 {@code ArmorEnergyColors.stopsOf(ArmorSet.GEM)}）。</p>
+     * <p>形态逐字复用 {@link #trail}（同样的分段数、同样的左右双列、同样的"只在水平移动时发"、
+     * 同样的亮闪点缀），两端色同样走唯一颜色源 {@link #trailColors(ArmorSet)} ——
+     * 宝石套解析出来就是 {@code ArmorEnergyColors.stopsOf(ArmorSet.GEM)} 的蓝 → 红
+     * （见 {@code GEM_SOURCE}），本方法<b>不写死任何套</b>。</p>
+     *
+     * @param player 服务端玩家
+     * @param set    这次拖尾属于哪一套（临域充力只存在于宝石套；由调用方传入本套）
      */
-    public static void gemTrail(ServerPlayer player) {
-        // 宝石套的蓝→红：同样走唯一颜色源（与 dashTrail 同一条实现，只有颜色不同）
-        Duo colors = trailColors(ArmorSet.GEM);
+    public static void gemTrail(ServerPlayer player, ArmorSet set) {
+        // 同样走唯一颜色源（与 dashTrail 同一条实现，只有颜色不同）
+        Duo colors = trailColors(set);
         trail(player, colors.from(), colors.to());
     }
 

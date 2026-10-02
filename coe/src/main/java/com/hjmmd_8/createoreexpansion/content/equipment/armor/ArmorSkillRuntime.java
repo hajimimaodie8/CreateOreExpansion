@@ -245,13 +245,15 @@ public final class ArmorSkillRuntime {
         // 迅捷拖尾（用户 2026-10-01 报"移速加成期间没有拖尾"）：
         // 拖尾跟着**迅捷 buff 的存续期**走，而不是只在按住的那几 tick —— 松手后 buff 还在（最多 120 秒），
         // 那段时间跑动同样应该有拖尾。到期自动清掉标记。
-        Long dashUntil = DASH_UNTIL.get(id);
-        if (dashUntil != null) {
-            if (dashUntil == null || player.level().getGameTime() >= dashUntil) {
-                DASH_UNTIL.remove(id);
+        // ⚠ 颜色用的是**登记时记住的那一套**（DashTrail#set），**不是**这里现取的玩家当前套：
+        //   拖尾在松手后仍持续，现取的话 buff 期间换甲会让颜色当场跳变（见 DashTrail 的说明）。
+        DashTrail dash = DASH_TRAIL.get(id);
+        if (dash != null) {
+            if (player.level().getGameTime() >= dash.until()) {
+                DASH_TRAIL.remove(id);
             } else if (player.tickCount % 2 == 0) {
                 // 不限定"正在按住"：buff 有效期内跑动就该有拖尾（是否在移动由 dashTrail 自己判）
-                ArmorSkillFx.dashTrail(player);
+                ArmorSkillFx.dashTrail(player, dash.set());
             }
         }
 
@@ -372,8 +374,29 @@ public final class ArmorSkillRuntime {
         }
     }
 
-    /** 迅捷 buff 的到期时刻（gameTime）：拖尾跟着它走，松手后 buff 还在就仍有拖尾。 */
-    private static final Map<UUID, Long> DASH_UNTIL = new HashMap<>();
+    /**
+     * <b>蓄能疾骋拖尾的存续状态</b>：{@code until} = 迅捷 buff 的到期时刻（gameTime，拖尾跟着它走），
+     * {@code set} = <b>登记这一刻</b>玩家生效的那一套。
+     *
+     * <p><b>为什么把"套"和"到期时刻"存成一对</b>：拖尾在<b>松手之后仍会持续</b>（迅捷 buff 最多还有
+     * 120 秒），而那段时间玩家完全可能换甲（脱一件、换一套、混搭）。如果拖尾颜色每 tick 现取
+     * {@code ArmorSet.effectiveSet(player)}，换甲那一刻颜色就会当场跳变（宝石蓝红 ↔ 翠玉黄绿），
+     * 与"这次技能是哪一套放的"也不符。所以套在<b>段位推进的那一刻</b>随到期时刻一起定死，
+     * 松手后按记住的那一套上色（见 {@code tick} 里的发射点）。</p>
+     *
+     * @param until 迅捷 buff 到期时刻（{@code level().getGameTime()}，与旧 {@code DASH_UNTIL} 同一口径）
+     * @param set   登记这一刻生效的那一套（调用点已保证非空：解析出 {@code charge_dash} 才有登记）
+     */
+    private record DashTrail(long until, ArmorSet set) {
+    }
+
+    /**
+     * 玩家 → 蓄能疾骋拖尾状态（套与到期时刻<b>成对</b>存，理由见 {@link DashTrail}）。
+     *
+     * <p>生命周期与旧的"只有到期时刻"那张表一致：登记发生在段位推进时，
+     * <b>松手不清</b>（拖尾要覆盖整个迅捷 buff），到期那一 tick 自动移除。</p>
+     */
+    private static final Map<UUID, DashTrail> DASH_TRAIL = new HashMap<>();
 
     /** 蓄能疾骋的"当前段位"（只在段位往上爬时重新施加效果，避免每 tick 重置时长）。 */
     private static final Map<UUID, Integer> DASH_SEGMENT = new HashMap<>();
@@ -395,10 +418,16 @@ public final class ArmorSkillRuntime {
         DASH_SEGMENT.put(player.getUUID(), segment);
         int seconds = config.segmentSeconds()[segment - 1];
         if (seconds > 0) {
-            // 登记"拖尾存续到什么时候"：拖尾要覆盖整个迅捷 buff，而不只是按住的那几 tick
+            // 登记"拖尾存续到什么时候"：拖尾要覆盖整个迅捷 buff，而不只是按住的那几 tick。
+            // 同时把**这一刻生效的那一套**记住（DashTrail）：松手后拖尾按它上色，换甲不变色。
             long now = player.level().getGameTime();
             long until = now + seconds * 20L;
-            DASH_UNTIL.merge(player.getUUID(), until, Math::max);
+            DashTrail registered = DASH_TRAIL.get(player.getUUID());
+            if (registered == null || registered.until() <= until) {
+                // 与旧口径一致地取"最长的那个到期时刻"（段位越高给得越久 ⇒ 真的会往后延）；
+                // 谁给出更长的存续，就按谁的套上色。
+                DASH_TRAIL.put(player.getUUID(), new DashTrail(until, set));
+            }
             player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                 net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED,
                 seconds * 20, segment - 1, false, true, true));

@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FieldChargeConfigs;
 
@@ -317,7 +318,10 @@ public final class FieldChargeRuntime {
         // ⑥ 粒子（每 2 tick 一次；形态见 ArmorSkillFx，颜色一律取自宝石套 GEM_STOPS）
         if (player.tickCount % 2 == 0) {
             ArmorSkillFx.fieldChargeRing(world, session.source, player.tickCount * 0.25D);
-            ArmorSkillFx.gemTrail(player);
+            // 拖尾按套取色（规格 §0.3）：临域充力只存在于宝石套的槽位 3
+            // （skillId(GEM, 2) == FIELD_CHARGE），所以这里明确传宝石套 —— 颜色由
+            // ArmorSkillFx#trailColors(GEM) 解析，粒子实现里不写死任何套。
+            ArmorSkillFx.gemTrail(player, ArmorSet.GEM);
         }
         return HoldResult.ACTIVE;
     }
