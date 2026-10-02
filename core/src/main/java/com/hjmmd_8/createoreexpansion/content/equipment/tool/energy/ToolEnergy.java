@@ -12,8 +12,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+
+import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * 工具能量门面：能量存取、扣减编排与剩余能量提示。
@@ -217,10 +220,9 @@ public final class ToolEnergy {
 
 	public static void sendLowEnergy(Player player, ItemStack stack) {
 		int colorRGB = getEnergyColor(stack);
-		player.displayClientMessage(
+		sendToolEnergyHint(player,
 			Component.literal(LOW_ENERGY_MESSAGE)
-				.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colorRGB))), 
-			true);
+				.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colorRGB))));
 	}
 
 	public static void sendRemainingEnergy(Player player, ItemStack stack) {
@@ -230,10 +232,33 @@ public final class ToolEnergy {
 		int energy = getEnergy(stack);
 		int max = getMaxEnergy(stack);
 		int colorRGB = getEnergyColor(stack);
-		player.displayClientMessage(
+		sendToolEnergyHint(player,
 			Component.literal("剩余能量：" + energy + " / " + max)
-				.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colorRGB))), 
-			true);
+				.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colorRGB))));
+	}
+
+	/**
+	 * <b>工具能量文案的唯一出口</b>（用户 2026-10-02 第 2、3 条）：服务端把拼好的组件发给客户端，
+	 * 由本模组自己的 HUD 图层画在快捷栏正上方（见 {@link ToolEnergyHintPayload} 的类注释：
+	 * 位置不能再借原版动作栏，那一条的 y 是写死的）。
+	 *
+	 * <p><b>为什么要留一个非服务端的回退</b>：上面三个 {@code send*} 的现有调用点全部在服务端
+	 * （技能扣费、无箭射击、能量不足警告），但它们是公开 API；万一将来有人从客户端逻辑里调，
+	 * {@code PacketDistributor} 拿不到 {@code ServerPlayer} 就什么都发不出去 —— 那种情况下退回
+	 * "就地显示"（本地动作栏），行为与本次改动之前完全一致，不会静默丢提示。</p>
+	 *
+	 * @param player 提示的接收者（可为 null：那就什么都不做）
+	 * @param line   已经拼好颜色/文字的整条文案
+	 */
+	private static void sendToolEnergyHint(Player player, Component line) {
+		if (player == null) {
+			return;
+		}
+		if (player instanceof ServerPlayer serverPlayer) {
+			PacketDistributor.sendToPlayer(serverPlayer, new ToolEnergyHintPayload(line));
+			return;
+		}
+		player.displayClientMessage(line, true);
 	}
 
 	/**
@@ -248,7 +273,7 @@ public final class ToolEnergy {
 		int toolMax = getMaxEnergy(tool);
 		Component toolLine = toolLineComponent(tool, toolEnergy, toolMax);
 		if (medallion.isEmpty()) {
-			player.displayClientMessage(toolLine, true);
+			sendToolEnergyHint(player, toolLine);
 			return;
 		}
 		MedallionLink link = MedallionLink.get();
@@ -262,7 +287,7 @@ public final class ToolEnergy {
 				.withStyle(Style.EMPTY.withColor(TextColor.fromRgb(getEnergyColor(medallion)))))
 			.append(Component.literal("；").withStyle(Style.EMPTY.withColor(ChatFormatting.GRAY)))
 			.append(toolLine);
-		player.displayClientMessage(msg, true);
+		sendToolEnergyHint(player, msg);
 	}
 
 	/**

@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.machine.MachineRotatePayload;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyHintPayload;
 
 import net.neoforged.bus.api.IEventBus;
 
@@ -14,7 +15,8 @@ import net.neoforged.bus.api.IEventBus;
  * <ol>
  *   <li>把共享的 {@code DeferredRegister} 挂到 mod 事件总线
  *       （{@link LayerRecipeType#registerOn} 挂两张、{@link LayerCreativeTab#registerOn} 挂一张）；</li>
- *   <li>注册跨层共用的网络载荷（{@link MachineRotatePayload}，Ctrl+扳手右键的服务端半边）；</li>
+ *   <li>注册跨层共用的网络载荷（{@link MachineRotatePayload}，Ctrl+扳手右键的服务端半边；
+ *       {@link ToolEnergyHintPayload}，工具能量文案的服务端半边）；</li>
  *   <li>按<b>固定顺序</b>唤醒三层的配方类型声明类，让条目进注册表的顺序与拆分前逐字相同。</li>
  * </ol>
  *
@@ -129,6 +131,10 @@ public final class LayerBootstrap {
             //    Ctrl+扳手在 CEWS 机器上完全没反应（载荷不在注册表里）。搬到幂等入口后，
             //    "在场且第一个构造"的那个模块负责注册它。
             modEventBus.addListener(MachineRotatePayload::registerPayloads);
+            //    工具能量文案（用户 2026-10-02 第 2、3 条）：同一条"恰一次"的理由 ——
+            //    它由 core 的 ToolEnergy 发、客户端 HUD 层收，任何单一模块都不保证在场，
+            //    而 RegisterPayloadHandlersEvent 是发往每一个 mod 容器的。
+            modEventBus.addListener(ToolEnergyHintPayload::registerPayloads);
 
             // ③ 按固定顺序唤醒三层（顺序理由见类注释"四"1.）
             wakeLayers();

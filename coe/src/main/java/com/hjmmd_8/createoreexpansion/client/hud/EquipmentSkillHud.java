@@ -68,6 +68,11 @@ import org.jetbrains.annotations.Nullable;
  * 那个高度避开了原版的血条/饥饿条/经验条与"切换物品"的名称弹窗。多行时向上生长
  * （最后一行固定贴住基线），这样行数变化时不会跳动。</p>
  *
+ * <p><b>与工具能量提示的关系（2026-10-02）</b>：工具那一条已改由 {@link ToolEnergyHintHud}
+ * 自绘在 {@code H-59 .. H-51}（原版物品名弹窗那一行），本面板最后一行在 {@code H-72 .. H-63}，
+ * 两者之间留 3 行空档 ⇒ 技能与装备同时使用时（两段并存，见 {@link CoeSkillClient} 的键源注释）
+ * 不会再叠在一起。</p>
+ *
  * <h2>本轮边界（技能还没实现）</h2>
  * <p>7 个套装技能尚未落地 ⇒ {@link ArmorSkillProvider} 现在不产出任何技能，
  * 因此第三行会显示"暂无套装技能"。"能否释放"目前等于"是否成套"（前提条件）；
@@ -80,8 +85,25 @@ public final class EquipmentSkillHud {
     /** 行高（与原版聊天/提示行一致，10 像素足够容纳中文）。 */
     private static final int LINE_HEIGHT = 10;
 
-    /** 基线距屏幕底部的像素数：快捷栏上方、血条/经验条与物品名弹窗之上。 */
-    private static final int MARGIN_ABOVE_HOTBAR = 74;
+    /**
+     * 基线距屏幕底部的像素数：快捷栏上方、血条/经验条与物品名弹窗之上。
+     *
+     * <h2>2026-10-02 取值 72（原 74）与错开口径</h2>
+     * <p>用户第 2 条要求「不要把两个消息叠在一起…可以把这两个信息错开」，第 3 条要求提示离快捷栏
+     * 更近。两块文案的几何关系（H = {@code guiHeight}，逐条对着原版 1.21.1 源码量的，清单见
+     * {@link ToolEnergyHintHud} 的类注释）是：</p>
+     * <ul>
+     *     <li>本面板最后一行占 {@code H-72 .. H-63}（文字顶行 = H-MARGIN，行高 10 含投影），
+     *         多行时<b>向上</b>生长；</li>
+     *     <li>工具能量提示（{@link ToolEnergyHintHud}，自绘图层）占 {@code H-59 .. H-51}。</li>
+     * </ul>
+     * <p>⇒ 两块之间空出 {@code H-62 .. H-60} 三行，肉眼看是上下两块、互不覆盖。原实现里工具能量
+     * 提示走的是原版<b>动作栏</b>（{@code H-72 .. H-64}），与本面板最后一行<b>整行重叠</b>，
+     * 那正是用户说的"叠在一起"；本次把工具提示收进自绘图层后重叠才真正消失。</p>
+     * <p>本常量随之下移 2 px（74 → 72）：面板因此比原来更贴近快捷栏一点，同时仍高于原版物品名
+     * 弹窗那一行（{@code H-59 .. H-51}）与生命/饥饿/经验排（{@code H-39} 起）。</p>
+     */
+    private static final int MARGIN_ABOVE_HOTBAR = 72;
 
     /** 标题行：开关语义（键帽名 + "开关：开"）；本层只在开关为开时绘制，因此状态恒为"开"。 */
     private static final String TITLE_KEY = "createoreexpansion.hud.equipment.title";

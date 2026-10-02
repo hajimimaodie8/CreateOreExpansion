@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.client.SkillSettingsScreen;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyHintClient;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.ArmorSkillProvider;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
@@ -73,8 +74,11 @@ public final class CoeSkillClient {
      * 关掉后一直关闭，直到再按一下。</p>
      *
      * <p>只在客户端存在，且<b>离开世界即复位为关</b>（见 {@link #onClientTick}），免得下次进世界
-     * 莫名其妙"技能键全变成装备技能"。服务端与内核都不认识这个开关：它们只看到"某个槽位按下没有"，
+     * 莫名其妙"装备技能键一直是开的"。服务端与内核都不认识这个开关：它们只看到"某个槽位按下没有"，
      * 因此传输与结算语义一字未改。</p>
+     *
+     * <p><b>2026-10-02 口径更正</b>：它只开<b>装备段</b>，主手工具/武器技能不受影响（两段并存；
+     * 见 {@link #isSlotPressed}）。</p>
      */
     private static boolean equipmentModeOn;
 
@@ -86,12 +90,16 @@ public final class CoeSkillClient {
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         handleSettingsKey(minecraft);
+        // 工具能量提示的寿命（用户 2026-10-02 第 3 条：文案改由本模组图层绘制，
+        // 因此"什么时候消失"也由客户端 tick 自己数——口径照抄原版动作栏的 60 tick）
+        ToolEnergyHintClient.tick();
         Player player = minecraft.player;
         if (player == null || minecraft.level == null) {
             // 离开世界：清掉记录与装备模式开关，下次进世界重新注入/刷新
             lastSkills = null;
             lastWornSet = null;
             setEquipmentModeOn(false);
+            ToolEnergyHintClient.clear();
             return;
         }
 
@@ -200,56 +208,70 @@ public final class CoeSkillClient {
      *
      * <p>同值调用是空操作：离开世界那段每 tick 都会调它复位，否则会在主菜单里刷日志。</p>
      *
-     * @param on true = 装备模式开（技能键释放装备技能），false = 关（技能键释放工具技能）
+     * <p>2026-10-02 口径更正：这个开关<b>只开装备段</b>——为 true 时装备槽 3/4/5 开始响应技能键，
+     * 主手工具/武器技能<b>照旧可用</b>（两段并存，见 {@link #isSlotPressed}）。它<b>不是</b>
+     * "工具/装备二选一"的模式切换。</p>
+     *
+     * @param on true = 装备段可用（左 Alt 开关打开），false = 装备段不响应
      */
     public static void setEquipmentModeOn(boolean on) {
         if (equipmentModeOn == on) {
             return;
         }
         equipmentModeOn = on;
-        CoeCore.LOGGER.info("[装备模式] {}（技能键现在释放{}技能）", on ? "开" : "关", on ? "装备" : "工具");
+        CoeCore.LOGGER.info("[装备模式] {}（装备技能键现在{}，主手工具/武器技能始终可用）",
+            on ? "开" : "关", on ? "生效" : "停用");
     }
 
     /**
-     * 装备模式开关当前是否为开（客户端）。
+     * 装备段开关当前是否为开（客户端）。
      *
-     * <p>这是<b>唯一</b>的装备模式判据：键源分流（{@link #isSlotPressed}）与提示层
+     * <p>这是<b>唯一</b>的装备段判据：键源分流（{@link #isSlotPressed}）与提示层
      * （{@code client.hud.EquipmentSkillHud}）都走它，保证"能放"与"提示"同源。
      * 原始按键状态（{@code EQUIPMENT_MODIFIER.isPressed()}）<b>不再参与任何判定</b>，
      * 它只在 {@link #handleEquipmentModeKey} 里以 {@code consumeClick()} 的形式被消费。</p>
+     *
+     * <p>注意它<b>只</b>影响装备段：工具槽 0/1/2 不看它（用户 2026-10-02 明确要求两段并存）。</p>
      */
     public static boolean isEquipmentModeOn() {
         return equipmentModeOn;
     }
 
     /**
-     * <b>键源：工具段与装备段的模式切换</b>（用户 2026-10-01 的"装备辅助按键"设计；
-     * 2026-10-02 起该按键由"按住"改为"开关"，分流规则一字未改）。
+     * <b>键源：工具段与装备段【并存】</b>（用户 2026-10-02 明确要求，不是"冲突消解"）。
      *
      * <p>内核会为「每个来源声明过的槽位号」各问一次"这个槽位现在按下没有"。两段槽位空间是分开的
-     * （工具 0/1/2、装备 3/4/5，见 {@link ArmorSkillProvider}），所以这里只做分流：</p>
+     * （工具 0/1/2、装备 3/4/5，见 {@link ArmorSkillProvider}），所以这里各判各的：</p>
      * <ul>
-     *     <li><b>装备模式开（左 Alt 开关打开）</b>：槽位 3/4/5 映射到物理键一/二/三，而槽位 0/1/2
-     *         <b>一律报未按下</b> —— 这就是"抑制工具技能"。不抑制的话，服务端遍历时会同时命中
-     *         槽位 0 的工具技能与槽位 3 的装备技能，两个一起放（能量双扣、效果同 tick）。</li>
-     *     <li><b>装备模式关</b>：槽位 0/1/2 照常映射物理键，装备段一律未按下。</li>
+     *     <li><b>工具槽 0/1/2</b>：只看物理键（键一/二/三）。<b>完全不读 {@code equipmentMode}</b>
+     *         —— 左 Alt 那个开关管不着主手技能。</li>
+     *     <li><b>装备槽 3/4/5</b>：{@code equipmentMode} 为开时才映射到物理键一/二/三。</li>
      * </ul>
      *
-     * <p>刻意<b>不</b>做"两段同时按下"：那正是用户担心的紊乱形态。</p>
+     * <p><b>同一个物理键会同时命中两段</b>（两段共用键一/二/三 = 左 Shift / R / G，见
+     * {@link #SLOT_KEYS}）：开关开着时按一下键一，槽位 0 与槽位 3 会<b>同时</b>报"按下"，
+     * 服务端于是同时释放主手工具技能与装备技能（<b>两套账各扣各的</b>：工具能量走
+     * {@code CoeToolEnergyResource} → {@code ToolEnergy}，护甲能量走 {@code CoeArmorEnergyResource}
+     * → {@code ArmorEnergy}）。</p>
      *
-     * <p><b>代价（必须让玩家知道）</b>：开关开着的时候，<b>工具技能（键一/二/三）整体让位</b> ——
-     * 那三个键此刻释放的是装备技能。要回去用工具技能，就得先按一下左 Alt 把开关关掉。
-     * 这是"两段不重叠"这个硬约束的直接后果，不是可以顺手绕开的实现细节。</p>
+     * <p><b>这是用户 2026-10-02 明确要的效果，不是缺陷、也不是"待改进的副作用"</b>。
+     * 原话（地狱堡垒刷烈焰人的场景）：血不多时"<i>既要用蓝宝石套给自己替代不死图腾的效果，
+     * 又要通过剥皮/夺取来增加烈焰棒收入</i>"，而"<i>不能让他手忙脚乱、一直频繁按左 ALT 键切换来
+     * 切换去</i>"。⇒ 两段必须能同时用；"一个键触发两个技能"正是他要的"同时上"。如果将来要分开，
+     * 只需要给装备段配独立按键（{@link AllKeys}）—— <b>不要</b>再把工具段改回"让位"。</p>
+     *
+     * <p>旧实现（2026-10-01）是互斥的：开关开着时工具槽一律报未按下。那段逻辑已被本裁定取代。</p>
      *
      * @param slot 内核询问的槽位号（来自各 Provider 的 {@code collectKeys}）
      */
     private static boolean isSlotPressed(int slot) {
-        boolean equipmentMode = isEquipmentModeOn();
         if (ArmorSkillProvider.isEquipmentSlot(slot)) {
-            return equipmentMode && SLOT_KEYS[slot - ArmorSkillProvider.SLOT_BASE].isPressed();
+            // 装备段：开关（左 Alt 锁存）是唯一闸门
+            return isEquipmentModeOn() && SLOT_KEYS[slot - ArmorSkillProvider.SLOT_BASE].isPressed();
         }
         if (ArmorSkillProvider.isHeldItemSlot(slot) && slot < SLOT_KEYS.length) {
-            return !equipmentMode && SLOT_KEYS[slot].isPressed();
+            // 工具段：只跟物理键走，与装备开关无关（两段并存，见方法注释）
+            return SLOT_KEYS[slot].isPressed();
         }
         return false; // 越界或未知槽位：内核契约里一律视为未按下
     }

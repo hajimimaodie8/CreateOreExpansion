@@ -1,8 +1,9 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-10-02（**装备键（左 Alt）改为开关**：按一下开、再按一下关；W13 盔甲 + 技能换核见「挂起事项」与 `markdown_output/COE 层功能清点与变更史.md`）。
+> 最后更新：2026-10-02（变更史见 `markdown_output/COE 层功能清点与变更史.md`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
+> 🌐 跨项目层：动手前必读 `E:\mc\mcmod\mod_experience\mcmod_experience.md`；收尾把经验回写该文件并在附录 D 记行。
 
 ## 📚 长文档索引（⚠ `markdown_output/`、`docs/`、`tools/` **只在本机保留、不入公共仓库**——见 `.gitignore` 那段；按这里找「文件 + 标题」）
 
@@ -91,9 +92,8 @@ git status --short                                          # git add 之后再�
   也不要"生成一张差不多的"顶替（例如给灯做"熄灭版"贴图这类替代方案，**必须先问**，默认不做）。
 - **模型（`models/**/*.json`）与贴图不是一回事**：几何坐标（元素位置/尺寸/UV 窗口）在用户明确指定数值时
   可以改——本会话就按用户给的"开口内缩 1px / 关闭 2px"改过 16 个变体模型；但 UV 指向的贴图内容不许动。
-- 贴图相关的判断（亮块在哪几个像素、哪一列是透明）**靠量**：`build/patch/dump_light_squares.ps1`
-  逐像素列出亮块坐标；`build/patch/rasterize_top_face.ps1` 把顶面每像素最终采到的贴图像素画成字符图
-  ——"某盏灯只亮一半"这类问题靠它一眼定位（实测：东灯 UV `[12,7,14,9]` 采到透明列，应为 `[13,7,15,9]`）。
+- 贴图相关的判断（亮块在哪几个像素、哪一列透明）**靠量**：`build/patch/dump_light_squares.ps1` /
+  `rasterize_top_face.ps1`（用法见脚本头注释；实例见 `markdown_output/机器交互实现细节（AGENTS迁入）.md`）。
 
 ## 🔧 工具（一行一个；细节都写在脚本头注释里）
 
@@ -149,8 +149,8 @@ git status --short                                          # git add 之后再�
 - **系列特性登记口径**（用户 2026-09-15 定稿）：**唯一入口 = `common/SeriesTraits`**；判定 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定（限定本模组命名空间）。**四个系列标签由 datagen 生成，手写文件禁止同名**（同名让 processResources 报 duplicate 直接失败）；**两个系列（含方块物品）免疫嬗乱销毁**，判定在 `TransmutationDisorderEffect#canTransmutationDestroy`（W6 后随嬗化住 `:coe`）——**方块物品进不了物品标签，故不能用标签覆盖**。链式写法与来由 → `markdown_output/机器交互实现细节（AGENTS迁入）.md` 的 `## 6.`。
 - **机器交互四条统一规则**（用户 2026-09-15 定稿）：① 空手右键某个面 = 开/关该面开口；② 空手右键指示灯 = 只切那盏灯对应的开口；③ 扳手右键 = 有特殊模式的机器只切模式、没模式的机器照旧切开口；④ 旋转必须 **Ctrl + 扳手右键**。
   实现三件套（契约 `common/machine/MachineInteraction` / 载荷 `common/machine/MachineRotatePayload` / 客户端 `client/MachineRotateClient`）的逐条细节、来由与 `IWrenchable` 副作用更正 → `markdown_output/机器交互实现细节（AGENTS迁入）.md`。**Ctrl 的判定必须在客户端**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
-- **装备键（左 Alt）= 开关**（2026-10-02 改，原为按住）：按一下开、再按一下关；开时工具技能键（键一/二/三）让位给装备技能。判定唯一处 `CoeSkillClient#isEquipmentModeOn()`（`consumeClick()` 边沿翻转、离世复位），关卡 `check-armor-sets.ps1` §25。
-- **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文曾漏 17 条（雷鸣合金整条材料线 + 能量场控制器 + 蓝宝石充能器/两个调节器 + 嬗变液方块与流体），英文客户端在这些条目上显示原始键名——已在 `d869e2d2` 补齐。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
+- **装备键（左 Alt）= 只开「装备段」的开关**（2026-10-02 两轮裁定，旧"让位"说法**已推翻**）：开关只管装备段槽位 3/4/5；**主手工具/武器技能始终可用** —— 两段**并存**、共用键一/二/三 ⇒ **一个键会同时触发两段技能**（用户明确要的"同时"，**不是缺陷**：工具扣 `ToolEnergy`、护甲扣 `ArmorEnergy`）。判定唯一处 `CoeSkillClient#isEquipmentModeOn()`，**工具槽不许再读它**；两条能量文案改**分带**显示（工具层 `ToolEnergyHintHud` 基线 59、装备面板 72）。关卡 `check-armor-sets.ps1` §9/§25/§27。
+- **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文曾漏 17 条（材料线/能量场控制器/充能器/调节器/嬗变液），`d869e2d2` 已补齐。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
   ```powershell
   $en = Get-Content src\generated\resources\assets\createoreexpansion\lang\en_us.json -Raw -Encoding UTF8 | ConvertFrom-Json
   $zh = Get-Content src\generated\resources\assets\createoreexpansion\lang\zh_cn.json -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -197,7 +197,6 @@ git status --short                                          # git add 之后再�
 - **会话结束不再自动入库**。想让某段对话/结论进记忆，必须由用户提出，然后用 `hindsight_ingest_document`；成体系的计划用 `hindsight_capture_initiative`。
 - 手动工具**不受这些开关影响**（已核源码 dsh.js:16375 —— `hindsight_ingest_document` 直接调 `client.retain`，不经过 `retainSessions` 判断），所以"按需入库"这条路是通的。
 - **改动在下一个新会话才生效**：插件把每个 workspace 的运行时对象缓存在进程级 Map 里（dsh.js:17238 `workspaces`，:17244 命中即返回），配置只在对象创建时读取一次。
-- 别依赖 `hindsight_ingest_document` 工具描述里那句"会话结束会自动捕获"——那是默认配置下的行为，这里已被关掉。
 
 ## 已知环境限制
 
