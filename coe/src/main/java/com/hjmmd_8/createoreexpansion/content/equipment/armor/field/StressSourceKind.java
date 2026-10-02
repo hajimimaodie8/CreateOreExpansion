@@ -2,6 +2,10 @@ package com.hjmmd_8.createoreexpansion.content.equipment.armor.field;
 
 import java.util.List;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.RotationAxis;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
@@ -18,7 +22,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * 自己的网络、自己的旋转入口。所以技能侧只认这个接口，绝不 import 任何具体模组的类
  * （Create 也不例外：手摇曲柄的实现集中在 {@link HandCrankStressSource} 一处）。</p>
  *
- * <h2>实现者要保证的四件事</h2>
+ * <h2>实现者要保证的五件事</h2>
  * <ol>
  *   <li>{@link #matches(BlockState)} 是<b>纯判定</b>（无副作用），技能用它来扫玩家周围的立方体；</li>
  *   <li>{@link #drive} 让方块真的转起来（对 Create 的发电机而言 = {@code getGeneratedSpeed()} 非零），
@@ -28,6 +32,9 @@ import net.minecraft.world.level.block.state.BlockState;
  *   <li>{@link #halt} 必须让方块<b>立刻静止</b>，且必须在<b>所有</b>退出路径上被调到
  *       （松手 / 到时限 / 能量见底 / 登出 / 死亡 / 换维度 / 会话心跳超时）。漏一处就会留下
  *       一个"永远在转"的曲柄 —— 这是本轮用户最强调的收尾纪律。</li>
+ *   <li>{@link #rotationAxis} 告诉技能"此刻绕哪个轴、往哪边转"（用户 2026-10-02）：临域充力那两圈
+ *       环绕粒子要落在<b>垂直于该方块角速度矢量</b>的平面里、旋向与角速度一致，而"方块的转轴"
+ *       只有本实现知道（技能侧不许 import 任何具体模组）。拿不到就返回 {@code null}。</li>
  * </ol>
  *
  * <h2>关于注入器的容量</h2>
@@ -63,6 +70,30 @@ public interface StressSourceKind {
 
     /** 立刻静止（所有退出路径共用；必须幂等）。 */
     void halt(ServerLevel level, BlockPos pos);
+
+    /**
+     * <b>此刻的旋转轴与转向</b>（用户 2026-10-02 的粒子要求）—— 临域充力画的两圈环绕粒子必须落在
+     * <b>垂直于该方块角速度矢量</b>的平面里、旋向与角速度一致，所以技能侧需要问本方法。
+     *
+     * <p>返回的 {@link RotationAxis} 是"单位轴 + 转向符号（右手定则）"的中立载体：技能侧只做
+     * {@code p(θ) = center + cos θ·r·u + sin θ·r·v} 的正交基参数化，
+     * <b>不</b>需要（也不许）知道任何具体模组的朝向/转速字段怎么读。</p>
+     *
+     * <h2>实现者怎么填（以 Create 的手摇曲柄为例，见 {@code HandCrankStressSource}）</h2>
+     * <ul>
+     *   <li><b>轴</b> = 该方块的旋转轴（曲柄 = blockstate 的 {@code FACING} 的轴），取该轴<b>正方向</b>
+     *       的单位向量 —— 与渲染器同一约定：Create 的 {@code HandCrankVisual#rotateCrank} 与
+     *       {@code KineticBlockEntityRenderer#kineticRotationTransform} 都绕
+     *       {@code Direction.get(Direction.AxisDirection.POSITIVE, axis)} 转（右手定则）；</li>
+     *   <li><b>符号</b> = 生成转速的符号（曲柄 = {@code HandCrankBlockEntity#getGeneratedSpeed()}，
+     *       它已经把 {@code FACING} 的正负方向折算进去了）。</li>
+     * </ul>
+     *
+     * @return {@code null} = 此刻拿不到旋转信息（方块实体不在了 / 没在转）⇒ 技能侧这一 tick
+     *         <b>不画环</b>（而不是回落到某个写死的平面或方向）
+     */
+    @Nullable
+    RotationAxis rotationAxis(ServerLevel level, BlockPos pos);
 
     /**
      * 注入器<b>可以放置</b>的候选格（按优先级，技能会洗牌后逐个试）。

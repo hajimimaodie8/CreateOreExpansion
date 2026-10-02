@@ -301,36 +301,100 @@ public final class ArmorSkillFx {
     private static final double RING_RADIUS = 0.80D;
 
     /**
+     * 下圈沿<b>旋转轴</b>的偏移（格，相对方块中心）：轴朝上时 = 方块底面 + 0.20
+     * （= 改前那行 {@code y + 0.20D} 的逐值等价形态）。
+     */
+    private static final double RING_LOW_OFFSET = -0.30D;
+
+    /** 上圈沿<b>旋转轴</b>的偏移（格，相对方块中心）：轴朝上时 = 方块底面 + 0.85。 */
+    private static final double RING_HIGH_OFFSET = 0.35D;
+
+    /**
      * <b>被赋能的动力源方块周围：蓝 → 红渐变的圈状环绕粒子</b>（规格 §2.1 第 3 条）。
      *
-     * <p>观感 = <b>绕方块转的两圈</b>：下圈贴方块底部、上圈抬到中高，两圈相位错开 180°、
-     * 半径略小 ⇒ 看着像"能量在方块周围打转"。颜色沿<b>角度</b>从宝石套蓝插值到红
-     * （与能量条的左蓝右红同一对端点色），相位随时间推进 ⇒ 环在转。</p>
+     * <p>观感 = <b>绕方块转的两圈</b>（层数/颗数/半径/相位差/颜色与用户 2026-10-02 之前<b>逐值相同</b>）：
+     * 下圈贴底、细，上圈沿轴抬 0.65 格、更亮、相位错开 180°、半径 ×0.72 ⇒ 看着像"能量在方块周围
+     * 打转"。颜色沿<b>角度</b>从宝石套蓝插值到红（与能量条同一对端点色），相位随时间推进 ⇒ 环在转。</p>
+     *
+     * <h2>★ 2026-10-02：两环落在<b>垂直于角速度矢量</b>的平面里，且旋向与角速度一致</h2>
+     * <p>用户原话："控制手摇曲柄时，粒子的效果应该沿着手摇曲柄的转动方向，也就是位于手摇曲柄的
+     * 转动角速度矢量垂直的平面，旋转方向与角速度的方向一致。当然还是有两层粒子环，这个效果不变。"</p>
+     * <p>所以这里把"世界水平面 + x/z 直算 + 写死 y 高度"换成<b>正交基参数化</b>：</p>
+     * <pre>
+     * p(θ) = center + cos(θ) · r · u + sin(θ) · r · v ,  θ = 2πt + sign · phase
+     * </pre>
+     * <p>其中 {@code axis} = 动力源角速度方向的单位向量，{@code u} = {@link #perpendicularUnit}
+     * （垂直于 axis 的单位向量），{@code v = axis × u}。<b>定向是这样保证的</b>：
+     * {@code (u, v, axis)} 是右手系（{@code u × v = axis}），于是
+     * {@code dp/dθ = axis × (p - center)} —— "θ 顺着 +axis 推进"恰好就是"绕 axis 的右手旋转"。
+     * 因此把 {@code sign} 取成动力源生成转速的符号，环的旋向就与角速度矢量同向
+     * （角速度反向 ⇒ {@code sign} 变号 ⇒ 环反向；符号来源见 {@code HandCrankStressSource#rotationAxis}）。</p>
+     * <p>两环的<b>层间距也沿 axis</b>（而不是沿世界 y）：轴朝上时 {@link #RING_LOW_OFFSET} /
+     * {@link #RING_HIGH_OFFSET} 正好还原改前的 {@code y + 0.20D} / {@code y + 0.85D}
+     * （方块中心的 −0.30 / +0.35）；曲柄躺倒或朝下时，两环就跟着它真实的转轴走。</p>
      *
      * @param level 服务端世界
      * @param pos   被赋能的动力源方块位置
-     * @param phase 时间相位（调用方给 {@code tickCount × 0.25} 之类的连续值）
+     * @param spin  该动力源此刻的旋转轴（单位向量）+ 转向符号（{@code ±1}，见 {@link RotationAxis}）
+     * @param phase 时间相位（调用方给 {@code tickCount × 0.25} 之类的连续值）。
+     *              本方法<b>不</b>解释它的量纲，只用 {@code sign} 决定推进方向 ⇒
+     *              "旋向跟着曲柄、快慢与改前一样"（改前是每 25 tick 一圈）
      */
-    public static void fieldChargeRing(ServerLevel level, BlockPos pos, double phase) {
-        if (level == null || pos == null) {
+    public static void fieldChargeRing(ServerLevel level, BlockPos pos, RotationAxis spin, double phase) {
+        if (level == null || pos == null || spin == null) {
             return;
         }
-        double x = pos.getX() + 0.5D;
-        double y = pos.getY();
-        double z = pos.getZ() + 0.5D;
+        // 轴 = 角速度方向的单位向量；符号 = 转向（+1 = 绕该轴的右手方向）
+        Vec3 axis = spin.axis();
+        double sign = spin.sign();
+        // 正交基：u ⊥ axis，v = axis × u ⇒ (u, v, axis) 右手系（定向见方法注释）
+        Vec3 u = perpendicularUnit(axis);
+        Vec3 v = axis.cross(u).normalize();
+        // 方块中心；两圈沿 axis 分开（轴朝上时 = 原来的 y + 0.20 / y + 0.85）
+        Vec3 center = new Vec3(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
+        Vec3 low = center.add(axis.scale(RING_LOW_OFFSET));
+        Vec3 high = center.add(axis.scale(RING_HIGH_OFFSET));
         for (int i = 0; i < RING_POINTS; i++) {
             double t = (double) i / RING_POINTS;
-            double angle = Math.PI * 2.0D * t + phase;
+            // θ 顺着 sign 推进：角速度反向 ⇒ 环反向（快慢仍是调用方给的 phase，观感不变）
+            double angle = Math.PI * 2.0D * t + sign * phase;
             Vec3 color = GEM_BLUE.lerp(GEM_RED, t);
-            double dx = Math.cos(angle) * RING_RADIUS;
-            double dz = Math.sin(angle) * RING_RADIUS;
+            // 平面内的两个垂直分量（"落在垂直于角速度矢量的平面里"的全部含义）
+            double cu = Math.cos(angle) * RING_RADIUS;
+            double cv = Math.sin(angle) * RING_RADIUS;
             // 下圈（贴底、细）
-            level.sendParticles(dust(color, 0.85F), x + dx, y + 0.20D, z + dz,
+            Vec3 p0 = low.add(u.scale(cu)).add(v.scale(cv));
+            level.sendParticles(dust(color, 0.85F), p0.x, p0.y, p0.z,
                 1, 0.0D, 0.0D, 0.0D, 0.0D);
-            // 上圈（半高、更亮、相位差 180°、半径略小）
-            level.sendParticles(dust(color, 1.20F), x - dx * 0.72D, y + 0.85D, z - dz * 0.72D,
+            // 上圈（沿轴抬 0.65 格、更亮、相位差 180°、半径略小 —— 与改前逐值相同）
+            Vec3 p1 = high.subtract(u.scale(cu * 0.72D)).subtract(v.scale(cv * 0.72D));
+            level.sendParticles(dust(color, 1.20F), p1.x, p1.y, p1.z,
                 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }
+    }
+
+    /**
+     * <b>垂直于 {@code axis} 的单位向量</b>（两环正交基的第一个分量），退化安全。
+     *
+     * <p>做法：先取一个与轴<b>最不平行</b>的世界基向量当参考（三个分量里绝对值最小的那个），
+     * 再 {@code u = axis × reference} 并归一化。因为 {@code |axis·ref| ≤ 1/√3}，所以
+     * {@code |axis × ref| = √(1 - (axis·ref)²) ≥ √(2/3) ≈ 0.816} ——
+     * 无论轴指向哪里（正上/正下/东西南北，还是将来别的动力源的任意方向），叉乘都不会退化成零向量，
+     * {@code normalize()} 也就不会吐出 NaN。</p>
+     */
+    private static Vec3 perpendicularUnit(Vec3 axis) {
+        double ax = Math.abs(axis.x);
+        double ay = Math.abs(axis.y);
+        double az = Math.abs(axis.z);
+        Vec3 reference;
+        if (ax <= ay && ax <= az) {
+            reference = new Vec3(1.0D, 0.0D, 0.0D);
+        } else if (ay <= az) {
+            reference = new Vec3(0.0D, 1.0D, 0.0D);
+        } else {
+            reference = new Vec3(0.0D, 0.0D, 1.0D);
+        }
+        return axis.cross(reference).normalize();
     }
 
     /** 长按光环每圈几颗（越大越"流动"，太小会看着像静止的点）。 */

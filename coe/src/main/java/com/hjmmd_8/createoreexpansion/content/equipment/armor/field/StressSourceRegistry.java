@@ -47,6 +47,10 @@ import net.minecraft.world.level.block.state.BlockState;
  *     public List<BlockPos> injectorSockets(ServerLevel level, BlockPos pos) {
  *         return List.of(pos.above(), pos.below());                    // 注入器能放哪几格
  *     }
+ *     public RotationAxis rotationAxis(ServerLevel level, BlockPos pos) {
+ *         // 转轴 + 转向（粒子环的平面与旋向）：轴取单元向量、符号取生成转速的符号
+ *         return RotationAxis.of(axisVector, generatedSpeedSign);      // 拿不到 ⇒ return null
+ *     }
  * }
  *
  * // ② 在 mod 构造器（或 FMLCommonSetupEvent）里登记一次：

@@ -14,6 +14,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.RotationAxis;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FieldChargeConfigs;
 
 import net.minecraft.core.BlockPos;
@@ -343,7 +344,14 @@ public final class FieldChargeRuntime {
         }
         // ⑥ 粒子（每 2 tick 一次；形态见 ArmorSkillFx，颜色一律取自宝石套 GEM_STOPS）
         if (player.tickCount % 2 == 0) {
-            ArmorSkillFx.fieldChargeRing(world, session.source, player.tickCount * 0.25D);
+            // ★ 2026-10-02 用户要求：两圈环绕粒子必须落在"垂直于该动力源角速度矢量"的平面里、
+            //   旋向与角速度一致（"还是有两层粒子环，这个效果不变"）。轴与符号**只从动力源自己拿**
+            //   （rotationAxis），本类不认识 Create、也不写死水平面或方向：
+            //   拿不到旋转信息（方块实体没了 / 没在转）就这一 tick 不画环，等下一 tick 再说。
+            RotationAxis spin = session.kind.rotationAxis(world, session.source);
+            if (spin != null) {
+                ArmorSkillFx.fieldChargeRing(world, session.source, spin, player.tickCount * 0.25D);
+            }
             // 拖尾按套取色（规格 §0.3）：临域充力只存在于宝石套的槽位 3
             // （skillId(GEM, 2) == FIELD_CHARGE），所以这里明确传宝石套 —— 颜色由
             // ArmorSkillFx#trailColors(GEM) 解析，粒子实现里不写死任何套。

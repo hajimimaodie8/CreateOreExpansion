@@ -6,12 +6,17 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import com.simibubi.create.AllBlocks;
+import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
+import com.simibubi.create.content.kinetics.crank.HandCrankBlock;
 import com.simibubi.create.content.kinetics.crank.HandCrankBlockEntity;
+
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.RotationAxis;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * <b>Create 手摇曲柄 = 第一个「动力源方块」实现</b>（用户 2026-10-01 规格 §2.1/§4.1）。
@@ -199,5 +204,63 @@ public final class HandCrankStressSource implements StressSourceKind {
             sockets.add(pos.relative(dir));
         }
         return sockets;
+    }
+
+    /**
+     * <b>此刻的旋转轴与转向</b>（用户 2026-10-02 的粒子要求）—— 供临域充力那两圈环绕粒子落在
+     * "垂直于角速度矢量"的平面里、且旋向与角速度一致。依据全部照 {@code _create_src} 的留档源码逐行核对：
+     *
+     * <h2>① 轴 = FACING 那个轴的正方向单位向量</h2>
+     * <ul>
+     *   <li>{@code HandCrankBlock#getRotationAxis}（:132-135）：{@code return state.getValue(FACING)
+     *       .getAxis();} ⇒ 曲柄的旋转轴就是 blockstate {@code FACING} 属性的那个轴；</li>
+     *   <li>两个渲染路径都<b>绕该轴的正方向</b>按右手定则转，且用的是同一个角度：
+     *       {@code HandCrankVisual#rotateCrank}（:52-57）
+     *       {@code crank.rotate(rad(getIndependentAngle(pt)), Direction.get(AxisDirection.POSITIVE, facing.getAxis()))}；
+     *       {@code KineticBlockEntityRenderer#kineticRotationTransform}（:102-105）
+     *       {@code buffer.rotateCentered(angle, Direction.get(AxisDirection.POSITIVE, axis))}。</li>
+     *   <li>⚠ {@code Direction.get(POSITIVE, ...)} 与 FACING 本身朝正还是朝负<b>无关</b>
+     *       （FACING=DOWN 时轴仍是 +Y、FACING=WEST 时仍是 +X）；正负全部由下面第 ② 步的符号承担。</li>
+     * </ul>
+     *
+     * <h2>② 符号 = {@code getGeneratedSpeed()} 的符号</h2>
+     * <ul>
+     *   <li>{@code HandCrankBlockEntity#getGeneratedSpeed}（:59-65）=
+     *       {@code convertToDirection((inUse == 0 ? 0 : clockwise() ? -1 : 1) * crank.getRotationSpeed(), FACING)}，
+     *       而 {@code KineticBlockEntity#convertToDirection}（:508-510）按 FACING 的轴方向折正负
+     *       （{@code d.getAxisDirection() == POSITIVE ? axisSpeed : -axisSpeed}）；</li>
+     *   <li>{@code HandCrankBlockEntity#clockwise()}（:67-69）就是 {@code backwards}；本技能的驱动是
+     *       {@code turn(false)}（见 {@link #drive}）⇒ {@code backwards == false} ⇒ 折正负前恒为 {@code +32}；</li>
+     *   <li><b>为什么符号正好对应手柄的转向</b>：手柄角度是 {@code HandCrankBlockEntity#tick}（:89-91）
+     *       里 {@code independentAngle += convertToAngular(getSpeed())} 累出来的，而源方块自己的
+     *       {@code speed} 就是 {@code getGeneratedSpeed()}（{@code GeneratingKineticBlockEntity} 的
+     *       :90 {@code float speed = getGeneratedSpeed();} 与 :135 {@code setSpeed(speed);}）；
+     *       渲染再把它按上面①那两行绕"轴正方向"转 ⇒
+     *       <b>{@code ω = signum(getGeneratedSpeed()) · |ω| · FACING 轴正方向单位向量}</b>。</li>
+     * </ul>
+     *
+     * <p>兜底：{@code inUse} 在两个 tick 之间会被 {@code tick()} 自减（{@link #keepAlive} 每 tick 续回
+     * {@link #MAX_IN_USE}，正常看不到 0）；真读到 0 时就按 {@code turn(false)} 会写成的那个值折算
+     * （{@code convertToDirection(+1, FACING)}）—— <b>绝不</b>回落到某个写死的世界方向，
+     * 拿不到方块实体时则返回 {@code null}（技能侧这一 tick 不画环）。</p>
+     */
+    @Override
+    public RotationAxis rotationAxis(ServerLevel level, BlockPos pos) {
+        if (!(level.getBlockEntity(pos) instanceof HandCrankBlockEntity crank)) {
+            return null;
+        }
+        BlockState state = crank.getBlockState();
+        if (!(state.getBlock() instanceof HandCrankBlock)) {
+            // 判定那一关只认 create:hand_crank，所以理论上到不了这里；拿不到就老实说拿不到。
+            return null;
+        }
+        Direction facing = state.getValue(HandCrankBlock.FACING);
+        Direction positive = Direction.get(Direction.AxisDirection.POSITIVE, facing.getAxis());
+        Vec3 axis = new Vec3(positive.getStepX(), positive.getStepY(), positive.getStepZ());
+        float generated = crank.getGeneratedSpeed();
+        double sign = generated != 0.0F
+            ? Math.signum(generated)
+            : Math.signum(KineticBlockEntity.convertToDirection(1.0F, facing));
+        return RotationAxis.of(axis, sign);
     }
 }
