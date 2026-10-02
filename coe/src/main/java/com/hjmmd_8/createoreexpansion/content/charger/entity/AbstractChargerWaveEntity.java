@@ -313,6 +313,26 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/** 环绕波要素：环绕半径（格）；{@code 0} = 关闭（默认）。 */
 	private double orbitRadius;
 
+	/**
+	 * <b>环绕波心跳日志的节流刻度</b>（每几 tick 一行位置行）：20 tick = 1 秒一行。
+	 *
+	 * <p>环绕波寿命上限与主波同为 {@value #MAX_LIFETIME_TICKS} tick ⇒ 单枚最多 10 行心跳，
+	 * 量级与"发生了多少事"成正比（与 {@link WaveDiag} 的 trace 通道口径一致）；
+	 * 取 20 而不是更小，是为了在"证明真的在绕"与"不刷屏"之间取平衡。</p>
+	 */
+	private static final int ORBIT_HEARTBEAT_TICKS = 20;
+
+	/**
+	 * <b>"父波已经没了"标记</b>（只有环绕波会被置位）：{@link #tick()} 里查出父波取不到/已消散后置位，
+	 * 随后 {@link #remove(RemovalReason)} 据此把消散原因写成"父波消散（主波消散 ⇒ 环绕波一起收尾）"，
+	 * 而不是笼统的"自身消散"。
+	 *
+	 * <p>为什么是"标记 + 在唯一的移除回调里记一行"而不是在查不到父波的那一刻直接记：
+	 * 实体被移除的路径不止一条（父波没了、命中目标、寿命/行程上限），收尾日志散在各处就必然
+	 * 出现"有的路径有日志、有的没有"；{@code remove} 是所有路径的唯一汇合点。</p>
+	 */
+	private boolean orbitAnchorLost;
+
 	/** 环绕波要素：角速度（<b>弧度/tick</b>，1 圈/秒 = 2π/20）；{@code 0} = 关闭（默认）。 */
 	private double orbitAngularSpeed;
 
@@ -341,6 +361,18 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	@Nullable
 	private Vec3 orbitAnchorPos;
+
+	/**
+	 * 本 tick 用来铺环的<b>环平面法向</b>（只有环绕波有意义）= {@link #applyOrbitElement()} 里
+	 * <b>实际使用</b>的那个方向（父波的运动方向，取不到才回落到自身方向）。
+	 *
+	 * <p>为什么不能由粒子侧直接读 {@code movement}：位置改写用的是<b>父波</b>的方向，而能量场可以把
+	 * 父波的方向逐 tick 掰弯（{@code setFieldVelocity}）——两者一旦不同，粒子圈的法向就与真实轨道
+	 * 错开（画出一个跟轨道不平行的环）。这里让位置改写把"我这一 tick 到底按哪个法向铺的环"记下来，
+	 * 粒子侧只读这个值 ⇒ 圈与轨道必然共面。</p>
+	 */
+	@Nullable
+	private Vec3 orbitRingNormal;
 
 	/**
 	 * <b>命中附加效果要素</b>：命中生物时追加施加的药水效果（{@code null} = <b>不做事</b>，
@@ -554,10 +586,51 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		Vec3 anchorPos = parent.position();
 		Vec3 offset = u.scale(orbitRadius * Math.cos(theta)).add(v.scale(orbitRadius * Math.sin(theta)));
 		setPos(anchorPos.add(offset));
-		// 只记两个原始事实，供粒子用（见两个字段的说明）；位置公式本身仍只有上面这一处。
+		// 只记三个原始事实，供粒子/日志用（见三个字段的说明）；位置公式本身仍只有上面这一处。
 		this.orbitCurrentPhase = theta;
 		this.orbitAnchorPos = anchorPos;
+		this.orbitRingNormal = dir;
+		logOrbitDiag(anchorPos);
 		return true;
+	}
+
+	/**
+	 * 两位小数、<b>与区域设置无关</b>的格式化（日志要机器可比对：某些区域会把小数点写成逗号）。
+	 */
+	private static String fmt2(double value) {
+		return String.format(java.util.Locale.ROOT, "%.2f", value);
+	}
+
+	/**
+	 * <b>环绕波的诊断行（调试可见性；作者 2026-10-02：「现在尝试添加调试行，我来进行测试有没有环绕波生成」）</b>。
+	 *
+	 * <p>三条时刻线，全部走 {@link WaveDiag#trace}（AGENTS 红线：波相关日志的唯一出口），
+	 * <b>不新建第二套日志前缀</b>：</p>
+	 * <ol>
+	 *   <li><b>出生</b>（{@code tickCount == 1}）：父波 UUID、批次、半径、角速度（弧度/tick 与圈/秒）、
+	 *       初始相位 —— 一眼能判"它到底生成了没有、按什么参数绕"；</li>
+	 *   <li><b>位置心跳</b>（每 20 tick 一行，节流）：当前 tick、自身坐标、父波坐标、
+	 *       <b>距父波距离</b>（恒等于半径 ⇒ 这就是"r≈0.8 真的在绕"的机器可判证据）、批次；</li>
+	 *   <li><b>消散</b>：见 {@link #remove(RemovalReason)}（所有移除路径的唯一汇合点）。</li>
+	 * </ol>
+	 *
+	 * <p>节流刻度刻意与"同批次豁免碰撞"那行（{@code tickCount % 20}）取同一拍：
+	 * 一次发射的环绕波与并排主波在同一 tick 打日志，读起来能对齐。</p>
+	 */
+	private void logOrbitDiag(Vec3 anchorPos) {
+		if (tickCount == 1) {
+			WaveDiag.trace(
+				"环绕波出生：{} 级波（{}），父波 UUID {}，批次 {}（继承父波），半径 {} 格、角速度 {} 弧度/tick（{} 圈/秒）、起始相位 {}；位置 = 父波位置 + r×(u·cosθ + v·sinθ) 逐 tick 改写",
+				waveLevel, WaveLevels.glyph(waveLevel), orbitAnchorUuid, getFiringBatch(),
+				fmt2(orbitRadius), fmt2(orbitAngularSpeed),
+				fmt2(orbitAngularSpeed * 20.0D / (Math.PI * 2.0D)),
+				fmt2(orbitPhase));
+		} else if (tickCount % ORBIT_HEARTBEAT_TICKS == 0) {
+			WaveDiag.trace(
+				"环绕波心跳：tick {}，自身 {}，父波 {}，距父波 {} 格（恒 = 半径 {} 格），批次 {}",
+				tickCount, position(), anchorPos, fmt2(position().distanceTo(anchorPos)),
+				fmt2(orbitRadius), getFiringBatch());
+		}
 	}
 
 	/**
@@ -613,13 +686,16 @@ public abstract class AbstractChargerWaveEntity extends Entity
 				orbitRadius, orbitCurrentPhase, false);
 			return;
 		}
-		Vec3[] axes = orbitPlaneAxes(movement);
+		// 环平面法向取"位置改写实际用的那个"（见 orbitRingNormal 的说明）：父波方向被能量场掰弯时，
+		// 粒子圈必须跟着同一套几何，才不会画出一个与真实轨道不平行的环。
+		Vec3 normal = orbitRingNormal != null ? orbitRingNormal : movement;
+		Vec3[] axes = orbitPlaneAxes(normal);
 		// 出生簇：实体加入世界后的第一 tick（tickCount 在 super.tick() 里 +1，故首 tick 读作 1）
 		if (tickCount == 1) {
 			ChargerWaveFx.burstOrbitSpawn(server, anchorPos, renderColor, axes[0], axes[1], orbitRadius,
 				orbitCurrentPhase);
 		}
-		ChargerWaveFx.sendOrbitTrail(server, position(), renderColor, movement, axes[0], axes[1],
+		ChargerWaveFx.sendOrbitTrail(server, position(), renderColor, normal, axes[0], axes[1],
 			orbitRadius, orbitCurrentPhase, tickCount % ChargerWaveFx.ORBIT_MARK_INTERVAL_TICKS == 0);
 	}
 
@@ -690,8 +766,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (!anchorAlive) {
 			// "生成了但立刻消散"必须能自证（作者只有日志可看）：唯一原因就是上面那次父波查找失败，
 			// 把父波 UUID 与本次批次写出来 ⇒ 日志里可区分"没生成 / 生成即消散 / 一直在飞"。
-			WaveDiag.trace("环绕波消散：父波 {} 取不到或已消散 ⇒ 本波（{} 级，批次 {}）随之收尾（主波消散 ⇒ 环绕波一起收尾的唯一实现）",
-				orbitAnchorUuid, WaveLevels.glyph(waveLevel), getFiringBatch());
+			// 2026-10-02 第三版：原因先记进字段，完整的"消散"行由 remove() 统一打
+			// （所有移除路径都汇合在那里，避免每条 discard 前各写半行而漏掉某条路径）。
+			orbitAnchorLost = true;
 			discard();
 			return;
 		}
@@ -1010,6 +1087,19 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			} else {
 				ChargerWaveFx.burst(orbitServer, position(), getWaveType().trailStyle(), renderColor);
 			}
+			// 收尾诊断行（与出生/心跳同一条通道，见 logOrbitDiag）：作者只靠日志判
+			// "生成了没有、是不是立刻没了、为什么没的"。三种原因一眼可分：
+			//   · 父波消散 ⇒ 主波消散带走了它（正常收尾，唯一实现）；
+			//   · 出生即收尾 ⇒ 它生成了却在第一 tick 就没了（最容易被误判成"没生成"）；
+			//   · 自身消散 ⇒ 命中目标，或撞上寿命/行程上限。
+			String why = orbitAnchorLost
+				? "父波消散（主波消散 ⇒ 环绕波一起收尾，唯一实现）"
+				: (tickCount == 1
+					? "出生即收尾（第一 tick 就取不到父波）"
+					: "自身消散（命中 / 寿命 / 行程上限）");
+			WaveDiag.trace("环绕波消散：{}；父波 UUID {}，批次 {}，波级 {}，半径 {} 格，已存活 {} tick",
+				why, orbitAnchorUuid, getFiringBatch(), WaveLevels.glyph(waveLevel),
+				fmt2(orbitRadius), tickCount);
 		}
 		super.remove(reason);
 	}

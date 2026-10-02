@@ -194,6 +194,15 @@ public final class StarShockRuntime {
     private static final class Cast {
         /** 本次发射的批次号（> 0）。 */
         private final int batch;
+        /**
+         * <b>发射者本人</b>（服务端玩家）。
+         *
+         * <p>为什么要存它：结算时要把"这一发掷骰/命中/生成了多少"作为<b>游戏内提示</b>发给发射者
+         * （{@link StarShockDebug#reportOrbit}，只发本人、不广播），而 {@code abandon}（能量见底断停）
+         * 与 {@code forget}（离场/死亡）这两条收尾路径<b>拿不到 player 参数</b> —— 它们只有
+         * {@code CASTS.remove(...)} 的结果。存在 Cast 里就三条路径一视同仁。</p>
+         */
+        private final net.minecraft.server.level.ServerPlayer player;
         /** 该等级的配置在**发射那一刻**定死（中途换甲不会让还在飞的波改变编组语义）。 */
         private final StarShockConfigs.Config config;
         /** 该技能的逐技能等级（1~3）。 */
@@ -222,7 +231,9 @@ public final class StarShockRuntime {
          */
         private int lastHeldTicks;
 
-        private Cast(int batch, StarShockConfigs.Config config, int level) {
+        private Cast(net.minecraft.server.level.ServerPlayer player, int batch,
+            StarShockConfigs.Config config, int level) {
+            this.player = player;
             this.batch = batch;
             this.config = config;
             this.level = level;
@@ -260,7 +271,7 @@ public final class StarShockRuntime {
         if (!ArmorEnergy.consume(player, config.tapCost())) {
             return false;
         }
-        Cast cast = new Cast(nextBatch(), config, Math.max(1, Math.min(StarShockConfigs.MAX_LEVEL, level)));
+        Cast cast = new Cast(player, nextBatch(), config, Math.max(1, Math.min(StarShockConfigs.MAX_LEVEL, level)));
         cast.paid = config.tapCost();
         CASTS.put(player.getUUID(), cast);
         // 点按那一 tick：t = 0 ⇒ 1 枚主波（需求 §3.3(b)"点按（t ≈ 0）⇒ 1 枚"）。
@@ -382,6 +393,13 @@ public final class StarShockRuntime {
             cast.fired,
             cast.orbitRolls, fmt2(cast.orbitPeakChance), cast.orbitHits, cast.orbitSpawned,
             paid, cast.config.tapCost(), holdPart);
+        // 游戏内调试提示（临时、可整体移除；默认关闭，只有 /orbitdebug on 过的发射者本人会收到）：
+        // 让作者<b>不用切窗口看日志</b>就能判"这一发有没有环绕波生成"。走聊天栏、只发本人、不广播；
+        // 一个字符都不写日志文件（波日志的唯一出口仍是 WaveDiag）。
+        // 移除方式见 StarShockDebug 类尾注释（删本类 + 删下面这一行）。
+        if (cast.player instanceof net.minecraft.server.level.ServerPlayer serverCaster) {
+            StarShockDebug.reportOrbit(serverCaster, cast.orbitRolls, cast.orbitHits, cast.orbitSpawned);
+        }
     }
 
     /**
