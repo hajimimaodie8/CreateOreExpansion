@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "createoreexpansion:item/gem_helmet"
+    "layer0": "createoreexpansion:item/sapphire_ruby_leggings"
   }
 }

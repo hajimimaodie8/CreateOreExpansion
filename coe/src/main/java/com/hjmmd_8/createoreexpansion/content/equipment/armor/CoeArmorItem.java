@@ -28,7 +28,7 @@ import org.jetbrains.annotations.Nullable;
  * <p><b>贴图路径约定</b>：{@code assets/<namespace>/textures/models/armor/<name>_layer_1.png}
  * （头盔 / 胸甲 / 靴子）与 {@code ..._layer_2.png}（<b>只有护腿</b>）。
  * 传给构造器的 {@code textureLoc} 是<b>去掉 {@code _layer_N} 后缀</b>的名字，
- * 例如 {@code createoreexpansion:jade_armor} → {@code jade_armor_layer_1.png}。</p>
+ * 例如 {@code createoreexpansion:jade_topaz_armor} → {@code jade_topaz_armor_layer_1.png}。</p>
  *
  * <p><b>注意</b>：{@code Properties.stacksTo(1)} 是盔甲类的惯例（继承自 Create 的写法），
  * 但真正决定"能否堆叠"的是物品属性本身；此处保持与 Create 一致。</p>

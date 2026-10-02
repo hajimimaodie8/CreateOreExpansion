@@ -79,8 +79,8 @@ public final class ArmorEnergyColors {
             return DEFAULT_STOPS;
         }
         return switch (set) {
-            case JADE -> JADE_STOPS;
-            case GEM -> GEM_STOPS;
+            case JADE_TOPAZ -> JADE_STOPS;
+            case SAPPHIRE_RUBY -> GEM_STOPS;
             case ASTRAL -> ASTRAL_STOPS;
             // 雷鸣：与雷鸣合金能量条同源（不复制数值）
             case THUNDER -> List.of(ToolEnergyColorConfig.THUNDERITE.light,

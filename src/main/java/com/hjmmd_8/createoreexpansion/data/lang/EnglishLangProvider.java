@@ -274,15 +274,15 @@ public class EnglishLangProvider extends LanguageProvider {
         add(CoeItems.THUNDERITE_HOE.get(), "Thunderite Hoe");
 
         // ========== Four armour sets (4 sets x 4 pieces; added W13, named by the user 2026-09-30) ==========
-        // Set names are the user's: Jade (翠玉) / Gem (宝石) / Astral (星界) / Thunder (雷鸣).
-        add(CoeItems.JADE_HELMET.get(), "Jade Helmet");
-        add(CoeItems.JADE_CHESTPLATE.get(), "Jade Chestplate");
-        add(CoeItems.JADE_LEGGINGS.get(), "Jade Leggings");
-        add(CoeItems.JADE_BOOTS.get(), "Jade Boots");
-        add(CoeItems.GEM_HELMET.get(), "Gem Helmet");
-        add(CoeItems.GEM_CHESTPLATE.get(), "Gem Chestplate");
-        add(CoeItems.GEM_LEGGINGS.get(), "Gem Leggings");
-        add(CoeItems.GEM_BOOTS.get(), "Gem Boots");
+        // Set names are the user's: Jade Topaz (翠玉) / Sapphire Ruby (宝石) / Astral (星界) / Thunder (雷鸣).
+        add(CoeItems.JADE_TOPAZ_HELMET.get(), "Jade Topaz Helmet");
+        add(CoeItems.JADE_TOPAZ_CHESTPLATE.get(), "Jade Topaz Chestplate");
+        add(CoeItems.JADE_TOPAZ_LEGGINGS.get(), "Jade Topaz Leggings");
+        add(CoeItems.JADE_TOPAZ_BOOTS.get(), "Jade Topaz Boots");
+        add(CoeItems.SAPPHIRE_RUBY_HELMET.get(), "Sapphire Ruby Helmet");
+        add(CoeItems.SAPPHIRE_RUBY_CHESTPLATE.get(), "Sapphire Ruby Chestplate");
+        add(CoeItems.SAPPHIRE_RUBY_LEGGINGS.get(), "Sapphire Ruby Leggings");
+        add(CoeItems.SAPPHIRE_RUBY_BOOTS.get(), "Sapphire Ruby Boots");
         add(CoeItems.ASTRAL_HELMET.get(), "Astral Helmet");
         add(CoeItems.ASTRAL_CHESTPLATE.get(), "Astral Chestplate");
         add(CoeItems.ASTRAL_LEGGINGS.get(), "Astral Leggings");
@@ -343,9 +343,9 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.hud.equipment.skill_line", "Skill %s  %s  [%s]");
         add("createoreexpansion.hud.equipment.energy", "Energy %s / %s");
         add("createoreexpansion.tooltip.armor_energy_total", "Set total %s / %s");
-        // Set names (same source as the armor item names)
-        add("createoreexpansion.armor_set.jade", "Jade");
-        add("createoreexpansion.armor_set.gem", "Gem");
+        // Set names (same source as the armor item names; the HUD derives createoreexpansion.armor_set.<setName>)
+        add("createoreexpansion.armor_set.jade_topaz", "Jade Topaz");
+        add("createoreexpansion.armor_set.sapphire_ruby", "Sapphire Ruby");
         add("createoreexpansion.armor_set.astral", "Astral");
         add("createoreexpansion.armor_set.thunder", "Thunder");
 

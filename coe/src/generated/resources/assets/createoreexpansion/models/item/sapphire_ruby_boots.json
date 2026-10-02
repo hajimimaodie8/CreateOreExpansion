@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "createoreexpansion:item/jade_boots"
+    "layer0": "createoreexpansion:item/sapphire_ruby_boots"
   }
 }

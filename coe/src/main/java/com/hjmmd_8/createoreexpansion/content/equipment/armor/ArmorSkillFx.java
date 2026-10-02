@@ -28,10 +28,10 @@ import org.joml.Vector3f;
  * <p>任何装备技能粒子都<b>不许自己定色</b>，一律问 {@link #trailColors(ArmorSet)} /
  * {@link #impactColors(ArmorSet)}：</p>
  * <ol>
- *   <li><b>宝石套</b>（{@link ArmorSet#GEM}）⇒ <b>蓝 → 红</b>，<b>直接取</b>
+ *   <li><b>宝石套</b>（{@link ArmorSet#SAPPHIRE_RUBY}）⇒ <b>蓝 → 红</b>，<b>直接取</b>
  *       {@link ArmorEnergyColors#stopsOf(ArmorSet)} 的两端（与宝石套能量条同源，见下方
  *       {@code GEM_SOURCE}）——本文件<b>不抄字面量</b>；</li>
- *   <li><b>翠玉套</b>（{@link ArmorSet#JADE}）⇒ 现有黄→绿，<b>逐字保留</b>（本层观感零变化）；</li>
+ *   <li><b>翠玉套</b>（{@link ArmorSet#JADE_TOPAZ}）⇒ 现有黄→绿，<b>逐字保留</b>（本层观感零变化）；</li>
  *   <li><b>其它套</b>（星界 / 雷鸣，以及未知）⇒ 回落到该套
  *       {@code ArmorEnergyColors.stopsOf(set)} 的<b>首尾两色</b>，不另定色。</li>
  * </ol>
@@ -73,7 +73,7 @@ public final class ArmorSkillFx {
      * @param set 当前生效的套；{@code null} 视为"没有套"⇒ 回落默认色
      */
     public static Duo trailColors(ArmorSet set) {
-        return set == ArmorSet.JADE ? JADE_TRAIL : energyDuo(set);
+        return set == ArmorSet.JADE_TOPAZ ? JADE_TRAIL : energyDuo(set);
     }
 
     /**
@@ -83,7 +83,7 @@ public final class ArmorSkillFx {
      * @param set 当前生效的套；{@code null} 视为"没有套"⇒ 回落默认色
      */
     public static Duo impactColors(ArmorSet set) {
-        return set == ArmorSet.JADE ? JADE_IMPACT : energyDuo(set);
+        return set == ArmorSet.JADE_TOPAZ ? JADE_IMPACT : energyDuo(set);
     }
 
     /** 拖尾每段的间距（格）：越靠后越黄。 */
@@ -139,7 +139,7 @@ public final class ArmorSkillFx {
      *
      * <p>形态逐字复用 {@link #trail}（同样的分段数、同样的左右双列、同样的"只在水平移动时发"、
      * 同样的亮闪点缀），两端色同样走唯一颜色源 {@link #trailColors(ArmorSet)} ——
-     * 宝石套解析出来就是 {@code ArmorEnergyColors.stopsOf(ArmorSet.GEM)} 的蓝 → 红
+     * 宝石套解析出来就是 {@code ArmorEnergyColors.stopsOf(ArmorSet.SAPPHIRE_RUBY)} 的蓝 → 红
      * （见 {@code GEM_SOURCE}），本方法<b>不写死任何套</b>。</p>
      *
      * @param player 服务端玩家
@@ -206,7 +206,7 @@ public final class ArmorSkillFx {
      *
      * @param player  落地的玩家
      * @param holding 落地时是否正按住该套的摔落豁免技能键；为 {@code true} 时升级成"两色交加"版
-     * @param set     这次豁免由哪一套提供（{@link ArmorSet#JADE} / {@link ArmorSet#GEM}）——
+     * @param set     这次豁免由哪一套提供（{@link ArmorSet#JADE_TOPAZ} / {@link ArmorSet#SAPPHIRE_RUBY}）——
      *                调用点各传自己的套，别再让宝石套借用翠玉的黄绿
      */
     public static void landingImpact(Player player, boolean holding, ArmorSet set) {
@@ -267,7 +267,7 @@ public final class ArmorSkillFx {
      * 技能粒子跟着变（把关卡 {@code check-armor-sets.ps1} 第 14 节也钉住了那对数值）。</p>
      */
     private static final java.util.List<java.awt.Color> GEM_SOURCE =
-        ArmorEnergyColors.stopsOf(ArmorSet.GEM);
+        ArmorEnergyColors.stopsOf(ArmorSet.SAPPHIRE_RUBY);
 
     private static final Vec3 GEM_BLUE = toVec(GEM_SOURCE.get(0));
 
@@ -281,7 +281,7 @@ public final class ArmorSkillFx {
      * 本文件不另定任何颜色（规格 §8 第 4 层第 3 条）。
      */
     private static Duo energyDuo(ArmorSet set) {
-        if (set == ArmorSet.GEM) {
+        if (set == ArmorSet.SAPPHIRE_RUBY) {
             // 宝石套用已经缓存好的那一对（与能量条同源，见 GEM_SOURCE）
             return GEM_DUO;
         }

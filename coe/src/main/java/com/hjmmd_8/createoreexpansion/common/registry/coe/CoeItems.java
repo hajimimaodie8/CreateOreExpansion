@@ -993,35 +993,35 @@ public final class CoeItems {
     // （物品注册顺序影响创造页内的排列次序，纯搬运不该顺手改掉它）。
     // 素材与装备层出处见各套注释（贴图未改一像素）。
 
-    // ---- 翠玉盔甲（jade）：组1（亮绿 + 金）----
+    // ---- 翠玉盔甲（jade_topaz）：组1（亮绿 + 金）----
     // 装备层 1790668020120(layer_1) / 1790670229300(layer_2)
 
-    public static final ItemEntry<CoeArmorItem> JADE_HELMET = armor(
-        "jade_helmet", CoeArmorMaterials.JADE, ArmorItem.Type.HELMET, "jade_armor", Durability.JADE_HELMET);
+    public static final ItemEntry<CoeArmorItem> JADE_TOPAZ_HELMET = armor(
+        "jade_topaz_helmet", CoeArmorMaterials.JADE_TOPAZ, ArmorItem.Type.HELMET, "jade_topaz_armor", Durability.JADE_TOPAZ_HELMET);
 
-    public static final ItemEntry<CoeArmorItem> JADE_CHESTPLATE = armor(
-        "jade_chestplate", CoeArmorMaterials.JADE, ArmorItem.Type.CHESTPLATE, "jade_armor", Durability.JADE_CHESTPLATE);
+    public static final ItemEntry<CoeArmorItem> JADE_TOPAZ_CHESTPLATE = armor(
+        "jade_topaz_chestplate", CoeArmorMaterials.JADE_TOPAZ, ArmorItem.Type.CHESTPLATE, "jade_topaz_armor", Durability.JADE_TOPAZ_CHESTPLATE);
 
-    public static final ItemEntry<CoeArmorItem> JADE_LEGGINGS = armor(
-        "jade_leggings", CoeArmorMaterials.JADE, ArmorItem.Type.LEGGINGS, "jade_armor", Durability.JADE_LEGGINGS);
+    public static final ItemEntry<CoeArmorItem> JADE_TOPAZ_LEGGINGS = armor(
+        "jade_topaz_leggings", CoeArmorMaterials.JADE_TOPAZ, ArmorItem.Type.LEGGINGS, "jade_topaz_armor", Durability.JADE_TOPAZ_LEGGINGS);
 
-    public static final ItemEntry<CoeArmorItem> JADE_BOOTS = armor(
-        "jade_boots", CoeArmorMaterials.JADE, ArmorItem.Type.BOOTS, "jade_armor", Durability.JADE_BOOTS);
+    public static final ItemEntry<CoeArmorItem> JADE_TOPAZ_BOOTS = armor(
+        "jade_topaz_boots", CoeArmorMaterials.JADE_TOPAZ, ArmorItem.Type.BOOTS, "jade_topaz_armor", Durability.JADE_TOPAZ_BOOTS);
 
-    // ---- 宝石盔甲（gem）：组2（深蓝紫 + 红，饱和度最高）----
+    // ---- 宝石盔甲（sapphire_ruby）：组2（深蓝紫 + 红，饱和度最高）----
     // 装备层 1790670637200(layer_1) / 1790670820040(layer_2)
 
-    public static final ItemEntry<CoeArmorItem> GEM_HELMET = armor(
-        "gem_helmet", CoeArmorMaterials.GEM, ArmorItem.Type.HELMET, "gem_armor", Durability.GEM_HELMET);
+    public static final ItemEntry<CoeArmorItem> SAPPHIRE_RUBY_HELMET = armor(
+        "sapphire_ruby_helmet", CoeArmorMaterials.SAPPHIRE_RUBY, ArmorItem.Type.HELMET, "sapphire_ruby_armor", Durability.SAPPHIRE_RUBY_HELMET);
 
-    public static final ItemEntry<CoeArmorItem> GEM_CHESTPLATE = armor(
-        "gem_chestplate", CoeArmorMaterials.GEM, ArmorItem.Type.CHESTPLATE, "gem_armor", Durability.GEM_CHESTPLATE);
+    public static final ItemEntry<CoeArmorItem> SAPPHIRE_RUBY_CHESTPLATE = armor(
+        "sapphire_ruby_chestplate", CoeArmorMaterials.SAPPHIRE_RUBY, ArmorItem.Type.CHESTPLATE, "sapphire_ruby_armor", Durability.SAPPHIRE_RUBY_CHESTPLATE);
 
-    public static final ItemEntry<CoeArmorItem> GEM_LEGGINGS = armor(
-        "gem_leggings", CoeArmorMaterials.GEM, ArmorItem.Type.LEGGINGS, "gem_armor", Durability.GEM_LEGGINGS);
+    public static final ItemEntry<CoeArmorItem> SAPPHIRE_RUBY_LEGGINGS = armor(
+        "sapphire_ruby_leggings", CoeArmorMaterials.SAPPHIRE_RUBY, ArmorItem.Type.LEGGINGS, "sapphire_ruby_armor", Durability.SAPPHIRE_RUBY_LEGGINGS);
 
-    public static final ItemEntry<CoeArmorItem> GEM_BOOTS = armor(
-        "gem_boots", CoeArmorMaterials.GEM, ArmorItem.Type.BOOTS, "gem_armor", Durability.GEM_BOOTS);
+    public static final ItemEntry<CoeArmorItem> SAPPHIRE_RUBY_BOOTS = armor(
+        "sapphire_ruby_boots", CoeArmorMaterials.SAPPHIRE_RUBY, ArmorItem.Type.BOOTS, "sapphire_ruby_armor", Durability.SAPPHIRE_RUBY_BOOTS);
 
     // ---- 星界盔甲（astral）：组3（淡蓝灰 + 粉/青，低饱和）----
     // 装备层 1790676421592(layer_1) / 1790676959906(layer_2)
@@ -1078,16 +1078,16 @@ public final class CoeItems {
         public static final int VANILLA_NETHERITE_BASE = 37;
 
         // 翠玉：钻石与下界合金的 3/4 分界点 = 33 + (37-33)*3/4 = 36
-        public static final int JADE_HELMET = 36 * 11;
-        public static final int JADE_CHESTPLATE = 36 * 16;
-        public static final int JADE_LEGGINGS = 36 * 15;
-        public static final int JADE_BOOTS = 36 * 13;
+        public static final int JADE_TOPAZ_HELMET = 36 * 11;
+        public static final int JADE_TOPAZ_CHESTPLATE = 36 * 16;
+        public static final int JADE_TOPAZ_LEGGINGS = 36 * 15;
+        public static final int JADE_TOPAZ_BOOTS = 36 * 13;
 
         // 宝石：下界合金 1.25 倍（37*1.25 = 46.25 → 47，保证不低于 1.25 倍）
-        public static final int GEM_HELMET = 47 * 11;
-        public static final int GEM_CHESTPLATE = 47 * 16;
-        public static final int GEM_LEGGINGS = 47 * 15;
-        public static final int GEM_BOOTS = 47 * 13;
+        public static final int SAPPHIRE_RUBY_HELMET = 47 * 11;
+        public static final int SAPPHIRE_RUBY_CHESTPLATE = 47 * 16;
+        public static final int SAPPHIRE_RUBY_LEGGINGS = 47 * 15;
+        public static final int SAPPHIRE_RUBY_BOOTS = 47 * 13;
 
         // 星界：下界合金 2 倍
         public static final int ASTRAL_HELMET = 74 * 11;

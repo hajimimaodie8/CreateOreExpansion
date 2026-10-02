@@ -77,11 +77,11 @@ public final class ArmorSkillProvider implements SkillProvider {
      * 前者决定"客户端轮询/列哪几个槽位"，后者决定"按下那个槽位跑哪个技能"。</p>
      */
     private static final Map<ArmorSet, List<ResourceLocation>> SET_SKILL_IDS = Map.of(
-        ArmorSet.JADE, List.of(ArmorSkillRuntime.FALL_GUARD_ID, ArmorSkillRuntime.CHARGE_DASH_ID),
+        ArmorSet.JADE_TOPAZ, List.of(ArmorSkillRuntime.FALL_GUARD_ID, ArmorSkillRuntime.CHARGE_DASH_ID),
         // 宝石套（用户 2026-10-01 更正后的编排，共三条）：槽位 1 = 绝境守护、槽位 2 = 蓄能疾骋
         // （**从翠玉套移植**：同一个技能 id、同一套数值，翠玉套那份保持不动）、槽位 3 = 临域充力。
-        // ⚠ 顺序即槽位顺序，必须与 ArmorSkillRuntime#skillId(ArmorSet, int) 的 GEM 分支逐字同序。
-        ArmorSet.GEM, List.of(ArmorSkillRuntime.LAST_STAND_ID, ArmorSkillRuntime.CHARGE_DASH_ID,
+        // ⚠ 顺序即槽位顺序，必须与 ArmorSkillRuntime#skillId(ArmorSet, int) 的 SAPPHIRE_RUBY 分支逐字同序。
+        ArmorSet.SAPPHIRE_RUBY, List.of(ArmorSkillRuntime.LAST_STAND_ID, ArmorSkillRuntime.CHARGE_DASH_ID,
             ArmorSkillRuntime.FIELD_CHARGE_ID));
 
     /**

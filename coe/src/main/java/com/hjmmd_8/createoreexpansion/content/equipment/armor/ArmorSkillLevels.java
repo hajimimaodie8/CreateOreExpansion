@@ -31,7 +31,7 @@ import net.minecraft.resources.ResourceLocation;
  * 靠回落会把它的基准悄悄算成 2，与用户口径不符（id 常量见
  * {@code ArmorSkillRuntime#LAST_STAND_ID} / {@code CHARGE_DASH_ID} / {@code FIELD_CHARGE_ID}）。</p>
  * <p>翠玉套现有两条（{@code fall_guard} / {@code charge_dash}）没有覆盖行 ⇒ 回落到
- * {@code ArmorSet.JADE} 的基准 1，与今天<b>逐字一致</b>，本轮不改变翠玉套的任何表现
+ * {@code ArmorSet.JADE_TOPAZ} 的基准 1，与今天<b>逐字一致</b>，本轮不改变翠玉套的任何表现
  * （蓄能疾骋在翠玉套上仍是基准 1 + 回落；宝石套那一档是显式的 2）。</p>
  *
  * @since 1.0.0
@@ -57,7 +57,7 @@ public final class ArmorSkillLevels {
         if (set == null) {
             return 0;
         }
-        if (skillId != null && set == ArmorSet.GEM) {
+        if (skillId != null && set == ArmorSet.SAPPHIRE_RUBY) {
             // 宝石套（用户 2026-10-01 更正后的编排，三项**各自显式**登记）：
             //   槽位 1 = 绝境守护 last_stand     基准 1（已实现）
             //   槽位 2 = 蓄能疾骋 charge_dash    基准 2（**从翠玉套移植**：同一 id、同一套数值）

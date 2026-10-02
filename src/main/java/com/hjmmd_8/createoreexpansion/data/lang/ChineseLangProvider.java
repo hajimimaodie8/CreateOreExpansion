@@ -167,14 +167,14 @@ public class ChineseLangProvider extends LanguageProvider {
 
         // ========== 四套盔甲（4 套 × 4 件；W13 新增，用户 2026-09-30 定名）==========
         // 套名由用户指定：翠玉 / 宝石 / 星界 / 雷鸣（不是矿物名，与凝能佩的套装效果口径一致）。
-        add(CoeItems.JADE_HELMET.get(), "翠玉头盔");
-        add(CoeItems.JADE_CHESTPLATE.get(), "翠玉胸甲");
-        add(CoeItems.JADE_LEGGINGS.get(), "翠玉护腿");
-        add(CoeItems.JADE_BOOTS.get(), "翠玉靴子");
-        add(CoeItems.GEM_HELMET.get(), "宝石头盔");
-        add(CoeItems.GEM_CHESTPLATE.get(), "宝石胸甲");
-        add(CoeItems.GEM_LEGGINGS.get(), "宝石护腿");
-        add(CoeItems.GEM_BOOTS.get(), "宝石靴子");
+        add(CoeItems.JADE_TOPAZ_HELMET.get(), "翠玉头盔");
+        add(CoeItems.JADE_TOPAZ_CHESTPLATE.get(), "翠玉胸甲");
+        add(CoeItems.JADE_TOPAZ_LEGGINGS.get(), "翠玉护腿");
+        add(CoeItems.JADE_TOPAZ_BOOTS.get(), "翠玉靴子");
+        add(CoeItems.SAPPHIRE_RUBY_HELMET.get(), "宝石头盔");
+        add(CoeItems.SAPPHIRE_RUBY_CHESTPLATE.get(), "宝石胸甲");
+        add(CoeItems.SAPPHIRE_RUBY_LEGGINGS.get(), "宝石护腿");
+        add(CoeItems.SAPPHIRE_RUBY_BOOTS.get(), "宝石靴子");
         add(CoeItems.ASTRAL_HELMET.get(), "星界头盔");
         add(CoeItems.ASTRAL_CHESTPLATE.get(), "星界胸甲");
         add(CoeItems.ASTRAL_LEGGINGS.get(), "星界护腿");
@@ -238,9 +238,9 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.hud.equipment.skill_line", "技能%s  %s  [%s]");
         add("createoreexpansion.hud.equipment.energy", "能量 %s / %s");
         add("createoreexpansion.tooltip.armor_energy_total", "套装合计 %s / %s");
-        // 套名（与护甲物品名同源；提示层用 createoreexpansion.armor_set.<set> 拼键）
-        add("createoreexpansion.armor_set.jade", "翠玉");
-        add("createoreexpansion.armor_set.gem", "宝石");
+        // 套名（与护甲物品名同源；提示层用 createoreexpansion.armor_set.<setName> 拼键，键名须与 ArmorSet.setName() 一致）
+        add("createoreexpansion.armor_set.jade_topaz", "翠玉");
+        add("createoreexpansion.armor_set.sapphire_ruby", "宝石");
         add("createoreexpansion.armor_set.astral", "星界");
         add("createoreexpansion.armor_set.thunder", "雷鸣");
 

@@ -653,16 +653,16 @@ public final class ArmorSkillRuntime {
      * （同一个 id、同一套数值），因此它同时住在两套的同一段槽位空间里。</p>
      */
     private static @Nullable String skillId(ArmorSet set, int index) {
-        if (set == ArmorSet.JADE) {
+        if (set == ArmorSet.JADE_TOPAZ) {
             return switch (index) {
                 case 0 -> FALL_GUARD;
                 case 1 -> CHARGE_DASH;
                 default -> null;
             };
         }
-        if (set == ArmorSet.GEM) {
+        if (set == ArmorSet.SAPPHIRE_RUBY) {
             // 用户 2026-10-01 更正后的宝石套编排（三条，槽位顺序即此处 case 顺序，
-            // 必须与 ArmorSkillProvider.SET_SKILL_IDS[GEM] 逐字同序）：
+            // 必须与 ArmorSkillProvider.SET_SKILL_IDS[SAPPHIRE_RUBY] 逐字同序）：
             //   槽位 1 = 绝境守护、槽位 2 = 蓄能疾骋（从翠玉套移植）、槽位 3 = 临域充力。
             return switch (index) {
                 case 0 -> LAST_STAND;

@@ -67,7 +67,7 @@ public final class ArmorSkillHandler {
      * 主动期间因为随机数失败而掉血这种明显不合理的表现）。</p>
      *
      * <p><b>落地粒子按"这次豁免由哪一套提供"上色</b>（规格 §8 第 4 层，用户 2026-10-01）：
-     * ① 段传 {@link ArmorSet#JADE}（黄绿，与本层之前逐字相同）；② 段传 {@link ArmorSet#GEM}
+     * ① 段传 {@link ArmorSet#JADE_TOPAZ}（黄绿，与本层之前逐字相同）；② 段传 {@link ArmorSet#SAPPHIRE_RUBY}
      * （蓝红）——宝石套继承虚衡坠护的摔落豁免，落地<b>不再</b>显示翠玉的黄绿。</p>
      */
     @SubscribeEvent
@@ -81,14 +81,14 @@ public final class ArmorSkillHandler {
             if (ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.FALL_GUARD)) {
                 event.setCanceled(true);
                 // 落地特效（用户 2026-10-01）：按住技能键落地 ⇒ "两色交加"加强版
-                ArmorSkillFx.landingImpact(player, true, ArmorSet.JADE);
+                ArmorSkillFx.landingImpact(player, true, ArmorSet.JADE_TOPAZ);
                 return;
             }
             FallGuardConfigs.Config config = FallGuardConfigs.config(level);
             if (player.getRandom().nextDouble() < config.passiveChance()) {
                 event.setCanceled(true);
                 // 基础落地特效（用户 2026-10-01）：被动豁免摔落伤害时也有
-                ArmorSkillFx.landingImpact(player, false, ArmorSet.JADE);
+                ArmorSkillFx.landingImpact(player, false, ArmorSet.JADE_TOPAZ);
                 return;
             }
         }
@@ -103,7 +103,7 @@ public final class ArmorSkillHandler {
             event.setCanceled(true);
             boolean holding = ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.LAST_STAND);
             // 宝石套：蓝红落地（不再借翠玉的黄绿 —— 规格 §8 第 4 层）
-            ArmorSkillFx.landingImpact(player, holding, ArmorSet.GEM);
+            ArmorSkillFx.landingImpact(player, holding, ArmorSet.SAPPHIRE_RUBY);
         }
     }
 

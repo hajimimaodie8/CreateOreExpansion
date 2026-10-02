@@ -353,9 +353,9 @@ public final class FieldChargeRuntime {
                 ArmorSkillFx.fieldChargeRing(world, session.source, spin, player.tickCount * 0.25D);
             }
             // 拖尾按套取色（规格 §0.3）：临域充力只存在于宝石套的槽位 3
-            // （skillId(GEM, 2) == FIELD_CHARGE），所以这里明确传宝石套 —— 颜色由
-            // ArmorSkillFx#trailColors(GEM) 解析，粒子实现里不写死任何套。
-            ArmorSkillFx.gemTrail(player, ArmorSet.GEM);
+            // （skillId(SAPPHIRE_RUBY, 2) == FIELD_CHARGE），所以这里明确传宝石套 —— 颜色由
+            // ArmorSkillFx#trailColors(SAPPHIRE_RUBY) 解析，粒子实现里不写死任何套。
+            ArmorSkillFx.gemTrail(player, ArmorSet.SAPPHIRE_RUBY);
         }
         return HoldResult.ACTIVE;
     }

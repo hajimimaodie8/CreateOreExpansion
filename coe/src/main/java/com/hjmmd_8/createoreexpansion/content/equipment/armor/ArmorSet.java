@@ -63,9 +63,9 @@ import org.jetbrains.annotations.Nullable;
 public enum ArmorSet {
 
     /** 翠玉套（基准 Lv1；耐久倍率 36，防御略强于铁；单件储能 250 ⇒ 满套 1000）。 */
-    JADE(CoeArmorMaterials.JADE_SET, 1, CoeArmorMaterials.JADE, 250),
+    JADE_TOPAZ(CoeArmorMaterials.JADE_TOPAZ_SET, 1, CoeArmorMaterials.JADE_TOPAZ, 250),
     /** 宝石套（基准 Lv2；耐久 = 下界合金 1.25 倍；单件储能 1000 ⇒ 满套 4000）。 */
-    GEM(CoeArmorMaterials.GEM_SET, 2, CoeArmorMaterials.GEM, 1000),
+    SAPPHIRE_RUBY(CoeArmorMaterials.SAPPHIRE_RUBY_SET, 2, CoeArmorMaterials.SAPPHIRE_RUBY, 1000),
     /** 星界套（基准 Lv3；耐久 = 下界合金 2 倍，韧性 2；单件储能 2500 ⇒ 满套 10000）。 */
     ASTRAL(CoeArmorMaterials.ASTRAL_SET, 3, CoeArmorMaterials.ASTRAL, 2500),
     /** 雷鸣套（基准 Lv4；与星界同耐久，韧性 3 + 抗击退；单件储能 2500 ⇒ 满套 10000）。 */
@@ -92,7 +92,7 @@ public enum ArmorSet {
 
     private static final ArmorSet[] VALUES = values();
 
-    /** 套名（{@code jade} / {@code gem} / {@code astral} / {@code thunder}）：贴图名与语言键的统一前缀。 */
+    /** 套名（{@code jade_topaz} / {@code sapphire_ruby} / {@code astral} / {@code thunder}）：贴图名与语言键的统一前缀。 */
     private final String setName;
 
     /** 全套生效时的基准等级（1~4，按升级阶梯）。 */
@@ -123,7 +123,7 @@ public enum ArmorSet {
         return this.perPieceEnergy;
     }
 
-    /** 套名（{@code jade} 等），与 {@link CoeArmorMaterials#JADE_SET} 同源。 */
+    /** 套名（{@code jade_topaz} 等），与 {@link CoeArmorMaterials#JADE_TOPAZ_SET} 同源。 */
     public String setName() {
         return this.setName;
     }

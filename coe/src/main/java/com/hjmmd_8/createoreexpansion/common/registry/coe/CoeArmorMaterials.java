@@ -28,7 +28,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  *
  * <p><b>接线两处，缺一不可</b>：① 本类静态字段声明材质；② {@link #register(IEventBus)} 由
  * {@code CreateOreExpansion} 构造器调用（与 {@code AllDataComponents.register} 同处，最早一批）；
- * 物品注册处直接引用 {@link #JADE} 这类 {@code DeferredHolder}。</p>
+ * 物品注册处直接引用 {@link #JADE_TOPAZ} 这类 {@code DeferredHolder}。</p>
  *
  * <h2>耐久度口径（用户 2026-09-30 定稿）</h2>
  * 以<b>原版下界合金</b>为基准（头盔 407 / 胸甲 592 / 护腿 555 / 靴子 481）：
@@ -62,8 +62,8 @@ public final class CoeArmorMaterials {
     //   星界 3/8/6/3 + 韧性 2     雷鸣 3/8/6/3 + 韧性 3 + 抗击退 0.05
 
     /** <b>翠玉盔甲</b>：耐久 = 钻石与下界合金的 3/4 分界点（倍率 36）。 */
-    public static final DeferredHolder<ArmorMaterial, ArmorMaterial> JADE = register(
-        "jade",
+    public static final DeferredHolder<ArmorMaterial, ArmorMaterial> JADE_TOPAZ = register(
+        "jade_topaz",
         new int[] { 2, 6, 5, 2 },
         12,
         SoundEvents.ARMOR_EQUIP_DIAMOND,
@@ -72,8 +72,8 @@ public final class CoeArmorMaterials {
         () -> Ingredient.of(CoeItems.JADE_INGOT.get()));
 
     /** <b>宝石盔甲</b>：耐久 = 下界合金的 1.25 倍（倍率 47）。 */
-    public static final DeferredHolder<ArmorMaterial, ArmorMaterial> GEM = register(
-        "gem",
+    public static final DeferredHolder<ArmorMaterial, ArmorMaterial> SAPPHIRE_RUBY = register(
+        "sapphire_ruby",
         new int[] { 3, 7, 5, 2 },
         16,
         SoundEvents.ARMOR_EQUIP_DIAMOND,
@@ -102,15 +102,15 @@ public final class CoeArmorMaterials {
         () -> Ingredient.of(CoeItems.THUNDERITE_INGOT.get()));
 
     /** 四套共同遵守的"套装名"常量（用于拼贴图名 / 语言键前缀，避免各处散写字符串）。 */
-    public static final String JADE_SET = "jade";
-    public static final String GEM_SET = "gem";
+    public static final String JADE_TOPAZ_SET = "jade_topaz";
+    public static final String SAPPHIRE_RUBY_SET = "sapphire_ruby";
     public static final String ASTRAL_SET = "astral";
     public static final String THUNDER_SET = "thunder";
 
     /**
      * 盔甲层的"名字"——决定 {@code getArmorTexture} 拼出的贴图文件名。
      *
-     * @param setName 套名（{@code jade} / {@code gem} / {@code astral} / {@code thunder}）
+     * @param setName 套名（{@code jade_topaz} / {@code sapphire_ruby} / {@code astral} / {@code thunder}）
      * @return {@code createoreexpansion:<setName>_armor}
      */
     public static ResourceLocation layerName(String setName) {
