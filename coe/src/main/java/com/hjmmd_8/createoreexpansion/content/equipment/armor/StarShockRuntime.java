@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.skill.config.StarShockConfigs;
@@ -59,16 +60,29 @@ import net.minecraft.world.phys.Vec3;
  * （{@code crash-reports/crash-2026-10-02_14.23.33-client.txt}）。
  * 该实体类型与子类已整体删除，本类改走上面的既有路径。</p>
  *
- * <h2>⚠ 被"不许自造实体"堵住的两条（已报作者，不许自行绕开）</h2>
+ * <h2>★ 上一轮"被堵住的两条"的承载方式（作者 2026-10-02 裁定，本轮落地）</h2>
+ * <p>作者口径是「能量波是由好几个要素定义的，它是一种出于定义的一种特殊的实体」⇒
+ * <b>给既有波增加"要素"符合口径，另造实体才违反</b>。于是那两件事做成
+ * {@code AbstractChargerWaveEntity} 上的<b>通用、可选、默认关闭</b>的要素（不新增实体类型、
+ * 不新增贴图/模型/渲染器；不设这两个要素时机器波/变器波行为逐字不变）：</p>
  * <ol>
- *   <li><b>环绕波</b>（需求 §3.3(b)(g)）：要求"波每 tick 把位置改写成绕主波的圆周点"，
- *       而既有能量波实体没有任何逐 tick 位置钩子，也没有父波/半径/相位字段。
- *       承载它只有"改共享实体"或"再自造一个实体"两条路，后者正是本次崩溃的原因 ⇒ <b>停下来报障碍</b>。
- *       数值仍在 {@code StarShockConfigs}（{@code orbitChanceCap} / {@code orbitChance} / {@code orbitDamage}）留档。</li>
- *   <li><b>命中附加嬗乱</b>（需求 §3.3(d)）：普通能量波命中生物只走
- *       {@code AbstractChargerWaveEntity} 里那段"波型伤害 + 给玩家护甲充能 + 消散"的固定流程，
- *       没有任何"命中附加效果"的取值点（上一版是靠子类覆写一个钩子做到的，钩子已随子类删除）。
- *       ⇒ 同样<b>停下来报障碍</b>，不擅自给共享实体加效果分支。</li>
+ *   <li><b>环绕波</b>（需求 §3.3(b)(g)）：<b>环绕波要素</b>
+ *       {@code setOrbitAnchor(父波 UUID, 半径, 角速度, 相位)} ⇒ 波每 tick 把位置改写成
+ *       {@code 父波位置 + r×(u·cosθ + v·sinθ)}（u/v = 垂直于父波运动方向的平面基）；
+ *       父波消散 ⇒ 自己 {@code discard()}（不留孤立波）。数值：
+ *       {@value #ORBIT_RADIUS} 格半径、{@value #ORBIT_TURNS_PER_SECOND} 圈/秒
+ *       （每 tick 2π/20 弧度）、初始相位 0；<b>每枚主波各自</b>按
+ *       {@code StarShockConfigs.orbitChance(蓄力进度)} 滚一次（点按 t = 0 ⇒ 概率 0），
+ *       环绕波<b>继承父波批次号</b>（半径 0.8 < 两盒判定距离 ⇒ 不同批就出生即自爆），
+ *       波级由 {@code StarShockConfigs.orbitWaveLevelFor} 定（主波一半伤害的最近波级 = α/β/β）。</li>
+ *   <li><b>命中附加效果</b>（需求 §3.3(d)）：<b>命中附加效果要素</b>
+ *       {@code setHitEffect(效果, 持续 tick, amplifier)} —— 既有命中链
+ *       （攻击态 ⇒ {@code hurt(WaveLevels.damage(波级))} ⇒ 给穿戴护甲玩家充能 ⇒ 绽放消散）
+ *       <b>一个字不改</b>，只在链尾追加一次 {@code addEffect}。本技能设的是
+ *       {@code createoreexpansion:transmutation_disorder}，{@value #HIT_DISORDER_TICKS} tick、
+ *       amplifier {@value #HIT_DISORDER_AMPLIFIER}；目标穿戴星辉石凝能佩时，
+ *       <b>既有</b>拦截点 {@code MedallionEffectHandler#onEffectApplicable}
+ *       （{@code MobEffectEvent.Applicable}）自动豁免 —— 本类不写任何免疫判据。</li>
  * </ol>
  * <p>主波伤害不受这两条影响：它由<b>波级</b>决定（{@code WaveLevels#damage}），映射见
  * {@link StarShockConfigs#waveLevelFor(int)}（技能 1/2/3 级 ⇒ 8/10/12 点）。</p>
@@ -126,6 +140,40 @@ public final class StarShockRuntime {
      * "同向并排 + 垂直方向小偏移"就是需求 §3.3(b) 要的扇形观感。
      */
     private static final double FORK_UP_OFFSET = 0.22D;
+
+    /**
+     * <b>环绕波几何：半径</b>（格）—— 需求 §3.3(b) 给的是 <b>0.80 格</b>。
+     *
+     * <p>⚠ 这个半径就是"环绕波必须继承父波批次号"的原因（两件事都会爆）：</p>
+     * <ul>
+     *   <li>环绕波的<b>出生点</b>就是主波的位置（相距 0 ⇒ 两盒必然相交）；</li>
+     *   <li>飞起来以后，波盒 0.2、各自外扩 0.4 ⇒ 两枚波的盒相交判据是"<b>按轴</b>距离 &lt; 0.6"，
+     *       而 0.8 格半径在斜相位（θ ≈ 45°）的两个分量是 0.566 &lt; 0.6 ⇒ 每圈约有 29°
+     *       （4 段各 7.2°，合计约 8% 的圆周）两盒相交。</li>
+     * </ul>
+     * <p>⇒ 不继承批次号就是"第一圈就与主波互相湮灭"（同批豁免见 {@code sameFiringBatch}）。</p>
+     */
+    private static final double ORBIT_RADIUS = 0.80D;
+
+    /** <b>环绕角速度</b>：需求 §3.3(b) 给的是 <b>1 圈/秒</b>。 */
+    private static final double ORBIT_TURNS_PER_SECOND = 1.0D;
+
+    /**
+     * <b>环绕角速度（弧度/tick）</b> = 2π × 圈/秒 ÷ 20；1 圈/秒 时 = <b>2π/20 ≈ 0.3142</b>。
+     *
+     * <p>单位是<b>弧度/tick</b>（不是度/tick）：位置公式里直接进 {@code Math.cos/sin}，
+     * 少一次单位换算、少一个"度还是弧度"的歧义点。</p>
+     */
+    private static final double ORBIT_ANGULAR_SPEED = 2.0D * Math.PI * ORBIT_TURNS_PER_SECOND / 20.0D;
+
+    /** <b>环绕初始相位</b>（弧度）：需求 §3.3(b) 给的是 <b>0</b>（出生在基向量 u 正方向一侧）。 */
+    private static final double ORBIT_PHASE = 0.0D;
+
+    /** 命中附加嬗乱的持续 tick 数（需求 §3.3(d)：60 tick = 3 秒）。 */
+    private static final int HIT_DISORDER_TICKS = 60;
+
+    /** 命中附加嬗乱的效果等级（需求 §3.3(d)：amplifier 0 = I 级）。 */
+    private static final int HIT_DISORDER_AMPLIFIER = 0;
 
     private StarShockRuntime() {
         throw new AssertionError("This class should not be instantiated");
@@ -185,8 +233,10 @@ public final class StarShockRuntime {
         Cast cast = new Cast(nextBatch(), config, Math.max(1, Math.min(StarShockConfigs.MAX_LEVEL, level)));
         cast.paid = config.tapCost();
         CASTS.put(player.getUUID(), cast);
-        // 点按那一 tick：t = 0 ⇒ 1 枚主波（需求 §3.3(b)"点按（t ≈ 0）⇒ 1 枚"）
-        fireMainWave(player, cast);
+        // 点按那一 tick：t = 0 ⇒ 1 枚主波（需求 §3.3(b)"点按（t ≈ 0）⇒ 1 枚"）。
+        // ⚠ 这里刻意把蓄力 tick 数写成字面量 0：环绕概率 = t × 上限 ⇒ 点按概率<b>恒为 0</b>
+        // （需求 §3.3(b) 的"点按不生成环绕波"就靠这一个入参，不另写分支）。
+        fireMainWave(player, cast, 0);
         return true;
     }
 
@@ -220,9 +270,10 @@ public final class StarShockRuntime {
             cast.paid = due;
         }
         // ② 蓄力曲线：该有几枚主波，就补发到几枚（点按那第一枚已经发过）。
+        //    每枚主波各自按"当下的蓄力进度"滚一次环绕波（所以 t 要传下去）。
         int target = StarShockConfigs.mainWaveCount(heldTicks, cast.config);
         while (cast.fired < target) {
-            fireMainWave(player, cast);
+            fireMainWave(player, cast, heldTicks);
         }
         return true;
     }
@@ -295,8 +346,14 @@ public final class StarShockRuntime {
      *
      * <p>⚠ 偏移量刻意小于碰撞盒外扩半径（0.4）⇒ 三枚一定在彼此的命中盒里，靠<b>同批次豁免</b>
      * 才不自爆（见 {@code AbstractChargerWaveEntity#sameFiringBatch}）。</p>
+     *
+     * <p>本方法另外给这枚波盖上两个<b>可选要素</b>：命中附加嬗乱（所有主波都有）与
+     * ——如果这次掷骰中了——环绕波（见 {@link #fireOrbitWave}）。</p>
+     *
+     * @param heldTicks 该枚主波发出时的蓄力 tick 数（点按 = 0）：环绕波概率 = t × 该级上限，
+     *                  该级上限见 {@code StarShockConfigs.orbitChanceCap}。每枚主波<b>各自</b>滚一次。
      */
-    private static void fireMainWave(ServerPlayer player, Cast cast) {
+    private static void fireMainWave(ServerPlayer player, Cast cast, int heldTicks) {
         ServerLevel world = player.serverLevel();
         Vec3 look = player.getLookAngle();
         if (look.lengthSqr() < 1.0E-6D) {
@@ -323,6 +380,10 @@ public final class StarShockRuntime {
         ChargerWaveEntity wave = new ChargerWaveEntity(world, origin, look, waveLevel);
         // 波型 = 攻击态（与"变器攻击波变态"引燃出来的波型是同一个）
         wave.trySetWaveType(WaveTypes.ATTACK);
+        // 命中附加效果要素（需求 §3.3(d)）：既有命中链一个字不改，只在链尾追加一次 addEffect。
+        // 星辉石凝能佩免疫嬗乱走既有的 MobEffectEvent.Applicable 拦截点，本类不写免疫判据。
+        wave.setHitEffect(TransmutationEffects.TRANSMUTATION_DISORDER,
+            HIT_DISORDER_TICKS, HIT_DISORDER_AMPLIFIER);
         // 同一次发射的多枚波共用一个批次号 ⇒ 互相豁免碰撞（否则并排的第 2/3 枚出生即自爆）
         wave.setFiringBatch(cast.batch);
         world.addFreshEntity(wave);
@@ -331,5 +392,49 @@ public final class StarShockRuntime {
         // 这一行让"技能几级、实际打出几级波、属于哪个批次"在日志里可查。
         WaveDiag.trace("星芒嬗震发射：技能 {} 级 → {} 级波（{}），批次 {}，位置 {}",
             cast.level, waveLevel, WaveLevels.glyph(waveLevel), cast.batch, origin);
+
+        // 每枚主波各自 0~1 枚环绕波（需求 §3.3(b)）：概率 = t × 该级上限，点按 t = 0 ⇒ 恒 0。
+        // 骰子用世界随机（服务端权威），整发波的形状只由这一次掷骰决定。
+        double orbitChance = StarShockConfigs.orbitChance(heldTicks, cast.config);
+        if (orbitChance > 0.0D && world.random.nextDouble() < orbitChance) {
+            fireOrbitWave(world, wave, cast);
+        }
+    }
+
+    /**
+     * 发一枚<b>环绕波</b>：波实体类型 / 构造器 / 波型与主波<b>完全同形</b>，
+     * 只多挂一个"环绕波要素"（{@code setOrbitAnchor}）——它<b>不是</b>新实体类型
+     * （实体仍是 {@code createoreexpansion:charger_wave}，同一个渲染器）。
+     *
+     * <p>三件必须一起做的事：</p>
+     * <ol>
+     *   <li><b>继承父波批次号</b>（{@code setFiringBatch(parent.getFiringBatch())}）：
+     *       环绕波出生点与主波重合（相距 0），且半径 {@value #ORBIT_RADIUS} 格在斜相位
+     *       （两轴分量 0.566）也落进对方命中盒（按轴判据 0.6）⇒ 不同批就是"第一圈就互相湮灭"
+     *       （需求 §3.3(b)"环绕波算同一批次"）；</li>
+     *   <li><b>设环绕要素</b>：父波 UUID + 半径 {@value #ORBIT_RADIUS} 格 +
+     *       角速度 {@value #ORBIT_ANGULAR_SPEED} 弧度/tick（1 圈/秒）+ 初始相位
+     *       {@value #ORBIT_PHASE}；位置由那个要素每 tick 改写，本方法不写位置公式；</li>
+     *   <li><b>波级</b> = {@code StarShockConfigs.orbitWaveLevelFor}（"主波一半伤害"的最近波级）
+     *       ⇒ 伤害由既有 {@code WaveLevels.damage(波级)} 决定，不新开伤害通道。</li>
+     * </ol>
+     * <p>父波消散后环绕波自己收尾（"取不到父波 ⇒ discard"在
+     * {@code AbstractChargerWaveEntity#applyOrbitElement} 里，本类不再叠第二层机制）。</p>
+     */
+    private static void fireOrbitWave(ServerLevel world, ChargerWaveEntity parent, Cast cast) {
+        int orbitLevel = StarShockConfigs.orbitWaveLevelFor(cast.level);
+        ChargerWaveEntity orbit = new ChargerWaveEntity(world, parent.position(), parent.getMovement(), orbitLevel);
+        orbit.trySetWaveType(WaveTypes.ATTACK);
+        // 命中附加嬗乱与主波同一份（环绕波也是这条技能的波，打中谁都要挂嬗乱）
+        orbit.setHitEffect(TransmutationEffects.TRANSMUTATION_DISORDER,
+            HIT_DISORDER_TICKS, HIT_DISORDER_AMPLIFIER);
+        // 环绕波算同一批次：继承父波批次号（出生点与主波重合，斜相位两轴分量 0.566 < 0.6 也会相交）
+        orbit.setFiringBatch(parent.getFiringBatch());
+        // 环绕波要素：父波 UUID + 半径 + 角速度（弧度/tick）+ 初始相位
+        orbit.setOrbitAnchor(parent.getUUID(), ORBIT_RADIUS, ORBIT_ANGULAR_SPEED, ORBIT_PHASE);
+        world.addFreshEntity(orbit);
+        WaveDiag.trace("星芒嬗震环绕波：技能 {} 级 → {} 级波（{}，主波一半伤害），批次 {}（继承父波），绕 {} 的 r={} 格、{} 圈/秒",
+            cast.level, orbitLevel, WaveLevels.glyph(orbitLevel), parent.getFiringBatch(),
+            parent.getId(), ORBIT_RADIUS, ORBIT_TURNS_PER_SECOND);
     }
 }

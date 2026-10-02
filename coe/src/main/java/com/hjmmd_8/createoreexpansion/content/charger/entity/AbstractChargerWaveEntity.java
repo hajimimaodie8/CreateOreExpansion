@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import java.util.List;
+import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver;
@@ -20,10 +21,15 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoi
 import net.createmod.catnip.levelWrappers.SchematicLevel;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -34,6 +40,8 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import net.neoforged.neoforge.items.IItemHandler;
+
+import org.jetbrains.annotations.Nullable;
 
 /**
  * 应力充能器能量波实体抽象基类：不渲染模型（视觉靠粒子）。
@@ -57,6 +65,15 @@ import net.neoforged.neoforge.items.IItemHandler;
  * 粒子统一用原版染色粒子（DustParticleOptions），无需注册任何自定义粒子类型。</p>
  *
  * <p>等级 1~5 见 {@link WaveLevels}：速度 2/4/6/7/8 格/秒、伤害 4/6/8/10/12。</p>
+ *
+ * <p><b>2026-10-02 新增：两个「通用、可选、默认关闭」的波要素</b>（作者裁定：「能量波是由好几个
+ * 要素定义的」⇒ 给既有波<b>加要素</b>符合口径，另造实体才违反）：<b>环绕波要素</b>
+ * （anchorWaveUuid / orbitRadius / orbitAngularSpeed / orbitPhase，见 {@link #applyOrbitElement()}）
+ * 与<b>命中附加效果要素</b>（hitEffect / hitEffectDuration / hitEffectAmplifier，见
+ * {@link #applyHitEffect(LivingEntity)}）。两者<b>不设时</b>字段就是 {@code null} / {@code 0}、
+ * 分支第一句直接返回 ⇒ 机器波 / 变器波 / 一切既有波的行为与改造前逐字相同；
+ * 并且<b>不新增实体类型、贴图、模型、渲染器</b>（关卡 {@code no-invented-wave-entity} 与
+ * {@code wave-renderer-coverage} 守着这一条）。</p>
  */
 public abstract class AbstractChargerWaveEntity extends Entity
 	implements com.hjmmd_8.createoreexpansion.content.energyfield.FieldedEntity {
@@ -271,6 +288,129 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return left != 0 && left == b.getFiringBatch();
 	}
 
+	// ==================================================================================
+	// 通用可选要素（2026-10-02 作者裁定：「能量波是由好几个要素定义的」，给既有波<b>加要素</b>
+	// 符合口径，另造实体才违反 ⇒ 星芒嬗震需要而既有实体没有的两件事，做成"可选、默认关闭"的
+	// 要素挂在本共享实体上）
+	//
+	// ⛔ 这里<b>不新增实体类型、贴图、模型、渲染器</b>：机器波 / 变器波 / 一切既有波在
+	// <b>不设</b>这两个要素时行为与改造前<b>逐字相同</b>——字段默认值就是"关闭"
+	// （引用型 null、数值型 0），每条分支的第一句都是"要素未设 ⇒ 直接返回"。
+	// ==================================================================================
+
+	/**
+	 * <b>环绕波要素</b>之一：父波 UUID（{@code null} = <b>不环绕</b>，即默认关闭）。
+	 *
+	 * <p>设了它以后，本波每 tick 的位置被改写成「父波位置 + r × (u·cosθ + v·sinθ)」
+	 * （见 {@link #applyOrbitElement()}）；父波不存在/已消散时本波<b>立刻 discard</b>，
+	 * 不留孤立波。要求：发射方在设本要素的同时<b>必须</b>把父波的批次号一并继承
+	 * （{@link #setFiringBatch(int)}）——环绕波出生点与父波重合（相距 0），飞起来后 0.8 格半径
+	 * 在斜相位（两轴分量 0.566）也落进对方命中盒（按轴判据 0.6），不同批就是"第一圈就互相湮灭"。</p>
+	 */
+	@Nullable
+	private UUID orbitAnchorUuid;
+
+	/** 环绕波要素：环绕半径（格）；{@code 0} = 关闭（默认）。 */
+	private double orbitRadius;
+
+	/** 环绕波要素：角速度（<b>弧度/tick</b>，1 圈/秒 = 2π/20）；{@code 0} = 关闭（默认）。 */
+	private double orbitAngularSpeed;
+
+	/**
+	 * 环绕波要素：初始相位（弧度）。{@code 0} = 出生时位于基向量 u 的正方向一侧（默认）。
+	 * 刻意用 {@code tickCount} 当时间基（θ = 相位 + 角速度 × 已存活 tick）⇒ 不需要额外字段，
+	 * 也不受读档/重载影响。
+	 */
+	private double orbitPhase;
+
+	/**
+	 * <b>命中附加效果要素</b>：命中生物时追加施加的药水效果（{@code null} = <b>不做事</b>，
+	 * 即默认关闭）。
+	 *
+	 * <p>施加走原版 {@link net.minecraft.world.entity.LivingEntity#addEffect} ⇒
+	 * NeoForge 的 {@code MobEffectEvent.Applicable} 照常触发，于是既有的一切"效果免疫"
+	 * 拦截点（例如星辉石凝能佩免疫嬗乱：{@code MedallionEffectHandler#onEffectApplicable}）
+	 * <b>自动生效</b>，本类不写任何一套自己的免疫判据。</p>
+	 */
+	@Nullable
+	private Holder<MobEffect> hitEffect;
+
+	/** 命中附加效果要素：持续 tick 数；{@code <= 0} = 不做事（默认 0）。 */
+	private int hitEffectDuration;
+
+	/** 命中附加效果要素：效果等级（amplifier，0 = I 级）；默认 0。 */
+	private int hitEffectAmplifier;
+
+	/**
+	 * 设置<b>环绕波要素</b>（一次设全；调用方还必须继承父波批次号，见 {@link #orbitAnchorUuid}）。
+	 *
+	 * @param anchorWaveUuid  父波 UUID（非 null）
+	 * @param radius          环绕半径（格）
+	 * @param angularSpeedRad 角速度（弧度/tick；1 圈/秒 = 2π/20）
+	 * @param phaseRad        初始相位（弧度）
+	 */
+	public void setOrbitAnchor(UUID anchorWaveUuid, double radius, double angularSpeedRad, double phaseRad) {
+		this.orbitAnchorUuid = anchorWaveUuid;
+		this.orbitRadius = radius;
+		this.orbitAngularSpeed = angularSpeedRad;
+		this.orbitPhase = phaseRad;
+	}
+
+	/** 父波 UUID（{@code null} = 本波不环绕 ⇒ 要素关闭）。 */
+	@Nullable
+	public UUID getOrbitAnchorUuid() {
+		return orbitAnchorUuid;
+	}
+
+	/** 是否设了环绕波要素（诊断/关卡用；{@code false} = 行为与改造前逐字相同）。 */
+	public boolean isOrbiting() {
+		return orbitAnchorUuid != null;
+	}
+
+	/** 环绕半径（格）。 */
+	public double getOrbitRadius() {
+		return orbitRadius;
+	}
+
+	/** 环绕角速度（弧度/tick）。 */
+	public double getOrbitAngularSpeed() {
+		return orbitAngularSpeed;
+	}
+
+	/** 环绕初始相位（弧度）。 */
+	public double getOrbitPhase() {
+		return orbitPhase;
+	}
+
+	/**
+	 * 设置<b>命中附加效果要素</b>（可选；不调用 = 命中只走既有链）。
+	 *
+	 * @param effect        要施加的效果（Holder；一般传 {@code DeferredHolder}）
+	 * @param durationTicks 持续 tick 数（{@code <= 0} 视为不做事）
+	 * @param amplifier     效果等级（0 = I 级）
+	 */
+	public void setHitEffect(Holder<MobEffect> effect, int durationTicks, int amplifier) {
+		this.hitEffect = effect;
+		this.hitEffectDuration = durationTicks;
+		this.hitEffectAmplifier = amplifier;
+	}
+
+	/** 命中附加效果（{@code null} = 要素关闭）。 */
+	@Nullable
+	public Holder<MobEffect> getHitEffect() {
+		return hitEffect;
+	}
+
+	/** 命中附加效果持续 tick 数（0 = 要素关闭）。 */
+	public int getHitEffectDuration() {
+		return hitEffectDuration;
+	}
+
+	/** 命中附加效果等级（amplifier）。 */
+	public int getHitEffectAmplifier() {
+		return hitEffectAmplifier;
+	}
+
 	/** 波型（服务端权威值；见 {@link #getWaveType()} 的客户端分支）。 */
 	private WaveType waveType = WaveTypes.NORMAL;
 
@@ -340,6 +480,84 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return wavePath.crosses(box, position(), pathBroken);
 	}
 
+	/**
+	 * <b>环绕波要素</b>（可选、默认关闭，见 {@link #orbitAnchorUuid}）：把自身位置改写成
+	 * <b>{@code 父波位置 + r × (u·cosθ + v·sinθ)}</b>。
+	 *
+	 * <h2>坐标基（环平面垂直于父波运动方向）</h2>
+	 * <p>取父波运动方向 {@code d}（单位向量），再取一个与本方向不平行的参考轴
+	 * {@code reference}（{@code |d.y| > 0.9} 时用 +X，否则用 +Y——避免叉乘退化），
+	 * 然后</p>
+	 * <pre>
+	 *   u = normalize(reference × d)      // 垂直于 d 的平面基之一
+	 *   v = normalize(d × u)              // 与 u、d 都垂直（u × v = d，右手系）
+	 * </pre>
+	 * <p>于是 {@code u}、{@code v} 张成的平面<b>垂直于运动方向</b>，圆周点落在"以父波为圆心、
+	 * 垂直于飞行方向的环"上：θ = 0 时在 {@code u} 正方向一侧，θ 增大时按 u→v 方向旋转。
+	 * 时间基用 {@code tickCount}（θ = 初始相位 + 角速度 × 已存活 tick）⇒ 不额外占字段。</p>
+	 *
+	 * <h2>默认关闭与两个边界</h2>
+	 * <ul>
+	 *   <li>要素未设（{@code orbitAnchorUuid == null}）⇒ <b>第一句就返回 true</b>，位置一个字不改
+	 *       ——机器波 / 变器波 / 一切既有波的行为与改造前逐字相同；</li>
+	 *   <li>客户端 / Ponder 场景（不是 {@link ServerLevel}）⇒ 不动位置（客户端位置由服务端同步，
+	 *       客户端 tick 本来就在移动之前 return）；</li>
+	 *   <li>父波取不到或已消散（{@code isAlive() == false}）⇒ 返回 {@code false}，
+	 *       调用方<b>立刻 {@code discard()}</b> ⇒ "主波消散 ⇒ 环绕波一起收尾"只有这一条实现，
+	 *       不再叠第二层机制，也不会留下孤立波。</li>
+	 * </ul>
+	 *
+	 * @return {@code false} = 父波已不存在，调用方必须 discard 自己
+	 */
+	private boolean applyOrbitElement() {
+		if (this.orbitAnchorUuid == null) {
+			return true;
+		}
+		if (!(level() instanceof ServerLevel server)) {
+			return true;
+		}
+		Entity anchor = server.getEntity(this.orbitAnchorUuid);
+		if (!(anchor instanceof AbstractChargerWaveEntity parent) || !parent.isAlive()) {
+			return false;
+		}
+		Vec3 dir = parent.getMovement();
+		if (dir.lengthSqr() < 1.0E-9D) {
+			dir = movement;
+		}
+		if (dir.lengthSqr() < 1.0E-9D) {
+			dir = new Vec3(0.0D, 0.0D, 1.0D);
+		}
+		dir = dir.normalize();
+		Vec3 reference = Math.abs(dir.y) > 0.9D
+			? new Vec3(1.0D, 0.0D, 0.0D)
+			: new Vec3(0.0D, 1.0D, 0.0D);
+		Vec3 u = reference.cross(dir).normalize();
+		Vec3 v = dir.cross(u).normalize();
+		double theta = orbitPhase + orbitAngularSpeed * (double) tickCount;
+		Vec3 offset = u.scale(orbitRadius * Math.cos(theta)).add(v.scale(orbitRadius * Math.sin(theta)));
+		setPos(parent.position().add(offset));
+		return true;
+	}
+
+	/**
+	 * <b>命中附加效果要素</b>（可选、默认关闭，见 {@link #hitEffect}）：<b>既有命中链之后</b>
+	 * 的追加动作。
+	 *
+	 * <p>既有链一个字不改：{@code 攻击态 ⇒ hurt(WaveLevels.damage(波级)) ⇒ 给穿戴护甲玩家充能
+	 * ⇒ 绽放消散}；本方法只在"充能"与"绽放"之间补一次 {@code addEffect}，而且
+	 * <b>未设要素时第一句就 return</b>（默认关闭）。</p>
+	 *
+	 * <p>施加走原版 {@link LivingEntity#addEffect(MobEffectInstance)} ⇒ NeoForge 的
+	 * {@code MobEffectEvent.Applicable} 照常触发 ⇒ 一切既有的"效果免疫/拦截"判据自动生效
+	 * （如星辉石凝能佩免疫嬗乱），本类不另写免疫逻辑。</p>
+	 */
+	private void applyHitEffect(LivingEntity target) {
+		if (this.hitEffect == null || this.hitEffectDuration <= 0) {
+			return;
+		}
+		target.addEffect(new MobEffectInstance(this.hitEffect, this.hitEffectDuration, this.hitEffectAmplifier));
+	}
+
 	@Override
 	public void tick() {
 		super.tick();
@@ -375,10 +593,20 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			setFieldVelocity(corrected);
 			step = corrected.scale(1.0 / 20.0);
 		}
-		// 这一段是唯一的"自走"位移；selfPropelled 之外的一切 setPos 都记为外力搬运（见 setPos 覆写）
+		// 这一段是唯一的"自走"位移；selfPropelled 之外的一切 setPos 都记为外力搬运（见 setPos 覆写）。
+		// 环绕波要素（可选、默认关闭）也在这段里改写位置：它同样是"波自己走出来的位移"
+		// （环上相邻两点只差 0.25 格），故刻意留在 selfPropelled 窗口内，不被当成瞬移断点——
+		// 否则攻击场的"真的穿过场盒"判定会永远跳过环绕波。位置改写必须发生在移动<b>之后</b>：
+		// 本 tick 的最终位置就是圆周点，命中/粒子/诊断全部按它算。
 		selfPropelled = true;
 		setPos(position().add(step));
+		boolean anchorAlive = applyOrbitElement();
 		selfPropelled = false;
+		// 父波已消散/取不到 ⇒ 自己立刻收尾（"主波消散 ⇒ 环绕波一起收尾"就靠这一条，不加第二层机制）
+		if (!anchorAlive) {
+			discard();
+			return;
+		}
 
 		// 诊断日志（仅服务端；控制器方块完成后移除）：带电波进出场状态翻转 + 场内每 10 tick 修正摘要
 		if (level() instanceof net.minecraft.server.level.ServerLevel server) {
@@ -496,6 +724,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			if (target instanceof Player wearer) {
 				ArmorEnergy.chargeWorn(wearer, ChargingRecipe.energyForLevel(this.waveLevel));
 			}
+			// 命中附加效果要素（可选、默认关闭）：既有链"伤害 ⇒ 护甲充能"之后<b>追加</b>一行，
+			// 未设要素时整段跳过（机器波/变器波命中行为逐字不变）。见 applyHitEffect 的说明。
+			applyHitEffect(target);
 			ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
 			discard();
 			return;
@@ -950,6 +1181,24 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		this.entityData.set(WAVE_TYPE, waveType.id().toString());
 		// 发射批次（0 = 无批次）：老存档没有该键 ⇒ 0，行为与改造前逐字一致（任何波都能与它湮灭）
 		this.entityData.set(FIRING_BATCH, tag.getInt("FiringBatch"));
+		// 通用可选要素（默认关闭）：老存档 / 未设要素的波没有这些键 ⇒ 保持字段默认值
+		// （null / 0 ⇒ 两条分支都不进，行为与改造前逐字相同）。
+		// ⚠ 波实体类型是 EntityType.Builder#noSave() ⇒ 实际不会被写进区块存档；这段与
+		// FIRING_BATCH 一样是"形状保底"，将来若去掉 noSave 也不会静默丢要素。
+		if (tag.hasUUID("OrbitAnchor")) {
+			orbitAnchorUuid = tag.getUUID("OrbitAnchor");
+			orbitRadius = tag.getDouble("OrbitRadius");
+			orbitAngularSpeed = tag.getDouble("OrbitAngularSpeed");
+			orbitPhase = tag.getDouble("OrbitPhase");
+		}
+		if (tag.contains("HitEffect")) {
+			ResourceLocation effectId = ResourceLocation.tryParse(tag.getString("HitEffect"));
+			hitEffect = effectId == null
+				? null
+				: BuiltInRegistries.MOB_EFFECT.getHolder(effectId).orElse(null);
+			hitEffectDuration = tag.getInt("HitEffectDuration");
+			hitEffectAmplifier = tag.getInt("HitEffectAmplifier");
+		}
 	}
 
 	@Override
@@ -963,6 +1212,22 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		tag.putDouble("SpeedOffset", speedOffset);
 		tag.putString("WaveType", waveType.id().toString());
 		tag.putInt("FiringBatch", getFiringBatch());
+		// 通用可选要素（默认关闭）：<b>只在真的设了的时候才写键</b> ⇒ 没设要素的波，
+		// 存档内容与改造前逐字相同（"默认行为一个字不变"包括 NBT 形状）。
+		if (orbitAnchorUuid != null) {
+			tag.putUUID("OrbitAnchor", orbitAnchorUuid);
+			tag.putDouble("OrbitRadius", orbitRadius);
+			tag.putDouble("OrbitAngularSpeed", orbitAngularSpeed);
+			tag.putDouble("OrbitPhase", orbitPhase);
+		}
+		if (hitEffect != null) {
+			ResourceLocation hitEffectId = BuiltInRegistries.MOB_EFFECT.getKey(hitEffect.value());
+			if (hitEffectId != null) {
+				tag.putString("HitEffect", hitEffectId.toString());
+				tag.putInt("HitEffectDuration", hitEffectDuration);
+				tag.putInt("HitEffectAmplifier", hitEffectAmplifier);
+			}
+		}
 		tag.putInt("Charge", charge == null ? 0
 			: charge == com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE ? 1 : 2);
 		if (spawnPos != null) {

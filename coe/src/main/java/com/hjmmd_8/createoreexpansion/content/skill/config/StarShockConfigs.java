@@ -46,10 +46,9 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
  *   <li><b>主波数量上限</b>（{@code maxMainWaves}）：Lv1 <b>1</b> / Lv2 <b>2</b> / Lv3 <b>3</b> 枚。
  *       Lv1 长按<b>永不分叉</b>（主波恒 1 枚）。</li>
  *   <li><b>环绕触发概率上限</b>（{@code orbitChanceCap}）：Lv1 <b>0.50</b> / Lv2 <b>0.75</b> /
- *       Lv3 <b>0.85</b>。⚠ <b>当前无承载路径</b>（见 {@link #orbitChance}）：环绕波要求
- *       "每 tick 把位置改写成绕主波的圆周点"，而既有能量波实体没有任何位置钩子；要承载它
- *       只能改那个共享实体、或再自造一个波实体 —— 后者正是本次客户端 NPE 崩溃的原因，
- *       已按作者口径删除。数值在此<b>留档</b>，等作者裁定承载方式。</li>
+ *       Lv3 <b>0.85</b>。实际概率 = {@code t × 它}（{@link #orbitChance(int, Config)}），
+ *       <b>点按（t = 0）恒为 0</b>；承载方式是既有波实体上的<b>环绕波要素</b>
+ *       （{@code setOrbitAnchor}，不新增实体类型），环绕波级见 {@link #orbitWaveLevelFor(int)}。</li>
  *   <li><b>点按能量</b>（{@code tapCost}）：三档都 <b>400</b> 点（需求 §3.3(e)）。</li>
  *   <li><b>长按耗能</b>（{@code holdCostPerSecond}）：三档都 <b>100</b> 点/秒
  *       —— 与蓄力/冷却同一时间基（用户 2026-10-02 裁定第 15 条："按 tick 折算"）。</li>
@@ -59,7 +58,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
  * <pre>
  *   t = min(按住秒数 / chargeSeconds, 1.0)
  *   主波数量  ：t 达到 **1/3、2/3、1.0** 时依次放出第 2、第 3 枚（离散分叉点）
- *   环绕概率  ：**t × 该级上限**（线性）—— 当前无承载路径，见上
+ *   环绕概率  ：**t × 该级上限**（线性；点按 t = 0 ⇒ 0）—— 承载在既有波的环绕波要素上
  *   点按（t ≈ 0）⇒ 1 枚主波
  * </pre>
  * <p>分叉点与"1 枚"的关系见 {@link #mainWaveCount(int, Config)}：点按恒 ≥ 1 枚
@@ -92,7 +91,7 @@ public final class StarShockConfigs {
      * @param mainDamage         需求里写的主波伤害（点）——<b>不是直接伤害值</b>，而是挑波级的依据
      *                           （见 {@link #waveLevelFor(int)}）
      * @param maxMainWaves       主波数量上限（Lv1 恒 1 枚 ⇒ 长按永不分叉）
-     * @param orbitChanceCap     环绕触发概率上限（0~1；实际 = t × 它）—— 当前无承载路径，留档
+     * @param orbitChanceCap     环绕触发概率上限（0~1；实际 = t × 它；见 {@link #orbitChance(int, Config)}）
      * @param tapCost            点按一次的装备能量消耗（点）
      * @param holdCostPerSecond  长按期间的装备能量消耗（点/秒）
      */
@@ -170,11 +169,40 @@ public final class StarShockConfigs {
     /**
      * 环绕波伤害 = <b>主波伤害的一半</b>（需求 §3.3(d)：4 / 5 / 5.5）。
      *
-     * <p>⚠ <b>当前无调用者</b>：环绕波本身没有承载路径（见 {@link #orbitChance}）。
-     * 数值留档，等作者裁定承载方式后可直接接上。</p>
+     * <p>⚠ <b>它不是"要打出的伤害"，而是"挑环绕波级的依据"</b>——既有系统里伤害只能由波级决定
+     * （见 {@link #waveLevelFor(int)} 的同一口径），所以真正落地的是
+     * {@link #orbitWaveLevelFor(int)} 选出的波级查 {@link WaveLevels#damage(int)} 得到的值。</p>
      */
     public static float orbitDamage(int level) {
         return config(level).mainDamage() / 2.0F;
+    }
+
+    /**
+     * <b>环绕波的波级</b>（需求 §3.3(d)"环绕波伤害 = 主波一半"落在既有系统上的取值点）。
+     *
+     * <p>规则与 {@link #waveLevelFor(int)} <b>逐字同形</b>：<b>取伤害不小于
+     * {@link #orbitDamage(int)} 的最低波级</b>（"取不到一半就宁高不宁低"）。实际取值：</p>
+     * <table border="1">
+     *   <caption>环绕波级（现算，关卡 star-orbit-damage-map 用同一规则复算）</caption>
+     *   <tr><th>技能等级</th><th>需求主波伤害</th><th>一半</th><th>环绕波级</th><th>符号</th>
+     *       <th>实际伤害</th></tr>
+     *   <tr><td>1</td><td>8</td><td>4</td><td>1</td><td>α</td><td>4（恰好一半）</td></tr>
+     *   <tr><td>2</td><td>10</td><td>5</td><td>2</td><td>β</td><td>6（≥ 一半的最低档）</td></tr>
+     *   <tr><td>3</td><td>11</td><td>5.5</td><td>2</td><td>β</td><td>6（≥ 一半的最低档）</td></tr>
+     * </table>
+     * <p>按"主波<b>实际</b>伤害（8/10/12）的一半"算结果完全一样（4 / 5 / 6）——
+     * 两种口径在这张表上不分叉，故取与需求表同源的 {@link #orbitDamage(int)}。</p>
+     */
+    public static int orbitWaveLevelFor(int level) {
+        float wanted = orbitDamage(level);
+        int chosen = WaveLevels.LOW;
+        for (int lv = WaveLevels.LOW; lv <= WaveLevels.MAX_LEVEL; lv++) {
+            chosen = lv;
+            if (WaveLevels.damage(lv) >= wanted) {
+                break;
+            }
+        }
+        return chosen;
     }
 
     /**
@@ -226,16 +254,17 @@ public final class StarShockConfigs {
     /**
      * 环绕波触发概率 = {@code t × 该级上限}（需求 §六 推断值 #2，线性）。
      *
-     * <p>⚠ <b>当前无调用者（阻塞项）</b>：环绕波要求"波自己每 tick 把位置改写成
-     * 主波位置 + r × (u·cosθ + v·sinθ)"，而既有能量波实体（{@code ChargerWaveEntity} /
-     * {@code AbstractChargerWaveEntity}）是普通飞行体，<b>没有任何逐 tick 位置钩子</b>，
-     * 也没有"父波 UUID / 半径 / 相位"这类字段。要承载它只有两条路：</p>
-     * <ol>
-     *   <li>改那个<b>共享</b>的既有波实体（给所有机器波加一族用不到的字段与一条分支）；</li>
-     *   <li>再自造一个波实体类型 —— <b>作者明确禁止</b>，而且这正是 2026-10-02 客户端 NPE
-     *       （{@code crash-reports/crash-2026-10-02_14.23.33-client.txt}）的原因。</li>
-     * </ol>
-     * <p>两条都不该由本轮擅自决定，故本方法与其数值只作<b>留档</b>；已把障碍与源码证据报给作者。</p>
+     * <p><b>每枚主波各自滚一次</b>（需求 §3.3(b)"每枚主波各自 0~1 枚"），
+     * 滚骰点在 {@code StarShockRuntime#fireMainWave}，每枚主波只滚一次。</p>
+     *
+     * <p><b>点按恒不生成环绕波</b>：点按那一 tick 传 {@code heldTicks = 0} ⇒
+     * {@link #chargeProgress(int, Config)} 返回 {@code 0.0} ⇒ 概率 {@code 0.0}
+     * （不是"很小"，是恒 0）。关卡 {@code star-orbit-tap-zero} 守着这条公式形状。</p>
+     *
+     * <p><b>承载方式（2026-10-02 裁定）</b>：环绕波不是新实体，而是<b>既有</b>
+     * {@code ChargerWaveEntity} 上那个"通用、可选、默认关闭"的<b>环绕波要素</b>
+     * （{@code AbstractChargerWaveEntity#setOrbitAnchor}：父波 UUID + 半径 + 角速度 + 相位）；
+     * 父波消散时环绕波靠"取不到父波即 discard"一起收尾。</p>
      */
     public static double orbitChance(int heldTicks, Config config) {
         if (config == null) {
