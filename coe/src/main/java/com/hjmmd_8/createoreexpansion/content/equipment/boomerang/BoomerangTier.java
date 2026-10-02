@@ -36,6 +36,12 @@ import net.minecraft.world.level.block.Block;
  *       （不是消失、也不是掉地上）——执行处在 {@code AbstractBoomerangEntity#outboundRangeExceeded}；
  *       长按（花瓣）不用它当结束条件，但花瓣的<b>最远距离</b>就是它
  *       （{@link BoomerangCurveConfigs} 的 {@code R}）。</li>
+ *   <li>{@link #baseSkillLevel()} —— <b>2026-10-02 批 3 新增</b>：技能基准等级
+ *       翠玉 1 / 宝石 2 / 星界 3 / 雷鸣 3（需求 §3.1 给死）。
+ *       它是"穿刺额度 3L/5L"与"穿刺消耗 20L"里的那个 L 的<b>基准</b>；
+ *       有效等级还要叠附魔（技艺提升 / 技艺回溯 ±2）再钳到 5，读取点唯一：
+ *       {@code BoomerangItem#effectiveSkillLevel(ItemStack, int)}。
+ *       ⚠ 与护甲的"雷鸣 = 4"<b>不同</b>，别照抄 {@code ArmorSkillLevels}（见该方法的注释）。</li>
  * </ul>
  *
  * <h2>两种投掷模式（2026-10-02 批 2：需求 §3.2 逐值给死）</h2>
@@ -260,6 +266,32 @@ public enum BoomerangTier {
 
     public ToolEnergyColorConfig color() {
         return color;
+    }
+
+    /**
+     * <b>这一档的技能基准等级</b>（需求 §3.1 给死）：翠玉 <b>1</b> / 宝石 <b>2</b> / 星界 <b>3</b> /
+     * 雷鸣 <b>3</b>。
+     *
+     * <p>⚠ <b>与护甲不同</b>：{@code ArmorSkillLevels} 里雷鸣是 <b>4</b>，回旋镖的雷鸣是 <b>3</b>
+     * ——作者在本轮需求里逐档写死过（§3.1 的表 + §六 推断值 #6 的引用），
+     * 所以这里是<b>独立的一份</b>，绝不去引用护甲那张表（引用就会把 4 带进来）。</p>
+     *
+     * <p>为什么写成 {@code switch (this)} 而不是第 12 个构造参数：本枚举的构造参数表
+     * （11 项）在关卡 §29h-1 与 §29k 里<b>逐位钉住</b>，加参数会让那两处一起动；
+     * 而基准等级<b>不影响任何其他档位字段的语义</b>，用 {@code switch} 表达"四档 → 四个数"
+     * 同样只有一处真源。派生量（额度 / 消耗）读的是
+     * {@code SkillEnergyCost.effectiveLevel(stack, 本方法, }{@code BoomerangSkillConfigs.MAX_SKILL_LEVEL}{@code )}
+     * ——读取点只有 {@code BoomerangItem#effectiveSkillLevel(ItemStack, int)} 一处。</p>
+     *
+     * <p>⚠ 正提升量上限是 +2 ⇒ <b>翠玉实际最高 3 级、宝石最高 4 级</b>（星界/雷鸣基准 3 才够到 5），
+     * 这是"基准 + 附魔 ±2"的必然结果，见 {@code BoomerangSkillConfigs} 第二节。</p>
+     */
+    public int baseSkillLevel() {
+        return switch (this) {
+            case JADE_TOPAZ -> 1;
+            case SAPPHIRE_RUBY -> 2;
+            case ASTRAL, THUNDER -> 3;
+        };
     }
 
     /**

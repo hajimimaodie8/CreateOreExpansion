@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.energy.EnergyGradientTool;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import java.awt.Color;
@@ -62,8 +63,8 @@ import net.minecraft.world.phys.Vec3;
  *   <li>冷却中 ⇒ <b>不投掷、不扣耐久</b>（裁定 D13；冷却圈本身在原版 {@code ItemCooldowns} 上
  *       显示，就是给玩家的反馈）；</li>
  *   <li>能量不够 ⇒ {@code ToolEnergy.sendLowEnergy} + 不投掷、<b>不扣耐久</b>（现状口径）；</li>
- *   <li>都过了 ⇒ <b>同一处</b>算总消耗（{@code throwCost(player, longHold)}，批 3/4 的技能附加费
- *       将来也加在这一行）→ 扣 → 造实体 → 记耐久损耗 → 上冷却。</li>
+ *   <li>都过了 ⇒ <b>同一处</b>算总消耗（{@link #throwCost(ItemStack, Player, boolean)} =
+ *       模式消耗 + 穿刺附加费 20L，批 4 再加环绕 15L）→ 扣 → 造实体 → 记耐久损耗 → 上冷却。</li>
  * </ol>
  * <p>⚠ <b>点按与长按共用同一条 {@code ItemCooldowns} 键</b>（原版按物品计）⇒ 两组冷却
  * <b>互相覆盖</b>：点按之后 5 秒内连长按也投不出去。这是<b>预期行为</b>（一条右键操作路径，
@@ -118,6 +119,19 @@ import net.minecraft.world.phys.Vec3;
  *       这里不再登记第二份名单（依据见 {@code AnvilEnchantmentGuard} 的注释：第二份表示必然漂移）。
  *       批 1 已把四把镖加进 {@code #skill_boostable}（需求 §3.7 的前置）。</li>
  * </ul>
+ *
+ * <h2>七、技能（2026-10-02 批 3：穿刺；需求 §3.5 / §3.7；裁定 D11）</h2>
+ * <p>四把镖都绑了 <b>{@code createoreexpansion:pierce}</b>（穿刺），基准等级取本档
+ * {@link BoomerangTier#baseSkillLevel()}（1 / 2 / 3 / 3），<b>不需要开关</b>：只要投掷就生效
+ * （需求 §六 推断值 #9）。等级的实际读取点是
+ * {@link #effectiveSkillLevel(ItemStack, int)}（唯一一处），消费点是
+ * {@link #throwCost(ItemStack, Player, boolean)}（附加费 20L）与实体侧的穿透额度（3L / 5L）。</p>
+ * <p>⚠ <b>为什么右键投掷不会"顺带释放"这条技能</b>：技能类型是
+ * {@code SkillType.USE_SKILL}，而 {@code UseItemHandler} 会在
+ * {@code PlayerInteractEvent.RightClickItem} 上把主手物品的 USE 族技能送进内核释放 ——
+ * 对镖来说那就是"右键 = 又扣一次能量"。因此那里按<b>类型</b>（不是物品 id）给
+ * {@link BoomerangItem} 开了一条豁免，理由与弓的同形（弓的技能在松手射击那一刻自己释放）。
+ * 详见 {@code UseItemHandler#release} 里的注释。</p>
  */
 public class BoomerangItem extends Item implements EnergyGradientTool {
 
@@ -234,8 +248,8 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 			// 就是给玩家的反馈；这里不再另发一条文案。
 			return;
 		}
-		// 唯一一处"算总消耗"：模式消耗（批 3/4 的技能附加费将来加在这一行，也仍然只有这一处）。
-		int cost = throwCost(player, longHold);
+		// 唯一一处"算总消耗"：模式消耗 + 穿刺附加费（批 4 的环绕也加在这一行）。
+		int cost = throwCost(stack, player, longHold);
 		if (!ToolEnergy.canAfford(player, stack, cost)) {
 			ToolEnergy.sendLowEnergy(player, stack);
 			return; // 能量不够 ⇒ 不投掷，且**不扣耐久**
@@ -299,12 +313,45 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 	/**
 	 * <b>本次投掷的总能量消耗（唯一一处）</b>：模式消耗 + 技能附加费。
 	 *
-	 * <p>批 2 只有模式消耗那一项（点按 10/9/8/8、长按 50/45/40/40）。批 3/4 的两个技能
-	 * （穿刺 {@code 20×等级}、环绕 {@code 15×等级}，需求 §3.7）加在这里——
+	 * <p>批 2 只有模式消耗那一项（点按 10/9/8/8、长按 50/45/40/40）。批 3 把<b>穿刺</b>的附加费
+	 * 加进来（{@code 20×等级}，需求 §3.7）——批 4 的环绕（{@code 15×等级}）也加在这一行。
 	 * 这样"判合计"与"扣合计"永远在同一处（需求 §3.7 的 ⚠，也是陷阱清单 #7）。</p>
+	 *
+	 * <p>⚠ <b>签名在批 3 多了一个 {@code stack}</b>：技能等级要读这条栈上的附魔
+	 * （技艺提升 / 技艺回溯），而等级又决定附加费 —— 少一个入参就只能去别处读，
+	 * 那正是"同一件事两处口径"的开端。调用点只有 {@link #releaseUsing} 一处。</p>
+	 *
+	 * @param stack    投掷的那一把镖（读附魔取有效等级）
+	 * @param longHold {@code true} = 长按（花瓣曲线）
 	 */
-	public int throwCost(Player player, boolean longHold) {
-		return tier.throwCost(longHold);
+	public int throwCost(ItemStack stack, Player player, boolean longHold) {
+		// 模式消耗（档位表）+ 穿刺附加费（20×等级）。player 目前不参与计算，
+		// 留着是因为"谁投的"将来可能进折扣/状态判定（批 4 的环绕也走这一行）。
+		return tier.throwCost(longHold) + BoomerangSkillConfigs.pierceEnergyCost(effectiveSkillLevel(stack));
+	}
+
+	// ========== 技能等级（2026-10-02 批 3：穿刺；读取点唯一） ==========
+
+	/**
+	 * <b>本把镖的有效技能等级</b>（<b>唯一读取点</b>；物品侧与实体侧共用它）。
+	 *
+	 * <p>口径 = {@code SkillEnergyCost.effectiveLevel(stack, 基准, MAX_SKILL_LEVEL)}：
+	 * {@code min(基准 + 技艺提升 − 技艺回溯, 5)} 且不低于 1（两个附魔 3 级及以上一律按 2 计）。</p>
+	 *
+	 * <p>谁用它：{@link #throwCost}({@code 20×等级}) 与实体的穿透额度
+	 * （{@code AbstractBoomerangEntity#pierceMobQuota/pierceBlockQuota}，{@code 3L/5L}）。
+	 * 两边都<b>现读</b>同一份栈 ⇒ 不会出现"收 20L 的钱、给 3(L-1) 的额度"这种漂移。</p>
+	 *
+	 * <p>⚠ 基准等级来自档位（{@link BoomerangTier#baseSkillLevel()}：1/2/3/3）——
+	 * 与护甲的雷鸣=4 <b>不同</b>，这里绝不引用护甲那张表。</p>
+	 */
+	public static int effectiveSkillLevel(ItemStack stack, int baseLevel) {
+		return SkillEnergyCost.effectiveLevel(stack, baseLevel, BoomerangSkillConfigs.MAX_SKILL_LEVEL);
+	}
+
+	/** 本实例（按自己的档位取基准等级）的有效技能等级；见 {@link #effectiveSkillLevel(ItemStack, int)}。 */
+	public int effectiveSkillLevel(ItemStack stack) {
+		return effectiveSkillLevel(stack, tier.baseSkillLevel());
 	}
 
 	// ========== 耐久：本档上限 + 读写接口（2026-10-02 批 1） ==========

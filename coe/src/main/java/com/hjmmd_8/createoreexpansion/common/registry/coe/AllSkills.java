@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.BoomerangSkillConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
@@ -213,6 +214,30 @@ public final class AllSkills {
     public static final RegisteredDataSkill STAR_SHOCK =
             skill("star_shock", SkillType.USE_SKILL)
                     .maxLevel(ArmorSkillRuntime.MAX_EQUIPMENT_SKILL_LEVEL)
+                    .register();
+
+    // ========== 回旋镖技能（2026-10-02 批 3：穿刺；环绕是批 4）—— 数值统一在 BoomerangSkillConfigs ==========
+    /**
+     * 穿刺（回旋镖四把共用）：投掷出去的镖可以<b>穿过</b>至多 {@code 3×等级} 个生物与
+     * {@code 5×等级} 个方块（需求 §3.5），额度用完就掉头；点按与长按都生效，无独立冷却。
+     *
+     * <p>与上面几条"执行不住在内核"的技能同形：这里只登记 id / 类型 / 等级上限 ——</p>
+     * <ul>
+     *   <li><b>数值</b>在 {@link BoomerangSkillConfigs}（{@code 3L} / {@code 5L} / {@code 20L} / 上限 5）；</li>
+     *   <li><b>执行</b>在 {@code AbstractBoomerangEntity#onHitEntity/onHitBlock}（镖自己的命中判定，
+     *       与"碰到就回"那条老规则同一处）——<b>刻意不挂</b> {@code .config(...)} /
+     *       {@code .configsByLevel(...)}：内核的 config 解析链是给"内核自己执行"的技能用的，
+     *       这里挂了也只会多一份会漂移的数值；</li>
+     *   <li><b>内核白名单</b>仍要登记（{@code SkillerIntegration}，与装备技能同一个无操作壳）：
+     *       {@code skiller:skill} 是数据驱动白名单，漏登记 ⇒ 物品上这个技能实例反序列化不出来。</li>
+     * </ul>
+     *
+     * <p>等级：基准取档位（{@code BoomerangTier#baseSkillLevel()} = 1/2/3/3），叠技艺提升 /
+     * 技艺回溯后钳到 {@code 1..MAX_SKILL_LEVEL}；读取点唯一（{@code BoomerangItem#effectiveSkillLevel}）。</p>
+     */
+    public static final RegisteredDataSkill PIERCE =
+            skill("pierce", SkillType.USE_SKILL)
+                    .maxLevel(BoomerangSkillConfigs.MAX_SKILL_LEVEL)
                     .register();
 
     // ========== 工具方法 ==========

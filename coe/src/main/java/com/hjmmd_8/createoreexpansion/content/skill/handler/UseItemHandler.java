@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.BoomerangItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
@@ -27,6 +28,11 @@ import net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent;
  *
  * <p>职责（换核后只剩一条路径）：右键物品 / 对方块使用物品时，把事件交给
  * Skiller 新内核的 USE 族技能执行（耗能 / 冷却 / 效果都在技能实现里）。</p>
+ *
+ * <p>⚠ <b>两类物品在这里被豁免</b>（两处 {@code instanceof} 都在 {@link #release} 里，
+ * 各自写明理由）：弓（{@code JadeTopazBowItem}，它在松手射击时自己释放）与
+ * <b>回旋镖</b>（{@link BoomerangItem}，2026-10-02 批 3 裁定 D11：它的穿刺效果在镖的命中判定里，
+ * 右键那一刻再释放一次＝投一次扣两次能量）。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class UseItemHandler {
@@ -53,6 +59,19 @@ public class UseItemHandler {
 		// 弓类武器技能由弓自身在松手射击（releaseUsing）时释放：右键拉弓瞬间不触发，
 		// 否则会在蓄力开始时就消耗能量/进入冷却（USE 触发时机不匹配）。
 		if (stack.getItem() instanceof JadeTopazBowItem)
+			return;
+		// ⚠ 回旋镖必须同样豁免（2026-10-02 批 3，裁定 D11）——**为什么必须**：
+		// 四把镖绑的是 createoreexpansion:pierce，类型是 USE_SKILL（由 AllSkills 登记，
+		// 因为它是"投掷时生效"的主动技能）。而本方法就挂在
+		// PlayerInteractEvent.RightClickItem / UseItemOnBlockEvent 上 ⇒ 不豁免的话，
+		// **右键投掷的同一瞬间**会再走一次内核释放：`ToolEnergy` 被第二次扣款
+		// （投掷费已在 BoomerangItem#releaseUsing 里按"模式消耗 + 20L"合计扣过一次），
+		// 也就是"投一次扣两次能量"。穿刺的效果本身不靠这里 —— 它在**镖飞出去以后**的
+		// 命中判定里（AbstractBoomerangEntity#onHitEntity/onHitBlock），与右键那一刻无关。
+		// 判据按**类型**（BoomerangItem），不按物品 id：四把镖共用一个类，按 id 硬编码
+		// 会在加法宝时静默漏掉那一条（coe-ench 那轮的同类坑）。
+		// 与弓的区别：弓的技能真的需要"释放"这个动作（松手时自己调），镖连释放都不需要。
+		if (stack.getItem() instanceof BoomerangItem)
 			return;
 		SkillItemStack skillStack = SkillItemStack.of(stack);
 		SkillsComponent holder = skillStack.getSkillsHolder();

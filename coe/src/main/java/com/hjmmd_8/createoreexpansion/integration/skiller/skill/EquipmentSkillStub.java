@@ -27,6 +27,13 @@ import com.leaf.skiller.foundation.skill.ItemSkill;
  * 这两个方法永远不会被调用 —— 留空是<b>契约要求</b>，不是没写完。
  * 若哪天有人发现它们被调用了，说明那条跳过规则被删了，是回归。</p>
  *
+ * <h2>2026-10-02 批 3 起：回旋镖的穿刺技能也复用这个壳</h2>
+ * <p>{@code createoreexpansion:pierce} 的执行同样<b>不在内核</b>——它在
+ * {@code AbstractBoomerangEntity} 的命中判定里（镖自己吃额度、决定穿过还是掉头），
+ * 所以内核侧只需要一条"能被反序列化命中的白名单条目"，行为与装备技能一样是"什么都不做"。
+ * 用户 2026-10-01 的裁定是「能继承就继承，别一个技能复制一个类」⇒ 这里<b>不</b>为它新建第二个壳类，
+ * 而是把本类当成"执行不在内核里的技能"的共用壳（名字里的 Equipment 来自它最初的 6 个用户）。</p>
+ *
  * @since 1.0.0
  */
 public final class EquipmentSkillStub implements ItemSkill<UseItemSkillContext> {

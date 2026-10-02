@@ -110,9 +110,12 @@ import net.minecraft.world.phys.Vec3;
  * 分支在 {@link #tickOutbound()} 的第一行：{@code isPetalFlight() ⇒ tickPetal()}。
  * 曲线用<b>弧长参数化</b>推进（{@code Δs = v(s)/L_total}，每 tick 一次），
  * <b>s 走到 1 才 {@code setReturning(true)}</b>（"必须飞完一瓣才能返回"）；
- * 长按<b>不参与</b>命中判定（碰到方块/生物既不掉头也不挖不伤——穿刺与环绕是批 3/4 的技能），
- * 也<b>不受</b>距离判据约束（否则主人一挪步就会把花瓣从中间掐断），只剩
- * {@link #MAX_OUTBOUND_TICKS} 兜底。</p>
+ * 花瓣段<b>不受</b>距离判据约束（否则主人一挪步就会把花瓣从中间掐断），只剩
+ * {@link #MAX_OUTBOUND_TICKS} 兜底。
+ * <br>⚠ <b>批 3 修正 2</b>：花瓣段<b>也要</b>走命中判定（{@link #tickPetal} 调
+ * {@link #checkImpact()} 这一处，与点按共用），所以长按同样能伤生物、挖方块、吃穿刺额度；
+ * 但"必须飞完一瓣才能返回"是硬优先级 ⇒ 花瓣段<b>永不</b>因命中而提前掉头
+ * （{@link #onHitBlock} / {@link #onHitEntity} 里的 {@code isPetalFlight()} 分支）。</p>
  *
  * <p>曲线的锚点是<b>出手那一刻的位置</b>（{@link #startPetalFlight} 由物品传入，
  * 走同步数据 {@link #DATA_PETAL_ORIGIN} 所以客户端也能自己算出同一条曲线），
@@ -135,6 +138,24 @@ import net.minecraft.world.phys.Vec3;
  * 物品就此消失）。<b>爆掉时乘客/并入物照样先交给玩家</b>（需求 §六 推断值 #5，
  * "不给会白丢一次挖掘收益"），拿不到玩家时照旧落地、绝不销毁。冷却不受爆掉影响：
  * 冷却是在投掷那一刻就上好的（{@code BoomerangItem#releaseUsing}）。</p>
+ *
+ * <h2>六、批 3（2026-10-02）：穿刺技能（需求 §3.5 / §3.6 的"镖本身"那一半）</h2>
+ * <p>四把镖都带 {@code createoreexpansion:pierce}（基准等级 1/2/3/3、钳到 5），
+ * 不需要开关、点按与长按都生效。额度<b>每次投掷各一份</b>：实体是每次投掷新建的，
+ * 账记在 {@link #pierceMobsLeft} / {@link #pierceBlocksLeft} 上，由
+ * {@link #ensurePierceQuota()} 从镖的栈现读等级算一次（{@link BoomerangSkillConfigs}
+ * 的 {@code 3L} / {@code 5L}）。三条规则：</p>
+ * <ol>
+ *   <li><b>额度用完即掉头</b>（需求 §3.5 的原话，= 回到"碰到就回"的行为）：生物额度用完的那一次
+ *       命中、方块额度用完的那一次挖掘，都会 {@code setReturning(true)}；</li>
+ *   <li><b>"飞完一瓣"优先</b>（需求 §3.2 + 批 3 裁定）：花瓣段只吃额度、<b>绝不</b>提前掉头
+ *       ——两个 {@code isPetalFlight()} 分支就是这条优先级的落点，关卡 §29n-2 钉着它；</li>
+ *   <li><b>穿透破坏照样扣耐久</b>（需求 §六 推断值 #4）：命中生物 / 挖掉方块各
+ *       −{@link BoomerangTier#WEAR_PER_HIT}，走的仍是批 2 的"只累计、回程一次结算"。</li>
+ * </ol>
+ * <p>⚠ <b>撞上挖不动的方块不掉额度但会掉头</b>（点按段）：{@link #mineBlock} 的三关
+ * （硬度 / 挖掘等级 / 原版进度）没过 ⇒ 不消耗额度、也不穿墙（批 1/2 的"撞墙即回"照旧）。
+ * 花瓣段则穿过（曲线是固定路径，与批 2 的花瓣段行为一致）。</p>
  */
 public abstract class AbstractBoomerangEntity extends Projectile {
 
@@ -258,6 +279,18 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	 */
 	private double petalProgress;
 
+	/**
+	 * <b>本次投掷还剩多少"生物穿透额度"</b>（需求 §3.5；批 3）。{@code -1} = 尚未初始化。
+	 *
+	 * <p>额度 = {@code 3 × 有效技能等级}，由 {@link #ensurePierceQuota()} 从
+	 * {@link #getItemStack()} 现读一次（同时也把方块额度算出来）。<b>它是"每次投掷一份"的账</b>：
+	 * 实体是每次投掷新建的对象 ⇒ 天然"每次投掷独立重置"，绝不会跨投掷累计
+	 * （那就是把额度记在物品上了，需求明确排除）。</p>
+	 */
+	private int pierceMobsLeft = -1;
+	/** 还剩多少"方块穿透额度"（{@code 5 × 有效技能等级}）；{@code -1} = 尚未初始化。见 {@link #pierceMobsLeft}。 */
+	private int pierceBlocksLeft = -1;
+
 	protected AbstractBoomerangEntity(EntityType<? extends AbstractBoomerangEntity> type, Level level) {
 		super(type, level);
 	}
@@ -272,6 +305,69 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		builder.define(DATA_PETAL, false);
 		builder.define(DATA_PETAL_ORIGIN, new Vector3f());
 		builder.define(DATA_PETAL_ANGLE, 0.0F);
+	}
+
+	// ================= 穿刺技能（2026-10-02 批 3；需求 §3.5） =================
+
+	/**
+	 * <b>初始化本次投掷的穿透额度</b>（只在第一次需要时算一次）。
+	 *
+	 * <p>等级走 {@link BoomerangItem#effectiveSkillLevel(ItemStack, int)}（与物品侧<b>同一个</b>
+	 * 读取点）——基准等级取本档 {@link BoomerangTier#baseSkillLevel()}，叠技艺提升 / 技艺回溯后
+	 * 钳到 5。额度本身来自 {@link BoomerangSkillConfigs}（{@code 3L} 与 {@code 5L}）。</p>
+	 *
+	 * <p>为什么<b>惰性</b>初始化而不是在投掷时写：实体在被投掷的那一刻已经把镖的栈同步进来了
+	 * （{@code setItemStack} 在 {@code addFreshEntity} 之前），但"这一趟到底有没有用到穿透"
+	 * 只有第一次命中才知道；惰性初始化让"没打过任何东西的一趟"完全不碰这套账，
+	 * 也让跨区块重载（{@code -1} 与已用的剩余额度都进 NBT）与之一致。</p>
+	 */
+	private void ensurePierceQuota() {
+		if (this.pierceMobsLeft >= 0) {
+			return;
+		}
+		int level = BoomerangItem.effectiveSkillLevel(getItemStack(), tier().baseSkillLevel());
+		this.pierceMobsLeft = BoomerangSkillConfigs.pierceMobQuota(level);
+		this.pierceBlocksLeft = BoomerangSkillConfigs.pierceBlockQuota(level);
+	}
+
+	/** 本次投掷剩余的<b>生物</b>穿透额度（初始化后；只读给关卡/调试用）。 */
+	public int getPierceMobsLeft() {
+		ensurePierceQuota();
+		return this.pierceMobsLeft;
+	}
+
+	/** 本次投掷剩余的<b>方块</b>穿透额度（初始化后；只读给关卡/调试用）。 */
+	public int getPierceBlocksLeft() {
+		ensurePierceQuota();
+		return this.pierceBlocksLeft;
+	}
+
+	/**
+	 * <b>命中之后"要不要掉头"的唯一判定</b>（生物与方块两条命中路径共用这一处）。
+	 *
+	 * <p>三条判据，顺序固定 —— <b>"飞完一瓣"永远排第一</b>（需求 §3.2 + 批 3 裁定：
+	 * 花瓣段不许因为命中而提前返回，额度用完也不行）：</p>
+	 * <ol>
+	 *   <li>{@code isPetalFlight()} ⇒ 恒 <b>不掉头</b>（花瓣段唯一允许的掉头是"走完 s=1"）；</li>
+	 *   <li>这次命中<b>本来就不允许穿过</b>（{@code mayPierceThrough = false}：撞上挖不动的方块）
+	 *       ⇒ 照旧掉头（批 1/2 的"撞墙即回"）；</li>
+	 *   <li>额度还没用完（{@code quotaLeft > 0}）⇒ 穿过去继续飞；<b>用完 ⇒ 掉头</b>
+	 *       （需求 §3.5："额度用完即掉头（= 回到点按那种碰到就回的行为）"）。</li>
+	 * </ol>
+	 *
+	 * @param quotaLeft        该类额度在本次命中<b>扣减之后</b>的余量
+	 * @param mayPierceThrough {@code false} = 这次命中不允许穿过（挖不动的方块）
+	 * @return {@code true} = 已转入回程（调用方不得再前进）
+	 */
+	private boolean turnAroundIfNotPiercing(int quotaLeft, boolean mayPierceThrough) {
+		if (isPetalFlight()) {
+			return false; // ← "飞完一瓣"优先于"额度用完"（唯一一处表达这条优先级）
+		}
+		if (!mayPierceThrough || quotaLeft <= 0) {
+			setReturning(true);
+			return true;
+		}
+		return false;
 	}
 
 	// ================= 同步数据读写 =================
@@ -393,7 +489,7 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 				// 兜底（分工见 MAX_OUTBOUND_TICKS 的注释）：距离判据万一失效，也不许永远飞下去。
 				setReturning(true);
 			} else if (tickOutbound()) {
-				return; // 本 tick 刚命中方块并转入回程：不再前进，免得钻进墙里
+				return; // 本 tick 不再前进（命中方块且没挖穿 / 已转入回程）：免得钻进墙里
 			}
 		}
 
@@ -406,8 +502,12 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	 * 去程：命中判定 + 位移（<b>两端各跑一次</b>）。返回 true 表示"本 tick 已转入回程，别再前进"。
 	 *
 	 * <p><b>第一行就是模式分岔</b>（2026-10-02 批 2）：长按（花瓣曲线）走 {@link #tickPetal()}，
-	 * 点按逐字沿用下面这一支（射线命中 + 阻力位移）。⚠ 长按那支<b>不经过</b> {@link #checkImpact()}——
-	 * 需求 §3.2："必须飞完一瓣才返回，不是碰到东西就结束"（穿刺/环绕是批 3/4 的技能）。</p>
+	 * 点按逐字沿用下面这一支（射线命中 + 阻力位移）。</p>
+	 *
+	 * <p>⚠ <b>批 3 修正</b>：命中判定<b>两种模式共用</b> {@link #checkImpact()} 这一处入口
+	 * （花瓣段由 {@link #tickPetal()} 调它，不再"穿过生物/方块无效果"）——"掉头"与"穿过去"
+	 * 的分歧只在 {@link #onHitBlock} / {@link #onHitEntity} 内部，按
+	 * {@code isPetalFlight()} 与穿刺额度决定（见那两个方法）。这里点按那一支一个字没动。</p>
 	 */
 	private boolean tickOutbound() {
 		if (isPetalFlight()) {
@@ -427,8 +527,14 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	/**
 	 * <b>长按的花瓣曲线飞行</b>（需求 §3.4；数学与常数全在 {@link BoomerangCurveConfigs}）。
 	 *
-	 * <p>每 tick 三步，顺序固定：</p>
+	 * <p>每 tick 四步，顺序固定：</p>
 	 * <ol>
+	 *   <li><b>命中判定</b>（<b>服务端</b>）：调<b>与点按同一处</b>的 {@link #checkImpact()}
+	 *       ——花瓣段也要能伤生物、挖方块、吃穿刺额度（2026-10-02 批 3 修正 2；
+	 *       批 2 这里什么都不做，等于"镖穿过生物/方块无效果"）。
+	 *       ⚠ <b>掉头不归它管</b>：{@link #onHitBlock} / {@link #onHitEntity} 内部看到
+	 *       {@code isPetalFlight()} 就不会掉头（"必须飞完一瓣才能返回"优先于"额度用完"），
+	 *       所以这里的返回值被<b>刻意忽略</b>——花瓣段不会因为命中而提前结束；</li>
 	 *   <li><b>推进弧长</b> {@code s += v(s)/L_total}（{@code Δt = 1 tick}；v(s) 关于 s=0.5 对称）；</li>
 	 *   <li>{@code s ≥ 1} ⇒ <b>飞完一瓣</b>，服务端 {@link #setReturning(boolean)} 转回程，本 tick 不再前进
 	 *       （"必须飞完一瓣才能返回"；客户端不写同步值，等服务端那一份推回来）；</li>
@@ -440,8 +546,18 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	 * <p>锚点用同步数据里的 {@link #DATA_PETAL_ORIGIN}（<b>不是</b> {@link #originX}）：
 	 * 前者出手时就同步给了客户端，两端才画得出同一条曲线；后者是服务端第一条 tick 记的、
 	 * 给"距离判据改基准"留的后路（见 {@link #outboundRangeExceeded}）。</p>
+	 *
+	 * <p>命中判定必须在<b>位移之前</b>：它用的是"上一 tick 的位移向量"
+	 * （点按那一支的 {@code motion} 也来自 {@code getDeltaMovement()}，同一口径）。
+	 * 出手第一 tick 还没有位移（长按不走 {@code shootFromRotation}）⇒ {@code checkImpact} 里的
+	 * "位移太小直接返回"会把它挡掉，这是预期行为。</p>
 	 */
 	private boolean tickPetal() {
+		if (!level().isClientSide) {
+			// 与点按共用同一处命中入口。返回值（= 是否已转入回程）在这里被刻意忽略：
+			// 花瓣段唯一允许的掉头是"飞完一瓣"（下面那一支），额度用完不掉头。
+			checkImpact();
+		}
 		BoomerangCurveConfigs.Petal petal = BoomerangCurveConfigs.petal(tier().returnDistance());
 		double next = BoomerangCurveConfigs.stepProgress(this.petalProgress, petal);
 		if (next >= 1.0D) {
@@ -539,7 +655,12 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	 * <p>循环（"交替"）：打完一只生物后从命中点继续往前查，一 tick 内可以连续穿刺多只，
 	 * 上限 {@link #MAX_IMPACT_LOOPS}；同一只生物靠 {@code entitiesHit} 去重。</p>
 	 *
-	 * @return true = 本 tick 命中了方块并已转入回程
+	 * <p><b>批 3：这是两种飞行模式共用的唯一命中入口</b>（点按的 {@link #tickOutbound} 与
+	 * 花瓣段的 {@link #tickPetal} 都调它）——"穿过还是掉头""吃不吃额度""花瓣段要不要提前返回"
+	 * 这些分歧全部落在 {@link #onHitBlock} 与 {@link #onHitEntity} 内部，
+	 * 这里<b>没有第二份射线/命中代码</b>（关卡 §29n-4 钉着这一点）。</p>
+	 *
+	 * @return true = 本 tick 别再前进（命中了方块，或某次命中把镖掉头了）
 	 */
 	private boolean checkImpact() {
 		Vec3 motion = getDeltaMovement();
@@ -560,14 +681,18 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 				|| start.distanceToSqr(blockHit.getLocation()) <= start.distanceToSqr(entityHit.getLocation()));
 
 			if (blockIsCloser) {
-				onHitBlock(blockHit.getBlockPos());
-				return true;
+				// 命中方块 ⇒ 由 onHitBlock 决定"穿过去（挖掉了且还有额度）"还是"停下（额度用完/挖不动）"。
+				return onHitBlock(blockHit.getBlockPos());
 			}
 			if (entityHit == null) {
 				return false;
 			}
 			if (!onHitEntity(entityHit.getEntity())) {
 				return false; // 已经打过 ⇒ 本 tick 收手（否则同一个命中点会无限重来）
+			}
+			if (isReturning()) {
+				// 这一只把生物额度用完了 ⇒ 掉头（点按段；花瓣段不会置位，见 onHitEntity）
+				return true;
 			}
 			start = entityHit.getLocation();
 		}
@@ -577,11 +702,16 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	}
 
 	/**
-	 * 命中生物：只伤一次、记个数。返回 false 表示"这只已经打过了"。
+	 * 命中生物：只伤一次、记个数、吃一份穿刺额度。返回 false 表示"这只已经打过了"。
 	 *
 	 * <p>耐久（2026-10-02 批 2：需求 §3.8）：每命中一个生物<b>额外记一笔 −1</b>
 	 * （{@link BoomerangTier#WEAR_PER_HIT}）。<b>只记账</b>——见 {@link #flightWear}：
 	 * 飞行期间一次都不写回物品，回到玩家手里才由 {@link #settleWear(ItemStack)} 一次结算。</p>
+	 *
+	 * <p><b>穿刺额度（批 3，需求 §3.5）</b>：每命中一只生物消耗一份<b>生物额度</b>
+	 * （{@code 3 × 等级}，见 {@link #ensurePierceQuota()}）。额度用完 ⇒ <b>掉头</b>
+	 * （需求："额度用完即掉头"）——但<b>花瓣段除外</b>：{@code isPetalFlight()} 时只消耗额度、
+	 * 绝不掉头（"必须飞完一瓣才能返回"优先）。两条判据都只在下面这一段里。</p>
 	 */
 	private boolean onHitEntity(Entity target) {
 		if (target == getOwner() || !entitiesHit.add(target.getId())) {
@@ -592,13 +722,45 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		target.hurt(damageSources().indirectMagic(this, null), tier().damage());
 		hitCount++;
 		addFlightWear(BoomerangTier.WEAR_PER_HIT);
+		// 穿刺：吃掉一份生物额度。需求 §六 推断值 #4：穿透命中同样扣耐久（上面那行已扣）。
+		ensurePierceQuota();
+		this.pierceMobsLeft = Math.max(0, this.pierceMobsLeft - 1);
+		// 额度用完即掉头（生物永远允许"穿过"⇒ mayPierceThrough = true）；
+		// 花瓣段那一支由 turnAroundIfNotPiercing 内部挡掉（飞完一瓣优先）。
+		turnAroundIfNotPiercing(this.pierceMobsLeft, true);
 		return true;
 	}
 
-	/** 命中方块：能挖就挖，然后不管挖没挖动都转回程（镖撞墙 = 回来）。 */
-	private void onHitBlock(BlockPos pos) {
-		mineBlock(pos);
-		setReturning(true);
+	/**
+	 * 命中方块：能挖就挖（{@link #mineBlock}），然后按模式与额度决定"穿过去还是掉头"
+	 * （2026-10-02 批 3：需求 §3.5）。
+	 *
+	 * <p>本方法只做两件事：<b>尝试挖</b>（{@code destroyed = mineBlock(pos)}）与
+	 * <b>扣额度</b>；"穿过去还是掉头"整条判据交给 {@link #turnAroundIfNotPiercing(int, boolean)}
+	 * 那一处（生物那条路径用的是同一个方法）——于是"花瓣段优先"这条规则<b>在代码里只有一处</b>。</p>
+	 *
+	 * <p>行为对照（三种情形）：</p>
+	 * <ol>
+	 *   <li><b>花瓣段</b>：挖掉了就吃一份额度，然后<b>一律不掉头</b>（"必须飞完一瓣才能返回"
+	 *       优先于"额度用完"）；挖不动的方块也穿过——花瓣曲线是固定路径，与批 2 的花瓣段行为一致；</li>
+	 *   <li><b>点按 + 挖不动</b>：{@code mayPierceThrough = false} ⇒ 撞墙，照旧掉头（批 1/2 的行为）；</li>
+	 *   <li><b>点按 + 挖掉了</b>：额度没用完就<b>穿过去继续飞</b>，用完则<b>掉头</b>。</li>
+	 * </ol>
+	 *
+	 * <p>额度只在<b>真的挖掉</b>时消耗：挖不动的方块不消耗额度（否则"额度被挖不穿的墙吃掉"
+	 * 会让玩家少穿透几个能挖的方块）。</p>
+	 *
+	 * @return {@code true} = 已转入回程（调用方不得再前进）；挖穿且还有额度时是 {@code false}
+	 */
+	private boolean onHitBlock(BlockPos pos) {
+		boolean destroyed = mineBlock(pos);
+		ensurePierceQuota();
+		if (destroyed) {
+			this.pierceBlocksLeft = Math.max(0, this.pierceBlocksLeft - 1);
+		}
+		// 唯一一处"要不要掉头"：花瓣段不掉头（飞完一瓣优先）；挖不动 ⇒ 掉头；额度用完 ⇒ 掉头；
+		// 挖掉了且还有额度 ⇒ 穿过去继续飞。
+		return turnAroundIfNotPiercing(this.pierceBlocksLeft, destroyed);
 	}
 
 	// ================= 挖方块（照搬 Quark 最精妙的那一段） =================
@@ -623,25 +785,29 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	 * ⚠ 旧的 {@code BoomerangTier#mineCost()}（5/10/15/20 点）已被作者推翻并删除（需求 §3.8 + §3.9），
 	 * 本方法里那一行 {@code ToolEnergy.canAfford/consume} 也随之删掉——能量只花在投掷那一处。
 	 * 与命中生物一样，这里<b>只记账</b>（{@link #flightWear}），不写回物品。</p>
+	 *
+	 * @return true = 真的挖掉了（{@code destroyBlock} 答应）；false = 任一门槛没过或没挖动。
+	 *         <b>批 3 起有返回值</b>：{@link #onHitBlock} 靠它决定"吃不吃穿刺额度、
+	 *         穿过去还是掉头"——挖不动的方块不消耗额度，也仍然把镖拦下来（点按段）。
 	 */
-	private void mineBlock(BlockPos pos) {
+	private boolean mineBlock(BlockPos pos) {
 		if (!(getOwner() instanceof ServerPlayer player)) {
-			return;
+			return false;
 		}
 		BlockState state = level().getBlockState(pos);
 		if (state.isAir()) {
-			return;
+			return false;
 		}
 		float hardness = state.getDestroySpeed(level(), pos);
 		if (hardness < 0.0F) {
-			return;
+			return false;
 		}
 		BoomerangTier tier = tier();
 		if (hardness > tier.maxHardness()) {
-			return;
+			return false;
 		}
 		if (state.is(tier.incorrectBlocks())) {
-			return;
+			return false;
 		}
 		// 原版挖掘进度：一 tick 内进度 ≥ 1 才算挖开（i=30 正确工具 / i=100 用错工具）。
 		// 这里用**位置敏感**的 hasCorrectToolForDrops —— 它就是 NeoForge 的 doPlayerHarvestCheck
@@ -649,11 +815,11 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		// 让别的模组有机会否决）。单参那个重载在 NeoForge 里是 @Deprecated。
 		int i = player.hasCorrectToolForDrops(state, level(), pos) ? 30 : 100;
 		if (tier.digSpeed() / (hardness * i) < 1.0F) {
-			return;
+			return false;
 		}
 		ItemStack stack = getItemStack();
 		if (stack.isEmpty()) {
-			return; // 没有镖就没有"临时塞进手里"这一步（能量已不再参与挖掘判定）
+			return false; // 没有镖就没有"临时塞进手里"这一步（能量已不再参与挖掘判定）
 		}
 
 		Inventory inventory = player.getInventory();
@@ -674,6 +840,7 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 			// 这里绝不能调 BoomerangItem#addWear —— 那正是"耐久被提前打到 0"的那条错路。
 			addFlightWear(BoomerangTier.WEAR_PER_HIT);
 		}
+		return destroyed;
 	}
 
 	// ================= 回程捡物 =================
@@ -863,6 +1030,10 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		this.slot = tag.getInt("Slot");
 		// 本次飞行的耐久账（批 2）：不读回来 = 重载一次就能把欠的耐久一笔勾销。
 		this.flightWear = tag.getInt("FlightWear");
+		// 穿刺额度（批 3）：-1 表示"还没初始化"（那时不写键，读回来仍是 -1，第一次命中再算）；
+		// 已用掉一部分的额度必须读回来，否则"飞出去半趟、卸载区块"就能白刷一份额度。
+		this.pierceMobsLeft = tag.contains("PierceMobsLeft") ? tag.getInt("PierceMobsLeft") : -1;
+		this.pierceBlocksLeft = tag.contains("PierceBlocksLeft") ? tag.getInt("PierceBlocksLeft") : -1;
 		// 花瓣曲线状态（批 2）：模式 + 锚点 + 基准角 + 进度（写侧见 addAdditionalSaveData）。
 		if (tag.getBoolean("PetalFlight")) {
 			this.entityData.set(DATA_PETAL, true);
@@ -900,6 +1071,12 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		// 本次飞行的耐久账（2026-10-02 批 2）：跨区块重载不许把欠账抹掉，否则
 		// "飞出去一趟正好让区块卸载"就成了躲避爆掉的捷径。
 		tag.putInt("FlightWear", this.flightWear);
+		// 穿刺额度（2026-10-02 批 3）：记过才写（-1 = 还没初始化就不写键，
+		// 读回来仍是 -1 ⇒ 第一次命中时按当时的等级现算，与"从没打过东西"完全等价）。
+		if (this.pierceMobsLeft >= 0) {
+			tag.putInt("PierceMobsLeft", this.pierceMobsLeft);
+			tag.putInt("PierceBlocksLeft", this.pierceBlocksLeft);
+		}
 		// 花瓣曲线状态（2026-10-02 批 2）：模式 + 锚点 + 基准角 + 进度。
 		// ⚠ 这三项平时走同步数据（两端要一起算曲线），但同步数据不进存档 ⇒ 重载一次就会
 		// 退化成"点按直线"（进度归零 = 从头再飞一瓣），所以必须各自落一份 NBT。
