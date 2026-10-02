@@ -47,7 +47,10 @@ import net.minecraft.world.phys.Vec3;
  *   <li><b>去程</b>：{@link #checkImpact()} 先射线查实体（{@link ProjectileUtil#getEntityHitResult}，
  *       AABB 用 {@code getBoundingBox().expandTowards(速度).inflate(1)}），再查方块
  *       （{@code level().clip(COLLIDER, Fluid.NONE)}）；命中方块 ⇒ 尝试挖掉 + 立刻转回程。
- *       交替循环上限 {@link #MAX_IMPACT_LOOPS}（超了写日志，不崩、不死循环）。</li>
+ *       交替循环上限 {@link #MAX_IMPACT_LOOPS}（超了写日志，不崩、不死循环）。
+ *       <b>另外每 tick 判一次"飞太远"</b>：离主人超过该档的收回距离
+ *       （{@link BoomerangTier#returnDistance()}）就<b>立刻掉头</b> —— 作者 2026-10-02 报的
+ *       "扔远了会自动消失"就是缺这一条，执行处 {@link #outboundRangeExceeded}。</li>
  *   <li><b>位移</b>：手写 {@code setPos(pos + 速度)}，<b>不用</b> {@code move()}/{@code lerpMotion}；
  *       阻力陆地 {@value #AIR_DRAG} / 水中 {@value #WATER_DRAG}；朝向由速度反算并 lerp 平滑
  *       （{@code Projectile#updateRotation}，原版的 atan2 + lerp，不重写一遍）。</li>
@@ -69,7 +72,9 @@ import net.minecraft.world.phys.Vec3;
  *   <li><b>b. 回程超时</b>：Quark 把超时写在<b>去程</b>分支里，玩家持续远离时它永远追不上、
  *       永不消散还穿墙。这里回程有<b>自己的寿命</b> {@link #MAX_RETURN_TICKS}（外加去程上限
  *       {@link #MAX_OUTBOUND_TICKS}，防止"打不到任何方块"时永远飞下去）。超时后
- *       <b>就地落地</b>（{@code spawnAtLocation}）再消散 —— 宁可掉在远处，也不让物品蒸发。</li>
+ *       <b>就地落地</b>（{@code spawnAtLocation}）再消散 —— 宁可掉在远处，也不让物品蒸发。
+ *       <b>与"距离判据"的分工（作者 2026-10-02）</b>：去程正常结束靠<b>距离</b>
+ *       （离主人超过该档收回距离 ⇒ 掉头，玩家可预期），时间上限只是<b>兜底</b>。</li>
  *   <li><b>c. 属性修饰符不泄漏</b>：Quark 在命中时两次 {@code addTransientAttributeModifiers}。
  *       这里<b>一处都没有</b>（挖掘走原版 {@code destroyBlock}，伤害走 {@code hurt}，
  *       全程不碰 {@code AttributeMap}）。</li>
@@ -81,7 +86,8 @@ import net.minecraft.world.phys.Vec3;
  *       同时它也是"交还给玩家"的那一份（能量已在投掷/挖掘时扣掉）。</li>
  *   <li>{@link #DATA_RETURNING}（{@code BOOLEAN}）——客户端 tick 也要走回程分支（否则回程只能
  *       靠每 {@code updateInterval} tick 一次的位置包，看起来一顿一顿）。</li>
- *   <li>NBT：{@code liveTime} / {@code returnTicks} / {@code hitCount} / {@code slot} / 镖本身。
+ *   <li>NBT：{@code liveTime} / {@code returnTicks} / {@code hitCount} / {@code slot} / 投掷原点
+ *       （{@code ThrowOriginX/Y/Z}，见 {@link #recordThrowOrigin}）/ 镖本身。
  *       {@code entitiesHit} <b>只在内存</b>（它只用来防止同一次飞行里重复打同一只怪）。</li>
  * </ul>
  *
@@ -103,7 +109,13 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 
 	/** 去程单 tick 内"实体 ⇄ 方块"交替判定的循环上限（需求 2；超了写日志，不崩）。 */
 	public static final int MAX_IMPACT_LOOPS = 100;
-	/** 去程寿命上限（tick）：防止"一路什么都打不到"时永远飞下去。 */
+	/**
+	 * 去程寿命上限（tick）：<b>兜底判据</b>。
+	 *
+	 * <p>去程的正常结束是<b>距离</b>：离主人超过该档的收回距离（{@link BoomerangTier#returnDistance()}，
+	 * 5/10/15/20 格）就立刻掉头，见 {@link #outboundRangeExceeded}。这一条时间上限只负责
+	 * "距离判据万一失效"（例如主人始终贴身跟着、镖贴身绕圈那种极端）时也<b>绝不永远飞下去</b>。</p>
+	 */
 	public static final int MAX_OUTBOUND_TICKS = 200;
 	/** 回程寿命上限（tick）：Quark bug b 的修复处，超了就落地消散。 */
 	public static final int MAX_RETURN_TICKS = 300;
@@ -143,6 +155,17 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 	private int hitCount;
 	/** 投掷时记下的背包槽位：回程交还优先还回这一格（进 NBT）。 */
 	private int slot;
+	/**
+	 * 投掷原点（进 NBT —— 区块重载后不丢）。
+	 *
+	 * <p>当下<b>只作为备用基准</b>：收回距离按"与主人的距离"算（作者 2026-10-02 裁定）。
+	 * 想改成按原点算，只改 {@link #outboundRangeExceeded} 里那一行。</p>
+	 */
+	private double originX;
+	private double originY;
+	private double originZ;
+	/** 投掷原点是否已记录（服务端第一条去程 tick 置位，重载时由 NBT 键的存在与否恢复）。 */
+	private boolean originRecorded;
 	/** 本次飞行已经打过的实体 id（<b>只在内存</b>，防止同一只怪被同一把镖反复打）。 */
 	private final Set<Integer> entitiesHit = new HashSet<>();
 
@@ -228,7 +251,15 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 			}
 			tickReturning(owner);
 		} else {
-			if (!level().isClientSide && this.liveTime > MAX_OUTBOUND_TICKS) {
+			if (!level().isClientSide && !this.originRecorded) {
+				recordThrowOrigin(); // 投掷原点只在服务端记一次，进 NBT（客户端用不到它）
+			}
+			if (!level().isClientSide && outboundRangeExceeded(owner)) {
+				// 主判据（作者 2026-10-02 报的"扔远了会自动消失"）：飞过本档收回距离 ⇒ 立刻掉头。
+				// 不是消失、也不是掉在地上 —— 交给既有回程段（RETURNING）把镖送回主人手里。
+				setReturning(true);
+			} else if (!level().isClientSide && this.liveTime > MAX_OUTBOUND_TICKS) {
+				// 兜底（分工见 MAX_OUTBOUND_TICKS 的注释）：距离判据万一失效，也不许永远飞下去。
 				setReturning(true);
 			} else if (tickOutbound()) {
 				return; // 本 tick 刚命中方块并转入回程：不再前进，免得钻进墙里
@@ -251,6 +282,42 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		setPos(getX() + motion.x, getY() + motion.y, getZ() + motion.z);
 		updateRotation();
 		return false;
+	}
+
+	/**
+	 * 记下投掷原点（<b>只调一次</b>：服务端第一条去程 tick）。
+	 *
+	 * <p>取"第一条去程 tick 的位置"而不是"投掷那一瞬间的那一点"：实体的出生点<b>就是</b>投掷点
+	 * （{@code BoomerangItem#use} 里的 {@code setPos(player.getX(), player.getEyeY() - 0.1, player.getZ())}），
+	 * 出生到第一次 tick 之间没有任何位移，两者等价 —— 这样<b>不必改物品类</b>，
+	 * 也让"重载后不丢"只靠 NBT 这一处。</p>
+	 */
+	private void recordThrowOrigin() {
+		this.originX = getX();
+		this.originY = getY();
+		this.originZ = getZ();
+		this.originRecorded = true;
+	}
+
+	/**
+	 * 去程"飞太远就掉头"的判据（<b>唯一判据处</b>；作者 2026-10-02 报的"扔远了会自动消失"）。
+	 *
+	 * <p><b>基准 = 与主人的距离</b>（作者裁定）：主人往后退，镖更早回头 —— 这是"收回距离"的
+	 * 直觉读法。基准点取 {@code owner.position() + (0,1,0)}，与回程的目标点（{@link #tickReturning}）
+	 * <b>是同一点</b>，于是"距离² &lt; 3.25 ⇒ 已到家"与"距离 &gt; 该档收回距离 ⇒ 掉头"共用同一参照物。</p>
+	 *
+	 * <p>阈值一律来自 {@link BoomerangTier#returnDistance()}（5/10/15/20 格）——<b>这里不许出现
+	 * 距离字面量</b>。{@code owner} 非空由 {@link #tick()} 顶部的兜底保证（主人没了/死了先走
+	 * {@code ownerGone()}：落地 + 消散，<b>不</b>走这里）。</p>
+	 *
+	 * <p><b>若要改成按投掷原点判</b>（原点已在 {@link #recordThrowOrigin} 记下并进 NBT）：
+	 * 只改下面那一行 {@code distSqr}，换成 {@code position().distanceToSqr(originX, originY, originZ)} 即可。</p>
+	 */
+	private boolean outboundRangeExceeded(Entity owner) {
+		int limit = tier().returnDistance();
+		// ⇩ 基准行（要改成按投掷原点判，只改这一行）
+		double distSqr = position().distanceToSqr(owner.position().add(0.0D, 1.0D, 0.0D));
+		return distSqr > (double) limit * limit;
 	}
 
 	/** 回程：朝主人头顶归一化转向 + 位移；抵达就交还。 */
@@ -545,6 +612,13 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		this.returnTicks = tag.getInt("ReturnTicks");
 		this.hitCount = tag.getInt("HitCount");
 		this.slot = tag.getInt("Slot");
+		// 投掷原点（可选键：键在 ⇒ 已记录。重载后不许重记，否则基准会被挪到重载点）
+		if (tag.contains("ThrowOriginX")) {
+			this.originX = tag.getDouble("ThrowOriginX");
+			this.originY = tag.getDouble("ThrowOriginY");
+			this.originZ = tag.getDouble("ThrowOriginZ");
+			this.originRecorded = true;
+		}
 		// 镖本身（含扣过的能量）也要能跨区块重载；老存档没有该键时保持 EMPTY 的兜底形状。
 		if (tag.contains("BoomerangStack")) {
 			setItemStack(ItemStack.parseOptional(registryAccess(), tag.getCompound("BoomerangStack")));
@@ -562,6 +636,12 @@ public abstract class AbstractBoomerangEntity extends Projectile {
 		tag.putInt("ReturnTicks", this.returnTicks);
 		tag.putInt("HitCount", this.hitCount);
 		tag.putInt("Slot", this.slot);
+		// 投掷原点：记过才写（没记过就不写键，读回来仍是"未记录"）
+		if (this.originRecorded) {
+			tag.putDouble("ThrowOriginX", this.originX);
+			tag.putDouble("ThrowOriginY", this.originY);
+			tag.putDouble("ThrowOriginZ", this.originZ);
+		}
 		ItemStack stack = getItemStack();
 		if (!stack.isEmpty()) {
 			tag.put("BoomerangStack", stack.save(registryAccess()));

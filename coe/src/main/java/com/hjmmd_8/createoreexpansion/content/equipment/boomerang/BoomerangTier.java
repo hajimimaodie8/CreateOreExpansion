@@ -20,6 +20,9 @@ import net.minecraft.world.level.block.Block;
  *   <li>{@link #damage()} —— 按四档拉开（6 / 8 / 10 / 12），落在既有工具的"材质加成 3.5 / 4.5 / 5 / 5"
  *       与剑的"加成 +4"这两条线之间（镖是投掷物，既不叠手部攻击、也不吃蓄力）。</li>
  *   <li>{@link #throwCost()} / {@link #mineCost()} / {@link #cooldownTicks()} —— 我定的（作者可一句话改）。</li>
+ *   <li>{@link #returnDistance()} —— 作者 2026-10-02 报的 bug（"扔远了会自动消失"）的<b>主判据</b>：
+ *       单位<b>格</b>，翠玉 5 / 宝石 10 / 星界 15 / 雷鸣 20。去程一旦离主人超过这个距离就<b>立刻掉头</b>
+ *       （不是消失、也不是掉地上）——执行处在 {@code AbstractBoomerangEntity#outboundRangeExceeded}。</li>
  * </ul>
  *
  * <h2>为什么 {@link #digSpeed()} 长这个样子</h2>
@@ -35,17 +38,17 @@ import net.minecraft.world.level.block.Block;
  */
 public enum BoomerangTier {
 
-    /** 翠玉镖：钻石级（与 {@code AllTiers.JADE/TOPAZ} 同标签）、硬度上限 10。 */
-    JADE_TOPAZ(6.0F, 600, 10.0F, 3, 25, 5, 20, ToolEnergyColorConfig.JADE),
+    /** 翠玉镖：钻石级（与 {@code AllTiers.JADE/TOPAZ} 同标签）、硬度上限 10、收回距离 5 格。 */
+    JADE_TOPAZ(6.0F, 600, 10.0F, 3, 25, 5, 20, 5, ToolEnergyColorConfig.JADE),
 
-    /** 宝石镖：下界合金级（与 {@code AllTiers.SAPPHIRE} 同标签）、硬度上限 20（= Quark 默认值）。 */
-    SAPPHIRE_RUBY(8.0F, 3000, 20.0F, 4, 50, 10, 15, ToolEnergyColorConfig.SAPPHIRE),
+    /** 宝石镖：下界合金级（与 {@code AllTiers.SAPPHIRE} 同标签）、硬度上限 20（= Quark 默认值）、收回距离 10 格。 */
+    SAPPHIRE_RUBY(8.0F, 3000, 20.0F, 4, 50, 10, 15, 10, ToolEnergyColorConfig.SAPPHIRE),
 
-    /** 星界镖：下界合金级、硬度上限 30（够到远古残骸的 30）。 */
-    ASTRAL(10.0F, 4500, 30.0F, 4, 75, 15, 10, ToolEnergyColorConfig.STELLARSTONE),
+    /** 星界镖：下界合金级、硬度上限 30（够到远古残骸的 30）、收回距离 15 格。 */
+    ASTRAL(10.0F, 4500, 30.0F, 4, 75, 15, 10, 15, ToolEnergyColorConfig.STELLARSTONE),
 
-    /** 雷鸣镖：下界合金级、硬度上限 40（仍够不到黑曜石的 50）。 */
-    THUNDER(12.0F, 5000, 40.0F, 4, 100, 20, 10, ToolEnergyColorConfig.THUNDERITE);
+    /** 雷鸣镖：下界合金级、硬度上限 40（仍够不到黑曜石的 50）、收回距离 20 格。 */
+    THUNDER(12.0F, 5000, 40.0F, 4, 100, 20, 10, 20, ToolEnergyColorConfig.THUNDERITE);
 
     /** 命中生物的伤害（{@code hurt} 的原始值，不叠手部攻击/附魔）。 */
     private final float damage;
@@ -61,11 +64,19 @@ public enum BoomerangTier {
     private final int mineCost;
     /** 投掷冷却（tick）。 */
     private final int cooldownTicks;
+    /**
+     * 收回距离（格）：去程离主人超过这个距离就立刻掉头（作者 2026-10-02）。
+     *
+     * <p>它是<b>主判据</b>；去程的时间上限（{@code AbstractBoomerangEntity#MAX_OUTBOUND_TICKS}）
+     * 只是"距离判据万一失效"时的兜底。</p>
+     */
+    private final int returnDistance;
     /** 能量条配色（沿用同材质工具的配色）。 */
     private final ToolEnergyColorConfig color;
 
     BoomerangTier(float damage, int energy, float maxHardness, int miningLevel,
-                  int throwCost, int mineCost, int cooldownTicks, ToolEnergyColorConfig color) {
+                  int throwCost, int mineCost, int cooldownTicks, int returnDistance,
+                  ToolEnergyColorConfig color) {
         this.damage = damage;
         this.energy = energy;
         this.maxHardness = maxHardness;
@@ -73,6 +84,7 @@ public enum BoomerangTier {
         this.throwCost = throwCost;
         this.mineCost = mineCost;
         this.cooldownTicks = cooldownTicks;
+        this.returnDistance = returnDistance;
         this.color = color;
     }
 
@@ -102,6 +114,16 @@ public enum BoomerangTier {
 
     public int cooldownTicks() {
         return cooldownTicks;
+    }
+
+    /**
+     * 这一档的收回距离（格）—— <b>实体侧唯一能拿到它的地方</b>（实体里不许出现距离字面量）。
+     *
+     * <p>去程"离主人超过它 ⇒ {@code setReturning(true)}"由
+     * {@code AbstractBoomerangEntity#outboundRangeExceeded} 执行。</p>
+     */
+    public int returnDistance() {
+        return returnDistance;
     }
 
     public ToolEnergyColorConfig color() {
