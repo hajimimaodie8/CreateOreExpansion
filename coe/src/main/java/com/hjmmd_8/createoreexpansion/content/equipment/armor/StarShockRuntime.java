@@ -5,7 +5,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.skill.config.StarShockConfigs;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
 import net.minecraft.server.level.ServerLevel;
@@ -22,18 +24,54 @@ import net.minecraft.world.phys.Vec3;
  * （实体类型 {@code createoreexpansion:charger_wave}，与三台应力充能器/差波器<b>同一个类型、
  * 同一个渲染器</b>），靠设置波情五要素把它发出去：</p>
  * <ol>
- *   <li><b>波级</b> —— 构造参数 {@code waveLevel}（定颜色/波速/伤害，见 {@code WaveLevels}）；</li>
+ *   <li><b>波级</b> —— 构造参数 {@code waveLevel} = {@link StarShockConfigs#waveLevelFor(int)}
+ *       （技能 1/2/3 级 ⇒ <b>γ / ε / ω</b>；定颜色、波速与伤害，见 {@link WaveLevels}）；</li>
  *   <li><b>波型</b> —— {@code trySetWaveType(WaveTypes.ATTACK)}（攻击态，与"变器攻击波变态"同一个波型）；</li>
- *   <li><b>波速</b> —— 由波级查 {@code WaveLevels#baseSpeed} 得来，本类不额外写 speedOffset；</li>
+ *   <li><b>波速</b> —— 由波级查 {@code WaveLevels#baseSpeed} 得来（6/7/8 格/秒），本类不额外写 speedOffset；</li>
  *   <li><b>波载荷</b> —— <b>不设置</b>（普通能量波不带载荷；只有星辉波变器的 {@code stellar_wave} 带）；</li>
  *   <li><b>剩余寿命</b> —— 不设置（沿用 {@code AbstractChargerWaveEntity} 的 200 tick 上限）。</li>
  * </ol>
+ *
+ * <h2>发射路径与既有机器<b>逐条同形</b>（不是我另起一条）</h2>
+ * <table border="1">
+ *   <caption>机器（应力充能器）vs 本类</caption>
+ *   <tr><th>步骤</th><th>机器</th><th>本类</th></tr>
+ *   <tr><td>取发射点</td><td>{@code AbstractCreateChargerBlockEntity#launchWave(int)}：方块中心 +
+ *       FACING 法线 × 1 格（外推 1 格，免得出生就撞自己）</td>
+ *       <td>玩家眼睛位置 + 准心 × 1 格（再叠一个分叉偏移）—— 同一个"外推 1 格"口径</td></tr>
+ *   <tr><td>方向</td><td>FACING 法线（经 Sable 结构位姿换算成世界向量）</td>
+ *       <td>玩家准心向量（玩家永远在主世界，无需结构换算）</td></tr>
+ *   <tr><td>造实体</td><td>{@code createWave(...)} ⇒
+ *       {@code new ChargerWaveEntity(level, start, movementDir, mode)}</td>
+ *       <td>{@code new ChargerWaveEntity(world, origin, look, waveLevel)} —— <b>同一个构造器</b></td></tr>
+ *   <tr><td>设波型</td><td>不设（机器波是普通态，靠变器穿波才变态）</td>
+ *       <td>{@code trySetWaveType(WaveTypes.ATTACK)}（技能波生来就是攻击态）</td></tr>
+ *   <tr><td>放到世界</td><td>{@code targetLevel.addFreshEntity(createWave(...))}</td>
+ *       <td>{@code world.addFreshEntity(wave)} —— 同一个调用</td></tr>
+ *   <tr><td>音效</td><td>音符盒钟声（机器才有）</td><td>无（技能不额外发声）</td></tr>
+ * </table>
+ * <p>也就是说：<b>实体类型、构造器、addFreshEntity 三处与机器完全同一条路径</b>；本类只多做了
+ * "设波型 = 攻击态"和"盖批次号"两件机器不做的事，而那两件都落在既有字段上、不新增实体。</p>
  *
  * <p>2026-10-02 的上一版曾经为这条技能自造了一个 {@code StarShockWaveEntity}
  * （新实体类型 {@code star_shock_wave}）来承载"自定义伤害 / 环绕波 / 命中嬗乱"，
  * 但那个类型<b>没有渲染器</b> ⇒ 客户端把它渲染进视野即 NPE 崩溃
  * （{@code crash-reports/crash-2026-10-02_14.23.33-client.txt}）。
  * 该实体类型与子类已整体删除，本类改走上面的既有路径。</p>
+ *
+ * <h2>⚠ 被"不许自造实体"堵住的两条（已报作者，不许自行绕开）</h2>
+ * <ol>
+ *   <li><b>环绕波</b>（需求 §3.3(b)(g)）：要求"波每 tick 把位置改写成绕主波的圆周点"，
+ *       而既有能量波实体没有任何逐 tick 位置钩子，也没有父波/半径/相位字段。
+ *       承载它只有"改共享实体"或"再自造一个实体"两条路，后者正是本次崩溃的原因 ⇒ <b>停下来报障碍</b>。
+ *       数值仍在 {@code StarShockConfigs}（{@code orbitChanceCap} / {@code orbitChance} / {@code orbitDamage}）留档。</li>
+ *   <li><b>命中附加嬗乱</b>（需求 §3.3(d)）：普通能量波命中生物只走
+ *       {@code AbstractChargerWaveEntity} 里那段"波型伤害 + 给玩家护甲充能 + 消散"的固定流程，
+ *       没有任何"命中附加效果"的取值点（上一版是靠子类覆写一个钩子做到的，钩子已随子类删除）。
+ *       ⇒ 同样<b>停下来报障碍</b>，不擅自给共享实体加效果分支。</li>
+ * </ol>
+ * <p>主波伤害不受这两条影响：它由<b>波级</b>决定（{@code WaveLevels#damage}），映射见
+ * {@link StarShockConfigs#waveLevelFor(int)}（技能 1/2/3 级 ⇒ 8/10/12 点）。</p>
  *
  * <h2>一次完整的释放</h2>
  * <ol>
@@ -280,13 +318,18 @@ public final class StarShockRuntime {
         // 出生点在眼睛高度、沿准心前推一格，避免刚出生就撞到自己脚下的方块
         Vec3 origin = player.getEyePosition().add(look.scale(1.0D)).add(offset);
 
-        // 既有能量波实体（与充能器/差波器同一个类型、同一个渲染器）
-        ChargerWaveEntity wave = new ChargerWaveEntity(world, origin, look, cast.level);
+        // 既有能量波实体（与充能器/差波器同一个类型、同一个渲染器、同一个构造器）
+        int waveLevel = StarShockConfigs.waveLevelFor(cast.level);
+        ChargerWaveEntity wave = new ChargerWaveEntity(world, origin, look, waveLevel);
         // 波型 = 攻击态（与"变器攻击波变态"引燃出来的波型是同一个）
         wave.trySetWaveType(WaveTypes.ATTACK);
         // 同一次发射的多枚波共用一个批次号 ⇒ 互相豁免碰撞（否则并排的第 2/3 枚出生即自爆）
         wave.setFiringBatch(cast.batch);
         world.addFreshEntity(wave);
         cast.fired++;
+        // 波相关日志一律走 WaveDiag（全系统唯一出口，前缀/开关只在那里定义）：
+        // 这一行让"技能几级、实际打出几级波、属于哪个批次"在日志里可查。
+        WaveDiag.trace("星芒嬗震发射：技能 {} 级 → {} 级波（{}），批次 {}，位置 {}",
+            cast.level, waveLevel, WaveLevels.glyph(waveLevel), cast.batch, origin);
     }
 }

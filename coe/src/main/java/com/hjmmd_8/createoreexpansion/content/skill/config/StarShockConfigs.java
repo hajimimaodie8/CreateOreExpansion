@@ -1,10 +1,34 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
+
 /**
  * <b>星芒嬗震</b>（星界套 · 槽位 3，基准等级 1 —— 见 {@code ArmorSkillLevels}）的分级数值 ——
  * 与 {@link FallGuardConfigs} / {@link LastStandConfigs} / {@link FieldChargeConfigs} 同形，
  * 是这条技能<b>唯一</b>的数值真源（冷却 / 蓄力上限 / 主波伤害 / 主波数量 / 环绕概率 / 耗能
  * 全部只在这里写一遍）。
+ *
+ * <h2>⛔ 波<b>不</b>由本表定义：本表只说"发几枚、多快、花多少"，波本身走既有五要素</h2>
+ * <p>作者 2026-10-02 硬口径：「能量波是由好几个要素定义的…<b>你不要再凭空造出一个新的能量波哈，
+ * 不要造出一个攻击波哈</b>」⇒ 这条技能发出的波就是既有的
+ * {@code content/charger/entity/ChargerWaveEntity}（实体类型 {@code createoreexpansion:charger_wave}，
+ * 与三台应力充能器/差波器<b>同一个类型、同一个渲染器</b>），它的一切由既有的<b>波情五要素</b>决定
+ * （口径见 AGENTS.md「波情'五要素'的唯一取值点」）：</p>
+ * <table border="1">
+ *   <caption>五要素的既有取值点，以及本技能各填什么</caption>
+ *   <tr><th>要素</th><th>既有取值点</th><th>星芒嬗震</th></tr>
+ *   <tr><td>波速</td><td>{@code AbstractChargerWaveEntity#getSpeedBlocks()} =
+ *       {@code WaveLevels#baseSpeed(波级)} + 速度修正（夹在 {@code WaveLevels#maxSpeed}）</td>
+ *       <td>不单独设 —— 由波级带出（γ/ε/ω = 6/7/8 格/秒），修正值 0</td></tr>
+ *   <tr><td>波级</td><td>{@code AbstractChargerWaveEntity#getWaveLevel()}（构造参数，1~5 = α/β/γ/ε/ω）</td>
+ *       <td><b>{@link #waveLevelFor(int)}</b>：技能 1/2/3 级 ⇒ <b>γ / ε / ω</b>（理由见该方法）</td></tr>
+ *   <tr><td>波载荷</td><td>{@code StellarWaveEntity} 的 payload（只有星辉波变器的变体波带载荷）</td>
+ *       <td><b>空载</b>：普通能量波（{@code ChargerWaveEntity}）本来就不带载荷，本技能也不给</td></tr>
+ *   <tr><td>波型</td><td>{@code AbstractChargerWaveEntity#trySetWaveType}（一生只能从普通波变一次）</td>
+ *       <td><b>{@code WaveTypes.ATTACK}</b>（攻击态 —— 就是"变器攻击波变态"引燃出来的那一个波型）</td></tr>
+ *   <tr><td>剩余寿命</td><td>{@code AbstractChargerWaveEntity#getRemainingLifetime()}（200 tick 上限 − 已存活）</td>
+ *       <td>不设 —— 沿用既有的 <b>200 tick（10 秒）</b>上限</td></tr>
+ * </table>
  *
  * <h2>数值出处（用户 2026-10-02 星界轮需求 §3.3，逐字照抄）</h2>
  * <ul>
@@ -15,12 +39,17 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  *   <li><b>长按蓄力上限</b>（{@code chargeSeconds}）：Lv1 <b>3</b> / Lv2 <b>2</b> / Lv3 <b>1</b> 秒
  *       —— 等级越高，"满效果"达成越快。</li>
  *   <li><b>主波伤害</b>（{@code mainDamage}）：Lv1 <b>8</b> / Lv2 <b>10</b> / Lv3 <b>11</b> 点。
- *       <b>环绕波伤害 = 主波伤害的一半</b>（⇒ 4 / 5 / 5.5；用户口径"所有附加能量波的伤害均为
- *       原来能量波的一半"），由 {@link #orbitDamage(int)} 给出（浮点，不做整数截断）。</li>
+ *       ⚠ <b>它不再直接是伤害值，而是"挑波级的依据"</b>：波的实际伤害由波级查
+ *       {@link WaveLevels#damage(int)} 得来（{@link #waveLevelFor(int)} 就是按这条对齐的）——
+ *       既有系统的伤害**只能**由波级决定（{@code WaveType#dealsDamage()} 的注释写明
+ *       "伤害值仍由波级决定，见 WaveLevels#damage"）。</li>
  *   <li><b>主波数量上限</b>（{@code maxMainWaves}）：Lv1 <b>1</b> / Lv2 <b>2</b> / Lv3 <b>3</b> 枚。
- *       Lv1 长按<b>永不分叉</b>（主波恒 1 枚），长按只抬环绕概率。</li>
+ *       Lv1 长按<b>永不分叉</b>（主波恒 1 枚）。</li>
  *   <li><b>环绕触发概率上限</b>（{@code orbitChanceCap}）：Lv1 <b>0.50</b> / Lv2 <b>0.75</b> /
- *       Lv3 <b>0.85</b>。实际概率 = {@code t × 上限}（线性，{@code t} 见下）。</li>
+ *       Lv3 <b>0.85</b>。⚠ <b>当前无承载路径</b>（见 {@link #orbitChance}）：环绕波要求
+ *       "每 tick 把位置改写成绕主波的圆周点"，而既有能量波实体没有任何位置钩子；要承载它
+ *       只能改那个共享实体、或再自造一个波实体 —— 后者正是本次客户端 NPE 崩溃的原因，
+ *       已按作者口径删除。数值在此<b>留档</b>，等作者裁定承载方式。</li>
  *   <li><b>点按能量</b>（{@code tapCost}）：三档都 <b>400</b> 点（需求 §3.3(e)）。</li>
  *   <li><b>长按耗能</b>（{@code holdCostPerSecond}）：三档都 <b>100</b> 点/秒
  *       —— 与蓄力/冷却同一时间基（用户 2026-10-02 裁定第 15 条："按 tick 折算"）。</li>
@@ -30,8 +59,8 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  * <pre>
  *   t = min(按住秒数 / chargeSeconds, 1.0)
  *   主波数量  ：t 达到 **1/3、2/3、1.0** 时依次放出第 2、第 3 枚（离散分叉点）
- *   环绕概率  ：**t × 该级上限**（线性）
- *   点按（t ≈ 0）⇒ 1 枚主波、环绕概率 ≈ 0
+ *   环绕概率  ：**t × 该级上限**（线性）—— 当前无承载路径，见上
+ *   点按（t ≈ 0）⇒ 1 枚主波
  * </pre>
  * <p>分叉点与"1 枚"的关系见 {@link #mainWaveCount(int, Config)}：点按恒 ≥ 1 枚
  * （作者原话"点按也是可以的"），长按再按 t 加枚，且不超过该级上限。</p>
@@ -60,9 +89,10 @@ public final class StarShockConfigs {
      *
      * @param cooldownSeconds    释放后冷却（秒；点按与长按共用）
      * @param chargeSeconds      长按蓄力上限（秒；{@code t} 的分母）
-     * @param mainDamage         主波命中伤害（点）
+     * @param mainDamage         需求里写的主波伤害（点）——<b>不是直接伤害值</b>，而是挑波级的依据
+     *                           （见 {@link #waveLevelFor(int)}）
      * @param maxMainWaves       主波数量上限（Lv1 恒 1 枚 ⇒ 长按永不分叉）
-     * @param orbitChanceCap     环绕触发概率上限（0~1；实际 = t × 它）
+     * @param orbitChanceCap     环绕触发概率上限（0~1；实际 = t × 它）—— 当前无承载路径，留档
      * @param tapCost            点按一次的装备能量消耗（点）
      * @param holdCostPerSecond  长按期间的装备能量消耗（点/秒）
      */
@@ -91,10 +121,47 @@ public final class StarShockConfigs {
     }
 
     /**
-     * 该等级的主波伤害（{@code float}，直接喂给 {@code LivingEntity#hurt}）。
+     * <b>技能等级 → 波级</b>（本技能"按技能等级取波级"的唯一映射点；2026-10-02 星界轮第二版重定）。
      *
-     * <p>波实体侧的唯一取值口：{@code StarShockWaveEntity#getDamage()} 覆写基类、
-     * 改查这里（基类 {@code WaveLevels.damage} 是"机器波"的表，本技能不碰它）。</p>
+     * <p>作者把星芒嬗震的基准等级改成 <b>1</b> 之后，原来"技能等级直接当波级"的写法（⇒ α/β/γ）
+     * 就必须重定：需求 §3.3(d) 给的主波伤害是 <b>8 / 10 / 11</b>，而既有系统里伤害**只能**由
+     * 波级决定 —— {@link WaveLevels#damage(int)} 只有 4 / 6 / 8 / 10 / 12 五个取值。于是映射
+     * 就按"<b>取伤害不小于需求值的最低波级</b>"来定：</p>
+     *
+     * <table border="1">
+     *   <caption>映射表（以既有系统允许的取值为准）</caption>
+     *   <tr><th>技能等级</th><th>需求伤害</th><th>波级</th><th>符号</th><th>实际伤害</th>
+     *       <th>波速</th><th>差</th></tr>
+     *   <tr><td>1（基准）</td><td>8</td><td>3</td><td>γ</td><td>8</td><td>6 格/秒</td><td>0</td></tr>
+     *   <tr><td>2</td><td>10</td><td>4</td><td>ε</td><td>10</td><td>7 格/秒</td><td>0</td></tr>
+     *   <tr><td>3</td><td>11</td><td>5</td><td>ω</td><td>12</td><td>8 格/秒</td><td>+1</td></tr>
+     * </table>
+     *
+     * <p><b>Lv3 的 +1 是这条映射唯一的偏差</b>（需求 11、既有表只有 10 与 12）：取 12 而不是 10，
+     * 因为"取伤害不小于需求值的最低档"是单调、可一句话说明的规则；取 10 会低于需求。
+     * 若作者要"宁低不高"，把下面的比较改成 {@code <=} 即可（3 级会落到 ε = 10）。</p>
+     *
+     * <p><b>越界容错</b>：{@code level} 先经 {@link #config(int)} 钳到 1~{@link #MAX_LEVEL}；
+     * 需求伤害高于 ω 的 12 时返回 {@link WaveLevels#MAX_LEVEL}（封顶）。</p>
+     */
+    public static int waveLevelFor(int level) {
+        float wanted = config(level).mainDamage();
+        int chosen = WaveLevels.LOW;
+        for (int lv = WaveLevels.LOW; lv <= WaveLevels.MAX_LEVEL; lv++) {
+            chosen = lv;
+            if (WaveLevels.damage(lv) >= wanted) {
+                break;
+            }
+        }
+        return chosen;
+    }
+
+    /**
+     * 需求里写的那一档主波伤害（8 / 10 / 11）。
+     *
+     * <p>⚠ 它<b>不是</b>这条技能实际打出的伤害：实际伤害由 {@link #waveLevelFor(int)} 选出的
+     * 波级查 {@link WaveLevels#damage(int)} 得来（8 / 10 / 12）。本方法保留为"需求值的读取口"，
+     * 供 {@link #waveLevelFor(int)} 与文档/关卡核对。</p>
      */
     public static float damage(int level) {
         return config(level).mainDamage();
@@ -103,8 +170,8 @@ public final class StarShockConfigs {
     /**
      * 环绕波伤害 = <b>主波伤害的一半</b>（需求 §3.3(d)：4 / 5 / 5.5）。
      *
-     * <p>刻意保留<b>小数</b>（Lv3 = 5.5）而不是取整：用户写的就是"原来能量波的一半"，
-     * 5.5 点是原版能表示的伤害值（生命值是 float）。</p>
+     * <p>⚠ <b>当前无调用者</b>：环绕波本身没有承载路径（见 {@link #orbitChance}）。
+     * 数值留档，等作者裁定承载方式后可直接接上。</p>
      */
     public static float orbitDamage(int level) {
         return config(level).mainDamage() / 2.0F;
@@ -159,7 +226,16 @@ public final class StarShockConfigs {
     /**
      * 环绕波触发概率 = {@code t × 该级上限}（需求 §六 推断值 #2，线性）。
      *
-     * <p>"每枚主波各自 0~1 枚"⇒ 每枚主波都单独掷一次这个概率（见 {@code StarShockRuntime}）。</p>
+     * <p>⚠ <b>当前无调用者（阻塞项）</b>：环绕波要求"波自己每 tick 把位置改写成
+     * 主波位置 + r × (u·cosθ + v·sinθ)"，而既有能量波实体（{@code ChargerWaveEntity} /
+     * {@code AbstractChargerWaveEntity}）是普通飞行体，<b>没有任何逐 tick 位置钩子</b>，
+     * 也没有"父波 UUID / 半径 / 相位"这类字段。要承载它只有两条路：</p>
+     * <ol>
+     *   <li>改那个<b>共享</b>的既有波实体（给所有机器波加一族用不到的字段与一条分支）；</li>
+     *   <li>再自造一个波实体类型 —— <b>作者明确禁止</b>，而且这正是 2026-10-02 客户端 NPE
+     *       （{@code crash-reports/crash-2026-10-02_14.23.33-client.txt}）的原因。</li>
+     * </ol>
+     * <p>两条都不该由本轮擅自决定，故本方法与其数值只作<b>留档</b>；已把障碍与源码证据报给作者。</p>
      */
     public static double orbitChance(int heldTicks, Config config) {
         if (config == null) {
