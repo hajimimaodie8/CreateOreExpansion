@@ -14,7 +14,9 @@ import com.hjmmd_8.createoreexpansion.content.skill.tooltip.SkillsTooltipHandler
 import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.FieldChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.LastStandConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.StarShockConfigs;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.StarShockRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.ItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.ArmorSkillProvider;
@@ -273,6 +275,13 @@ public final class EquipmentSkillHud {
                     holdSeconds = config.holdSeconds();
                     holdTotalCost = config.holdTotalCost();
                 }
+            } else if (ArmorSkillRuntime.STAR_SHOCK_ID.equals(skillId)) {
+                // 星芒嬗震（星界套 · 槽位 3）：**长按上限 = 蓄力上限**（3/2/1 秒，等级越高越快蓄满），
+                // 总耗能 = 该级完整结算量 = 400 + 100 × 蓄力上限秒数（与 StarShockRuntime 的
+                // "点按 400 先行 + 长按按秒折算"逐值一致）—— 所以这里的预览数与真正扣掉的数同源。
+                StarShockConfigs.Config config = StarShockConfigs.config(level);
+                holdSeconds = config.chargeSeconds();
+                holdTotalCost = config.tapCost() + config.chargeSeconds() * config.holdCostPerSecond();
             } else {
                 // 未知技能 id：宁可这一行不显示，也不拿别的技能的数值糊上去
                 continue;
@@ -286,7 +295,12 @@ public final class EquipmentSkillHud {
                     cooldownSeconds), COOLDOWN_LINE_COLOR));
                 continue;
             }
-            int cost = ArmorSkillRuntime.holdCost(held, holdSeconds, holdTotalCost);
+            // 星芒嬗震是"点按 400 先行 + 长按按秒折算"（边按边扣），与其它技能
+            // "松手时一次性按比例扣"的曲线**不同形** ⇒ 它的预览数字必须用**它自己的**算式，
+            // 否则玩家看到的预计扣能与真正扣掉的数会对不上（2026-10-02 星界轮）。
+            int cost = ArmorSkillRuntime.STAR_SHOCK_ID.equals(skillId)
+                ? StarShockRuntime.holdCost(level, held) + StarShockConfigs.config(level).tapCost()
+                : ArmorSkillRuntime.holdCost(held, holdSeconds, holdTotalCost);
             lines.add(new Line(Component.translatable(HOLD_PREVIEW_KEY,
                 oneDecimal(held / 20.0F),
                 oneDecimal(holdSeconds),

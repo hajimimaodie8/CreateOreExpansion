@@ -432,6 +432,7 @@
   "item.minecraft.tipped_arrow.effect.transmutation_disorder": "Arrow of Transmutation Disorder",
   "itemGroup.createoreexpansion": "Create: Ore Expansion",
   "itemGroup.createoreexpansion.energy_wave_study": "Create: Energy Wave Studies",
+  "skill.createoreexpansion.balance_choice": "Balance Choice",
   "skill.createoreexpansion.bow_curse": "Wither Curse",
   "skill.createoreexpansion.bow_disarm": "Disarm Storm",
   "skill.createoreexpansion.channel": "Channel",
@@ -445,6 +446,7 @@
   "skill.createoreexpansion.plunder": "Plunder",
   "skill.createoreexpansion.shatter": "Shatter",
   "skill.createoreexpansion.skin": "Skin",
+  "skill.createoreexpansion.star_shock": "Star Shock",
   "skillType.createoreexpansion.excavation_skill": "Excavation Skill",
   "skillType.createoreexpansion.hit_skill": "Hit Skill",
   "skillType.createoreexpansion.use_skill": "Use Skill"

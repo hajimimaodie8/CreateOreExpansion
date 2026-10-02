@@ -436,6 +436,7 @@
   "item.minecraft.tipped_arrow.effect.transmutation_disorder": "嬗乱之箭",
   "itemGroup.createoreexpansion": "机械动力：矿物拓展",
   "itemGroup.createoreexpansion.energy_wave_study": "机械动力：能量波阵学",
+  "skill.createoreexpansion.balance_choice": "衡元择势",
   "skill.createoreexpansion.bow_curse": "凋零诅咒",
   "skill.createoreexpansion.bow_disarm": "缴械风暴",
   "skill.createoreexpansion.channel": "引渠",
@@ -449,6 +450,7 @@
   "skill.createoreexpansion.plunder": "夺取",
   "skill.createoreexpansion.shatter": "开岩",
   "skill.createoreexpansion.skin": "剥取",
+  "skill.createoreexpansion.star_shock": "星芒嬗震",
   "skillType.createoreexpansion.excavation_skill": "挖掘技能",
   "skillType.createoreexpansion.hit_skill": "攻击技能",
   "skillType.createoreexpansion.use_skill": "使用技能"

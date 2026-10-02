@@ -139,6 +139,16 @@ public final class ArmorSkillRuntime {
     /** 服务端长按计数：玩家 UUID → (槽位 → 已按住 tick 数)。 */
     private static final Map<UUID, Map<Integer, Integer>> HOLD_TICKS = new HashMap<>();
 
+    /**
+     * 星芒嬗震（星界套 · 槽位 3）的按住 tick 数：玩家 UUID → 已按住 tick。
+     *
+     * <p>为什么单独一张表：这张表的值要在<b>松手那一 tick</b>传给
+     * {@code StarShockRuntime#release} 去补最后不足一步的零头，而 {@code held} 那张表
+     * 在松手分支里是刚被 {@code remove} 掉的（取不到值）。其它技能用不到它 ——
+     * 它们的耗能是"松手时一次性按比例扣"，由 {@code release(..., heldTicks)} 的参数直接拿到。</p>
+     */
+    private static final Map<UUID, Integer> STAR_SHOCK_HOLD = new HashMap<>();
+
     /** 发动被挡的提示节流：玩家#槽位 → 上次提示的 tick（每 20 tick 最多一次）。 */
     private static final Map<String, Integer> BLOCK_NOTIFY_TICK = new HashMap<>();
 
@@ -219,6 +229,17 @@ public final class ArmorSkillRuntime {
                     if (BALANCE_CHOICE.equals(skill)) {
                         BALANCE_BRANCH.put(id, decideBalanceBranch(player));
                     }
+                    // 星芒嬗震（星界套 · 槽位 3）：**按下那一 tick 就是点按** —— 立刻发第 1 枚主波
+                    // 并扣点按能量（需求 §3.3(b)"点按（轻触）发出 1 枚主波，不需要长按"）。
+                    // 点按能量付不出 ⇒ 按"发动失败"处理（只记日志，不进长按状态、不进冷却），
+                    // 与临域充力的两道关同一条纪律：**绝不静默无效**。
+                    if (STAR_SHOCK.equals(skill)) {
+                        if (!StarShockRuntime.press(player, effectiveLevel(player, set, skill))) {
+                            notifyBlocked(player, slot, "createoreexpansion.equip_skill.no_energy", 0);
+                            continue;
+                        }
+                        STAR_SHOCK_HOLD.put(id, 0);
+                    }
                     held.put(slot, 0);
                     ACTIVE.put(id, skill);
                 } else {
@@ -237,6 +258,14 @@ public final class ArmorSkillRuntime {
                         // 移速分支完全等同蓄能疾骋、图腾分支完全等同绝境守护（同一套数值表）。
                         // 分支在 BALANCE_BRANCH 里定死，这里不重算（否则按住期间会来回切）。
                         applyBalanceChoice(player, set, ticks);
+                    } else if (STAR_SHOCK.equals(skill)) {
+                        // 星芒嬗震（星界套 · 槽位 3）：点按那一 tick 已经发过第 1 枚、扣过点按能量；
+                        // 这里负责长按蓄力（补发主波 + 掷环绕概率）与按 tick 折算的持续耗能。
+                        // 返回 false = 能量见底、本次发射已被收尾 ⇒ 与其它技能同一条"见底即断停"路径。
+                        STAR_SHOCK_HOLD.put(id, ticks);
+                        if (!StarShockRuntime.hold(player, ticks)) {
+                            STAR_SHOCK_HOLD.remove(id);
+                        }
                     } else if (FIELD_CHARGE.equals(skill)) {
                         // 临域充力（规格 §8 第 3 层）：每 tick 续期"曲柄在转 + 注入器在 + 容量挂在网上"，
                         // 并按"点/秒"累计扣能。非 ACTIVE = 这一 tick 已经收尾（到限 / 见底 / 失效）。
@@ -266,6 +295,12 @@ public final class ArmorSkillRuntime {
                         DASH_SEGMENT.remove(id);
                         LAST_STAND_SEGMENT.remove(id);
                         BALANCE_BRANCH.remove(id);
+                        // 星芒嬗震：见底即断停 —— 按下那一 tick 已扣的点按能量**不退**，
+                        // 后续的零头也不再追扣（与其它技能"见底即清空"同一条口径）。
+                        if (STAR_SHOCK.equals(skill)) {
+                            StarShockRuntime.abandon(player);
+                            STAR_SHOCK_HOLD.remove(id);
+                        }
                         if (FIELD_CHARGE.equals(skill)) {
                             FieldChargeRuntime.finish(player); // 能量见底也要把注入器与曲柄收干净
                         }
@@ -280,6 +315,7 @@ public final class ArmorSkillRuntime {
                 DASH_SEGMENT.remove(id);
                 LAST_STAND_SEGMENT.remove(id);
                 BALANCE_BRANCH.remove(id);
+                STAR_SHOCK_HOLD.remove(id);
                 release(player, set, index, previous);
             }
         }
@@ -311,6 +347,10 @@ public final class ArmorSkillRuntime {
         HOLD_TICKS.remove(player.getUUID());
         ACTIVE.remove(player.getUUID());
         BALANCE_BRANCH.remove(player.getUUID());
+        // 星芒嬗震（星界套 · 槽位 3）：登出/死亡/换维度 —— 忘掉发射状态（已经飞出去的那些波
+        // 照自己的寿命飞完，不追回；长按的剩余零头也不再补扣）。
+        STAR_SHOCK_HOLD.remove(player.getUUID());
+        StarShockRuntime.forget(player);
         // 宝石套 · 临域充力（规格 §8 第 3 层）：登出/死亡也在退出路径里 ——
         // 会话里存着"被赋能的曲柄 + 注入器"两个坐标，不收尾就会留下一个永远在转的曲柄
         // 和一个永远留在世界里的隐藏方块。
@@ -427,6 +467,12 @@ public final class ArmorSkillRuntime {
             FieldChargeConfigs.Config config = FieldChargeConfigs.config(effectiveLevel(player, set, skillId));
             FieldChargeRuntime.release(player, heldTicks);
             startCooldown(player, skillId, config.cooldownSeconds());
+        } else if (skillId.equals(STAR_SHOCK)) {
+            // 星芒嬗震（星界套 · 槽位 3）：波在按下那一 tick 就发出去了、长按期间边按边扣，
+            // 所以松手只补上最后不足一步的零头 + 起冷却（10/7/4 秒）。**不补发、不召回**任何波。
+            int level = effectiveLevel(player, set, skillId);
+            StarShockRuntime.release(player, heldTicks);
+            startCooldown(player, skillId, StarShockRuntime.cooldownSeconds(level));
         }
     }
 
@@ -766,6 +812,15 @@ public final class ArmorSkillRuntime {
             FieldChargeConfigs.Config config =
                 FieldChargeConfigs.config(effectiveLevel(player, set, skill));
             return FieldChargeConfigs.stepCost(heldTicks, config) > available;
+        }
+        if (STAR_SHOCK.equals(skill)) {
+            // 星芒嬗震与临域充力同族：**边按边扣**，所以比的也是"下一步还扣得起吗"。
+            // 点按那 400 是"按下那一 tick 就付掉了"的（不参与这次比较），所以这里比的就是
+            // 下一 tick 的增量（100/20 = 每 20 tick 5 点）与当前可用能量的关系。
+            int level = effectiveLevel(player, set, skill);
+            int step = StarShockRuntime.holdCost(level, heldTicks + 1)
+                - StarShockRuntime.holdCost(level, heldTicks);
+            return step > available;
         }
         return accumulatedCost(player, set, index, heldTicks) >= available;
     }

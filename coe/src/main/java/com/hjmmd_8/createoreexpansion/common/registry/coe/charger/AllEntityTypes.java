@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe.charger;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.StarShockWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.entity.EntityType;
@@ -42,6 +43,27 @@ public final class AllEntityTypes {
 				.noSummon()
 				.noSave()
 				.build("stellar_wave"));
+
+	/**
+	 * <b>星芒嬗震的能量波</b>（星界套技能专用，2026-10-02）。
+	 *
+	 * <p>与 {@link #CHARGER_WAVE} <b>分成两个实体类型</b>是刻意的：技能波多出来的行为
+	 * （自定义伤害、环绕波、命中嬗乱、发射批次）只写在这一个类型上，机器波的字段与流程
+	 * 一个字节都不动（改共享基类时机器波最容易被连带改坏）。</p>
+	 *
+	 * <p>碰撞盒与机器波同尺寸（0.2）——波是粒子状实体，且环绕半径 0.8 格 + 0.2 盒
+	 * ⇒ 环绕波与主波之间最近仍有 0.4 格空隙，不会自己蹭到一起（同批豁免也只影响爆炸，
+	 * 不影响它们各自撞墙/撞生物消散）。</p>
+	 */
+	public static final DeferredHolder<EntityType<?>, EntityType<StarShockWaveEntity>> STAR_SHOCK_WAVE =
+		ENTITY_TYPES.register("star_shock_wave",
+			() -> EntityType.Builder
+				.<StarShockWaveEntity>of(StarShockWaveEntity::new, MobCategory.MISC)
+				.sized(0.2f, 0.2f)
+				.noSummon()
+				// 不 noSave()：环绕波要靠"父波 UUID"重建编组关系，被存档丢掉的波会变成
+				// 一颗永久留在世界里的孤立波（它自己的位置还要靠父波算）。
+				.build("star_shock_wave"));
 
 	public static void register(IEventBus modEventBus) {
 		ENTITY_TYPES.register(modEventBus);
