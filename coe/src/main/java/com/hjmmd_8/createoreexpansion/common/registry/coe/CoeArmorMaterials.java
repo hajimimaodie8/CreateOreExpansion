@@ -57,48 +57,56 @@ public final class CoeArmorMaterials {
 
     // ==================== 四套材质 ====================
     // 参数顺序（register 方法）：防御力 4 件 / 附魔能力 / 音效 / 韧性 / 抗击退 / 修复材料
-    // 防御力口径（用户 2026-09-30 只定了耐久度，防御力由本层按"铁 → 钻石 → 下界合金"排布）：
-    //   翠玉 2/6/5/2（略强于铁）  宝石 3/7/5/2（铁与钻石之间）
-    //   星界 3/8/6/3 + 韧性 2     雷鸣 3/8/6/3 + 韧性 3 + 抗击退 0.05
+    // 护甲点数与两条系数口径（作者 2026-10-02 定稿。原版锚点：钻石点数 3/6/8/3 = 合计 20、
+    // 韧性 2.0、抗击退 0.0；下界合金点数同为 3/6/8/3 = 合计 20、韧性 3.0、抗击退 0.1）：
+    //   翠玉 点数 3/6/8/3 (20) + 韧性 2.5 + 抗击退 0.05 —— 点数与钻石持平，靠韧性 2.5 胜出
+    //   宝石 点数 4/7/8/3 (22) + 韧性 4.5 + 抗击退 0.15 —— 韧性 / 抗击退 = 下界合金的 1.5 倍
+    //   星界 点数 4/8/9/4 (25) + 韧性 6.0 + 抗击退 0.20 —— 韧性 / 抗击退 = 下界合金的 2 倍
+    //   雷鸣 点数 4/8/9/4 (25) + 韧性 6.0 + 抗击退 0.20 —— 与星界同档（2 倍）
+    // 点数 20 上限（原版机制，作者 2026-10-02 据此定档）：CombatRules#getDamageAfterAbsorb 参与减伤
+    // 的是 clamp(armor - damage/f, armor*0.2F, 20.0F)（f = 2 + 韧性/4；armor = Attributes.ARMOR 合计
+    // 值，原版上限 30，并不会先被截到 20）⇒ 有效点数最多 20（减伤上限 80%）；对一次 d 点伤害，
+    // 超过 20 + d/f 的点数才完全没有收益、且不会更差，所以超出 20 的部分收益递减，而不是按
+    // 1.5×/2× 直接乘上去；点数因此按"逐档不降、且不低于钻石"排，强度由韧性 + 抗击退承担。
 
     /** <b>翠玉盔甲</b>：耐久 = 钻石与下界合金的 3/4 分界点（倍率 36）。 */
     public static final DeferredHolder<ArmorMaterial, ArmorMaterial> JADE_TOPAZ = register(
         "jade_topaz",
-        new int[] { 2, 6, 5, 2 },
+        new int[] { 3, 6, 8, 3 },
         12,
         SoundEvents.ARMOR_EQUIP_DIAMOND,
-        0.0F,
-        0.0F,
+        2.5F,
+        0.05F,
         () -> Ingredient.of(CoeItems.JADE_INGOT.get()));
 
     /** <b>宝石盔甲</b>：耐久 = 下界合金的 1.25 倍（倍率 47）。 */
     public static final DeferredHolder<ArmorMaterial, ArmorMaterial> SAPPHIRE_RUBY = register(
         "sapphire_ruby",
-        new int[] { 3, 7, 5, 2 },
+        new int[] { 4, 7, 8, 3 },
         16,
         SoundEvents.ARMOR_EQUIP_DIAMOND,
-        0.0F,
-        0.0F,
+        4.5F,
+        0.15F,
         () -> Ingredient.of(CoeItems.TOPAZ_INGOT.get()));
 
-    /** <b>星界盔甲</b>：耐久 = 下界合金的 2 倍（倍率 74），韧性 2。 */
+    /** <b>星界盔甲</b>：耐久 = 下界合金的 2 倍（倍率 74），韧性 6.0、抗击退 0.20。 */
     public static final DeferredHolder<ArmorMaterial, ArmorMaterial> ASTRAL = register(
         "astral",
-        new int[] { 3, 8, 6, 3 },
+        new int[] { 4, 8, 9, 4 },
         10,
         SoundEvents.ARMOR_EQUIP_NETHERITE,
-        2.0F,
-        0.0F,
+        6.0F,
+        0.20F,
         () -> Ingredient.of(CoeItems.STELLARSTONE_INGOT.get()));
 
-    /** <b>雷鸣盔甲</b>：耐久 = 下界合金的 2 倍（倍率 74），韧性 3、抗击退 0.05。 */
+    /** <b>雷鸣盔甲</b>：耐久 = 下界合金的 2 倍（倍率 74），韧性 6.0、抗击退 0.20。 */
     public static final DeferredHolder<ArmorMaterial, ArmorMaterial> THUNDER = register(
         "thunder",
-        new int[] { 3, 8, 6, 3 },
+        new int[] { 4, 8, 9, 4 },
         15,
         SoundEvents.ARMOR_EQUIP_NETHERITE,
-        3.0F,
-        0.05F,
+        6.0F,
+        0.20F,
         () -> Ingredient.of(CoeItems.THUNDERITE_INGOT.get()));
 
     /** 四套共同遵守的"套装名"常量（用于拼贴图名 / 语言键前缀，避免各处散写字符串）。 */
