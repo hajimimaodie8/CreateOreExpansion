@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client;
 
+import com.hjmmd_8.createoreexpansion.client.renderer.BoomerangRenderer;
 import com.hjmmd_8.createoreexpansion.client.renderer.EmptyEntityRenderer;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
@@ -55,5 +56,13 @@ public final class WaveEntityRendererRegistration {
         EntityRenderers.register(AllEntityTypes.CHARGER_WAVE.get(), EmptyEntityRenderer::new);
         // 星辉波变器变体波：同样为空渲染器（视觉靠粒子）
         EntityRenderers.register(AllEntityTypes.STELLAR_WAVE.get(), EmptyEntityRenderer::new);
+
+        // 回旋镖四把（2026-10-02 第一批）：**与实体类型注册同一个改动**。
+        // 镖不造实体模型，渲染器直接画物品外观（BoomerangRenderer 的 render 里只有一次
+        // ItemRenderer.renderStatic）⇒ 实体侧零新增模型/贴图。
+        EntityRenderers.register(AllEntityTypes.JADE_TOPAZ_BOOMERANG.get(), BoomerangRenderer::new);
+        EntityRenderers.register(AllEntityTypes.SAPPHIRE_RUBY_BOOMERANG.get(), BoomerangRenderer::new);
+        EntityRenderers.register(AllEntityTypes.ASTRAL_BOOMERANG.get(), BoomerangRenderer::new);
+        EntityRenderers.register(AllEntityTypes.THUNDER_BOOMERANG.get(), BoomerangRenderer::new);
     }
 }
