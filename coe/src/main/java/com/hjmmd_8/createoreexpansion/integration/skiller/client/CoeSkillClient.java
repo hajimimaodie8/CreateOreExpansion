@@ -65,6 +65,19 @@ public final class CoeSkillClient {
     /** 键位注入只需要做一次 */
     private static boolean keySourceInjected;
 
+    /**
+     * <b>装备模式开关</b>（用户 2026-10-02 裁定）：左 Alt 由"按住"改成"按一下开 / 再按一下关"。
+     *
+     * <p>用户原话的痛点：按住装备键的同时还要按技能键 ⇒ 左手必须一直压着左 Alt，非常费事。
+     * 所以这里用<b>锁存</b>（latch）而不是按键状态 —— 开关打开后松手，装备技能键照旧生效；
+     * 关掉后一直关闭，直到再按一下。</p>
+     *
+     * <p>只在客户端存在，且<b>离开世界即复位为关</b>（见 {@link #onClientTick}），免得下次进世界
+     * 莫名其妙"技能键全变成装备技能"。服务端与内核都不认识这个开关：它们只看到"某个槽位按下没有"，
+     * 因此传输与结算语义一字未改。</p>
+     */
+    private static boolean equipmentModeOn;
+
     private CoeSkillClient() {
         throw new AssertionError("This class should not be instantiated");
     }
@@ -75,13 +88,16 @@ public final class CoeSkillClient {
         handleSettingsKey(minecraft);
         Player player = minecraft.player;
         if (player == null || minecraft.level == null) {
-            // 离开世界：清掉记录，下次进世界重新注入/刷新
+            // 离开世界：清掉记录与装备模式开关，下次进世界重新注入/刷新
             lastSkills = null;
             lastWornSet = null;
+            setEquipmentModeOn(false);
             return;
         }
 
         injectKeySourceOnce();
+        // 开关只在这里翻转（必须晚于上面的离世分支：主菜单/加载界面里累积的点击不该改模式）
+        handleEquipmentModeKey();
         tickHoldCounters();
 
         // 只比较「技能组件」而不是整个物品堆：能量消耗会改物品堆的其它组件，
@@ -156,23 +172,79 @@ public final class CoeSkillClient {
     }
 
     /**
-     * <b>键源：工具段与装备段的模式切换</b>（用户 2026-10-01 的"装备辅助按键"设计）。
+     * <b>装备模式键（默认左 Alt）：开关，不是按住</b>（用户 2026-10-02 裁定）。
+     *
+     * <p>按一下 ⇒ 装备模式<b>开</b>（松手仍然是开）；再按一下 ⇒ <b>关</b>。</p>
+     *
+     * <p><b>为什么必须是 {@code consumeClick()}</b>：{@code isPressed()} 报的是"此刻是否按着"的
+     * <b>电平</b>，每 tick 都会为真 —— 拿它翻转开关等于每 tick 翻一次（几十毫秒内自己抖成随机值）。
+     * {@code consumeClick()} 是<b>边沿</b>：只在"距上次读取之间发生过一次按下"时返回一次 true 并
+     * 消费掉那个点击，所以 {@code while} 循环里每个 true 恰好对应玩家的一次物理按下
+     * （连点两下＝翻两次＝回到原状态，正是开关该有的语义）。</p>
+     *
+     * <p>键位对象只在客户端由 {@code RegisterKeyMappingsEvent} 赋值，因此照 {@link AllKeys}
+     * 的既有约定做 null 保护（未注册时视为没按）。</p>
+     */
+    private static void handleEquipmentModeKey() {
+        KeyMapping key = AllKeys.EQUIPMENT_MODIFIER.getKeybind();
+        if (key == null) {
+            return;
+        }
+        while (key.consumeClick()) {
+            setEquipmentModeOn(!equipmentModeOn);
+        }
+    }
+
+    /**
+     * 设置装备模式开关，并在<b>真的翻转</b>时打一行日志（方便排查"为什么按技能键没反应/放错技能"）。
+     *
+     * <p>同值调用是空操作：离开世界那段每 tick 都会调它复位，否则会在主菜单里刷日志。</p>
+     *
+     * @param on true = 装备模式开（技能键释放装备技能），false = 关（技能键释放工具技能）
+     */
+    public static void setEquipmentModeOn(boolean on) {
+        if (equipmentModeOn == on) {
+            return;
+        }
+        equipmentModeOn = on;
+        CoeCore.LOGGER.info("[装备模式] {}（技能键现在释放{}技能）", on ? "开" : "关", on ? "装备" : "工具");
+    }
+
+    /**
+     * 装备模式开关当前是否为开（客户端）。
+     *
+     * <p>这是<b>唯一</b>的装备模式判据：键源分流（{@link #isSlotPressed}）与提示层
+     * （{@code client.hud.EquipmentSkillHud}）都走它，保证"能放"与"提示"同源。
+     * 原始按键状态（{@code EQUIPMENT_MODIFIER.isPressed()}）<b>不再参与任何判定</b>，
+     * 它只在 {@link #handleEquipmentModeKey} 里以 {@code consumeClick()} 的形式被消费。</p>
+     */
+    public static boolean isEquipmentModeOn() {
+        return equipmentModeOn;
+    }
+
+    /**
+     * <b>键源：工具段与装备段的模式切换</b>（用户 2026-10-01 的"装备辅助按键"设计；
+     * 2026-10-02 起该按键由"按住"改为"开关"，分流规则一字未改）。
      *
      * <p>内核会为「每个来源声明过的槽位号」各问一次"这个槽位现在按下没有"。两段槽位空间是分开的
      * （工具 0/1/2、装备 3/4/5，见 {@link ArmorSkillProvider}），所以这里只做分流：</p>
      * <ul>
-     *     <li><b>按住装备修饰键（默认左 Alt）</b>：槽位 3/4/5 映射到物理键一/二/三，而槽位 0/1/2
+     *     <li><b>装备模式开（左 Alt 开关打开）</b>：槽位 3/4/5 映射到物理键一/二/三，而槽位 0/1/2
      *         <b>一律报未按下</b> —— 这就是"抑制工具技能"。不抑制的话，服务端遍历时会同时命中
      *         槽位 0 的工具技能与槽位 3 的装备技能，两个一起放（能量双扣、效果同 tick）。</li>
-     *     <li><b>松开修饰键</b>：槽位 0/1/2 照常映射物理键，装备段一律未按下。</li>
+     *     <li><b>装备模式关</b>：槽位 0/1/2 照常映射物理键，装备段一律未按下。</li>
      * </ul>
      *
      * <p>刻意<b>不</b>做"两段同时按下"：那正是用户担心的紊乱形态。</p>
      *
+     * <p><b>代价（必须让玩家知道）</b>：开关开着的时候，<b>工具技能（键一/二/三）整体让位</b> ——
+     * 那三个键此刻释放的是装备技能。要回去用工具技能，就得先按一下左 Alt 把开关关掉。
+     * 这是"两段不重叠"这个硬约束的直接后果，不是可以顺手绕开的实现细节。</p>
+     *
      * @param slot 内核询问的槽位号（来自各 Provider 的 {@code collectKeys}）
      */
     private static boolean isSlotPressed(int slot) {
-        boolean equipmentMode = isEquipmentModifierDown();
+        boolean equipmentMode = isEquipmentModeOn();
         if (ArmorSkillProvider.isEquipmentSlot(slot)) {
             return equipmentMode && SLOT_KEYS[slot - ArmorSkillProvider.SLOT_BASE].isPressed();
         }
@@ -180,17 +252,6 @@ public final class CoeSkillClient {
             return !equipmentMode && SLOT_KEYS[slot].isPressed();
         }
         return false; // 越界或未知槽位：内核契约里一律视为未按下
-    }
-
-    /**
-     * 装备修饰键是否按下（客户端）。
-     *
-     * <p>键位对象只在客户端由 {@code RegisterKeyMappingsEvent} 赋值，因此照 {@link AllKeys}
-     * 的既有约定做 null 保护（未注册时视为没按）。提示层
-     * （{@code client.hud.EquipmentSkillHud}）也复用它，保证"能放"与"提示"同源。</p>
-     */
-    public static boolean isEquipmentModifierDown() {
-        return AllKeys.EQUIPMENT_MODIFIER.isPressed();
     }
 
     // ================= 长按计时（给 HUD 做"实时扣能预览"用） =================

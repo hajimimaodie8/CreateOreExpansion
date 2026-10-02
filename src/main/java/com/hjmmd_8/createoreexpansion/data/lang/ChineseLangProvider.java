@@ -221,12 +221,13 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.skill_settings", "技能设置");
         // 机器旋转的修饰键（默认左 Ctrl；与"扳手右键"组合 = 旋转本模组无模式机器）
         add("createoreexpansion.keyinfo.rotate_modifier", "旋转机器（修饰键）");
-        // 装备技能修饰键（默认左 Alt；与技能键组合 = 释放装备的技能，见 EquipmentSkillHud）
-        add("createoreexpansion.keyinfo.equipment_modifier", "装备技能（修饰键）");
+        // 装备模式开关（默认左 Alt；2026-10-02 由"按住"改为"按一下开 / 再按一下关"）
+        add("createoreexpansion.keyinfo.equipment_modifier", "装备技能开关");
 
-        // ========== 装备技能提示层（按住装备修饰键时显示在快捷栏上方） ==========
+        // ========== 装备技能提示层（装备模式开关打开时显示在快捷栏上方） ==========
         add("createoreexpansion.hud.equipment.hold_preview", "按住 %ss / %ss → 预计扣 %s（满额 %s）");
-        add("createoreexpansion.hud.equipment.title", "装备技能（按住 %s）");
+        // 开关语义：本层只在开关为"开"时绘制，所以状态恒为"开"（关掉时整层不显示）
+        add("createoreexpansion.hud.equipment.title", "装备技能（%s 开关：开）");
         // 套名行只报套名（用户 2026-10-01 否掉"整体 LV1"的写法）；等级逐条列在技能行上
         add("createoreexpansion.hud.equipment.set_active", "已佩戴%s套");
         add("createoreexpansion.hud.equipment.set_by_enchant", "已佩戴%s套（散构聚能补齐）");

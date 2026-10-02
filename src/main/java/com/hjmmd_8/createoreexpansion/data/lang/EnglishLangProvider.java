@@ -322,13 +322,15 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.keyinfo.skill_settings", "Skill Settings");
         // 机器旋转的修饰键（默认左 Ctrl；与"扳手右键"组合 = 旋转本模组无模式机器）
         add("createoreexpansion.keyinfo.rotate_modifier", "Rotate Machine (Modifier)");
-        // Equipment skill modifier (default Left Alt; hold it with a skill key to release an
-        // equipment skill - see EquipmentSkillHud)
-        add("createoreexpansion.keyinfo.equipment_modifier", "Equipment Skill (Modifier)");
+        // Equipment-mode toggle (default Left Alt; changed from "hold" to
+        // "press once = on, press again = off" on 2026-10-02)
+        add("createoreexpansion.keyinfo.equipment_modifier", "Equipment Skill Toggle");
 
-        // ========== Equipment skill hint (shown above the hotbar while the modifier is held) ==
+        // ========== Equipment skill hint (shown above the hotbar while the toggle is ON) =====
         add("createoreexpansion.hud.equipment.hold_preview", "Holding %ss / %ss - will cost %s (max %s)");
-        add("createoreexpansion.hud.equipment.title", "Equipment Skills (hold %s)");
+        // Toggle wording: this layer only draws while the toggle is ON, so the state is always ON
+        // (the whole layer disappears when it is OFF).
+        add("createoreexpansion.hud.equipment.title", "Equipment Skills (%s toggle: ON)");
         // The set line names the set only (user 2026-10-01 rejected a single "overall Lv"); the
         // per-skill levels are listed on the skill rows themselves.
         add("createoreexpansion.hud.equipment.set_active", "Wearing %s Set");

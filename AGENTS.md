@@ -1,7 +1,7 @@
 # AGENTS.md — 给 AI 协作代理的工程备忘
 
 > 本文件是「记忆索引」：只放**跨会话必须知道的事实、红线、易踩的坑**；长内容一律在 `markdown_output/`，这里只留一行指针（写清「去哪个文件、找哪个标题」）。
-> 最后更新：2026-09-30（**W13 盔甲 + 技能换核**：四套盔甲落地；skiller 拉上游最新、**内置只在 `:coe`**；**旧技能内核执行层已删净**（64→34，剩数据/契约）；两节已迁出腾预算 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md`）。
+> 最后更新：2026-10-02（**装备键（左 Alt）改为开关**：按一下开、再按一下关；W13 盔甲 + 技能换核见「挂起事项」与 `markdown_output/COE 层功能清点与变更史.md`）。
 > **指令预算 65,536 B，本文件必须 ≤ 40,000 B** —— 想往这里加长内容之前，先问「这该不该进 `markdown_output/`」。
 
 ## 📚 长文档索引（⚠ `markdown_output/`、`docs/`、`tools/` **只在本机保留、不入公共仓库**——见 `.gitignore` 那段；按这里找「文件 + 标题」）
@@ -47,7 +47,7 @@ git status --short                                          # git add 之后再�
 跑法、为什么必须 `cmd /c` 直连、以及现状（仅剩 3 处错误且全在 `content/skill/*`）→ `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 2.`。
 
 **3）PowerShell 与全库盘点（含会误判事实的编码坑）**
-五条最容易反复踩的：① 全库盘点用 `Select-String`（本仓 `grep` 漏文件）；② PS 5.1 按 ANSI 读无 BOM 的 UTF-8 `.ps1` ⇒ 中文注释吞引号，**一次性脚本一律纯 ASCII**；③ 临时文件写 `%TEMP%`/`build/`；④ 抓 javac 中文诊断必须 `cmd /c "... > f 2>&1"` + `-Encoding Default`；⑤ **改 Java/文档只用 write/edit 工具**（`Get-Content|Set-Content` 按 ANSI 重写会毁文件）。**逐条实例与正确命令 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 4.`**（2026-09-30 为腾预算迁出）。
+五条最容易反复踩的：① 全库盘点用 `Select-String`（本仓 `grep` 漏文件）；② PS 5.1 按 ANSI 读无 BOM 的 UTF-8 `.ps1` ⇒ 中文注释吞引号，**一次性脚本一律纯 ASCII**；③ 临时文件写 `%TEMP%`/`build/`；④ 抓 javac 中文诊断必须 `cmd /c "... > f 2>&1"` + `-Encoding Default`；⑤ **改 Java/文档只用 write/edit 工具**（`Get-Content|Set-Content` 按 ANSI 重写会毁文件）。**逐条实例与正确命令 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 4.`**。
 
 **4）构造期陷阱（2026-09-14 真实崩溃）**
 父类构造器会调用**可覆写**方法。`Entity` 的构造器就会调 `setPos(0,0,0)`（另有 `defineSynchedData` / `getBoundingBox` / `getFireImmuneTicks` / `getMaxAirSupply` / `getTeam` / `level()`），而覆写体在**字段初始化器之前**执行 → 碰任何对象字段都是 NPE。波实体曾在 `setPos` 里调 `wavePath.markLiveBreak()`，导致**开炮即服务端崩溃**（`run/crash-reports/crash-2026-09-14_09.47.56-server.txt`）。
@@ -65,7 +65,7 @@ git status --short                                          # git add 之后再�
 - **可选依赖「没装也能加载」**：唯一取证方式是**把该模组从 dev 运行时依赖里临时去掉跑一次 `runData`**，日志里该类名 0 命中才算通过。
 
 **5.5）数据包标签目录是单数（`tags/item/`、`tags/block/`）；留档不能放 `build/`**
-两点都会**静默失效**：复数目录名的整个文件被忽略；`build/` 被 `.gitignore` 忽略 ⇒ 放那里的留档 `git add` 被静默拒绝。**细则与自检 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 5.`**（2026-09-30 从本文件原地迁出，为腾预算）。
+两点都会**静默失效**：复数目录名的整个文件被忽略；`build/` 被 `.gitignore` 忽略 ⇒ 放那里的留档 `git add` 被静默拒绝。**细则与自检 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 5.`**。
 
 ## 🚩 红线（不许越，逐条都是踩过的坑）
 
@@ -148,7 +148,8 @@ git status --short                                          # git add 之后再�
 - **物品注册只有一个入口 `CoeItems`**（用户 2026-10-01 裁定）：本模组物品（工具/佩/弓/盔甲/回旋镖…）**声明与能量注册全在 `CoeItems`**；**同族物品的注册链一律收进族级 helper**（`gemIngot/gemRaw/.../stressMedallion/armor/grindingWheel/skillItem`），声明处**一行一件**——别再逐件复制同一段链（曾 57 处逐字重复）。能量走现成路径（`EnergyItemBuilder` 的 `defaultEnergy == maxEnergy` = 初始即满）。**创造页分栏也在这条链上声明**：`.transform(CoeCreativeSections.section(CreativeSection.ORE/MACHINE/GEAR))`（声明优先于规则；见 `CoeCreativeSections`）。**加物品前先把 `CoeItems` 读一遍**。
 - **系列特性登记口径**（用户 2026-09-15 定稿）：**唯一入口 = `common/SeriesTraits`**；判定 = 物品标签 ∪ 系列方块标签 ∪ 注册名约定（限定本模组命名空间）。**四个系列标签由 datagen 生成，手写文件禁止同名**（同名让 processResources 报 duplicate 直接失败）；**两个系列（含方块物品）免疫嬗乱销毁**，判定在 `TransmutationDisorderEffect#canTransmutationDestroy`（W6 后随嬗化住 `:coe`）——**方块物品进不了物品标签，故不能用标签覆盖**。链式写法与来由 → `markdown_output/机器交互实现细节（AGENTS迁入）.md` 的 `## 6.`。
 - **机器交互四条统一规则**（用户 2026-09-15 定稿）：① 空手右键某个面 = 开/关该面开口；② 空手右键指示灯 = 只切那盏灯对应的开口；③ 扳手右键 = 有特殊模式的机器只切模式、没模式的机器照旧切开口；④ 旋转必须 **Ctrl + 扳手右键**。
-  实现三件套（契约 `common/machine/MachineInteraction` / 载荷 `common/machine/MachineRotatePayload` / 客户端 `client/MachineRotateClient`）的逐条细节、来由与 `IWrenchable` 副作用更正 → `markdown_output/机器交互实现细节（AGENTS迁入）.md`（2026-09-28 为腾本文件预算原样迁出）。**Ctrl 的判定必须在客户端**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
+  实现三件套（契约 `common/machine/MachineInteraction` / 载荷 `common/machine/MachineRotatePayload` / 客户端 `client/MachineRotateClient`）的逐条细节、来由与 `IWrenchable` 副作用更正 → `markdown_output/机器交互实现细节（AGENTS迁入）.md`。**Ctrl 的判定必须在客户端**：使用物品包不带修饰键、Ctrl 也不同步（只有潜行会同步），服务器根本读不到；客户端拦截 + 自定义包才能让"没按 Ctrl 就不旋转"成为服务端权威行为。
+- **装备键（左 Alt）= 开关**（2026-10-02 改，原为按住）：按一下开、再按一下关；开时工具技能键（键一/二/三）让位给装备技能。判定唯一处 `CoeSkillClient#isEquipmentModeOn()`（`consumeClick()` 边沿翻转、离世复位），关卡 `check-armor-sets.ps1` §25。
 - **中英语言键集必须对齐**：`assets/createoreexpansion/lang/{en_us,zh_cn}.json` 的键集差集**只允许**是 4 条中文侧覆盖 Create 自带键的本地化（`create.tooltip.holdForControls` / `holdForDescription` / `keyCtrl` / `keyShift`）。历史上英文曾漏 17 条（雷鸣合金整条材料线 + 能量场控制器 + 蓝宝石充能器/两个调节器 + 嬗变液方块与流体），英文客户端在这些条目上显示原始键名——已在 `d869e2d2` 补齐。自检（**`Get-Content` 必须带 `-Encoding UTF8`**，否则 PS 5.1 按 ANSI 读中文 JSON，会在中文引号处解析失败并吐出一大坨乱码）：
   ```powershell
   $en = Get-Content src\generated\resources\assets\createoreexpansion\lang\en_us.json -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -200,4 +201,4 @@ git status --short                                          # git add 之后再�
 
 ## 已知环境限制
 
-- Hindsight 记忆（已配置但**已按用户要求关闭全部自动导入**）、`maven.neoforged.net` 可达性与 Skiller 参考工程的构建方式 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 3.`。
+- Hindsight 记忆、`maven.neoforged.net` 可达性与 Skiller 参考工程的构建方式 → `markdown_output/工程环境与工具链细节（AGENTS迁入）.md` 的 `## 3.`。

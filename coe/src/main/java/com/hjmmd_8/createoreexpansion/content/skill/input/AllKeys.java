@@ -42,18 +42,25 @@ public enum AllKeys implements Translatable {
      * 默认左 Ctrl，<b>玩家可在"控制"里自定义</b>（原先写死在 core 里，改不了）。 */
     ROTATE_MODIFIER("rotate_modifier", GLFW.GLFW_KEY_LEFT_CONTROL, "Rotate Machine (Modifier)"),
     /**
-     * <b>装备技能修饰键</b>（用户 2026-10-01 定稿）：按住它 + 任一技能键 = 释放<b>装备</b>的技能。
+     * <b>装备模式开关</b>（用户 2026-10-01 定稿，<b>2026-10-02 由"按住"改为"开关"</b>）：
+     * 按一下打开（松手仍然打开），再按一下关闭；打开期间按任一技能键 = 释放<b>装备</b>的技能。
      *
-     * <p>为什么要这个修饰键：工具与装备的<b>技能槽位号必须分开</b>（工具 0/1/2、装备 3/4/5）。
+     * <p>为什么要这个键：工具与装备的<b>技能槽位号必须分开</b>（工具 0/1/2、装备 3/4/5）。
      * 若不分开，按下键一时 {@code CoeSkillRelease.release} 会遍历到<b>两个</b>槽位 0 的绑定
      * （工具的和装备的）并同时释放 —— 能量双扣、两个效果同一 tick 生效、预览也不知显示哪个。
-     * 修饰键把客户端键源切成"模式"：<b>按住时槽位 0/1/2 一律报未按下</b>，于是工具技能被抑制、
+     * 这个键把客户端键源切成"模式"：<b>打开期间槽位 0/1/2 一律报未按下</b>，于是工具技能被抑制、
      * 装备技能独占按键（服务端与内核都不需要认识这个键，见 {@code CoeSkillClient}）。</p>
+     *
+     * <p><b>为什么是开关而不是按住</b>（用户 2026-10-02 原话）：按住时若还要按技能键，
+     * 左手就必须一直压着这个键，非常费事。因此它<b>不</b>参与 {@code isPressed()} 判定，
+     * 只由 {@code CoeSkillClient} 用 {@code consumeClick()} 边沿触发翻转一个锁存。</p>
+     *
+     * <p><b>代价</b>：开关打开期间工具技能（键一/二/三）整体让位给装备技能，要按一下本键切回。</p>
      *
      * <p>默认左 Alt：左手拇指自然位置，与 Shift/R/G（技能键）和左 Ctrl（旋转修饰键）都不冲突；
      * 玩家可在"控制"里自定义。</p>
      */
-    EQUIPMENT_MODIFIER("equipment_modifier", GLFW.GLFW_KEY_LEFT_ALT, "Equipment Skill (Modifier)"),
+    EQUIPMENT_MODIFIER("equipment_modifier", GLFW.GLFW_KEY_LEFT_ALT, "Equipment Skill Toggle"),
     ;
 
     public static final Translatable MOD_NAME_TRANSLATABLE = () -> "createoreexpansion.mod_name";

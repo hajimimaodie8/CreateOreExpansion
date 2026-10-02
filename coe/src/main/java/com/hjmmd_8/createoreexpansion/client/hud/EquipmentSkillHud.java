@@ -40,16 +40,19 @@ import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * <b>装备技能提示层</b>（用户 2026-10-01 要求的功能②）：按住装备辅助按键时，在快捷栏上方显示
+ * <b>装备技能提示层</b>（用户 2026-10-01 要求的功能②）：装备模式开关打开时，在快捷栏上方显示
  * <ul>
  *     <li>当前套装状态（是否成套、生效等级），</li>
  *     <li>当前套装提供了哪些技能、各自绑哪个技能键，</li>
  *     <li>能否释放。</li>
  * </ul>
  *
- * <h2>为什么是"按住才显示"</h2>
- * <p>平时不占屏幕（玩家不需要一直知道套装状态）；按住修饰键本身就是"我要用装备技能"的意图声明，
- * 此时才需要知道"我现在这套能放什么、放不放得出"。</p>
+ * <h2>为什么是"开关打开才显示"</h2>
+ * <p>平时不占屏幕（玩家不需要一直知道套装状态）；打开装备模式开关本身就是"我要用装备技能"的
+ * 意图声明，此时才需要知道"我现在这套能放什么、放不放得出"。</p>
+ * <p>2026-10-02 起该开关是<b>左 Alt 的锁存开关</b>（按一下开、再按一下关，见
+ * {@link CoeSkillClient#isEquipmentModeOn()}），不再是"按住"：显示条件因此变成"开关为开"，
+ * 关掉时<b>照旧整层不显示</b>（行为与原来"松开不显示"一致，只是不必一直压着键）。</p>
  *
  * <h2>数据来源（都不新增状态）</h2>
  * <ul>
@@ -80,7 +83,7 @@ public final class EquipmentSkillHud {
     /** 基线距屏幕底部的像素数：快捷栏上方、血条/经验条与物品名弹窗之上。 */
     private static final int MARGIN_ABOVE_HOTBAR = 74;
 
-    /** 标题行（含修饰键名）。 */
+    /** 标题行：开关语义（键帽名 + "开关：开"）；本层只在开关为开时绘制，因此状态恒为"开"。 */
     private static final String TITLE_KEY = "createoreexpansion.hud.equipment.title";
     /** 冷却行（替换掉"按住/预计扣能"那行）："（蓄能疾骋 冷却中：还需 43 秒）"。 */
     private static final String COOLDOWN_LINE_KEY = "createoreexpansion.hud.equipment.cooldown_line";
@@ -126,15 +129,20 @@ public final class EquipmentSkillHud {
             EquipmentSkillHud::render);
     }
 
-    /** 图层本体：按住装备修饰键时才画。 */
+    /**
+     * 图层本体：装备模式<b>开关为开</b>时才画（关掉时照旧整层不显示）。
+     *
+     * <p>判定走 {@link CoeSkillClient#isEquipmentModeOn()} 这一处锁存状态，与键源分流同源；
+     * <b>不</b>读 {@code EQUIPMENT_MODIFIER} 的原始按键状态 —— 那已经不再参与任何判定。</p>
+     */
     private static void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
         Player player = minecraft.player;
         if (player == null || minecraft.level == null || minecraft.screen != null) {
             return;
         }
-        // 与键源同源：能"按下"的时候才提示（CoeSkillClient 的判定）
-        if (!CoeSkillClient.isEquipmentModifierDown()) {
+        // 与键源同源：装备模式开关打开时才提示（CoeSkillClient 的锁存判定）
+        if (!CoeSkillClient.isEquipmentModeOn()) {
             return;
         }
 
@@ -340,7 +348,7 @@ public final class EquipmentSkillHud {
         };
     }
 
-    /** 修饰键的显示名（玩家改键后跟着变）。 */
+    /** 装备模式开关的键位显示名（玩家改键后跟着变）。 */
     private static Component modifierName() {
         return AllKeys.EQUIPMENT_MODIFIER.getKeybind() == null
             ? Component.empty()
