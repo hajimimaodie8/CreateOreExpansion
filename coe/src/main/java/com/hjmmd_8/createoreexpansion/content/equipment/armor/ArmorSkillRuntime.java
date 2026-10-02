@@ -902,10 +902,15 @@ public final class ArmorSkillRuntime {
             if (stack.isEmpty() || ArmorSet.of(stack) == null) {
                 continue;
             }
-            int boost = com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-                .skillBoostLevel(stack);
-            int regression = com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-                .skillRegressionLevel(stack);
+            // 与工具侧口径**逐字一致**（{@code SkillEnergyCost#effectiveLevel:34-35} 的
+            // {@code Math.min(..., 2)}）：技艺提升/记忆回溯 3 级及以上，提升量/削减量一律按 2 计。
+            // 合法附魔等级只有 0/1/2（{@code data/createoreexpansion/enchantment/skill_boost.json}
+            // 的 {@code max_level} = 2）⇒ 这是**零数值变化**的健壮性补丁；防的是"存档/命令塞进来的
+            // 越级附魔"把加减量放大（例如 +9 让"基准 + 提升"早就越过钳位，掩盖钳位本身是否生效）。
+            int boost = Math.min(com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
+                .skillBoostLevel(stack), 2);
+            int regression = Math.min(com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
+                .skillRegressionLevel(stack), 2);
             best = Math.max(best, base + boost - regression);
         }
         return Math.max(1, Math.min(EQUIPMENT_SKILL_MAX_LEVEL, best));
@@ -917,25 +922,22 @@ public final class ArmorSkillRuntime {
     }
 
     /**
-     * <b>预测等级的钳位上限 = 4</b>（用户 2026-10-02 裁定）。
+     * <b>装备技能等级的唯一钳位上限 = 3</b> —— 用户 2026-10-01 口径
+     * "装备技能 3 级封顶（工具才 5 级）"；用户 2026-10-02 追加："<b>单件显示也要钳住</b>"。
      *
-     * <p>它是四套里最高的套基准（{@link ArmorSet#THUNDER} = 4），与<b>真实等级</b>的钳位
-     * {@code FallGuardConfigs.MAX_LEVEL}（= 3）<b>刻意分开、不许合并</b>：真实生效等级只需要覆盖
-     * "一条技能最多 3 级"的玩法区间；而 tooltip 的预测分支要给<b>没穿整台</b>时悬停的那件预言一个等级，
-     * 星界套的<b>套基准</b> 3（蓝）、雷鸣套基准 4（紫）都必须落在 5 档色表的合法区间里 ——
-     * 钳到 3 会把雷鸣套的 4 级压成"3 级蓝色"，与用户的"4 显紫"直接冲突。</p>
-     */
-    public static final int PREDICTED_MAX_LEVEL = 4;
-
-    /**
-     * <b>真实等级（参与结算的那一个）的钳位上限 = 3</b> —— 用户 2026-10-01 口径
-     * "装备技能 3 级封顶（工具才 5 级）"。
-     *
-     * <p>本轮的显式化（用户 2026-10-02 星界轮：星界基准 2 ⇒ 附魔 +1 即封顶 3）：钳位值
-     * <b>历史上就是 3</b>（原写法直接借 {@code FallGuardConfigs.MAX_LEVEL}，它也是 3），
-     * 这里只是给它一个<b>装备技能自己的名字</b>并把不变量写下来 —— 否则"基准 2 + 技艺提升 1 = 3"
-     * 恰好等于钳位值，谁都看不出钳位到底吃没吃到；将来若有人把某个配置类的 MAX_LEVEL 调成 4，
-     * 钳位会<b>跟着所有装备技能一起漂</b>，而那种漂移在静态关卡里是看不见的。</p>
+     * <p><b>它同时钳两个出口，不许再有第二个平行的上限常量</b>：</p>
+     * <ol>
+     *   <li><b>真实等级</b>（{@link #effectiveLevel}，参与一切结算）：基准 + 技艺提升 − 记忆回溯
+     *       —— "基准 2 + 技艺提升 1 = 3" 恰好等于钳位值，钳位吃没吃到只看这一处；</li>
+     *   <li><b>预测等级</b>（{@link #predictedLevelOf}，护甲 tooltip 的"没穿整套"分支）：
+     *       <b>与真实等级同一个常量</b>。历史上这里是另一个常量 4（理由：雷鸣套套基准 4 要显紫），
+     *       于是单件 tooltip 会出现 <b>IV</b> —— 而等级本来就封顶 3，附魔超限时那件显示的数字
+     *       大于任何真实等级（用户 2026-10-02 报"单独在装备上的显示没有修"）。
+     *       <b>预测只是"穿上之后大概几级"的预告</b>，上限不可能高于真实等级，故合并为一处真源；
+     *       代价是雷鸣套（套基准 4，本套技能尚未落地）的悬停预告也会钳在 III 蓝 —— 那是口径
+     *       要求的"单件显示不许超过 3"。</li>
+     * </ol>
+     * <p>将来若有人把某个配置类的 MAX_LEVEL 调成别的值，钳位<b>不会跟着漂</b>：装备技能只认本常量。</p>
      */
     public static final int EQUIPMENT_SKILL_MAX_LEVEL = 3;
 
@@ -952,8 +954,11 @@ public final class ArmorSkillRuntime {
      * <p>公式与钳位都<b>只在这里写一遍</b>（"技能等级只有一个出处"）：</p>
      * <pre>
      *   clamp( ArmorSkillLevels.baseLevelOf(这件所属的套, 该技能) + 该件技艺提升 − 该件记忆回溯,
-     *          1, {@link #PREDICTED_MAX_LEVEL} )
+     *          1, {@link #EQUIPMENT_SKILL_MAX_LEVEL} )
      * </pre>
+     * <p><b>钳位与真实等级共用同一个常量</b>（{@link #EQUIPMENT_SKILL_MAX_LEVEL} = 3，用户
+     * 2026-10-02："单件显示也要钳住"）：预告的数字不可能高于穿上之后的真实等级，所以不允许存在
+     * 第二个平行的预测上限（历史上是 4，单件 tooltip 因此会显示 IV 紫）。</p>
      *
      * <p><b>为什么只读被悬停的那一件</b>（而不是像 {@link #effectiveLevel} 那样四件取最大）：
      * 玩家没穿整台时，"另外三件"要么不在身上、要么根本不是这一套，逐件取最大既取不到也不该取；
@@ -965,7 +970,7 @@ public final class ArmorSkillRuntime {
      *
      * @param stack   被悬停的那一件护甲；不是本模组四套护甲 ⇒ 0
      * @param skillId 技能 id 的 path（如 {@code field_charge}，与 {@link #levelOf} 同形）
-     * @return 1~{@link #PREDICTED_MAX_LEVEL}；参数不适用 ⇒ 0
+     * @return 1~{@link #EQUIPMENT_SKILL_MAX_LEVEL}；参数不适用 ⇒ 0
      */
     public static int predictedLevelOf(ItemStack stack, String skillId) {
         ArmorSet set = ArmorSet.of(stack);
@@ -974,11 +979,12 @@ public final class ArmorSkillRuntime {
         }
         int base = ArmorSkillLevels.baseLevelOf(set,
             com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(skillId));
-        int boost = com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-            .skillBoostLevel(stack);
-        int regression = com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-            .skillRegressionLevel(stack);
-        return Math.max(1, Math.min(PREDICTED_MAX_LEVEL, base + boost - regression));
+        // 与 effectiveLevel 同一处的 2 级封顶口径（越级附魔不放大加减量）
+        int boost = Math.min(com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
+            .skillBoostLevel(stack), 2);
+        int regression = Math.min(com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
+            .skillRegressionLevel(stack), 2);
+        return Math.max(1, Math.min(EQUIPMENT_SKILL_MAX_LEVEL, base + boost - regression));
     }
 
     /**
