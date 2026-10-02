@@ -43,6 +43,15 @@ import net.minecraft.resources.ResourceLocation;
  * <b>静默算成 3 级</b>：编译通过，只有进游戏看 HUD 的罗马数字（或看那发波的波级）才暴露。
  * 三条写全之后，星界套上再也没有"靠回落取值"的技能（套基准 3 对本套已不起作用）。</p>
  *
+ * <h2>雷鸣套的两条（用户 2026-10-02 雷鸣轮）</h2>
+ * <p>「雷鸣套装：1、2 通星界」⇒ 槽位 1 = 衡元择势 {@code balance_choice} 基准 <b>3</b>、
+ * 槽位 2 = 临域充力 {@code field_charge} 基准 <b>3</b>（两条都<b>复用星界的技能 id</b>，
+ * 只换基准等级）。为什么是 3 而不是雷鸣套的套基准 4：装备技能 3 级封顶
+ * （{@code EQUIPMENT_SKILL_MAX_LEVEL = 3}），"通星界"给到封顶 3，相对星界的 2/2 正好 +1。
+ * 两条同样<b>全部显式登记</b>（理由同星界：套基准 4 靠回落再被钳 3 是静默取值）。
+ * <b>槽位 3（雷鸣威震）本轮欠着、故意不登记</b> —— 雷鸣套上该槽位没有技能，
+ * 见 {@code ArmorSkillProvider#SET_SKILL_IDS} 与 {@code ArmorSkillRuntime#skillId}。</p>
+ *
  * @since 1.0.0
  */
 public final class ArmorSkillLevels {
@@ -105,6 +114,23 @@ public final class ArmorSkillLevels {
             }
         }
         // === SET-BRANCH-END: ASTRAL ===
+        if (skillId != null && set == ArmorSet.THUNDER) {
+            // 雷鸣套（用户 2026-10-02 雷鸣轮）：「雷鸣套装：1、2 通星界」——
+            //   槽位 1 = 衡元择势 balance_choice 基准 3
+            //   槽位 2 = 临域充力 field_charge  基准 3（**同一个技能 id 的高等级形态**）
+            //   槽位 3 = 雷鸣威震 **欠着、故意不登记**（见 ArmorSkillProvider#SET_SKILL_IDS 的说明）。
+            // 为什么是 3：雷鸣套的套基准 baseLevel() 是 **4**，而装备技能 3 级封顶
+            // （EQUIPMENT_SKILL_MAX_LEVEL = 3）⇒ "通星界"给到**封顶 3**（相对星界的 2/2 正好 +1）。
+            // ⚠ 两条都必须**显式**：靠"回落到套基准 4"再被 effectiveLevel 钳到 3，
+            //   数值虽同，但那是**静默取值**，与本表"每个套装分支逐条显式登记"的既有口径不符。
+            if (ArmorSkillRuntime.BALANCE_CHOICE_ID.equals(skillId)) {
+                return 3;
+            }
+            if (ArmorSkillRuntime.FIELD_CHARGE_ID.equals(skillId)) {
+                return 3;
+            }
+        }
+        // === SET-BRANCH-END: THUNDER ===
         return set.baseLevel();
     }
 }

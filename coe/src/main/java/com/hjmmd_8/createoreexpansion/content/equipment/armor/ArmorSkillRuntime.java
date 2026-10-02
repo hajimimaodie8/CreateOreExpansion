@@ -996,7 +996,10 @@ public final class ArmorSkillRuntime {
      *
      * <p>翠玉套 {@code fall_guard / charge_dash}；宝石套（用户 2026-10-01 更正后的编排）
      * {@code last_stand / charge_dash / field_charge} —— 蓄能疾骋是<b>从翠玉套移植</b>的同一条技能
-     * （同一个 id、同一套数值），因此它同时住在两套的同一段槽位空间里。</p>
+     * （同一个 id、同一套数值），因此它同时住在两套的同一段槽位空间里。
+     * 星界套 {@code balance_choice / field_charge / star_shock}；雷鸣套
+     * {@code balance_choice / field_charge}（<b>只有两个槽位</b>：用户 2026-10-02
+     * 「雷鸣套装：1、2 通星界」，槽位 3 雷鸣威震<b>故意未登记、待做</b>）。</p>
      */
     private static @Nullable String skillId(ArmorSet set, int index) {
         if (set == ArmorSet.JADE_TOPAZ) {
@@ -1027,6 +1030,23 @@ public final class ArmorSkillRuntime {
                 case 0 -> BALANCE_CHOICE;
                 case 1 -> FIELD_CHARGE;
                 case 2 -> STAR_SHOCK;
+                default -> null;
+            };
+        }
+        if (set == ArmorSet.THUNDER) {
+            // 雷鸣套（用户 2026-10-02 雷鸣轮）：「雷鸣套装：1、2 通星界」——
+            //   槽位 1 = 衡元择势、槽位 2 = 临域充力 II（**同一个技能 id 的高等级形态**）。
+            // 执行体一律按 **skillId** 分派（本文件里的 FIELD_CHARGE.equals(skill) /
+            // BALANCE_CHOICE.equals(skill) 等分支），**不按套**，所以复用这两个 id 之后
+            // 雷鸣套上它们**天然生效**，与星界套上行为完全一致 —— 只差基准等级 3 vs 2
+            // （3 是装备技能封顶，见 EQUIPMENT_SKILL_MAX_LEVEL）。
+            // ⚠ **只有两个 case，不许给 index 2 造任何东西**：槽位 3（雷鸣威震）本轮
+            //   **故意不登记（待做）** ⇒ default -> null ⇒ hasSkill(THUNDER, 2) 为 false、
+            //   装备段键三对雷鸣套不响应、HUD 只列两行。
+            // 顺序必须与 ArmorSkillProvider.SET_SKILL_IDS[THUNDER] 逐字同序。
+            return switch (index) {
+                case 0 -> BALANCE_CHOICE;
+                case 1 -> FIELD_CHARGE;
                 default -> null;
             };
         }

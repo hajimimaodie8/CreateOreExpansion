@@ -39,16 +39,16 @@ import org.jetbrains.annotations.Nullable;
  * <p>{@link ArmorSet#wornSet(Player)} 就是本类的唯一开关：<b>不成套 ⇒ 一个技能都不贡献、
  * 一个槽位都不声明</b>。那条规则因此不必在 7 个技能里各写一遍（也正是 2026-10-01 先做 G1 的原因）。</p>
  *
- * <h2>本轮状态：表是空的（有意为之，不是漏做）</h2>
- * <p>四套的 7 个套装技能<b>尚未实现</b>（虚衡坠护 / 蓄能疾骋 / 绝境守护 / 临域充力 / 衡元择势 /
- * 临域充力 II / 星芒嬗震 / 雷鸣威震），因此 {@link #SET_SKILL_IDS} 为空 ⇒ {@link #componentOf}
- * 恒返回 {@link SkillComponent#EMPTY}、{@link #collectKeys} 一个槽位都不声明
- * （没有技能时客户端也就不会去轮询 3/4/5、不会发无用的按键包）。</p>
- * <p>但<b>槽位空间、全套门槛、与客户端的接线都已按最终形态落地</b>：第一个套装技能落地时
- * 要做的是两件事 —— ① 把技能 id 填进 {@link #SET_SKILL_IDS}；② 在下面那段
- * {@code TODO} 处补实例构造。第 ② 步被一个<b>尚未裁定的玩法问题</b>挡住：
- * <b>装备技能的能量从哪来</b>（工具/武器/佩的能量是物品自己的 {@code ToolEnergy} 组件；
- * 护甲上是否也挂能量、还是共用背包里某件装备的能量，用户还没定）。因此这里不预先发明口径。</p>
+ * <h2>本轮状态：雷鸣套槽位 1/2 已落地，槽位 3 待做</h2>
+ * <p>表里现有四套的登记：翠玉 2 条、宝石 3 条、星界 3 条、<b>雷鸣 2 条</b>
+ * （用户 2026-10-02「雷鸣套装：1、2 通星界」⇒ 槽位 1 = 衡元择势、槽位 2 = 临域充力 II，
+ * 两条都<b>复用星界的技能 id</b>，只把基准等级抬到封顶 3，见 {@code ArmorSkillLevels}）。</p>
+ * <p><b>雷鸣套的槽位 3（雷鸣威震）故意不登记</b>（作者本轮先欠着）：因此装备段的
+ * <b>键三对雷鸣套不响应</b>、HUD 只列两行 —— 这是<b>有意为之，不是漏做</b>。
+ * 补它时要一次改三处并保持槽位同序：{@link #SET_SKILL_IDS}、
+ * {@code ArmorSkillRuntime#skillId(ArmorSet, int)} 的 THUNDER 分支、
+ * {@code ArmorSkillLevels#baseLevelOf} 的 THUNDER 分支（最后那处末尾还要补
+ * {@code // === SET-BRANCH-END: THUNDER ===} 哨兵，否则关卡 §21b 的分支提取会假红）。</p>
  *
  * @since 1.0.0
  */
@@ -86,10 +86,18 @@ public final class ArmorSkillProvider implements SkillProvider {
         // 星界套（用户 2026-10-02 星界轮，共三条）：槽位 1 = 衡元择势、槽位 2 = 临域充力
         // （**同一个技能 id 的高等级形态**：星界套的基准是 2、宝石套是 1，数值同一套）、
         // 槽位 3 = 星芒嬗震。
-        // ⚠ ASTRAL 不在这张表里 ⇒ skillIdsOf(ASTRAL) 返回空 ⇒ 三个技能<b>一个都不触发</b>
-        //   （客户端不会轮询槽位 3/4/5、HUD 也不列技能行），而且是静默的。
+        // ⚠ ASTRAL 已登记在这张表里（2026-10-02 星界轮落地）；下面三行的顺序即槽位序，
+        //   必须与 ArmorSkillRuntime#skillId 的 ASTRAL 分支逐字同序（顺序错会**静默取错配置表**）。
         ArmorSet.ASTRAL, List.of(ArmorSkillRuntime.BALANCE_CHOICE_ID, ArmorSkillRuntime.FIELD_CHARGE_ID,
-            ArmorSkillRuntime.STAR_SHOCK_ID));
+            ArmorSkillRuntime.STAR_SHOCK_ID),
+        // 雷鸣套（用户 2026-10-02 雷鸣轮）：「雷鸣套装：1、2 通星界」⇒ 槽位 1 = 衡元择势、
+        // 槽位 2 = 临域充力 II（**同一个技能 id 的高等级形态**），只换基准等级：3 / 3
+        // （雷鸣套的套基准是 4，而装备技能 3 级封顶 ⇒ "通星界"给到封顶 3，见 ArmorSkillLevels）。
+        // ⚠ **只有两条**，而且顺序就是槽位序（槽位 1 = 表内下标 0、槽位 2 = 1），必须与
+        //   ArmorSkillRuntime#skillId(ArmorSet, int) 的 THUNDER 分支逐字同序。
+        //   **槽位 3（雷鸣威震）故意不登记**（作者本轮先欠着）⇒ 装备段键三对雷鸣套不响应、
+        //   HUD 只列两行；这正是本轮的有意状态，不是遗漏。
+        ArmorSet.THUNDER, List.of(ArmorSkillRuntime.BALANCE_CHOICE_ID, ArmorSkillRuntime.FIELD_CHARGE_ID));
 
     /**
      * 该套在装备段暴露的技能 id（<b>按槽位顺序</b>）—— 供显示层共用（护甲 tooltip / HUD）。
