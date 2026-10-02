@@ -147,10 +147,13 @@ public final class AllSkills {
                     .register();
 
     /**
-     * 蓄能疾骋（翠玉套 · 槽位 2）：长按蓄力，松手按到达段数给对应时长与等级的<b>迅捷</b>。
+     * 蓄能疾骋（翠玉套 · 槽位 2；<b>用户 2026-10-01 更正后同时也是宝石套 · 槽位 2</b> ——
+     * 从翠玉套移植：同一个技能 id、同一套数值，翠玉套那份保持不动）：
+     * 长按蓄力，按住期间按到达段数给对应时长与等级的<b>迅捷</b>。
      *
      * <p>与虚衡坠护同样：执行在 {@code ArmorSkillRuntime}（长按语义）、数值在
-     * {@link ChargeDashConfigs}，这里只登记 id / 类型 / 等级上限，不走内核的 config 解析链。</p>
+     * {@link ChargeDashConfigs}，这里只登记 id / 类型 / 等级上限，不走内核的 config 解析链。
+     * 行为按技能 id 分派，与是哪一套无关。</p>
      *
      * <p>⚠ 能量总量（300 / 250 / 200）是<b>我给的默认值</b>；用户确认后只改 {@code ChargeDashConfigs} 一个文件。</p>
      */
@@ -172,9 +175,9 @@ public final class AllSkills {
                     .register();
 
     /**
-     * 临域充力（宝石套 · 槽位 2，基准等级 2）：本轮<b>只登记/注册</b>（规格 §八 第 2 层要求
-     * "两条技能都进注册管线"，好让第 3 层实现时不必再动注册表）。它的行为（应力注入 /
-     * 手摇曲柄判定 / 环绕粒子）是<b>第 3 层</b>，此刻按住这个槽位除了进入长按状态不会有效果。
+     * 临域充力（宝石套 · 槽位 3，基准等级 1 —— 用户 2026-10-01 更正：原先记成槽位 2 / 基准 2）：
+     * 应力注入 / 手摇曲柄判定 / 环绕粒子，数值在 {@link FieldChargeConfigs}，
+     * 执行在 {@code ArmorSkillRuntime} + {@code FieldChargeRuntime}。
      */
     public static final RegisteredDataSkill FIELD_CHARGE =
             skill("field_charge", SkillType.USE_SKILL)

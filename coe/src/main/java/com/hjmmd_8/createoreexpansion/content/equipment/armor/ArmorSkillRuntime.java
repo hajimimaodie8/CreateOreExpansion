@@ -63,8 +63,13 @@ public final class ArmorSkillRuntime {
         com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(FALL_GUARD);
 
     /**
-     * 蓄能疾骋（翠玉套槽位 2）：长按越久，松手时给的<b>迅捷</b>越强、越久
-     * （用户 2026-10-01 规格：Lv1 三段 20/40/60 · Lv2 四段 · Lv3 五段；数值源 {@code ChargeDashConfigs}）。
+     * 蓄能疾骋（翠玉套槽位 2；<b>用户 2026-10-01 更正后同时也是宝石套槽位 2</b> ——
+     * 同一个技能 id、同一套数值，从翠玉套移植，翠玉套那份保持不动）：长按越久，松手时给的
+     * <b>迅捷</b>越强、越久（用户 2026-10-01 规格：Lv1 三段 20/40/60 · Lv2 四段 · Lv3 五段；
+     * 数值源 {@code ChargeDashConfigs}）。
+     *
+     * <p>行为一律<b>按技能 id 分派</b>（见 {@code tick}/{@code release}），与它是哪一套无关：
+     * 能量从玩家当前生效那一套的 {@link ArmorEnergy} 池扣。</p>
      */
     public static final String CHARGE_DASH = "charge_dash";
 
@@ -75,10 +80,8 @@ public final class ArmorSkillRuntime {
     /**
      * 绝境守护（宝石套槽位 1，基准等级 1 —— 见 {@link ArmorSkillLevels}）。
      *
-     * <p><b>本轮（规格 §8 第 1 层）只登记 id 与基准等级</b>：配置类（概率 50/60/70、长按
-     * 15/10/5 秒、不死图腾 buff）、被动触发与主动分段都在<b>第 2 层</b>。因此它现在还
-     * <b>不在</b> {@link ArmorSkillProvider#skillIdsOf(ArmorSet)}、不在内核注册表、也不在
-     * {@code AllSkills} —— 那是第 2 层的事，现在加进去会让"按住 Alt+R 有反应但什么也不发生"。</p>
+     * <p>数值源 {@code LastStandConfigs}（概率 50/60/70、长按 15/10/5 秒、不死图腾 buff）：
+     * 被动触发在 {@code LastStandHandler}、主动分段在 {@link #applyLastStand}。</p>
      */
     public static final String LAST_STAND = "last_stand";
 
@@ -87,10 +90,13 @@ public final class ArmorSkillRuntime {
         com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(LAST_STAND);
 
     /**
-     * 临域充力（宝石套槽位 2，基准等级 2 —— 见 {@link ArmorSkillLevels}）。
+     * 临域充力（宝石套槽位 3，基准等级 1 —— 见 {@link ArmorSkillLevels}）。
      *
-     * <p><b>本轮只登记 id 与基准等级</b>：应力注入器、手摇曲柄判定、环绕粒子都在<b>第 3 层</b>，
-     * 同样不注册内核、不进 {@code AllSkills}。</p>
+     * <p><b>用户 2026-10-01 更正</b>：它<b>不再</b>是槽位 2、基准也不是 2；槽位 2 让给了
+     * 从翠玉套移植的蓄能疾骋（{@link #CHARGE_DASH}）。</p>
+     *
+     * <p>应力注入器、手摇曲柄判定、环绕粒子在第 3 层落地，不注册内核、不进 {@code AllSkills}
+     * 之外的东西。</p>
      */
     public static final String FIELD_CHARGE = "field_charge";
 
@@ -166,7 +172,7 @@ public final class ArmorSkillRuntime {
                         notifyBlocked(player, slot, "createoreexpansion.equip_skill.no_energy", 0);
                         continue;
                     }
-                    // 临域充力（宝石套槽位 2）：发动前要过"§2.1 判定"（半径内至少一个动力源方块）
+                    // 临域充力（宝石套槽位 3）：发动前要过"§2.1 判定"（半径内至少一个动力源方块）
                     // 与"注入器放得下吗"两道关；任何一道不过 ⇒ 按**发动失败**处理：
                     // 不进长按状态（⇒ 不扣能、不进冷却），只提示原因。
                     if (FIELD_CHARGE.equals(skill)) {
@@ -212,7 +218,7 @@ public final class ArmorSkillRuntime {
                         FieldChargeRuntime.finish(player);
                     }
                     // 用户 2026-10-01 口径：能量消耗到"见底"⇒ 自动断停 + 把能量清空。
-                    // 临域充力（宝石套槽位 2）从第 3 层起也走这条分支（它的"见底"判据见 isExhausted：
+                    // 临域充力（宝石套槽位 3）从第 3 层起也走这条分支（它的"见底"判据见 isExhausted：
                     // 它是**边按边扣**，所以判的是"下一步还扣得起吗"）。
                     if (set != null && skill != null
                             && isExhausted(player, set, index, ticks)) {
@@ -357,7 +363,7 @@ public final class ArmorSkillRuntime {
             ArmorEnergy.consume(player, holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost()));
             startCooldown(player, skillId, config.cooldownSeconds());
         } else if (skillId.equals(FIELD_CHARGE)) {
-            // 临域充力（宝石套 · 槽位 2，规格 §8 第 3 层）：用户明确"**中途松开即终止**供能"。
+            // 临域充力（宝石套 · 槽位 3，规格 §8 第 3 层）：用户明确"**中途松开即终止**供能"。
             // 能量是**边按边扣**的（见 FieldChargeRuntime#hold），所以松手只需补上最后不足一步的零头，
             // 随后收尾（移除注入器 + 曲柄立刻静止）并起冷却 25/20/15 秒。
             FieldChargeConfigs.Config config = FieldChargeConfigs.config(effectiveLevel(player, set, skillId));
@@ -456,7 +462,7 @@ public final class ArmorSkillRuntime {
         String skill = skillId(set, index);
         int level = effectiveLevel(player, set, skill);
         if (FIELD_CHARGE.equals(skill)) {
-            // 临域充力（宝石套槽位 2，规格 §8 第 3 层）：数值源 = FieldChargeConfigs 的"点/秒"，
+            // 临域充力（宝石套槽位 3，规格 §8 第 3 层）：数值源 = FieldChargeConfigs 的"点/秒"，
             // 累计口径 = floor(heldTicks × energyPerSecond / 20)（见 FieldChargeConfigs#costAfter 的推导：
             // 与 holdCost(held, durationSeconds, durationSeconds × energyPerSecond) 逐值等价）。
             return FieldChargeConfigs.costAfter(heldTicks, FieldChargeConfigs.config(level));
@@ -478,7 +484,7 @@ public final class ArmorSkillRuntime {
         String skill = skillId(set, index);
         int level = effectiveLevel(player, set, skill);
         if (FIELD_CHARGE.equals(skill)) {
-            // 临域充力（宝石套槽位 2，规格 §2.2"释放后冷却"）：25 / 20 / 15 秒
+            // 临域充力（宝石套槽位 3，规格 §2.2"释放后冷却"）：25 / 20 / 15 秒
             return FieldChargeConfigs.config(level).cooldownSeconds();
         }
         if (FALL_GUARD.equals(skill)) {
@@ -566,7 +572,8 @@ public final class ArmorSkillRuntime {
      * 取决于所有套装中相应增或减的技能等级的最大值。」</p>
      *
      * <p><b>与旧版的唯一区别</b>：基准不再取"整套一个值"（{@code set.wornLevel}），而是
-     * <b>逐技能</b>问 {@link ArmorSkillLevels}（宝石套 绝境守护 1 / 临域充力 2；翠玉套两条仍为 1）。
+     * <b>逐技能</b>问 {@link ArmorSkillLevels}（宝石套 绝境守护 1 / 蓄能疾骋 2 / 临域充力 1；
+     * 翠玉套两条仍为 1）。
      * 用户 2026-10-01 第二轮明确否掉"整体 LV1"的展示，所以每个技能都要单独算一遍。</p>
      *
      * @param player  玩家
@@ -612,9 +619,9 @@ public final class ArmorSkillRuntime {
      * {@link ArmorSkillProvider#skillIdsOf} 的表<b>必须逐字同序</b>：那张表决定客户端轮询哪个槽位、
      * HUD 列哪几行，这里决定"按下这个槽位到底跑哪个技能"。</p>
      *
-     * <p>翠玉套 {@code fall_guard / charge_dash}（第 1 层已有）；宝石套
-     * {@code last_stand / field_charge}（规格 §八 第 2 层：两条技能都登记进套件表 ——
-     * 临域充力的<b>行为</b>是第 3 层，本轮只有绝境守护有行为）。</p>
+     * <p>翠玉套 {@code fall_guard / charge_dash}；宝石套（用户 2026-10-01 更正后的编排）
+     * {@code last_stand / charge_dash / field_charge} —— 蓄能疾骋是<b>从翠玉套移植</b>的同一条技能
+     * （同一个 id、同一套数值），因此它同时住在两套的同一段槽位空间里。</p>
      */
     private static @Nullable String skillId(ArmorSet set, int index) {
         if (set == ArmorSet.JADE) {
@@ -625,9 +632,13 @@ public final class ArmorSkillRuntime {
             };
         }
         if (set == ArmorSet.GEM) {
+            // 用户 2026-10-01 更正后的宝石套编排（三条，槽位顺序即此处 case 顺序，
+            // 必须与 ArmorSkillProvider.SET_SKILL_IDS[GEM] 逐字同序）：
+            //   槽位 1 = 绝境守护、槽位 2 = 蓄能疾骋（从翠玉套移植）、槽位 3 = 临域充力。
             return switch (index) {
                 case 0 -> LAST_STAND;
-                case 1 -> FIELD_CHARGE;
+                case 1 -> CHARGE_DASH;
+                case 2 -> FIELD_CHARGE;
                 default -> null;
             };
         }

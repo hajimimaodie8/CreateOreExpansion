@@ -78,9 +78,11 @@ public final class ArmorSkillProvider implements SkillProvider {
      */
     private static final Map<ArmorSet, List<ResourceLocation>> SET_SKILL_IDS = Map.of(
         ArmorSet.JADE, List.of(ArmorSkillRuntime.FALL_GUARD_ID, ArmorSkillRuntime.CHARGE_DASH_ID),
-        // 宝石套（规格 §八 第 2 层）：槽位 1 = 绝境守护（本轮实现）、槽位 2 = 临域充力
-        // （本轮只登记/注册，行为是第 3 层 —— 登记它是为了让第 3 层能并行开工而不动这张表）。
-        ArmorSet.GEM, List.of(ArmorSkillRuntime.LAST_STAND_ID, ArmorSkillRuntime.FIELD_CHARGE_ID));
+        // 宝石套（用户 2026-10-01 更正后的编排，共三条）：槽位 1 = 绝境守护、槽位 2 = 蓄能疾骋
+        // （**从翠玉套移植**：同一个技能 id、同一套数值，翠玉套那份保持不动）、槽位 3 = 临域充力。
+        // ⚠ 顺序即槽位顺序，必须与 ArmorSkillRuntime#skillId(ArmorSet, int) 的 GEM 分支逐字同序。
+        ArmorSet.GEM, List.of(ArmorSkillRuntime.LAST_STAND_ID, ArmorSkillRuntime.CHARGE_DASH_ID,
+            ArmorSkillRuntime.FIELD_CHARGE_ID));
 
     /**
      * 该套在装备段暴露的技能 id（<b>按槽位顺序</b>）—— 供显示层共用（护甲 tooltip / HUD）。

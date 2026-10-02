@@ -1,7 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
 /**
- * <b>临域充力</b>（宝石套 · 槽位 2，基准等级 2 —— 见 {@code ArmorSkillLevels}）的分级数值 ——
+ * <b>临域充力</b>（宝石套 · 槽位 3，基准等级 1 —— 见 {@code ArmorSkillLevels}；用户 2026-10-01
+ * 更正：原先是槽位 2 / 基准 2）的分级数值 ——
  * 与 {@link FallGuardConfigs} / {@link LastStandConfigs} 同形，是这条技能<b>唯一</b>的数值真源
  * （判定半径、应力、时长、冷却、耗能全部只在这里写一遍）。
  *

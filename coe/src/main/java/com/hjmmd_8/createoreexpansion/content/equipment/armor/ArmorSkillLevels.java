@@ -23,13 +23,16 @@ import net.minecraft.resources.ResourceLocation;
  * </ol>
  *
  * <h2>本轮范围（规格 §8 第 1 层）—— 只登记等级，不实现行为</h2>
- * <p>宝石套的两条技能（绝境守护 {@code last_stand} 基准 <b>1</b> /
- * 临域充力 {@code field_charge} 基准 <b>2</b>）本表<b>只登记基准等级</b>：
- * 它们的配置类、被动/主动效果、应力注入在<b>第 2 / 3 层</b>落地，
- * 因此目前<b>既不在</b> {@code ArmorSkillProvider#skillIdsOf} <b>也不在</b>内核注册表 / {@code AllSkills} 里
- * （id 常量见 {@code ArmorSkillRuntime#LAST_STAND_ID} / {@code FIELD_CHARGE_ID}）。</p>
+ * <p>宝石套的三条技能本表<b>逐条显式登记基准等级</b>（用户 2026-10-01 更正后的编排）：
+ * 槽位 1 = 绝境守护 {@code last_stand} 基准 <b>1</b>、槽位 2 = 蓄能疾骋 {@code charge_dash}
+ * 基准 <b>2</b>（<b>从翠玉套移植</b>：同一个技能 id、同一套数值，翠玉套那份保持不动）、
+ * 槽位 3 = 临域充力 {@code field_charge} 基准 <b>1</b>。
+ * 三条都<b>不留白</b>：不要把临域充力交给"回落套基准 2" —— 宝石套的套基准恰好是 2，
+ * 靠回落会把它的基准悄悄算成 2，与用户口径不符（id 常量见
+ * {@code ArmorSkillRuntime#LAST_STAND_ID} / {@code CHARGE_DASH_ID} / {@code FIELD_CHARGE_ID}）。</p>
  * <p>翠玉套现有两条（{@code fall_guard} / {@code charge_dash}）没有覆盖行 ⇒ 回落到
- * {@code ArmorSet.JADE} 的基准 1，与今天<b>逐字一致</b>，本轮不改变翠玉套的任何表现。</p>
+ * {@code ArmorSet.JADE} 的基准 1，与今天<b>逐字一致</b>，本轮不改变翠玉套的任何表现
+ * （蓄能疾骋在翠玉套上仍是基准 1 + 回落；宝石套那一档是显式的 2）。</p>
  *
  * @since 1.0.0
  */
@@ -55,12 +58,19 @@ public final class ArmorSkillLevels {
             return 0;
         }
         if (skillId != null && set == ArmorSet.GEM) {
-            // 规格 §一 / §二：绝境守护（槽位 1）基准 1、临域充力（槽位 2）基准 2。
+            // 宝石套（用户 2026-10-01 更正后的编排，三项**各自显式**登记）：
+            //   槽位 1 = 绝境守护 last_stand     基准 1（已实现）
+            //   槽位 2 = 蓄能疾骋 charge_dash    基准 2（**从翠玉套移植**：同一 id、同一套数值）
+            //   槽位 3 = 临域充力 field_charge   基准 1（用户 2026-10-01 更正：原来是槽位 2 / 基准 2）
+            // ⚠ 三项都必须显式：宝石套的套基准 baseLevel() 是 2，靠回落会把临域充力算成 2。
             if (ArmorSkillRuntime.LAST_STAND_ID.equals(skillId)) {
                 return 1;
             }
-            if (ArmorSkillRuntime.FIELD_CHARGE_ID.equals(skillId)) {
+            if (ArmorSkillRuntime.CHARGE_DASH_ID.equals(skillId)) {
                 return 2;
+            }
+            if (ArmorSkillRuntime.FIELD_CHARGE_ID.equals(skillId)) {
+                return 1;
             }
         }
         return set.baseLevel();

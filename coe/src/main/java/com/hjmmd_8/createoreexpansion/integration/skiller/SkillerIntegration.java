@@ -158,8 +158,9 @@ public final class SkillerIntegration {
         event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.LAST_STAND_ID,
                 () -> new ItemSkillRegistration<UseItemSkillContext>(
                         CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));
-        // 临域充力（宝石套槽位 2）：**本轮只登记**（规格 §八 第 2 层要求两条都进注册管线）。
-        // 行为是第 3 层；这里不登记的症状是"客户端不为该槽位轮询按键、HUD 也没有那一行"。
+        // 临域充力（宝石套槽位 3，基准等级 1 —— 用户 2026-10-01 更正：原先是槽位 2 / 基准 2）：
+        // 执行体住在 ArmorSkillRuntime + FieldChargeRuntime，与上面几条共用同一个无操作壳。
+        // 不登记的症状是"客户端不为该槽位轮询按键、HUD 也没有那一行"。
         event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.FIELD_CHARGE_ID,
                 () -> new ItemSkillRegistration<UseItemSkillContext>(
                         CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));

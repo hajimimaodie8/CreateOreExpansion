@@ -192,45 +192,52 @@ public final class EquipmentSkillHud {
             }
             net.minecraft.resources.ResourceLocation skillId =
                 index < skillIds.size() ? skillIds.get(index) : null;
-            int level = skillId == null ? 0 : ArmorSkillRuntime.levelOf(player, skillId.getPath());
-            // 每个槽位有自己的数值源，且**按套装分家**（别拿一张配置表套所有槽位/所有套）：
-            //   翠玉：槽位 1 = 虚衡坠护、槽位 2 = 蓄能疾骋
-            //   宝石：槽位 1 = 绝境守护；槽位 2 = 临域充力（规格 §8 第 3 层起有真实数值：
-            //         时长 30/45/60 秒、耗能 100/60/50 点/秒 ⇒ 总量 = 时长 × 每秒）
+            if (skillId == null) {
+                // 这个槽位在这一套上没有技能（例如翠玉套只有两条）：没有可预览的数值
+                continue;
+            }
+            int level = ArmorSkillRuntime.levelOf(player, skillId.getPath());
+            // 每个槽位有自己的数值源，且**按技能 id 分派**（绝不按槽位下标取配置 —— 2026-10-01
+            // 宝石套编排更正后，槽位 2 = 从翠玉套移植的蓄能疾骋、槽位 3 = 临域充力；
+            // 按下标取会在挪位后静默取错表，那正是这次更正的直接诱因）：
+            //   fall_guard   → FallGuardConfigs（翠玉 · 槽位 1）
+            //   charge_dash  → ChargeDashConfigs（翠玉 · 槽位 2；宝石 · 槽位 2，同一条技能）
+            //   last_stand   → LastStandConfigs（宝石 · 槽位 1）
+            //   field_charge → FieldChargeConfigs（宝石 · 槽位 3；时长 30/45/60 秒、
+            //                  耗能 100/60/50 点/秒 ⇒ 总量 = 时长 × 每秒）
             int holdSeconds;
             int holdTotalCost;
-            if (active == ArmorSet.GEM) {
-                if (index == 1) {
-                    FieldChargeConfigs.Config config = FieldChargeConfigs.config(level);
-                    holdSeconds = config.durationSeconds();
-                    // 总量 = 按满整段要花的能量（时长 × 点/秒）。下面的 holdCost 用的就是这个
-                    // 比例式，而 FieldChargeConfigs#costAfter 与它**逐值等价**（推导见该类的注释）
-                    // ⇒ 预览行报的数与真正扣掉的数永远一致。
-                    holdTotalCost = config.totalCost();
-                } else {
-                    LastStandConfigs.Config config = LastStandConfigs.config(level);
-                    holdSeconds = config.holdSeconds();
-                    holdTotalCost = config.holdTotalCost();
-                }
-            } else if (index == 1) {
-                ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
-                holdSeconds = config.holdSeconds();
-                holdTotalCost = config.holdTotalCost();
-            } else {
+            if (ArmorSkillRuntime.FALL_GUARD_ID.equals(skillId)) {
                 FallGuardConfigs.Config config = FallGuardConfigs.config(level);
                 holdSeconds = config.holdSeconds();
                 holdTotalCost = config.holdTotalCost();
+            } else if (ArmorSkillRuntime.CHARGE_DASH_ID.equals(skillId)) {
+                ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
+                holdSeconds = config.holdSeconds();
+                holdTotalCost = config.holdTotalCost();
+            } else if (ArmorSkillRuntime.LAST_STAND_ID.equals(skillId)) {
+                LastStandConfigs.Config config = LastStandConfigs.config(level);
+                holdSeconds = config.holdSeconds();
+                holdTotalCost = config.holdTotalCost();
+            } else if (ArmorSkillRuntime.FIELD_CHARGE_ID.equals(skillId)) {
+                FieldChargeConfigs.Config config = FieldChargeConfigs.config(level);
+                holdSeconds = config.durationSeconds();
+                // 总量 = 按满整段要花的能量（时长 × 点/秒）。下面的 holdCost 用的就是这个
+                // 比例式，而 FieldChargeConfigs#costAfter 与它**逐值等价**（推导见该类的注释）
+                // ⇒ 预览行报的数与真正扣掉的数永远一致。
+                holdTotalCost = config.totalCost();
+            } else {
+                // 未知技能 id：宁可这一行不显示，也不拿别的技能的数值糊上去
+                continue;
             }
             // 冷却中：**替换掉"按住多少秒 / 预计扣多少"那一行**，改成括号里的冷却说明
             //（用户 2026-10-01 的原话：不要覆盖技能行，把预估算那行换成"（技能X 冷却中：还有 N 秒）"）。
-            if (skillId != null) {
-                int cooldownSeconds = ArmorCooldownClient.remainingSeconds(skillId.getPath());
-                if (cooldownSeconds > 0) {
-                    lines.add(new Line(Component.translatable(COOLDOWN_LINE_KEY,
-                        Component.translatable("skill." + skillId.getNamespace() + "." + skillId.getPath()),
-                        cooldownSeconds), COOLDOWN_LINE_COLOR));
-                    continue;
-                }
+            int cooldownSeconds = ArmorCooldownClient.remainingSeconds(skillId.getPath());
+            if (cooldownSeconds > 0) {
+                lines.add(new Line(Component.translatable(COOLDOWN_LINE_KEY,
+                    Component.translatable("skill." + skillId.getNamespace() + "." + skillId.getPath()),
+                    cooldownSeconds), COOLDOWN_LINE_COLOR));
+                continue;
             }
             int cost = ArmorSkillRuntime.holdCost(held, holdSeconds, holdTotalCost);
             lines.add(new Line(Component.translatable(HOLD_PREVIEW_KEY,
