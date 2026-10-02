@@ -105,6 +105,34 @@ public final class ArmorSkillRuntime {
     public static final net.minecraft.resources.ResourceLocation FIELD_CHARGE_ID =
         com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(FIELD_CHARGE);
 
+    /**
+     * 衡元择势（星界套 · 槽位 1；用户 2026-10-02 裁定，id 由需求 §四 推断）。
+     *
+     * <p><b>融合规则</b>：{@code 衡元择势 LvN} = 蓄能疾骋 LvN（移速）+ 绝境守护 LvN（图腾），
+     * <b>各取一份</b>，长按开始时按"选择判断"二选一生效 ⇒ 数值一律<b>引用</b>
+     * {@link ChargeDashConfigs} 与 {@link LastStandConfigs}，<b>不新建配置类、不改那两张表</b>
+     * （翠玉 / 宝石两套的现有行为因此逐值不变）。</p>
+     * <p>与绝境守护同源的那条<b>被动</b>（高额伤害 ⇒ 概率取消伤害 + 不死图腾）也照搬
+     * {@link LastStandConfigs} 的判定与概率，见 {@code LastStandHandler}。</p>
+     */
+    public static final String BALANCE_CHOICE = "balance_choice";
+
+    /** 衡元择势的技能 id（{@code createoreexpansion:balance_choice}）。 */
+    public static final net.minecraft.resources.ResourceLocation BALANCE_CHOICE_ID =
+        com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(BALANCE_CHOICE);
+
+    /**
+     * 星芒嬗震（星界套 · 槽位 3；用户 2026-10-02 裁定，id 由需求 §四 推断）。
+     *
+     * <p>点按/长按向准心发射攻击波（长按分叉 + 环绕波 + 命中附加嬗乱），
+     * 数值源 {@code StarShockConfigs}，发射与批次编组见 {@code StarShockRuntime}。</p>
+     */
+    public static final String STAR_SHOCK = "star_shock";
+
+    /** 星芒嬗震的技能 id（{@code createoreexpansion:star_shock}）。 */
+    public static final net.minecraft.resources.ResourceLocation STAR_SHOCK_ID =
+        com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(STAR_SHOCK);
+
     /** 玩家持久数据里的冷却键前缀（后接技能 id）。 */
     private static final String COOLDOWN_PREFIX = "createoreexpansion:equip_cd_";
 
@@ -634,7 +662,7 @@ public final class ArmorSkillRuntime {
                 .skillRegressionLevel(stack);
             best = Math.max(best, base + boost - regression);
         }
-        return Math.max(1, Math.min(FallGuardConfigs.MAX_LEVEL, best));
+        return Math.max(1, Math.min(EQUIPMENT_SKILL_MAX_LEVEL, best));
     }
 
     /** 该套在第 index 个装备槽位上有没有技能（雷鸣套的 1、2 通星界 ⇒ 见实现）。 */
@@ -652,6 +680,25 @@ public final class ArmorSkillRuntime {
      * 钳到 3 会把雷鸣套的 4 级压成"3 级蓝色"，与用户的"4 显紫"直接冲突。</p>
      */
     public static final int PREDICTED_MAX_LEVEL = 4;
+
+    /**
+     * <b>真实等级（参与结算的那一个）的钳位上限 = 3</b> —— 用户 2026-10-01 口径
+     * "装备技能 3 级封顶（工具才 5 级）"。
+     *
+     * <p>本轮的显式化（用户 2026-10-02 星界轮：星界基准 2 ⇒ 附魔 +1 即封顶 3）：钳位值
+     * <b>历史上就是 3</b>（原写法直接借 {@code FallGuardConfigs.MAX_LEVEL}，它也是 3），
+     * 这里只是给它一个<b>装备技能自己的名字</b>并把不变量写下来 —— 否则"基准 2 + 技艺提升 1 = 3"
+     * 恰好等于钳位值，谁都看不出钳位到底吃没吃到；将来若有人把某个配置类的 MAX_LEVEL 调成 4，
+     * 钳位会<b>跟着所有装备技能一起漂</b>，而那种漂移在静态关卡里是看不见的。</p>
+     */
+    public static final int EQUIPMENT_SKILL_MAX_LEVEL = 3;
+
+    /**
+     * {@link #EQUIPMENT_SKILL_MAX_LEVEL} 的别名 —— 给注册表（{@code AllSkills}）用的语义化名字：
+     * 装备技能条目的 {@code maxLevel(...)} 必须与真实等级钳位<b>同一处取值</b>，
+     * 否则 "登记的上限 5 / 实际钳 3" 会在 tooltip 与附魔提升路径上各说一套。
+     */
+    public static final int MAX_EQUIPMENT_SKILL_LEVEL = EQUIPMENT_SKILL_MAX_LEVEL;
 
     /**
      * <b>没穿这件事的时候，按这一件预测的技能等级</b>（用户 2026-10-02 口径，护甲 tooltip 专用）。
@@ -715,6 +762,19 @@ public final class ArmorSkillRuntime {
                 case 0 -> LAST_STAND;
                 case 1 -> CHARGE_DASH;
                 case 2 -> FIELD_CHARGE;
+                default -> null;
+            };
+        }
+        if (set == ArmorSet.ASTRAL) {
+            // 星界套（用户 2026-10-02 星界轮，三条，槽位顺序即此处 case 顺序，
+            // 必须与 ArmorSkillProvider.SET_SKILL_IDS[ASTRAL] 逐字同序）：
+            //   槽位 1 = 衡元择势、槽位 2 = 临域充力（**同一个技能 id 的高等级形态**）、
+            //   槽位 3 = 星芒嬗震。
+            // 顺序错会**静默取错配置表**（编译通过、只有按住键看 HUD 才暴露）。
+            return switch (index) {
+                case 0 -> BALANCE_CHOICE;
+                case 1 -> FIELD_CHARGE;
+                case 2 -> STAR_SHOCK;
                 default -> null;
             };
         }

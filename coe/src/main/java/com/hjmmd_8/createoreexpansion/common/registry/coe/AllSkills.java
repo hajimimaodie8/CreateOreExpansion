@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.ChargeDashConfigs;
@@ -143,7 +144,7 @@ public final class AllSkills {
                     // 刻意<b>不</b>挂 .config(...)/.configsByLevel(...)：护甲技能的执行走
                     // ArmorSkillRuntime（长按语义），数值由 FallGuardConfigs 按等级直接取，
                     // 不经内核的 config 解析链。这里只登记 id / 类型 / 等级上限。
-                    .maxLevel(FallGuardConfigs.MAX_LEVEL)
+                    .maxLevel(ArmorSkillRuntime.MAX_EQUIPMENT_SKILL_LEVEL)
                     .register();
 
     /**
@@ -159,7 +160,7 @@ public final class AllSkills {
      */
     public static final RegisteredDataSkill CHARGE_DASH =
             skill("charge_dash", SkillType.USE_SKILL)
-                    .maxLevel(ChargeDashConfigs.MAX_LEVEL)
+                    .maxLevel(ArmorSkillRuntime.MAX_EQUIPMENT_SKILL_LEVEL)
                     .register();
 
     /**
@@ -171,7 +172,7 @@ public final class AllSkills {
      */
     public static final RegisteredDataSkill LAST_STAND =
             skill("last_stand", SkillType.USE_SKILL)
-                    .maxLevel(LastStandConfigs.MAX_LEVEL)
+                    .maxLevel(ArmorSkillRuntime.MAX_EQUIPMENT_SKILL_LEVEL)
                     .register();
 
     /**
@@ -181,7 +182,33 @@ public final class AllSkills {
      */
     public static final RegisteredDataSkill FIELD_CHARGE =
             skill("field_charge", SkillType.USE_SKILL)
-                    .maxLevel(LastStandConfigs.MAX_LEVEL)
+                    .maxLevel(ArmorSkillRuntime.MAX_EQUIPMENT_SKILL_LEVEL)
+                    .register();
+
+    /**
+     * 衡元择势（星界套 · 槽位 1，基准等级 3）：融合蓄能疾骋（移速）+ 绝境守护（图腾），
+     * 长按开始时按"选择判断"二选一生效，被动继承绝境守护的高额伤害图腾触发。
+     *
+     * <p>与上面四条同样：执行在 {@code ArmorSkillRuntime}（长按语义）与
+     * {@code LastStandHandler}（被动触发），数值<b>引用</b> {@link ChargeDashConfigs} 与
+     * {@link LastStandConfigs}（<b>不新建配置类</b>），这里只登记 id / 类型 / 等级上限，
+     * 不挂 {@code .config(...)}（不走内核的 config 解析链）。</p>
+     */
+    public static final RegisteredDataSkill BALANCE_CHOICE =
+            skill("balance_choice", SkillType.USE_SKILL)
+                    .maxLevel(ArmorSkillRuntime.MAX_EQUIPMENT_SKILL_LEVEL)
+                    .register();
+
+    /**
+     * 星芒嬗震（星界套 · 槽位 3，基准等级 3）：点按/长按向准心发射攻击波，
+     * 长按分叉、每枚主波各有一次环绕波，命中附加嬗乱。
+     *
+     * <p>数值在 {@code StarShockConfigs}，执行在 {@code ArmorSkillRuntime} +
+     * {@code StarShockRuntime}，这里只登记 id / 类型 / 等级上限。</p>
+     */
+    public static final RegisteredDataSkill STAR_SHOCK =
+            skill("star_shock", SkillType.USE_SKILL)
+                    .maxLevel(ArmorSkillRuntime.MAX_EQUIPMENT_SKILL_LEVEL)
                     .register();
 
     // ========== 工具方法 ==========

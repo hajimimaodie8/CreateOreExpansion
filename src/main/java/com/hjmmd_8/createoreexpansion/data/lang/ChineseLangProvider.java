@@ -268,6 +268,10 @@ public class ChineseLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.charge_dash", "蓄能疾骋");
         add("skill.createoreexpansion.last_stand", "绝境守护");
         add("skill.createoreexpansion.field_charge", "临域充力");
+        // 星界套三条（用户 2026-10-02）：衡元择势 / 星芒嬗震是**新 id**；
+        // 临域充力 II **复用** field_charge（同一个技能 id 的高等级形态，不建新键）。
+        add("skill.createoreexpansion.balance_choice", "衡元择势");
+        add("skill.createoreexpansion.star_shock", "星芒嬗震");
         // 临域充力的两条"发动失败"原因（规格 §8 第 3 层：判定不过 / 放不下注入器都不扣能、不进冷却）。
         add("createoreexpansion.equip_skill.field_charge_no_source", "周围没有可赋能的动力源方块（手摇曲柄）");
         add("createoreexpansion.equip_skill.field_charge_no_space", "动力源方块旁边没有可放置应力注入器的空位");

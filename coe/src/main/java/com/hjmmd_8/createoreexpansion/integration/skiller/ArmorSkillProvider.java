@@ -82,7 +82,14 @@ public final class ArmorSkillProvider implements SkillProvider {
         // （**从翠玉套移植**：同一个技能 id、同一套数值，翠玉套那份保持不动）、槽位 3 = 临域充力。
         // ⚠ 顺序即槽位顺序，必须与 ArmorSkillRuntime#skillId(ArmorSet, int) 的 SAPPHIRE_RUBY 分支逐字同序。
         ArmorSet.SAPPHIRE_RUBY, List.of(ArmorSkillRuntime.LAST_STAND_ID, ArmorSkillRuntime.CHARGE_DASH_ID,
-            ArmorSkillRuntime.FIELD_CHARGE_ID));
+            ArmorSkillRuntime.FIELD_CHARGE_ID),
+        // 星界套（用户 2026-10-02 星界轮，共三条）：槽位 1 = 衡元择势、槽位 2 = 临域充力
+        // （**同一个技能 id 的高等级形态**：星界套的基准是 2、宝石套是 1，数值同一套）、
+        // 槽位 3 = 星芒嬗震。
+        // ⚠ ASTRAL 不在这张表里 ⇒ skillIdsOf(ASTRAL) 返回空 ⇒ 三个技能<b>一个都不触发</b>
+        //   （客户端不会轮询槽位 3/4/5、HUD 也不列技能行），而且是静默的。
+        ArmorSet.ASTRAL, List.of(ArmorSkillRuntime.BALANCE_CHOICE_ID, ArmorSkillRuntime.FIELD_CHARGE_ID,
+            ArmorSkillRuntime.STAR_SHOCK_ID));
 
     /**
      * 该套在装备段暴露的技能 id（<b>按槽位顺序</b>）—— 供显示层共用（护甲 tooltip / HUD）。

@@ -34,6 +34,15 @@ import net.minecraft.resources.ResourceLocation;
  * {@code ArmorSet.JADE_TOPAZ} 的基准 1，与今天<b>逐字一致</b>，本轮不改变翠玉套的任何表现
  * （蓄能疾骋在翠玉套上仍是基准 1 + 回落；宝石套那一档是显式的 2）。</p>
  *
+ * <h2>星界套的三条（用户 2026-10-02 星界轮）</h2>
+ * <p>槽位 1 = 衡元择势 {@code balance_choice} 基准 <b>3</b>（= 套基准，<b>不必</b>显式登记）、
+ * 槽位 2 = 临域充力 {@code field_charge} 基准 <b>2</b>、槽位 3 = 星芒嬗震 {@code star_shock}
+ * 基准 <b>3</b>。</p>
+ * <p><b>为什么只有 {@code field_charge} 必须显式</b>：星界套的 {@link ArmorSet#baseLevel()}
+ * 是 <b>3</b>，而临域充力在星界套上的基准是 <b>2</b>（同一个技能 id 的高等级形态，
+ * 见需求 §3.1）——靠"回落到套基准"会被<b>静默算成 3 级</b>：编译通过、只有进游戏按住键看
+ * HUD 的罗马数字才暴露。另两条恰好等于套基准 3，回落与显式登记<b>同值</b>。</p>
+ *
  * @since 1.0.0
  */
 public final class ArmorSkillLevels {
@@ -73,6 +82,31 @@ public final class ArmorSkillLevels {
                 return 1;
             }
         }
+        // === SET-BRANCH-END: SAPPHIRE_RUBY ===
+        // 上面那条注释是**分支边界哨兵**（不是装饰）：关卡第 21b 节按"从 `set == ArmorSet.SAPPHIRE_RUBY`
+        // 起、到本哨兵止"截取宝石分支再逐条解析它的显式覆盖，否则新增的星界分支会被并进宝石分支一起数
+        // （2026-10-02 实测：星界三条被计入宝石，断言 `skill-levels-gem-3` 由 3 条变成 6 条而假红）。
+        // ⚠ **每一个新增的套装分支都必须在它后面补一行同形式的哨兵**，否则下一轮会出现同一个假红。
+        if (skillId != null && set == ArmorSet.ASTRAL) {
+            // 星界套（用户 2026-10-02 星界轮，三条各自显式登记）：
+            //   槽位 1 = 衡元择势 balance_choice 基准 3（= 套基准）
+            //   槽位 2 = 临域充力 field_charge  基准 2（**同一个技能 id 的高等级形态**）
+            //   槽位 3 = 星芒嬗震 star_shock     基准 3（= 套基准）
+            // ⚠ 只有 field_charge 是"必须显式"的那一条：星界套的套基准是 3，
+            //   靠回落会把临域充力算成 3 级（编译全绿、只有看 HUD 才暴露）。
+            //   另两条与套基准同值，仍然显式写出来 —— 表里不留白，
+            //   "某个技能的基准"因此永远能在本方法里逐条读到，不依赖套基准的数值。
+            if (ArmorSkillRuntime.BALANCE_CHOICE_ID.equals(skillId)) {
+                return 3;
+            }
+            if (ArmorSkillRuntime.FIELD_CHARGE_ID.equals(skillId)) {
+                return 2;
+            }
+            if (ArmorSkillRuntime.STAR_SHOCK_ID.equals(skillId)) {
+                return 3;
+            }
+        }
+        // === SET-BRANCH-END: ASTRAL ===
         return set.baseLevel();
     }
 }

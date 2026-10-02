@@ -373,6 +373,10 @@ public class EnglishLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.charge_dash", "Charge Dash");
         add("skill.createoreexpansion.last_stand", "Last Stand");
         add("skill.createoreexpansion.field_charge", "Field Charge");
+        // Astral set (user 2026-10-02): balance_choice / star_shock are NEW ids; Field Charge II
+        // **reuses** field_charge (one id, a higher-tier form of the same skill - no new key).
+        add("skill.createoreexpansion.balance_choice", "Balance Choice");
+        add("skill.createoreexpansion.star_shock", "Star Shock");
         // Field Charge: the two "cannot start" reasons (spec section 8 layer 3: neither costs
         // energy nor starts a cooldown).  -- no Chinese here on purpose: this is the EN file.
         add("createoreexpansion.equip_skill.field_charge_no_source", "No energizable stress source nearby");
