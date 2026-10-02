@@ -102,13 +102,24 @@ import net.minecraft.world.phys.Vec3;
  * <h2>耗能（我定的口径，写在这里以便一句话改）</h2>
  * <pre>
  *   按下那一 tick：扣 tapCost（400）
- *   之后每 tick  ：按 holdCostPerSecond 折算（100 点/秒 ⇒ 每 20 tick 100 点），边按边扣
- *   总计 = 400 + 100 × ceil(按住秒数)
+ *   之后每 tick  ：应付 = holdCostAfter（= floor(min(按住 tick, 蓄力上限 tick) × 100 / 20)），
+ *                  只扣"应付 − 已扣"的增量；已扣里含那 400 ⇒ 长按费先被 400 抵扣
+ *   满蓄力（t ≥ 1）：**停止扣能** —— 应付不再增长，也没有"零头追扣"
+ *                  （作者 2026-10-02 裁定第 2 条；此时玩家**可以继续按着**，只是不再多花钱，
+ *                   本类**不做**"到点自动释放"：何时松手由玩家决定）
+ *   总计 = max(400, tapCost + floor(min(按住 tick, 蓄力上限 tick) × 100 / 20))
+ *        = 400 + max(0, 长按费 − 400)   // 三档按满蓄力分别为 300/200/100 ⇒ 都落在 400
  * </pre>
- * <p>需求 §3.3(e) 给的是"点按一次 400"与"长按期间 100 点/秒"两条，没有说"长按后那 400 还要不要"。
- * 本实现取<b>都要</b>（400 是"发动费"，100/秒是"蓄力费"）：Lv3 按满 1 秒 = 500、Lv1 按满 3 秒 = 700，
- * 与需求里那句"一次满蓄力共 500 / 600 / 700 点"<b>逐值相同</b>（Lv1 400+300、Lv2 400+200、Lv3 400+100）；
- * 也解释了 10 点/秒那一栏为什么三档一样。作者若要"400 抵扣第一秒"，只改这一处公式。</p>
+ * <p>需求 §3.3(e) 给的是"点按一次 400"与"长按期间 100 点/秒"两条；本实现把 400 当"发动费"
+ * 并让它<b>抵扣</b>长按费。⚠ <b>与需求表那句"一次满蓄力共 500 / 600 / 700 点"不一致</b>：
+ * 因为 400 抵扣，按满蓄力<b>只花 400</b>（长按费 300/200/100 全被 400 吃掉）。这是<b>既有行为</b>，
+ * 本轮不动它（作者没要求改口径）；要改成需求表的 500/600/700，把 {@link #press} 里
+ * {@code cast.paid = config.tapCost();} 的初值改成 {@code 0} 即可（一处）。</p>
+ * <p><b>为什么"超过蓄力上限还按着"以前会多扣</b>：旧写法把计费 tick 直接取 {@code heldTicks}，
+ * 于是 t 早已钳到 1.0、枚数与环绕概率都不再变，能量却继续按秒扣（作者 2026-10-02 实测：
+ * Lv3 蓄力上限 1 秒、按住 8.5 秒 ⇒ 实扣 ~830 点而不是 400）。现在计费 tick 与 t 用同一个上限
+ * （{@code StarShockConfigs#holdCostAfter} 钳 {@code chargeTicks}，扣能分支再包在
+ * {@code StarShockConfigs#charging} 里）。</p>
  *
  * <h2>批次号（用户裁定第 10/11/12 条）</h2>
  * <ul>
@@ -191,6 +202,25 @@ public final class StarShockRuntime {
         private int fired;
         /** 已经扣掉的能量（点按 + 长按增量）。 */
         private int paid;
+        /**
+         * 本次发射里环绕波<b>滚了几次骰</b>（每枚主波各自一次，含点按那第一枚 ——
+         * 点按 t = 0 ⇒ 概率 0，那次滚骰必然不中，但它仍然算"问过一次"）。
+         */
+        private int orbitRolls;
+        /** 环绕波掷骰<b>命中</b>了几次（概率通过）。
+         *  {@code hits < rolls} = "没滚到"；{@code spawns < hits} = "滚到了但没生成"。 */
+        private int orbitHits;
+        /** 环绕波真的<b>生成了</b>几枚（命中后建实体并加入世界成功）。 */
+        private int orbitSpawned;
+        /** 本次发射用过的<b>最高</b>环绕概率（日志用：没滚到时也能看出"当时的概率是多少"）。 */
+        private double orbitPeakChance;
+        /**
+         * 最近一次 {@link #hold} 收到的按住 tick 数（0 = 只有点按那一 tick）。
+         *
+         * <p>为什么在 Cast 里也存一份：{@link #abandon}（能量见底断停）拿不到 {@code heldTicks}
+         * 参数，而结算日志必须能写出"实际蓄了多久"（作者只有日志可验收）。</p>
+         */
+        private int lastHeldTicks;
 
         private Cast(int batch, StarShockConfigs.Config config, int level) {
             this.batch = batch;
@@ -247,6 +277,10 @@ public final class StarShockRuntime {
     /**
      * <b>按住期间每 tick 一次</b>：补发主波（按蓄力曲线）+ 按 tick 折算扣能。
      *
+     * <p><b>扣能只在 {@code t < 1} 时发生</b>（作者 2026-10-02 裁定第 2 条）：达到该级蓄力上限后
+     * 应付费用不再增长，也没有"零头追扣" —— 玩家<b>可以继续按着</b>（本类刻意不做"到点自动释放"，
+     * 何时松手由玩家决定），只是不再多花钱。</p>
+     *
      * @param player    释放者
      * @param heldTicks 已按住的服务端 tick 数
      * @return {@code false} = 能量见底、本次释放已被收尾（调用方据此进冷却）
@@ -259,18 +293,25 @@ public final class StarShockRuntime {
         if (cast == null) {
             return false;
         }
-        // ① 按 tick 折算扣能（边按边扣，与临域充力同一条纪律：只扣增量）
-        int due = StarShockConfigs.holdCostAfter(heldTicks, cast.config);
-        if (due > cast.paid) {
-            int delta = due - cast.paid;
-            if (!ArmorEnergy.consume(player, delta)) {
-                CASTS.remove(player.getUUID());
-                return false;
+        cast.lastHeldTicks = Math.max(cast.lastHeldTicks, heldTicks);
+        // ① 按 tick 折算扣能（边按边扣，与临域充力同一条纪律：只扣增量）。
+        //    ⚠ 整支包在 charging(...) =（t < 1）里：满蓄力后**停止扣能**。这是作者 2026-10-02
+        //    裁定第 2 条的"源码形状"——计费 tick 的钳位在 StarShockConfigs#holdCostAfter 里
+        //    （那处保证金额不涨），这里保证"满蓄力后连算都不算"。
+        if (StarShockConfigs.charging(heldTicks, cast.config)) {
+            int due = StarShockConfigs.holdCostAfter(heldTicks, cast.config);
+            if (due > cast.paid) {
+                int delta = due - cast.paid;
+                if (!ArmorEnergy.consume(player, delta)) {
+                    CASTS.remove(player.getUUID());
+                    return false;
+                }
+                cast.paid = due;
             }
-            cast.paid = due;
         }
         // ② 蓄力曲线：该有几枚主波，就补发到几枚（点按那第一枚已经发过）。
         //    每枚主波各自按"当下的蓄力进度"滚一次环绕波（所以 t 要传下去）。
+        //    枚数上限来自配置表（StarShockConfigs#mainWaveCount 内部读 config.maxMainWaves()）。
         int target = StarShockConfigs.mainWaveCount(heldTicks, cast.config);
         while (cast.fired < target) {
             fireMainWave(player, cast, heldTicks);
@@ -279,10 +320,13 @@ public final class StarShockRuntime {
     }
 
     /**
-     * <b>松手结算</b>：把剩余不足一步的零头扣掉，然后忘掉本次发射。
+     * <b>松手结算</b>：把剩余不足一步的零头扣掉（仍只在 {@code t < 1} 内）、写一行结算日志，
+     * 然后忘掉本次发射。
      *
      * <p>"零头"指 {@code holdCostAfter} 已经算出来但还没扣掉的那部分（正常路径下 {@link #hold}
-     * 每 tick 已经扣过；这里只是恒等保全，与 {@code FieldChargeRuntime#release} 同一条纪律）。</p>
+     * 每 tick 已经扣过；这里只是恒等保全，与 {@code FieldChargeRuntime#release} 同一条纪律）。
+     * 满蓄力之后既有 {@code holdCostAfter} 自带的 tick 钳位、又有 {@code charging} 这道闸
+     * ⇒ <b>不会再出现"满蓄力之后的零头追扣"</b>。</p>
      */
     public static void release(ServerPlayer player, int heldTicks) {
         if (player == null) {
@@ -292,10 +336,60 @@ public final class StarShockRuntime {
         if (cast == null) {
             return;
         }
-        int due = StarShockConfigs.holdCostAfter(heldTicks, cast.config);
-        if (due > cast.paid) {
-            ArmorEnergy.consume(player, due - cast.paid);
+        int paid = cast.paid;
+        // 零头也只算到蓄力上限（t < 1 之外一分不追）—— 与 hold 同一处判据
+        if (StarShockConfigs.charging(heldTicks, cast.config)) {
+            int due = StarShockConfigs.holdCostAfter(heldTicks, cast.config);
+            if (due > cast.paid) {
+                int delta = due - cast.paid;
+                ArmorEnergy.consume(player, delta);
+                paid = due;
+            }
         }
+        logSettlement("松手", cast, heldTicks, paid);
+    }
+
+    /**
+     * <b>本次发射的唯一一行结算日志</b>（作者实机验收的唯一凭据；作者 2026-10-02 裁定第 4 条
+     * "把三处日志合并成一行，字段列清楚，别打三行"）。走 {@link WaveDiag}（波系统唯一日志出口）。
+     *
+     * <p>一行里同时给出（顺序即字段顺序）：</p>
+     * <ol>
+     *   <li><b>实际蓄力</b>：按住 tick 数 / 秒数 / 该级蓄力上限秒数 / <b>t</b>；</li>
+     *   <li><b>共几枚主波</b>（{@code cast.fired} —— 这就是"3 级满蓄力到底出几枚"的凭据）；</li>
+     *   <li><b>环绕波滚没滚到</b>：掷骰次数 / 本次最高概率 / 命中次数 / 生成枚数
+     *       ⇒ {@code 命中 0} = "没滚到"；{@code 命中 > 生成} = "滚到了但没生成"；
+     *       {@code 生成 > 0} 但看不到 = 观感问题（"生成了但立刻消散"另有一行消散日志，见
+     *       {@code AbstractChargerWaveEntity#tick} 的环绕要素收尾）；</li>
+     *   <li><b>本次总耗能</b>：总额 + 点按部分 + 长按部分（点按 = 400，长按部分 = 总 − 400）。</li>
+     * </ol>
+     *
+     * @param reason    收尾原因（"松手" / "能量见底断停"）
+     * @param cast      本次发射状态（调用方已经从 {@link #CASTS} 摘掉）
+     * @param heldTicks 收尾时的按住 tick 数
+     * @param paid      本次发射实际扣掉的装备能量（点）
+     */
+    private static void logSettlement(String reason, Cast cast, int heldTicks, int paid) {
+        int waveLevel = StarShockConfigs.waveLevelFor(cast.level);
+        double t = StarShockConfigs.chargeProgress(heldTicks, cast.config);
+        int holdPart = Math.max(0, paid - cast.config.tapCost());
+        WaveDiag.trace(
+            "星芒嬗震结算（{}）：技能 {} 级 → {} 级波（{}），实际蓄力 {} tick = {} 秒 / 上限 {} 秒（t={}），"
+                + "共发 {} 枚主波；环绕波：掷骰 {} 次（本次最高概率 {}）命中 {} 次 → 生成 {} 枚；"
+                + "本次总耗能 {} 点（点按 {} + 长按 {}）",
+            reason, cast.level, waveLevel, WaveLevels.glyph(waveLevel),
+            heldTicks, fmt2(heldTicks / 20.0D), cast.config.chargeSeconds(), fmt2(t),
+            cast.fired,
+            cast.orbitRolls, fmt2(cast.orbitPeakChance), cast.orbitHits, cast.orbitSpawned,
+            paid, cast.config.tapCost(), holdPart);
+    }
+
+    /**
+     * 两位小数的<b>与区域设置无关</b>格式化（日志里 {@code t} / 秒数 / 概率都要固定形状：
+     * 某些区域会把小数点写成逗号，日志就没法机器比对了）。参数类型必须是 {@code double}。
+     */
+    private static String fmt2(double value) {
+        return String.format(java.util.Locale.ROOT, "%.2f", value);
     }
 
     /** 该技能该起的冷却秒数（点按与长按共用，需求 §3.3(a)）。 */
@@ -310,8 +404,13 @@ public final class StarShockRuntime {
 
     /** 玩家离场/换套/死亡：忘掉发射状态（波照自己的寿命飞完，不追回）。 */
     public static void forget(Player player) {
-        if (player != null) {
-            CASTS.remove(player.getUUID());
+        if (player == null) {
+            return;
+        }
+        Cast cast = CASTS.remove(player.getUUID());
+        if (cast != null) {
+            // 离场/死亡也是一条收尾路径：同样打一行（不追扣零头），否则日志里会"少一发"
+            logSettlement("离场/死亡（不追扣）", cast, cast.lastHeldTicks, cast.paid);
         }
     }
 
@@ -323,9 +422,16 @@ public final class StarShockRuntime {
      * 由 {@code ArmorSkillRuntime} 统一处理，本方法不碰能量池）。</p>
      */
     public static void abandon(Player player) {
-        if (player != null) {
-            CASTS.remove(player.getUUID());
+        if (player == null) {
+            return;
         }
+        Cast cast = CASTS.remove(player.getUUID());
+        if (cast == null) {
+            return;
+        }
+        // 见底断停也要有一行结算日志：否则"能量见底"这条收尾路径在日志里完全不可见
+        //（作者只有日志可验收，见 logSettlement）。
+        logSettlement("能量见底断停", cast, cast.lastHeldTicks, cast.paid);
     }
 
     /** 当前处于"发射中"的玩家数（诊断/日志用）。 */
@@ -389,15 +495,26 @@ public final class StarShockRuntime {
         world.addFreshEntity(wave);
         cast.fired++;
         // 波相关日志一律走 WaveDiag（全系统唯一出口，前缀/开关只在那里定义）：
-        // 这一行让"技能几级、实际打出几级波、属于哪个批次"在日志里可查。
-        WaveDiag.trace("星芒嬗震发射：技能 {} 级 → {} 级波（{}），批次 {}，位置 {}",
-            cast.level, waveLevel, WaveLevels.glyph(waveLevel), cast.batch, origin);
+        // 这一行让"技能几级、实际打出几级波、本次第几枚 / 共几枚、蓄力进度 t"在日志里可查
+        // —— "3 级满蓄力到底出几枚"就靠这一行自证（作者 2026-10-02 裁定第 3 条：
+        //   日志必须能证明"本次发射共 N 枚"）。
+        WaveDiag.trace("星芒嬗震发射：技能 {} 级 → {} 级波（{}），本次第 {} 枚 / 共 {} 枚（蓄力 t={}），批次 {}，位置 {}",
+            cast.level, waveLevel, WaveLevels.glyph(waveLevel), cast.fired,
+            StarShockConfigs.mainWaveCount(heldTicks, cast.config),
+            fmt2(StarShockConfigs.chargeProgress(heldTicks, cast.config)), cast.batch, origin);
 
         // 每枚主波各自 0~1 枚环绕波（需求 §3.3(b)）：概率 = t × 该级上限，点按 t = 0 ⇒ 恒 0。
         // 骰子用世界随机（服务端权威），整发波的形状只由这一次掷骰决定。
+        // 掷骰 / 命中 / 生成三个计数都记进 cast：结算那一行据此区分三种情形 ——
+        // "没滚到"（命中 0）、"滚到了但没生成"（命中 > 生成）、"生成了"（生成 > 0）。
         double orbitChance = StarShockConfigs.orbitChance(heldTicks, cast.config);
+        cast.orbitRolls++;
+        if (orbitChance > cast.orbitPeakChance) {
+            cast.orbitPeakChance = orbitChance;
+        }
         if (orbitChance > 0.0D && world.random.nextDouble() < orbitChance) {
-            fireOrbitWave(world, wave, cast);
+            cast.orbitHits++;
+            fireOrbitWave(world, wave, cast, heldTicks);
         }
     }
 
@@ -421,7 +538,7 @@ public final class StarShockRuntime {
      * <p>父波消散后环绕波自己收尾（"取不到父波 ⇒ discard"在
      * {@code AbstractChargerWaveEntity#applyOrbitElement} 里，本类不再叠第二层机制）。</p>
      */
-    private static void fireOrbitWave(ServerLevel world, ChargerWaveEntity parent, Cast cast) {
+    private static void fireOrbitWave(ServerLevel world, ChargerWaveEntity parent, Cast cast, int heldTicks) {
         int orbitLevel = StarShockConfigs.orbitWaveLevelFor(cast.level);
         ChargerWaveEntity orbit = new ChargerWaveEntity(world, parent.position(), parent.getMovement(), orbitLevel);
         orbit.trySetWaveType(WaveTypes.ATTACK);
@@ -433,8 +550,11 @@ public final class StarShockRuntime {
         // 环绕波要素：父波 UUID + 半径 + 角速度（弧度/tick）+ 初始相位
         orbit.setOrbitAnchor(parent.getUUID(), ORBIT_RADIUS, ORBIT_ANGULAR_SPEED, ORBIT_PHASE);
         world.addFreshEntity(orbit);
-        WaveDiag.trace("星芒嬗震环绕波：技能 {} 级 → {} 级波（{}，主波一半伤害），批次 {}（继承父波），绕 {} 的 r={} 格、{} 圈/秒",
-            cast.level, orbitLevel, WaveLevels.glyph(orbitLevel), parent.getFiringBatch(),
-            parent.getId(), ORBIT_RADIUS, ORBIT_TURNS_PER_SECOND);
+        cast.orbitSpawned++;
+        WaveDiag.trace("星芒嬗震环绕波：技能 {} 级 → {} 级波（{}，主波一半伤害），本次第 {} 枚主波（t={}，概率 {}）；批次 {}（继承父波），绕 {} 的 r={} 格、{} 圈/秒",
+            cast.level, orbitLevel, WaveLevels.glyph(orbitLevel), cast.fired,
+            fmt2(StarShockConfigs.chargeProgress(heldTicks, cast.config)),
+            fmt2(StarShockConfigs.orbitChance(heldTicks, cast.config)),
+            parent.getFiringBatch(), parent.getId(), ORBIT_RADIUS, ORBIT_TURNS_PER_SECOND);
     }
 }

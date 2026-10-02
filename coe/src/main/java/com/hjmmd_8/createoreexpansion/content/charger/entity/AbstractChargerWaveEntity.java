@@ -604,6 +604,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		selfPropelled = false;
 		// 父波已消散/取不到 ⇒ 自己立刻收尾（"主波消散 ⇒ 环绕波一起收尾"就靠这一条，不加第二层机制）
 		if (!anchorAlive) {
+			// "生成了但立刻消散"必须能自证（作者只有日志可看）：唯一原因就是上面那次父波查找失败，
+			// 把父波 UUID 与本次批次写出来 ⇒ 日志里可区分"没生成 / 生成即消散 / 一直在飞"。
+			WaveDiag.trace("环绕波消散：父波 {} 取不到或已消散 ⇒ 本波（{} 级，批次 {}）随之收尾（主波消散 ⇒ 环绕波一起收尾的唯一实现）",
+				orbitAnchorUuid, WaveLevels.glyph(waveLevel), getFiringBatch());
 			discard();
 			return;
 		}

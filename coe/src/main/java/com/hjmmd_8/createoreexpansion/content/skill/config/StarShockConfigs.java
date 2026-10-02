@@ -60,9 +60,14 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
  *   主波数量  ：t 达到 **1/3、2/3、1.0** 时依次放出第 2、第 3 枚（离散分叉点）
  *   环绕概率  ：**t × 该级上限**（线性；点按 t = 0 ⇒ 0）—— 承载在既有波的环绕波要素上
  *   点按（t ≈ 0）⇒ 1 枚主波
+ *   满蓄力后  ：t 恒为 1.0（不再增长）⇒ **停止继续扣能**（作者 2026-10-02 裁定第 2 条）；
+ *              玩家**可以继续按着**，只是不再多花钱（不做"到点自动释放"）
  * </pre>
  * <p>分叉点与"1 枚"的关系见 {@link #mainWaveCount(int, Config)}：点按恒 ≥ 1 枚
- * （作者原话"点按也是可以的"），长按再按 t 加枚，且不超过该级上限。</p>
+ * （作者原话"点按也是可以的"），长按再按 t 加枚，且不超过该级上限。
+ * <b>"t 到没到 1"只有两个判据：</b>枚数/概率吃 {@link #chargeProgress(int, Config)}（钳到 1.0），
+ * 扣能吃 {@link #charging(int, Config)}（同一个 {@code chargeProgress}）；计费 tick 再由
+ * {@link #holdCostAfter(int, Config)} 钳在 {@link Config#chargeTicks()} 上。</p>
  *
  * @since 1.0.0
  */
@@ -275,18 +280,38 @@ public final class StarShockConfigs {
     }
 
     /**
-     * 长按这么多 tick 时应扣的装备能量（<b>按 tick 折算</b>，用户裁定第 15 条）：
-     * <b>{@code floor(heldTicks × holdCostPerSecond / 20)}</b>。
+     * <b>是否还在蓄力窗口内</b>（{@code t < 1.0}）—— <b>扣能分支的唯一判据</b>。
      *
-     * <p>与 {@link FieldChargeConfigs#costAfter(int, Config)} 逐值同形（同一套"点/秒 ⇒ 整数"口径），
-     * 但<b>不封顶</b>到蓄力上限之外："星芒嬗震的长按耗能按 tick 折算"只有一句口径，
-     * 蓄满之后的每 tick 仍在扣（蓄满只是"不再长威力"，不是"停止收费"）——
-     * 见 {@code StarShockRuntime#hold} 的说明。</p>
+     * <p>作者 2026-10-02 裁定第 2 条："到达蓄力上限后停止继续扣能"（满蓄力后玩家可以继续按着，
+     * 只是不再多花钱）。判据与 {@link #chargeProgress(int, Config)} <b>同一处</b>：
+     * 一切"t 到没到 1"的判断都走这里，不许在别处再写一遍
+     * （{@code heldTicks >= config.chargeTicks()} 是等价写法，但两处写法一旦分叉就会出现
+     * "枚数按钳过的 t、计费按没钳的 tick"这种半截口径）。</p>
+     *
+     * @param heldTicks 已按住的服务端 tick 数
+     * @param config    该等级的配置
+     * @return {@code true} = 还没满蓄力（该扣能）；{@code false} = 已满蓄力（停止扣能）
+     */
+    public static boolean charging(int heldTicks, Config config) {
+        return chargeProgress(heldTicks, config) < 1.0D;
+    }
+
+    /**
+     * 长按这么多 tick 时应扣的装备能量（<b>按 tick 折算</b>，用户裁定第 15 条）：
+     * <b>{@code floor(min(heldTicks, chargeTicks) × holdCostPerSecond / 20)}</b>。
+     *
+     * <p>与 {@link FieldChargeConfigs#costAfter(int, Config)} 同形（同一套"点/秒 ⇒ 整数"口径），
+     * 但计费 tick <b>钳在该级的蓄力上限 {@link Config#chargeTicks()} 上</b>（作者 2026-10-02
+     * 裁定第 2 条）：{@code t} 在 {@link #chargeProgress(int, Config)} 里被钳到 1.0，
+     * 计费也必须跟着钳 —— 否则"超过蓄力上限还按着"会<b>白扣能量</b>（既没有额外威力，
+     * 也没有额外枚数）。这里钳一次，{@code StarShockRuntime#hold}、{@code #release}
+     * 与 HUD 的实时预览（都调本方法）自然同一条账。</p>
      */
     public static int holdCostAfter(int heldTicks, Config config) {
         if (config == null || heldTicks <= 0 || config.holdCostPerSecond() <= 0) {
             return 0;
         }
-        return (int) ((long) heldTicks * config.holdCostPerSecond() / 20L);
+        int chargedTicks = Math.min(heldTicks, config.chargeTicks());
+        return (int) ((long) chargedTicks * config.holdCostPerSecond() / 20L);
     }
 }
