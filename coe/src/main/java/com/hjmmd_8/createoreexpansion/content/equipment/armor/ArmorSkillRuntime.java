@@ -16,6 +16,7 @@ import com.leaf.skiller.server.PlayerPressedKeys;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -639,6 +640,52 @@ public final class ArmorSkillRuntime {
     /** 该套在第 index 个装备槽位上有没有技能（雷鸣套的 1、2 通星界 ⇒ 见实现）。 */
     private static boolean hasSkill(ArmorSet set, int index) {
         return skillId(set, index) != null;
+    }
+
+    /**
+     * <b>预测等级的钳位上限 = 4</b>（用户 2026-10-02 裁定）。
+     *
+     * <p>它是四套里最高的套基准（{@link ArmorSet#THUNDER} = 4），与<b>真实等级</b>的钳位
+     * {@code FallGuardConfigs.MAX_LEVEL}（= 3）<b>刻意分开、不许合并</b>：真实生效等级只需要覆盖
+     * "一条技能最多 3 级"的玩法区间；而 tooltip 的预测分支要给<b>没穿整台</b>时悬停的那件预言一个等级，
+     * 星界套基准 3（蓝）、雷鸣套基准 4（紫）都必须落在 5 档色表的合法区间里 ——
+     * 钳到 3 会把雷鸣套的 4 级压成"3 级蓝色"，与用户的"4 显紫"直接冲突。</p>
+     */
+    public static final int PREDICTED_MAX_LEVEL = 4;
+
+    /**
+     * <b>没穿这件事的时候，按这一件预测的技能等级</b>（用户 2026-10-02 口径，护甲 tooltip 专用）。
+     *
+     * <p>公式与钳位都<b>只在这里写一遍</b>（"技能等级只有一个出处"）：</p>
+     * <pre>
+     *   clamp( ArmorSkillLevels.baseLevelOf(这件所属的套, 该技能) + 该件技艺提升 − 该件记忆回溯,
+     *          1, {@link #PREDICTED_MAX_LEVEL} )
+     * </pre>
+     *
+     * <p><b>为什么只读被悬停的那一件</b>（而不是像 {@link #effectiveLevel} 那样四件取最大）：
+     * 玩家没穿整台时，"另外三件"要么不在身上、要么根本不是这一套，逐件取最大既取不到也不该取；
+     * 悬停时唯一可读的就是这一件。穿上整套之后走的<b>不是</b>本方法，而是真实等级
+     * {@link #levelOf(Player, String)}（护甲 tooltip 的三分支见 {@code ArmorSkillTooltipHandler}）。</p>
+     *
+     * <p><b>它不参与任何真实技能结算</b>：只给显示层预告一个颜色/罗马数字，
+     * 不改能量、不改冷却、不改配置取值（真正的等级永远是 {@link #levelOf}）。</p>
+     *
+     * @param stack   被悬停的那一件护甲；不是本模组四套护甲 ⇒ 0
+     * @param skillId 技能 id 的 path（如 {@code field_charge}，与 {@link #levelOf} 同形）
+     * @return 1~{@link #PREDICTED_MAX_LEVEL}；参数不适用 ⇒ 0
+     */
+    public static int predictedLevelOf(ItemStack stack, String skillId) {
+        ArmorSet set = ArmorSet.of(stack);
+        if (set == null || skillId == null) {
+            return 0;
+        }
+        int base = ArmorSkillLevels.baseLevelOf(set,
+            com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(skillId));
+        int boost = com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
+            .skillBoostLevel(stack);
+        int regression = com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
+            .skillRegressionLevel(stack);
+        return Math.max(1, Math.min(PREDICTED_MAX_LEVEL, base + boost - regression));
     }
 
     /**

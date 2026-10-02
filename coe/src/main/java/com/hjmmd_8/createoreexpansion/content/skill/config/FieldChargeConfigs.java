@@ -8,9 +8,11 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  *
  * <h2>数值出处（用户 2026-10-01 规格，逐字照抄，未做任何"顺手优化"）</h2>
  * <ul>
- *   <li><b>检测半径</b>（{@code radius}）：Lv1 <b>1</b> / Lv2 <b>2</b> / Lv3 <b>3</b> 格
+ *   <li><b>检测半径</b>（{@code radius}）：Lv1 <b>2</b> / Lv2 <b>3</b> / Lv3 <b>4</b> 格
  *       —— 规格 §2.2 表格"检测半径（格，立方体）"。判定口径见规格 §2.1 第 1 条：
- *       <b>以玩家为中心、边长 = 2×radius+1 的立方体</b>（radius=1 ⇒ 3×3×3）。</li>
+ *       <b>以玩家为中心、边长 = 2×radius+1 的立方体</b>（radius=2 ⇒ 5×5×5）。
+ *       <b>用户 2026-10-02 加强</b>：三档判定半径各 +1 格（原 1/2/3 ⇒ 边长 3/5/7），
+ *       其余四个字段（应力 / 时长 / 冷却 / 耗能）<b>逐字不动</b>。</li>
  *   <li><b>提供的应力</b>（{@code stressSu}）：Lv1 <b>8192</b> / Lv2 <b>16384</b> / Lv3 <b>32768</b> SU
  *       —— 规格 §2.2 表格 + §4.2（"容量按等级 8192/16384/32768 SU（我们自己定）"）。
  *       ⚠ <b>这是"网络口径的总应力"</b>：Create 的应力容量是<b>每 RPM</b> 的值，网络总容量
@@ -84,10 +86,11 @@ public final class FieldChargeConfigs {
         }
     }
 
-    // 规格 §2.2 表格逐行照抄：半径 1/2/3、应力 8192/16384/32768、时长 30/45/60、冷却 25/20/15、耗能 100/60/50。
-    public static final Config LEVEL_1 = new Config(1, 8192, 30, 25, 100);
-    public static final Config LEVEL_2 = new Config(2, 16384, 45, 20, 60);
-    public static final Config LEVEL_3 = new Config(3, 32768, 60, 15, 50);
+    // 规格 §2.2 表格逐行照抄 —— 半径按用户 2026-10-02「临域充力加强」改为 2/3/4（边长 5/7/9）；
+    // 其余四列不变：应力 8192/16384/32768、时长 30/45/60、冷却 25/20/15、耗能 100/60/50。
+    public static final Config LEVEL_1 = new Config(2, 8192, 30, 25, 100);
+    public static final Config LEVEL_2 = new Config(3, 16384, 45, 20, 60);
+    public static final Config LEVEL_3 = new Config(4, 32768, 60, 15, 50);
 
     /** 按等级取配置（与 {@code LastStandConfigs#config(int)} 同名同形）。 */
     public static Config config(int level) {
