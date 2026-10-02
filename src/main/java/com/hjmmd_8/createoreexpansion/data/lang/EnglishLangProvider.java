@@ -253,6 +253,10 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.wheel_effect.quantity", "Effect: +%s to each result amount");
         add("createoreexpansion.wheel_effect.double", "Effect: %s%% chance to double results");
         add(CoeItems.JADE_TOPAZ_BOW.get(), "Jade Topaz Bow");
+        add(CoeItems.JADE_TOPAZ_BOOMERANG.get(), "Jade Topaz Boomerang");
+        add(CoeItems.SAPPHIRE_RUBY_BOOMERANG.get(), "Sapphire Ruby Boomerang");
+        add(CoeItems.ASTRAL_BOOMERANG.get(), "Astral Boomerang");
+        add(CoeItems.THUNDER_BOOMERANG.get(), "Thunder Boomerang");
         add(CoeItems.JADE_STRESS_MEDALLION.get(), "Jade Stress Medallion");
         add(CoeItems.TOPAZ_STRESS_MEDALLION.get(), "Topaz Stress Medallion");
         add(CoeItems.SAPPHIRE_STRESS_MEDALLION.get(), "Sapphire Stress Medallion");

@@ -7,6 +7,9 @@ import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
 import com.hjmmd_8.createoreexpansion.common.charger.ChargingRecipeTools;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.CoeArmorItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.AbstractBoomerangEntity;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.BoomerangItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.BoomerangTier;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.BaseStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
@@ -22,6 +25,7 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.common.*;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.AllEntityTypes;
 import com.tterrag.registrate.AbstractRegistrate;
 import com.tterrag.registrate.builders.Builder;
 import com.tterrag.registrate.builders.ItemBuilder;
@@ -37,6 +41,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -56,7 +61,8 @@ import static com.simibubi.create.AllTags.AllItemTags.CRUSHED_RAW_MATERIALS;
 /**
  * <b>COE（矿物拓展）</b>物品注册：四种宝石的锭 / 粗矿 / 粒 / 粉碎矿 / 碎片 / 板 / 杆 / 线、
  * 剑 / 镐 / 斧 / 锹 / 锄、凝能之佩（含狱红）、雷鸣合金系列、圣石系列、幸运之尘、
- * 玉黄弓与角磨轮；并保留物品侧共用的构建器（{@code grindingWheel} / {@code skillItem} /
+ * 玉黄弓、<b>回旋镖四把</b>（{@code boomerang(...)} 族级 helper，数值真源 {@code BoomerangTier}）
+ * 与角磨轮；并保留物品侧共用的构建器（{@code grindingWheel} / {@code skillItem} /
  * {@code SkillItemBuilder} / {@code EnergyItemBuilder}）。<br>
  * 归属清单权威出处：{@code markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md} §3.2。
  * 本次拆分是<b>纯搬运</b>，注册 id 与链式调用一字未改，P2a 已删除 {@code AllItems} 外观类，引用直接指向本层。
@@ -742,6 +748,63 @@ public final class CoeItems {
             .skillCooldown(5 * 20)
             .build()
             .register();
+
+    // ========== 回旋镖四把（2026-10-02 第一批：投掷 / 去程 / 回程 / 捡物 / 挖方块） ==========
+    // 声明处一行一件（族级 helper boomerang(...) 见本段末尾）；
+    // 数值真源 = BoomerangTier（伤害/能量/挖掘等级/最大硬度/冷却/能量费全在那里），
+    // 实体类型 = AllEntityTypes（渲染器在 client/WaveEntityRendererRegistration，同一次改动）。
+
+    public static final ItemEntry<BoomerangItem> JADE_TOPAZ_BOOMERANG = boomerang(
+            "jade_topaz_boomerang", BoomerangTier.JADE_TOPAZ, () -> AllEntityTypes.JADE_TOPAZ_BOOMERANG.get());
+
+    public static final ItemEntry<BoomerangItem> SAPPHIRE_RUBY_BOOMERANG = boomerang(
+            "sapphire_ruby_boomerang", BoomerangTier.SAPPHIRE_RUBY, () -> AllEntityTypes.SAPPHIRE_RUBY_BOOMERANG.get());
+
+    public static final ItemEntry<BoomerangItem> ASTRAL_BOOMERANG = boomerang(
+            "astral_boomerang", BoomerangTier.ASTRAL, () -> AllEntityTypes.ASTRAL_BOOMERANG.get());
+
+    public static final ItemEntry<BoomerangItem> THUNDER_BOOMERANG = boomerang(
+            "thunder_boomerang", BoomerangTier.THUNDER, () -> AllEntityTypes.THUNDER_BOOMERANG.get());
+
+    /**
+     * <b>回旋镖族级注册链</b>（形态照 {@code armor(...)} / {@code grindingWheel(...)}：
+     * 声明处一行一件，链只写一次）。
+     *
+     * <p>链上每件事各自有唯一出口：</p>
+     * <ul>
+     *   <li>{@code .properties(p -> p.stacksTo(1))} —— 镖不叠堆：能量是<b>逐堆</b>的组件，
+     *       两把不同能量的镖叠在一起只会剩一个能量值（说不清是哪把的）。</li>
+     *   <li>{@code .model(provider.generated(...))} —— 物品模型 JSON <b>一律 datagen 生成</b>
+     *       （{@code parent: item/generated} + {@code layer0 = item/<id>}），不手写；
+     *       贴图就是作者给的那四张（逐字节复制，未改一像素）。</li>
+     *   <li>{@code .transform(skillItem())} —— 进模组统一的物品构建链（创造页分区由它的
+     *       {@code build()} 声明为 {@code GEAR}；本批<b>不绑技能</b>，技能是第二批的事）。</li>
+     *   <li>{@code .addEnergy()} —— 能量走现成路径（{@code defaultEnergy == maxEnergy} = 初始即满），
+     *       注册时自动挂进工具充能配方（{@code ChargingRecipeTools}）。</li>
+     * </ul>
+     *
+     * @param id         注册 id（同时是图标贴图名 {@code item/<id>}）
+     * @param tier       数值档（见 {@link BoomerangTier}）
+     * @param entityType 投掷物实体类型（延迟取值：注册期不能触发 DeferredHolder 解析）
+     */
+    private static ItemEntry<BoomerangItem> boomerang(String id, BoomerangTier tier,
+            Supplier<EntityType<? extends AbstractBoomerangEntity>> entityType) {
+        return CoeRegistrate.REGISTRATE
+            .item(id, p -> new BoomerangItem(tier, entityType, p))
+            .properties(p -> p.stacksTo(1))
+            .model((ctx, provider) -> provider.generated(ctx::get, CoeCore.modLoc("item/" + id)))
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(tier.energy())
+            .maxEnergy(tier.energy())
+            .color(tier.color())
+            // 两次 build()：第一次收尾能量段（EnergyItemBuilder → SkillItemBuilder），
+            // 第二次收尾技能段（SkillItemBuilder → ItemBuilder，同时把创造页分区与充能配方挂上），
+            // 于是链末尾的 .register() 是 ItemBuilder 的 ⇒ 拿到的才是 ItemEntry（与剑/弓同一个形状）。
+            .build()
+            .build()
+            .register();
+    }
 
     // ========== 角磨轮（动力角磨床配件，开盖后安装） ==========
 

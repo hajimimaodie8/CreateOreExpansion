@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:astral_boomerang"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:astral_boomerang"
+    }
+  ]
+}

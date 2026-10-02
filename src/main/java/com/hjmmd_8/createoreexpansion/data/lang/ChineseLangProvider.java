@@ -158,6 +158,10 @@ public class ChineseLangProvider extends LanguageProvider {
         add(CoeItems.THUNDERITE_HOE.get(), "雷鸣合金锄");
         add(CoeBlocks.THUNDERITE_BLOCK.get(), "雷鸣合金块");
         add(CoeItems.JADE_TOPAZ_BOW.get(), "翠玉之弓");
+        add(CoeItems.JADE_TOPAZ_BOOMERANG.get(), "翠玉镖");
+        add(CoeItems.SAPPHIRE_RUBY_BOOMERANG.get(), "宝石镖");
+        add(CoeItems.ASTRAL_BOOMERANG.get(), "星界镖");
+        add(CoeItems.THUNDER_BOOMERANG.get(), "雷鸣镖");
         add(CoeItems.JADE_STRESS_MEDALLION.get(), "翡翠凝能佩");
         add(CoeItems.TOPAZ_STRESS_MEDALLION.get(), "黄玉凝能佩");
         add(CoeItems.SAPPHIRE_STRESS_MEDALLION.get(), "沧蓝凝能佩");

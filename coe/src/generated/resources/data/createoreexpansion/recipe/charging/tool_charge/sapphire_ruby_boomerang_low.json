@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:sapphire_ruby_boomerang"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_ruby_boomerang"
+    }
+  ]
+}
