@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config;
 
 /**
- * <b>星芒嬗震</b>（星界套 · 槽位 3，基准等级 3 —— 见 {@code ArmorSkillLevels}）的分级数值 ——
+ * <b>星芒嬗震</b>（星界套 · 槽位 3，基准等级 1 —— 见 {@code ArmorSkillLevels}）的分级数值 ——
  * 与 {@link FallGuardConfigs} / {@link LastStandConfigs} / {@link FieldChargeConfigs} 同形，
  * 是这条技能<b>唯一</b>的数值真源（冷却 / 蓄力上限 / 主波伤害 / 主波数量 / 环绕概率 / 耗能
  * 全部只在这里写一遍）。

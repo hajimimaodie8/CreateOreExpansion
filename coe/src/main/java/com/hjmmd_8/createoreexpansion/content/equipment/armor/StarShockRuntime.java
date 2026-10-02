@@ -4,8 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import com.hjmmd_8.createoreexpansion.content.charger.entity.StarShockWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.skill.config.StarShockConfigs;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,14 +16,33 @@ import net.minecraft.world.phys.Vec3;
 /**
  * <b>星芒嬗震（星界套 · 槽位 3）的发射运行时</b> —— 用户 2026-10-02 星界轮需求 §3.3。
  *
+ * <h2>⛔ 它发的是<b>既有</b>能量波，不是新实体（用户 2026-10-02 硬口径）</h2>
+ * <p>作者原话：「能量波是由好几个要素定义的…<b>你不要再凭空造出一个新的能量波哈，
+ * 不要造出一个攻击波哈</b>」⇒ 本类一律 new <b>既有的</b> {@link ChargerWaveEntity}
+ * （实体类型 {@code createoreexpansion:charger_wave}，与三台应力充能器/差波器<b>同一个类型、
+ * 同一个渲染器</b>），靠设置波情五要素把它发出去：</p>
+ * <ol>
+ *   <li><b>波级</b> —— 构造参数 {@code waveLevel}（定颜色/波速/伤害，见 {@code WaveLevels}）；</li>
+ *   <li><b>波型</b> —— {@code trySetWaveType(WaveTypes.ATTACK)}（攻击态，与"变器攻击波变态"同一个波型）；</li>
+ *   <li><b>波速</b> —— 由波级查 {@code WaveLevels#baseSpeed} 得来，本类不额外写 speedOffset；</li>
+ *   <li><b>波载荷</b> —— <b>不设置</b>（普通能量波不带载荷；只有星辉波变器的 {@code stellar_wave} 带）；</li>
+ *   <li><b>剩余寿命</b> —— 不设置（沿用 {@code AbstractChargerWaveEntity} 的 200 tick 上限）。</li>
+ * </ol>
+ *
+ * <p>2026-10-02 的上一版曾经为这条技能自造了一个 {@code StarShockWaveEntity}
+ * （新实体类型 {@code star_shock_wave}）来承载"自定义伤害 / 环绕波 / 命中嬗乱"，
+ * 但那个类型<b>没有渲染器</b> ⇒ 客户端把它渲染进视野即 NPE 崩溃
+ * （{@code crash-reports/crash-2026-10-02_14.23.33-client.txt}）。
+ * 该实体类型与子类已整体删除，本类改走上面的既有路径。</p>
+ *
  * <h2>一次完整的释放</h2>
  * <ol>
  *   <li><b>按下那一 tick = 点按</b>：立刻发出<b>第 1 枚主波</b>（作者原话"点按也是可以的"），
  *       并扣掉点按能量 {@code tapCost}（三档都 400）。这一次按键同时开一个<b>发射批次</b>
- *       （{@link #nextBatch()}），本批次里的全部波共用一个批次号 ⇒ 互相豁免碰撞。</li>
+ *       （{@link #nextBatch()}），本批次里的全部波共用一个批次号 ⇒ 互相豁免碰撞
+ *       （否则同向并排的第 2/3 枚出生瞬间就被第 1 枚湮灭）。</li>
  *   <li><b>长按期间</b>：按蓄力曲线补发主波 —— {@code t} 达到 1/3、2/3、1.0 时依次放出
- *       第 2、第 3 枚（Lv1 上限 1 枚 ⇒ 永不分叉）。每枚主波各自掷一次环绕概率
- *       {@code t × 该级上限}，中了就给它配一枚<b>环绕波</b>。</li>
+ *       第 2、第 3 枚（Lv1 上限 1 枚 ⇒ 永不分叉）。</li>
  *   <li><b>松手</b>：只结算能量与冷却 —— 与蓄能疾骋/绝境守护同一条口径，
  *       波是"按下就发出去了"的，松手不补发也不召回。</li>
  * </ol>
@@ -40,9 +60,9 @@ import net.minecraft.world.phys.Vec3;
  *
  * <h2>批次号（用户裁定第 10/11/12 条）</h2>
  * <ul>
- *   <li>一次按键 = 一个批次（主波 + 分叉波 + 它们的环绕波共用）；</li>
- *   <li>环绕波<b>算同批</b>（批次号随释放下传）—— 否则第 2 枚起就会自爆；</li>
- *   <li>服务端权威 + 随波实体同步（写进波的 {@code SynchedEntityData}，不走 NBT）。</li>
+ *   <li>一次按键 = 一个批次（主波 + 并排分叉波共用）；</li>
+ *   <li>服务端权威 + 随波实体同步（写进波的 {@code SynchedEntityData}，不走 NBT）；</li>
+ *   <li>豁免范围只有"同批次"：批次号 0（机器波、别人的波）照旧互相湮灭 —— 长期口径不变。</li>
  * </ul>
  *
  * @since 1.0.0
@@ -53,7 +73,7 @@ public final class StarShockRuntime {
      * 发射批次计数器（服务端权威，进程内自增）。从 1 开始，{@code 0} 保留给"没有批次"
      * （机器波、老存档）—— 见 {@code AbstractChargerWaveEntity#sameFiringBatch} 里"双方都必须非 0"。
      *
-     * <p>用 {@code int} 而不是 UUID：批次号只在"同一次发射内部比较"，不需要全局唯一；</p>
+     * <p>用 {@code int} 而不是 UUID：批次号只在"同一次发射内部比较"，不需要全局唯一。</p>
      */
     private static int BATCH_SEQUENCE = 0;
 
@@ -79,12 +99,10 @@ public final class StarShockRuntime {
         private final int batch;
         /** 该等级的配置在**发射那一刻**定死（中途换甲不会让还在飞的波改变编组语义）。 */
         private final StarShockConfigs.Config config;
-        /** 该技能等级（= 波等级，决定颜色/波速/爆炸等级）。 */
+        /** 该技能的逐技能等级（1~3）。 */
         private final int level;
         /** 已经发出过几枚主波（含点按那第一枚）。 */
         private int fired;
-        /** 最近发出的那一枚主波的 UUID（环绕波用它认父波；波实体把 UUID 的高低 32 位 ×2 同步出去）。 */
-        private java.util.UUID lastParentId;
         /** 已经扣掉的能量（点按 + 长按增量）。 */
         private int paid;
 
@@ -129,8 +147,8 @@ public final class StarShockRuntime {
         Cast cast = new Cast(nextBatch(), config, Math.max(1, Math.min(StarShockConfigs.MAX_LEVEL, level)));
         cast.paid = config.tapCost();
         CASTS.put(player.getUUID(), cast);
-        // 点按那一 tick：t = 0 ⇒ 环绕概率 0（需求 §3.3(b)"点按（t ≈ 0）⇒ 环绕概率 ≈ 0"）
-        fireMainWave(player, cast, 0.0D);
+        // 点按那一 tick：t = 0 ⇒ 1 枚主波（需求 §3.3(b)"点按（t ≈ 0）⇒ 1 枚"）
+        fireMainWave(player, cast);
         return true;
     }
 
@@ -164,11 +182,9 @@ public final class StarShockRuntime {
             cast.paid = due;
         }
         // ② 蓄力曲线：该有几枚主波，就补发到几枚（点按那第一枚已经发过）。
-        //    补发时按**当前**的 t 掷环绕概率（点按时 t=0 ⇒ 0；越接近蓄满越接近该级上限）。
-        double chance = StarShockConfigs.orbitChance(heldTicks, cast.config);
         int target = StarShockConfigs.mainWaveCount(heldTicks, cast.config);
         while (cast.fired < target) {
-            fireMainWave(player, cast, chance);
+            fireMainWave(player, cast);
         }
         return true;
     }
@@ -233,15 +249,16 @@ public final class StarShockRuntime {
     // ------------------------------------------------------------------
 
     /**
-     * 发一枚主波（并给这一枚掷一次环绕概率）。
+     * 发一枚既有能量波（主波 / 并排分叉波）。
      *
      * <p>分叉几何（需求 §3.3(b) 作者裁定第 16 条"同向并排 + 垂直方向小偏移"）：
      * 第 1 枚沿准心；第 2 枚往准心的右侧偏 {@value #FORK_SIDE_OFFSET} 格、上偏 {@value #FORK_UP_OFFSET} 格；
      * 第 3 枚往左侧偏、下偏。方向一律是准心方向（并排而非散开）⇒ 三枚平行飞、看起来是一把扇形。</p>
      *
-     * @param orbitChance 这一枚主波掷环绕概率时用的概率（点按 = 0；长按补发 = t × 该级上限）
+     * <p>⚠ 偏移量刻意小于碰撞盒外扩半径（0.4）⇒ 三枚一定在彼此的命中盒里，靠<b>同批次豁免</b>
+     * 才不自爆（见 {@code AbstractChargerWaveEntity#sameFiringBatch}）。</p>
      */
-    private static void fireMainWave(ServerPlayer player, Cast cast, double orbitChance) {
+    private static void fireMainWave(ServerPlayer player, Cast cast) {
         ServerLevel world = player.serverLevel();
         Vec3 look = player.getLookAngle();
         if (look.lengthSqr() < 1.0E-6D) {
@@ -263,38 +280,13 @@ public final class StarShockRuntime {
         // 出生点在眼睛高度、沿准心前推一格，避免刚出生就撞到自己脚下的方块
         Vec3 origin = player.getEyePosition().add(look.scale(1.0D)).add(offset);
 
-        StarShockWaveEntity wave =
-            new StarShockWaveEntity(world, origin, look, cast.level);
+        // 既有能量波实体（与充能器/差波器同一个类型、同一个渲染器）
+        ChargerWaveEntity wave = new ChargerWaveEntity(world, origin, look, cast.level);
+        // 波型 = 攻击态（与"变器攻击波变态"引燃出来的波型是同一个）
+        wave.trySetWaveType(WaveTypes.ATTACK);
+        // 同一次发射的多枚波共用一个批次号 ⇒ 互相豁免碰撞（否则并排的第 2/3 枚出生即自爆）
         wave.setFiringBatch(cast.batch);
         world.addFreshEntity(wave);
         cast.fired++;
-        cast.lastParentId = wave.getUUID();
-
-        // 每枚主波各自 0~1 枚环绕波（需求 §3.3(b)：触发概率随长按时长上升，该级上限 50/75/85%）
-        if (orbitChance > 0.0D && world.getRandom().nextDouble() < orbitChance) {
-            spawnOrbiter(world, cast, origin, look);
-        }
-    }
-
-    /**
-     * 给刚发出的那枚主波配一枚环绕波。
-     *
-     * <p>初始相位<b>固定为 0</b>（我定的，可一句话改）：0 相位 = 从 {@code u} 方向起步，
-     * {@code u} 由"垂直于准心的退化安全基"决定 ⇒ 朝同一方向发射时第一枚环绕波总在同一侧，
-     * 可复现、便于实测对照。若要"每枚随机起相位"，改这一行的 {@code 0.0D} 即可。</p>
-     *
-     * <p>出生位置按圆周点算好（而不是出生在波心再下一 tick 跳出去）：否则第一帧会有一跳，
-     * 而玩家看到的就是"环绕波闪一下才到位"。</p>
-     */
-    private static void spawnOrbiter(ServerLevel world, Cast cast, Vec3 origin, Vec3 look) {
-        double startAngle = 0.0D;
-        Vec3 spawnPos = StarShockWaveEntity.orbitPos(origin, look,
-            StarShockWaveEntity.ORBIT_RADIUS, startAngle);
-        StarShockWaveEntity orbiter = new StarShockWaveEntity(world, spawnPos, look, cast.level,
-            cast.lastParentId, startAngle);
-        orbiter.setFiringBatch(cast.batch);
-        world.addFreshEntity(orbiter);
-        // 让主波知道"我到寿/被湮灭时要带走谁"这个信息由主波自己在 remove 里按 UUID 找，
-        // 所以这里不需要回写主波（见 StarShockWaveEntity#onRemoved）。
     }
 }

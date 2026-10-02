@@ -10,6 +10,12 @@ import net.minecraft.world.phys.Vec3;
  * 能量波（唯一通用波实体）：翡翠/蓝宝石等所有应力充能器与差波器发射的都是同一种波，
  * 颜色按波等级统一（1~5：α=黄、β=绿、γ=蓝、ε=紫粉、ω=玫红，拖尾金），
  * 与机型无关。全部飞行/命中/加工逻辑在 {@link AbstractChargerWaveEntity}。
+ *
+ * <p><b>本类不再有"带实体类型的通用构造"</b>（2026-10-02 删除）：那一版构造是给自造的
+ * {@code StarShockWaveEntity} 子类用的，而那个子类（连同它的实体类型 {@code star_shock_wave}）
+ * 因为没注册渲染器导致客户端 NPE，已按作者口径整体删除 —— 技能发波改用<b>本类</b>、
+ * 靠设置波的五要素（波速 / 波级 / 波载荷 / 波型 / 剩余寿命）实现，
+ * 见 {@code content/equipment/armor/StarShockRuntime}。</p>
  */
 public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 
@@ -19,21 +25,6 @@ public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 
 	public ChargerWaveEntity(Level level, Vec3 pos, Vec3 movementDir, int waveLevel) {
 		super(AllEntityTypes.CHARGER_WAVE.get(), level, pos, movementDir, waveLevel);
-	}
-
-	/**
-	 * <b>带实体类型的通用构造</b>（2026-10-02 星界轮）：子类（{@code StarShockWaveEntity}）
-	 * 需要沿用父类那套"出生点 + 方向 + 等级"的初始化，但必须把自己注册的
-	 * {@code EntityType} 传下去（实体类型决定存档/同步的身份，不能借父类的）。
-	 *
-	 * @param type        本实体自己的注册类型（子类传 {@code AllEntityTypes.X.get()}）
-	 * @param level       出生世界
-	 * @param pos         出生位置
-	 * @param movementDir 飞行方向
-	 * @param waveLevel   波等级（1=α … 5=ω）
-	 */
-	protected ChargerWaveEntity(EntityType<?> type, Level level, Vec3 pos, Vec3 movementDir, int waveLevel) {
-		super(type, level, pos, movementDir, waveLevel);
 	}
 
 	/**

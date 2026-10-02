@@ -164,13 +164,14 @@ public final class SkillerIntegration {
         event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.FIELD_CHARGE_ID,
                 () -> new ItemSkillRegistration<UseItemSkillContext>(
                         CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));
-        // 衡元择势（星界套槽位 1，基准等级 3 —— 用户 2026-10-02 星界轮）：融合蓄能疾骋 + 绝境守护，
+        // 衡元择势（星界套槽位 1，基准等级 2 —— 用户 2026-10-02 星界轮）：融合蓄能疾骋 + 绝境守护，
         // 执行体住在 ArmorSkillRuntime + LastStandHandler（共用的高额伤害被动），同一个无操作壳。
         event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.BALANCE_CHOICE_ID,
                 () -> new ItemSkillRegistration<UseItemSkillContext>(
                         CoeSkillTypes.USE, UseItemContextFactory.KEY, EquipmentSkillStub.INSTANCE));
-        // 星芒嬗震（星界套槽位 3，基准等级 3）：执行体住在 ArmorSkillRuntime + StarShockRuntime，
-        // 同一个无操作壳。与上面几条一样，登记的目的**只是**让 instance 反序列化能过白名单
+        // 星芒嬗震（星界套槽位 3，基准等级 1 —— 用户 2026-10-02 当日第二版更正）：执行体住在
+        // ArmorSkillRuntime + StarShockRuntime（发的是**既有**能量波实体），同一个无操作壳。
+        // 与上面几条一样，登记的目的**只是**让 instance 反序列化能过白名单
         // （以及客户端据此为槽位 5 轮询按键）；真正的执行永远不会走内核那两条方法。
         event.register(SkillerRegistries.SKILL, ArmorSkillRuntime.STAR_SHOCK_ID,
                 () -> new ItemSkillRegistration<UseItemSkillContext>(

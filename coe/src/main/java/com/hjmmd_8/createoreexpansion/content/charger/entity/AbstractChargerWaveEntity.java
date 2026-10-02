@@ -208,13 +208,14 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.STRING);
 
 	/**
-	 * <b>发射批次</b>（同步给客户端）：同一次技能发射产生的全部波（主波 + 分叉波 + 环绕波）
+	 * <b>发射批次</b>（同步给客户端）：同一次技能发射产生的全部波（主波 + 同向并排的分叉波）
 	 * 共用一个<b>非零</b>批次号，{@code 0} 表示"不属于任何批次"（充能器发射的机器波恒为 0）。
 	 *
 	 * <p><b>它唯一的作用是"同批豁免碰撞"</b>（用户 2026-10-02 星界轮裁定）：
-	 * 环绕波在主波旁边转 ⇒ 必然持续相交；而本仓长期口径是"任意两波相交即 triggerBoom + 相互湮灭"，
-	 * 不豁免就是一发射就自爆。豁免范围<b>刻意只有"同批次"</b>：批次号不同（别人的波、两台机器
-	 * 互相打的波）照旧正常爆炸湮灭 —— 长期口径不变。</p>
+	 * 一次技能发射的多枚波是<b>并排</b>出去的（偏移只有 0.35/0.22 格，而碰撞盒外扩 0.4 ⇒
+	 * 出生瞬间就在彼此的命中盒里），而本仓长期口径是"任意两波相交即 triggerBoom + 相互湮灭"，
+	 * 不豁免就是"点按第二枚即自爆"。豁免范围<b>刻意只有"同批次"</b>：批次号不同（别人的波、
+	 * 两台机器互相打的波）照旧正常爆炸湮灭 —— 长期口径不变。</p>
 	 *
 	 * <p><b>为什么是 {@link SynchedEntityData} 而不是 NBT</b>（用户明确要求"照现有波字段的形状"）：
 	 * 豁免判定跑在<b>服务端</b>（两波都在服务端实例上，字段直读就够），而同步字段的意义在于
@@ -246,7 +247,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
-	 * 标记本波属于哪一次发射（同一次技能发射的主波/分叉波/环绕波传同一个号）。
+	 * 标记本波属于哪一次发射（同一次技能发射的主波/分叉波传同一个号）。
 	 *
 	 * <p>只允许设置一次（构造期由子类或发射方写入）；{@code 0} 表示清除批次
 	 * （清除后该波回到"任何波都能与它湮灭"的默认口径）。</p>
@@ -379,12 +380,6 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		setPos(position().add(step));
 		selfPropelled = false;
 
-		// 子类位移钩子（默认空实现）：环绕波在这里把位置改写成"绕主波的圆周点"。
-		// ⚠ 位置承重：它必须排在**碰撞判定之前**（下面是 hitBox 查询）—— 否则环绕波会先拿
-		// 上一 tick 的旧位置去撞别的波/生物，命中的瞬间位置与判定位置差一跳。
-		// 只碰位置，不改 movement/speedOffset（那两个字段的描述符出现 MC 类型，钩子里不该碰）。
-		afterMove();
-
 		// 诊断日志（仅服务端；控制器方块完成后移除）：带电波进出场状态翻转 + 场内每 10 tick 修正摘要
 		if (level() instanceof net.minecraft.server.level.ServerLevel server) {
 			boolean inside = charge != null
@@ -489,18 +484,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		List<LivingEntity> entities = level().getEntitiesOfClass(LivingEntity.class, hitBox, e -> e.isAlive());
 		if (!entities.isEmpty()) {
 			LivingEntity target = entities.get(0);
-			boolean damaged = false;
 			if (getWaveType().dealsDamage()
 				&& (!(target instanceof Player player) || !player.isCreative())) {
 				target.hurt(level().damageSources()
 					.indirectMagic(this, null), getDamage());
-				damaged = true;
-			}
-			// 命中钩子（默认空实现）：环绕波/星界波在这里给命中目标附加效果（嬗乱）。
-			// 放在 hurt 之后：附加效果读的是"这次真的打进去了吗"（创造模式玩家与不造成伤害的
-			// 波型都不该挂效果）。
-			if (damaged) {
-				onLivingEntityHit(target);
 			}
 			// 2026-10-01（用户定稿的充能路径②）：能量波打中<b>穿戴护甲的玩家</b> ⇒ 给穿戴中的
 			// 四件护甲充能，额度与"波给物品充能"完全一致（ChargingRecipe.energyForLevel）。
@@ -604,33 +591,6 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
-	 * <b>位移钩子</b>（默认空实现）：本波自己走完本 tick 的位移之后、<b>碰撞判定之前</b>调用。
-	 *
-	 * <p>唯一的使用者是环绕波（{@code StarShockWaveEntity}）：它把自己的位置改写成
-	 * "主波位置 + 半径 × 圆周点"，于是它跟着主波飞、绕主波转。默认实现什么都不做 ——
-	 * 普通波的位置就是自走位移的结果。</p>
-	 *
-	 * <p>⚠ 钩子里只能 {@code setPos}（那会把路径标成"外力搬运"，正确：环绕波的一跳不是飞行位移，
-	 * 必须从攻击场的"穿过判定"里排除）。**不要**在钩子里改 {@code movement}／{@code speedOffset}：
-	 * 那两个字段的读写在父类里是成对的（movement 是方向来源，speedOffset 另有同步字段），
-	 * 从钩子直接写会让"方向"与"同步值"失配。</p>
-	 */
-	protected void afterMove() {
-	}
-
-	/**
-	 * <b>命中生物钩子</b>（默认空实现）：只在"这一击真的造成了伤害"之后调用
-	 * （创造模式玩家、不造成伤害的波型都不会进来）。
-	 *
-	 * <p>星界波（{@code StarShockWaveEntity}）用它给命中目标附加<b>嬗乱</b>；
-	 * 其它波型一个字节的行为都不变（基类里没有这个钩子时，伤害后面的收尾逻辑照旧）。</p>
-	 *
-	 * @param target 刚被本波打中的生物
-	 */
-	protected void onLivingEntityHit(LivingEntity target) {
-	}
-
-	/**
 	 * 波波碰撞：两个能量波相遇时相互湮灭，在相遇点触发范围能量爆炸。
 	 *
 	 * <p>爆炸特性：</p>
@@ -657,7 +617,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// ⚠ 豁免范围**只有**同批次：批次号 0（机器波、别人的波）不参与，见 sameFiringBatch 的说明。
 		if (sameFiringBatch(this, other)) {
 			// 诊断日志：豁免不是"没撞上"，而是"撞上了但按同批跳过"——出事时这一行能直接区分两者。
-			// 节流：环绕波每 tick 都在主波旁边，若每 tick 打一行会把事件流日志刷爆。
+			// 节流：并排飞的多枚波彼此一直在命中盒里，若每 tick 打一行会把事件流日志刷爆。
 			if (tickCount % 20 == 0) {
 				WaveDiag.trace("波波碰撞豁免（同一次发射，批次 {}）：{} 级 × {} 级 相遇但互不爆炸、互不湮灭",
 					getFiringBatch(), WaveLevels.glyph(waveLevel), WaveLevels.glyph(other.waveLevel));
@@ -701,22 +661,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (reason == RemovalReason.DISCARDED && level().isClientSide) {
 			ChargerWaveFx.burstParticles(level(), position(), getWaveType().trailStyle(), renderColor);
 		}
-		// 生命周期钩子（默认空实现）：环绕波的主波在这里把自己的环绕波一起收尾，
-		// 否则主波没了会留下一圈"没有宿主却还在飞"的孤立波（需求 §3.3(g)"收尾"）。
-		onRemoved(reason);
 		super.remove(reason);
-	}
-
-	/**
-	 * <b>消散钩子</b>（默认空实现）：本实体即将被移除时调用一次（真实世界与 Ponder 场景都会走）。
-	 *
-	 * <p>它必须"真的会跑"这件事是有代价的：波实体是 {@code Entity}，任何一条移除路径
-	 * （撞墙、撞生物、到寿、距离上限、被别的波湮灭、{@code /kill}）都会经过 {@link #remove}，
-	 * 所以把"连带收尾"挂在这里能覆盖全部路径 —— 逐个调用点去打补丁是不可能的。</p>
-	 *
-	 * @param reason 移除原因（{@code DISCARDED} = 消散；换维度/区块卸载分别是另外两种）
-	 */
-	protected void onRemoved(RemovalReason reason) {
 	}
 
 	/** 速度下限（格/秒）：减速不能低于此值。 */

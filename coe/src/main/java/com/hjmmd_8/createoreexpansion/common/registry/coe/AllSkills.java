@@ -186,7 +186,7 @@ public final class AllSkills {
                     .register();
 
     /**
-     * 衡元择势（星界套 · 槽位 1，基准等级 3）：融合蓄能疾骋（移速）+ 绝境守护（图腾），
+     * 衡元择势（星界套 · 槽位 1，基准等级 2）：融合蓄能疾骋（移速）+ 绝境守护（图腾），
      * 长按开始时按"选择判断"二选一生效，被动继承绝境守护的高额伤害图腾触发。
      *
      * <p>与上面四条同样：执行在 {@code ArmorSkillRuntime}（长按语义）与
@@ -200,11 +200,15 @@ public final class AllSkills {
                     .register();
 
     /**
-     * 星芒嬗震（星界套 · 槽位 3，基准等级 3）：点按/长按向准心发射攻击波，
-     * 长按分叉、每枚主波各有一次环绕波，命中附加嬗乱。
+     * 星芒嬗震（星界套 · 槽位 3，基准等级 1 —— 用户 2026-10-02 当日第二版更正）：
+     * 点按/长按向准心发射<b>既有</b>能量波（攻击态），长按按蓄力曲线分叉。
      *
      * <p>数值在 {@code StarShockConfigs}，执行在 {@code ArmorSkillRuntime} +
      * {@code StarShockRuntime}，这里只登记 id / 类型 / 等级上限。</p>
+     *
+     * <p>{@code maxLevel} 仍是共享的装备技能上限（{@link ArmorSkillRuntime#MAX_EQUIPMENT_SKILL_LEVEL} = 3）：
+     * 它是<b>等级上限</b>，与"星界套上的<b>基准</b>等级 1"是两回事（基准在
+     * {@code ArmorSkillLevels} 里另记；附魔"技艺提升"可以把 1 抬到 2/3）。</p>
      */
     public static final RegisteredDataSkill STAR_SHOCK =
             skill("star_shock", SkillType.USE_SKILL)

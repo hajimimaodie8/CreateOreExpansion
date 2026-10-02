@@ -122,9 +122,9 @@ public final class ArmorSkillRuntime {
         com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(BALANCE_CHOICE);
 
     /**
-     * 星芒嬗震（星界套 · 槽位 3；用户 2026-10-02 裁定，id 由需求 §四 推断）。
+     * 星芒嬗震（星界套 · 槽位 3，基准等级 1；用户 2026-10-02 裁定，id 由需求 §四 推断）。
      *
-     * <p>点按/长按向准心发射攻击波（长按分叉 + 环绕波 + 命中附加嬗乱），
+     * <p>点按/长按向准心发射<b>既有</b>能量波（攻击态，长按按蓄力曲线并排分叉），
      * 数值源 {@code StarShockConfigs}，发射与批次编组见 {@code StarShockRuntime}。</p>
      */
     public static final String STAR_SHOCK = "star_shock";
@@ -565,7 +565,7 @@ public final class ArmorSkillRuntime {
 
     /**
      * 图腾分支（= 绝境守护的主动）按 <b>绝境守护的等级</b>取段位与 buff —— 与宝石套那条
-     * 唯一的区别是"用哪张表的等级"。衡元择势的等级来自星界套（基准 3），
+     * 唯一的区别是"用哪张表的等级"。衡元择势的等级来自星界套（基准 2），
      * 而绝境守护的段数/时长表是同一张 {@link LastStandConfigs}。
      */
     private static void applyTotemBranch(ServerPlayer player, ArmorSet set, int heldTicks) {
@@ -922,7 +922,7 @@ public final class ArmorSkillRuntime {
      * <p>它是四套里最高的套基准（{@link ArmorSet#THUNDER} = 4），与<b>真实等级</b>的钳位
      * {@code FallGuardConfigs.MAX_LEVEL}（= 3）<b>刻意分开、不许合并</b>：真实生效等级只需要覆盖
      * "一条技能最多 3 级"的玩法区间；而 tooltip 的预测分支要给<b>没穿整台</b>时悬停的那件预言一个等级，
-     * 星界套基准 3（蓝）、雷鸣套基准 4（紫）都必须落在 5 档色表的合法区间里 ——
+     * 星界套的<b>套基准</b> 3（蓝）、雷鸣套基准 4（紫）都必须落在 5 档色表的合法区间里 ——
      * 钳到 3 会把雷鸣套的 4 级压成"3 级蓝色"，与用户的"4 显紫"直接冲突。</p>
      */
     public static final int PREDICTED_MAX_LEVEL = 4;
