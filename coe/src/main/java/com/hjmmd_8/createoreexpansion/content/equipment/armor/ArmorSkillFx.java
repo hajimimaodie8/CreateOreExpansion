@@ -451,9 +451,27 @@ public final class ArmorSkillFx {
      * {@code TOTEM_OF_UNDYING} 粒子类型（服务端发原版粒子，不新增自定义类型）。</p>
      */
     public static void totemBurst(ServerPlayer player) {
+        totemBurst(player, ArmorSet.SAPPHIRE_RUBY);
+    }
+
+    /**
+     * <b>图腾触发瞬间的爆发，颜色按套取</b>（2026-10-02 星界轮）。
+     *
+     * <p>绝境守护（宝石套）与衡元择势（星界套）走的是同一条被动，但两套的色标不同：
+     * 宝石 = 蓝→红，星界 = {@code ArmorEnergyColors.stopsOf(ASTRAL)} 的首尾两色。
+     * 与 {@link #trailColors}／{@link #landingImpact} 同一条纪律 —— <b>本文件不写死某一套的颜色</b>，
+     * 爆发色一律问 {@link #impactColors(ArmorSet)}。</p>
+     *
+     * @param player 触发者
+     * @param set    这次被动由哪一套提供（{@link ArmorSet#SAPPHIRE_RUBY} 绝境守护 /
+     *               {@link ArmorSet#ASTRAL} 衡元择势）
+     */
+    public static void totemBurst(ServerPlayer player, ArmorSet set) {
         if (player == null) {
             return;
         }
+        Duo colors = impactColors(set);
+        Vec3 burstColor = colors.to();
         ServerLevel level = player.serverLevel();
         double x = player.getX();
         double y = player.getY();
@@ -461,7 +479,7 @@ public final class ArmorSkillFx {
         // 一圈血色：贴地向外扩散
         for (int i = 0; i < 20; i++) {
             double angle = Math.PI * 2.0D / 20.0D * i;
-            level.sendParticles(dust(GEM_RED, 1.35F),
+            level.sendParticles(dust(burstColor, 1.35F),
                 x + Math.cos(angle) * 1.1D, y + 0.10D, z + Math.sin(angle) * 1.1D,
                 1, 0.0D, 0.0D, 0.0D, 0.0D);
         }

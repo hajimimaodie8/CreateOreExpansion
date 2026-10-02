@@ -256,6 +256,23 @@ public final class EquipmentSkillHud {
                 // 比例式，而 FieldChargeConfigs#costAfter 与它**逐值等价**（推导见该类的注释）
                 // ⇒ 预览行报的数与真正扣掉的数永远一致。
                 holdTotalCost = config.totalCost();
+            } else if (ArmorSkillRuntime.BALANCE_CHOICE_ID.equals(skillId)) {
+                // 衡元择势（星界套 · 槽位 1）：**按这一次长按会走的那一个分支**取表
+                // （需求 §3.2"耗能：走当前分支自己的表"）——两个分支各自的表就是蓄能疾骋 /
+                // 绝境守护那两张，本技能**没有自己的配置类**。
+                // ⚠ 服务端才是权威（它在长按开始那一 tick 就把分支定死了，见 ArmorSkillRuntime
+                // 的 BALANCE_BRANCH）：客户端的"周围敌对实体过多"查不到，所以当血量 ≥ 半血时
+                // 它按移速分支预览。血量 < 半血时两侧结论一定一致。
+                if (ArmorSkillRuntime.decideBalanceBranch(player)
+                        == ArmorSkillRuntime.BalanceBranch.TOTEM) {
+                    LastStandConfigs.Config config = LastStandConfigs.config(level);
+                    holdSeconds = config.holdSeconds();
+                    holdTotalCost = config.holdTotalCost();
+                } else {
+                    ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
+                    holdSeconds = config.holdSeconds();
+                    holdTotalCost = config.holdTotalCost();
+                }
             } else {
                 // 未知技能 id：宁可这一行不显示，也不拿别的技能的数值糊上去
                 continue;

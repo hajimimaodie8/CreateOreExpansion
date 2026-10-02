@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.armor.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.config.LastStandConfigs;
@@ -70,39 +71,60 @@ public final class LastStandHandler {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        int level = ArmorSkillRuntime.levelOf(player, ArmorSkillRuntime.LAST_STAND);
+        // 用户 2026-10-02（星界轮）：衡元择势**继承**绝境守护的这条被动 —— 两个技能各自投骰子、
+        // 各自的内置冷却（除非该分支已经取消了这次伤害，那就由先命中的那个赢）。
+        if (!tryNegateHeavyDamage(event, player, ArmorSkillRuntime.LAST_STAND, false)) {
+            tryNegateHeavyDamage(event, player, ArmorSkillRuntime.BALANCE_CHOICE, true);
+        }
+    }
+
+    /**
+     * <b>高额伤害 ⇒ 概率取消 + 不死图腾</b>的共用实现（绝境守护与衡元择势各调一次）。
+     *
+     * <p>规格 §6.2 的两条判定与概率<b>逐字照做</b>，两个技能共用同一段代码：
+     * 概率、段数、冷却全部来自 {@link LastStandConfigs}（衡元择势"引用"这张表，
+     * 不新建配置类、不改它的任何数值 —— 宝石套的表现因此逐值不变）。</p>
+     *
+     * @param skill        哪一个技能在做这次判定（决定冷却键与 {@code levelOf} 查哪一条）
+     * @param astralTotem  只影响日志措辞与粒子取色来源（星界套 vs 宝石套）
+     * @return 本次是否真的触发了（已取消伤害 + 给 buff + 起冷却）
+     */
+    private static boolean tryNegateHeavyDamage(LivingDamageEvent.Pre event, Player player, String skill,
+                                                boolean astralTotem) {
+        int level = ArmorSkillRuntime.levelOf(player, skill);
         if (level <= 0) {
-            return;
+            return false;
         }
         // 内置冷却（规格 §7 Q3 默认 30 秒）：冷却中连骰子都不掷
-        if (!ArmorSkillRuntime.isReady(player, ArmorSkillRuntime.LAST_STAND)) {
-            return;
+        if (!ArmorSkillRuntime.isReady(player, skill)) {
+            return false;
         }
         float damage = event.getNewDamage();
         if (damage <= 0.0F) {
-            return;
+            return false;
         }
         float maxHealth = player.getMaxHealth();
         if (maxHealth <= 0.0F) {
-            return;
+            return false;
         }
         // 规格 §6.2 的两条判定，比例逐字：0.80 / 0.50 / 0.10
         boolean lethal = damage >= 0.80F * maxHealth;
         boolean nearlyDead = damage > 0.50F * maxHealth
             && (player.getHealth() - damage) < 0.10F * maxHealth;
         if (!lethal && !nearlyDead) {
-            return;
+            return false;
         }
         LastStandConfigs.Config config = LastStandConfigs.config(level);
         if (player.getRandom().nextDouble() >= config.procChance()) {
-            return;
+            return false;
         }
         // 取消这次伤害（本事件不可 cancel，见类注释的代码级取证：置 0 等于"不进结算分支"）
         event.setNewDamage(0.0F);
         // 被动触发按该级的"最高段"给（等级 N 的段数恰好就是 N ⇒ 最高段 = 该级封顶增益）
         applyTotemEffects(player, config.segments(), level);
-        ArmorSkillRuntime.startCooldown(player, ArmorSkillRuntime.LAST_STAND, config.cooldownSeconds());
-        playTriggerFx(player);
+        ArmorSkillRuntime.startCooldown(player, skill, config.cooldownSeconds());
+        playTriggerFx(player, astralTotem);
+        return true;
     }
 
     /**
@@ -139,12 +161,15 @@ public final class LastStandHandler {
     }
 
     /** 触发瞬间的音效 + 粒子（原版音效与原版粒子，不新增自定义类型）。 */
-    private static void playTriggerFx(Player player) {
+    private static void playTriggerFx(Player player, boolean astralTotem) {
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
             SoundEvents.TOTEM_USE, SoundSource.PLAYERS, 1.0F, 1.0F);
         if (player instanceof ServerPlayer server) {
-            // 颜色与长按期间同一处色源（ArmorSkillFx 的宝石套蓝→红）；被动触发按"最高段"取红端
-            ArmorSkillFx.totemBurst(server);
+            // 颜色与长按期间同一处色源（ArmorSkillFx 的每套色标）；被动触发按"最高段"取红端。
+            // 星界套（衡元择势）传自己的套 ⇒ 取 ArmorEnergyColors.stopsOf(ASTRAL) 的首尾两色，
+            // 不再借用宝石套的蓝红（与规格 §8 第 4 层"非翠玉套回落该套色标"同一条口径）。
+            ArmorSkillFx.totemBurst(server,
+                astralTotem ? ArmorSet.ASTRAL : ArmorSet.SAPPHIRE_RUBY);
         }
     }
 
@@ -155,18 +180,33 @@ public final class LastStandHandler {
      * <p>放在本类而不是 {@code ArmorSkillFx}/{@code ArmorSkillHandler} 里：摔落这条判定与
      * "绝境守护"这条技能绑在一起，行为、数值、判定同住一处便于对照规格。</p>
      *
+     * <p>2026-10-02（星界轮）：衡元择势<b>继承同一条被动</b>（需求 §3.2"被动（继承绝境守护，
+     * 与宝石套完全一致）"），所以查询与概率源都收敛到下面那个带 skillId 的重载 ——
+     * 摔落判定从此只有一份实现，两个技能只差"查哪一条技能的等级 / 是否正按住它"。</p>
+     *
      * @return 该豁免这次摔落伤害 ⇒ {@code true}
      */
     public static boolean shouldNegateFall(Player player) {
+        return shouldNegateFall(player, ArmorSkillRuntime.LAST_STAND, ArmorSkillRuntime.LAST_STAND);
+    }
+
+    /**
+     * 摔落豁免的共用实现在这里（{@code skill} = 谁的等级；{@code heldSkill} = 判断"是否正按住"用哪条）。
+     *
+     * @param player    目标玩家
+     * @param skill     提供这条被动的技能 id（{@code last_stand} 或 {@code balance_choice}）
+     * @param heldSkill 长按 100% 那一支要看"按住的是不是这条技能"（两个技能各自按住各自生效）
+     */
+    public static boolean shouldNegateFall(Player player, String skill, String heldSkill) {
         if (player == null) {
             return false;
         }
-        int level = ArmorSkillRuntime.levelOf(player, ArmorSkillRuntime.LAST_STAND);
+        int level = ArmorSkillRuntime.levelOf(player, skill);
         if (level <= 0) {
             return false;
         }
         // 主动：长按期间恒 100%（与虚衡坠护同口径，规格 §1.1"按住 100%"）
-        if (ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.LAST_STAND)) {
+        if (ArmorSkillRuntime.isHolding(player, heldSkill)) {
             return true;
         }
         return player.getRandom().nextDouble() < LastStandConfigs.config(level).passiveFallChance();

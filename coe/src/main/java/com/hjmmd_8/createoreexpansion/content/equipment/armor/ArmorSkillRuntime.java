@@ -214,6 +214,11 @@ public final class ArmorSkillRuntime {
                             continue;
                         }
                     }
+                    // 衡元择势（星界套 · 槽位 1）：**分支只在这一 tick 取一次**（需求 §3.2 判定时机
+                    // "长按开始时取一次，期间不翻转"）。取到的分支决定这一整段长按走哪张表。
+                    if (BALANCE_CHOICE.equals(skill)) {
+                        BALANCE_BRANCH.put(id, decideBalanceBranch(player));
+                    }
                     held.put(slot, 0);
                     ACTIVE.put(id, skill);
                 } else {
@@ -227,6 +232,11 @@ public final class ArmorSkillRuntime {
                         // 绝境守护：同样"一边按一边给"—— 段位推进时施加/升级不死图腾 buff
                         // （规格 §8 第 2 层"段位随长按推进"，松手不再补发，理由同蓄能疾骋）
                         applyLastStand(player, set, ticks);
+                    } else if (BALANCE_CHOICE.equals(skill)) {
+                        // 衡元择势（星界套 · 槽位 1）：按**开始时定下的那个分支**跑 ——
+                        // 移速分支完全等同蓄能疾骋、图腾分支完全等同绝境守护（同一套数值表）。
+                        // 分支在 BALANCE_BRANCH 里定死，这里不重算（否则按住期间会来回切）。
+                        applyBalanceChoice(player, set, ticks);
                     } else if (FIELD_CHARGE.equals(skill)) {
                         // 临域充力（规格 §8 第 3 层）：每 tick 续期"曲柄在转 + 注入器在 + 容量挂在网上"，
                         // 并按"点/秒"累计扣能。非 ACTIVE = 这一 tick 已经收尾（到限 / 见底 / 失效）。
@@ -255,6 +265,7 @@ public final class ArmorSkillRuntime {
                         ACTIVE.remove(id);
                         DASH_SEGMENT.remove(id);
                         LAST_STAND_SEGMENT.remove(id);
+                        BALANCE_BRANCH.remove(id);
                         if (FIELD_CHARGE.equals(skill)) {
                             FieldChargeRuntime.finish(player); // 能量见底也要把注入器与曲柄收干净
                         }
@@ -268,6 +279,7 @@ public final class ArmorSkillRuntime {
                 ACTIVE.remove(id);
                 DASH_SEGMENT.remove(id);
                 LAST_STAND_SEGMENT.remove(id);
+                BALANCE_BRANCH.remove(id);
                 release(player, set, index, previous);
             }
         }
@@ -298,6 +310,7 @@ public final class ArmorSkillRuntime {
         }
         HOLD_TICKS.remove(player.getUUID());
         ACTIVE.remove(player.getUUID());
+        BALANCE_BRANCH.remove(player.getUUID());
         // 宝石套 · 临域充力（规格 §8 第 3 层）：登出/死亡也在退出路径里 ——
         // 会话里存着"被赋能的曲柄 + 注入器"两个坐标，不收尾就会留下一个永远在转的曲柄
         // 和一个永远留在世界里的隐藏方块。
@@ -393,8 +406,22 @@ public final class ArmorSkillRuntime {
             LastStandConfigs.Config config = LastStandConfigs.config(effectiveLevel(player, set, skillId));
             ArmorEnergy.consume(player, holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost()));
             startCooldown(player, skillId, config.cooldownSeconds());
-        } else if (skillId.equals(FIELD_CHARGE)) {
-            // 临域充力（宝石套 · 槽位 3，规格 §8 第 3 层）：用户明确"**中途松开即终止**供能"。
+        } else if (skillId.equals(BALANCE_CHOICE)) {
+            // 衡元择势（星界套 · 槽位 1）：与蓄能疾骋 / 绝境守护**同一条口径** —— buff 在按住期间
+            // 就按段位施加（见 applyBalanceChoice），松手只结算能量与冷却、不再补发。
+            // 结算用的表 = **这一次长按开始时定下的那个分支**那张表（需求 §3.2「耗能：走当前分支自己的表」），
+            // 所以不能按「松手那一刻的血量」重算分支 —— 那会让玩家按住时看到 A 的 buff、却按 B 的表结账。
+            int level = effectiveLevel(player, set, skillId);
+            if (balanceBranchOf(player) == BalanceBranch.TOTEM) {
+                LastStandConfigs.Config totem = LastStandConfigs.config(level);
+                ArmorEnergy.consume(player, holdCost(heldTicks, totem.holdSeconds(), totem.holdTotalCost()));
+                startCooldown(player, skillId, totem.cooldownSeconds());
+            } else {
+                ChargeDashConfigs.Config dash = ChargeDashConfigs.config(level);
+                ArmorEnergy.consume(player, holdCost(heldTicks, dash.holdSeconds(), dash.holdTotalCost()));
+                startCooldown(player, skillId, dash.cooldownSeconds());
+            }
+        } else if (skillId.equals(FIELD_CHARGE)) {            // 临域充力（宝石套 · 槽位 3，规格 §8 第 3 层）：用户明确"**中途松开即终止**供能"。
             // 能量是**边按边扣**的（见 FieldChargeRuntime#hold），所以松手只需补上最后不足一步的零头，
             // 随后收尾（移除注入器 + 曲柄立刻静止）并起冷却 25/20/15 秒。
             FieldChargeConfigs.Config config = FieldChargeConfigs.config(effectiveLevel(player, set, skillId));
@@ -463,8 +490,156 @@ public final class ArmorSkillRuntime {
         }
     }
 
-    /** 绝境守护的"当前段位"（只在段位往上爬时重新施加 buff，避免每 tick 重置时长）。 */
+    /**
+     * <b>衡元择势 · 按住期间</b>（需求 §3.2）：按 <b>长按开始时定下的那一个分支</b>施加强度递增的
+     * buff —— 移速分支 = 蓄能疾骋、图腾分支 = 绝境守护，<b>两张既有配置表各取一份</b>
+     * （同级对齐，不做 1+1 那种相加 —— 那会突破 3 级封顶）。
+     *
+     * <p>副作用刻意做到最小：移速那一支完全复用 {@link #applyChargeDash}（含"拖尾跟着迅捷 buff 的
+     * 存续期"这条口径），图腾那一支完全复用 {@link #applyLastStand}。两条路径的段位去重靠的是
+     * 它们各自的段位表 {@code DASH_SEGMENT}／{@code LAST_STAND_SEGMENT}，与"是哪一套的技能"无关，
+     * 所以这里<b>不必</b>再维护第三张段位表（同一时刻只可能有一条长按在跑：ACTIVE 是单值）。</p>
+     *
+     * <p>⚠ 只有一个例外：{@link #applyChargeDash} 会把"拖尾属于哪一套"记进 {@code DASH_TRAIL}。
+     * 那里传的必须是<b>这次技能自己那一套</b>（星界套），否则星界套的拖尾会上成宝石/翠玉的颜色。</p>
+     */
+    private static void applyBalanceChoice(ServerPlayer player, ArmorSet set, int heldTicks) {
+        BalanceBranch branch = BALANCE_BRANCH.get(player.getUUID());
+        if (branch == null) {
+            // 理论上不会：分支在"开始长按"那一 tick 就写好了。真丢了就按移速分支兜底
+            // （不静默什么都不做 —— 那会让玩家看到"按住没反应"）。
+            branch = BalanceBranch.SPEED;
+        }
+        if (branch == BalanceBranch.TOTEM) {
+            applyTotemBranch(player, set, heldTicks);
+        } else {
+            applyChargeDash(player, set, heldTicks);
+        }
+    }
+
+    /**
+     * 图腾分支（= 绝境守护的主动）按 <b>绝境守护的等级</b>取段位与 buff —— 与宝石套那条
+     * 唯一的区别是"用哪张表的等级"。衡元择势的等级来自星界套（基准 3），
+     * 而绝境守护的段数/时长表是同一张 {@link LastStandConfigs}。
+     */
+    private static void applyTotemBranch(ServerPlayer player, ArmorSet set, int heldTicks) {
+        int level = effectiveLevel(player, set, BALANCE_CHOICE);
+        LastStandConfigs.Config config = LastStandConfigs.config(level);
+        int segment = LastStandConfigs.segmentOf(heldTicks, config);
+        Integer last = LAST_STAND_SEGMENT.get(player.getUUID());
+        if (last != null && last == segment) {
+            if (player.tickCount % 2 == 0) {
+                ArmorSkillFx.lastStandAura(player, segment);
+            }
+            return;
+        }
+        LAST_STAND_SEGMENT.put(player.getUUID(), segment);
+        LastStandHandler.applyTotemEffects(player, segment, level);
+        ArmorSkillFx.lastStandAura(player, segment);
+    }
+
+    /**
+     * 衡元择势在这一 tick 的分支（给松手结算 / 见底结算 / 预览行共用）。
+     *
+     * <p>没有记录时按<b>当前状态现算</b>：那只可能发生在"长按状态丢了但槽位还在"的极窄窗口，
+     * 而"松手时按哪个分支结算"必须有一个答案（凭空猜移速分支会让图腾分支白嫖一次免扣能）。</p>
+     */
+    private static BalanceBranch balanceBranchOf(ServerPlayer player) {
+        BalanceBranch recorded = BALANCE_BRANCH.get(player.getUUID());
+        return recorded != null ? recorded : decideBalanceBranch(player);
+    }
+
+
+
+    /**
+     * <b>衡元择势的分支</b>（需求 §3.2 的"选择判断"）。
+     *
+     * <p>{@link #SPEED} = 蓄能疾骋那一支（移速），{@link #TOTEM} = 绝境守护那一支（不死图腾）。</p>
+     */
+    public enum BalanceBranch {
+        /** 移速分支（血量 ≥ 半血且周围敌人不多）。 */
+        SPEED,
+        /** 图腾分支（血量 &lt; 半血，或周围敌对实体过多）。 */
+        TOTEM
+    }
+
+    /**
+     * 绝境守护 / 衡元择势（图腾分支）的"当前段位"（只在段位往上爬时重新施加 buff，
+     * 避免每 tick 重置时长）。
+     *
+     * <p>两个技能<b>共用这一张段位表</b>：他们的段位都来自 {@link LastStandConfigs} 的
+     * {@code segmentOf}，而同一时刻只可能有一条长按在跑（{@code ACTIVE} 是玩家 → 单值技能），
+     * 所以不需要按技能再分一张表。</p>
+     */
     private static final Map<UUID, Integer> LAST_STAND_SEGMENT = new HashMap<>();
+
+    /**
+     * 长按开始时取一次的分支判定结果（"长按期间不再翻转"，需求 §3.2 判定时机）。
+     *
+     * <p>存在这里的理由：用户明确的观感要求是"按住期间不来回切" —— 如果每 tick 现算，
+     * 血量在长按期间被打下去/回上来（图腾分支自己就会回血）会让分支当场跳变，
+     * 观感与扣能都乱。</p>
+     */
+    private static final Map<UUID, BalanceBranch> BALANCE_BRANCH = new HashMap<>();
+
+    /**
+     * "周围敌对实体过多"的判定立方体<b>半边</b>（格）—— 需求 §3.2 推断值 #6 取 <b>8</b>
+     * （边长 = 2×8+1 = 17，沿用本仓 {@code StressSourceRegistry} 的"边长 = 2r+1"惯例）。
+     */
+    public static final int BALANCE_ENEMY_RADIUS = 8;
+
+    /** "敌对实体过多"的数量门槛（需求 §3.2 推断值 #6 取 <b>≥ 5</b>）。 */
+    public static final int BALANCE_ENEMY_THRESHOLD = 5;
+
+    /** "低于半血"的阈值（需求 §3.2 推断值 #5）：{@code HP/maxHP < 0.50}；**恰好 50% 算半血以上**。 */
+    public static final double BALANCE_LOW_HEALTH_RATIO = 0.50D;
+
+    /**
+     * <b>长按开始那一 tick 的分支判定</b>（需求 §3.2 表，逐字）：
+     * <pre>
+     * 血量 HP/maxHP &lt; 0.50            ⇒ 图腾分支
+     * 或 立方体半边 8 格内 Enemy ≥ 5   ⇒ 图腾分支
+     * 否则                            ⇒ 移速分支（含"恰好 50%"）
+     * </pre>
+     *
+     * <p><b>两侧都可调用</b>（HUD 的长按预览行要用它显示"这次会走哪一支"）：血量判据两侧同源；
+     * 敌对实体数只有服务端能查（{@link #countNearbyEnemies} 需要 {@code ServerLevel}），
+     * 客户端因此按"血量那一半"判定 —— 也就是说，<b>服务端才是权威</b>，客户端的预览在
+     * "血量 ≥ 半血但周围敌人很多"这一种情形下可能显示成移速分支。</p>
+     *
+     * @return 二选一的结果（永不为 {@code null}）
+     */
+    public static BalanceBranch decideBalanceBranch(net.minecraft.world.entity.player.Player player) {
+        double maxHealth = player.getMaxHealth();
+        double ratio = maxHealth <= 0.0D ? 1.0D : player.getHealth() / maxHealth;
+        if (ratio < BALANCE_LOW_HEALTH_RATIO) {
+            return BalanceBranch.TOTEM;
+        }
+        if (player instanceof ServerPlayer server && countNearbyEnemies(server) >= BALANCE_ENEMY_THRESHOLD) {
+            return BalanceBranch.TOTEM;
+        }
+        return BalanceBranch.SPEED;
+    }
+
+    /**
+     * 以玩家为中心、{@code (2r+1)³} 立方体内的敌对实体数量（{@code entity instanceof Enemy}）。
+     *
+     * <p><b>为什么查 {@code LivingEntity} 再过滤，而不是 {@code getEntitiesOfClass(Enemy.class, …)}</b>：
+     * {@code Enemy} 是<b>接口</b>，而 {@code EntityGetter#getEntitiesOfClass} 的类型参数被限定为
+     * {@code T extends Entity}，传接口进不去（javac 报"找不到合适的方法"，2026-10-02 实测）。
+     * 换成"按类查 + 谓词过滤"后判据与需求写的 {@code entity instanceof Enemy} <b>逐字一致</b>：
+     * 不排除创造模式玩家、不额外排除任何东西（原版返回的列表本身不含 dead 实体）。</p>
+     */
+    public static int countNearbyEnemies(ServerPlayer player) {
+        double r = BALANCE_ENEMY_RADIUS;
+        net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(
+            player.getX() - r, player.getY() - r, player.getZ() - r,
+            player.getX() + r + 1.0D, player.getY() + r + 1.0D, player.getZ() + r + 1.0D);
+        return player.serverLevel()
+            .getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, box,
+                e -> e instanceof net.minecraft.world.entity.monster.Enemy)
+            .size();
+    }
 
     /**
      * 按住期间施加/升级<b>不死图腾</b>那一组 buff（规格 §8 第 2 层"主动：长按分段"）。
@@ -533,6 +708,16 @@ public final class ArmorSkillRuntime {
             ChargeDashConfigs.Config config = ChargeDashConfigs.config(level);
             return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
         }
+        if (BALANCE_CHOICE.equals(skill)) {
+            // 衡元择势：按**这一次长按开始时定下的分支**取表（与 release 同一处判据），
+            // 否则"见底自动断停"会用错表算累计花费，提前或延后停下。
+            if (balanceBranchOf(player) == BalanceBranch.TOTEM) {
+                LastStandConfigs.Config totem = LastStandConfigs.config(level);
+                return holdCost(heldTicks, totem.holdSeconds(), totem.holdTotalCost());
+            }
+            ChargeDashConfigs.Config dash = ChargeDashConfigs.config(level);
+            return holdCost(heldTicks, dash.holdSeconds(), dash.holdTotalCost());
+        }
         LastStandConfigs.Config config = LastStandConfigs.config(level);
         return holdCost(heldTicks, config.holdSeconds(), config.holdTotalCost());
     }
@@ -550,6 +735,12 @@ public final class ArmorSkillRuntime {
         }
         if (CHARGE_DASH.equals(skill)) {
             return ChargeDashConfigs.config(level).cooldownSeconds();
+        }
+        if (BALANCE_CHOICE.equals(skill)) {
+            // 衡元择势：冷却同样按"这一次长按开始时定下的那个分支"取（移速 60/45/30、图腾 30/30/30）
+            return balanceBranchOf(player) == BalanceBranch.TOTEM
+                ? LastStandConfigs.config(level).cooldownSeconds()
+                : ChargeDashConfigs.config(level).cooldownSeconds();
         }
         return LastStandConfigs.config(level).cooldownSeconds();
     }

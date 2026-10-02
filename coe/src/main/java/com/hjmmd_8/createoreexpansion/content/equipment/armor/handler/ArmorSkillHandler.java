@@ -104,6 +104,18 @@ public final class ArmorSkillHandler {
             boolean holding = ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.LAST_STAND);
             // 宝石套：蓝红落地（不再借翠玉的黄绿 —— 规格 §8 第 4 层）
             ArmorSkillFx.landingImpact(player, holding, ArmorSet.SAPPHIRE_RUBY);
+            return;
+        }
+        // ③ 星界套 · 衡元择势（用户 2026-10-02 星界轮）：需求 §3.2"被动（继承绝境守护，
+        // 与宝石套完全一致）"—— 摔落豁免这条继承来的被动照搬，概率沿用虚衡坠护同级那一档
+        // （LastStandConfigs.passiveFallChance，与绝境守护同一个字段）。
+        // 与绝境守护一样**不判**内置冷却：摔落豁免是继承来的被动，与主动长按的冷却无关。
+        // 落地粒子的套传星界套（色标取 ArmorEnergyColors.stopsOf(ASTRAL) 的首尾两色）。
+        if (LastStandHandler.shouldNegateFall(player, ArmorSkillRuntime.BALANCE_CHOICE,
+                ArmorSkillRuntime.BALANCE_CHOICE)) {
+            event.setCanceled(true);
+            boolean holding = ArmorSkillRuntime.isHolding(player, ArmorSkillRuntime.BALANCE_CHOICE);
+            ArmorSkillFx.landingImpact(player, holding, ArmorSet.ASTRAL);
         }
     }
 
