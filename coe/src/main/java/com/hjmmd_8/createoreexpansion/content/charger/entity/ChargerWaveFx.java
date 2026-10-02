@@ -553,4 +553,133 @@ public final class ChargerWaveFx {
 	static float damageForLevel(int level) {
 		return WaveLevels.damage(level);
 	}
+
+	// ==================================================================================
+	// 环绕波专属粒子（2026-10-02 作者裁定："即使有环绕波生成，过于不明显也是 bug"）
+	//
+	// 为什么必须<b>另起一组参数</b>而不是复用主波拖尾：环绕波的实体类型、渲染器、波型
+	// 都与主波逐字相同（红线：不新增实体类型/贴图/模型），而它的视觉 100% 靠粒子
+	// （EmptyEntityRenderer）——主波拖尾是"每 tick 6 颗、尺度 0.45"，环绕波半径只有 0.8 格，
+	// 两者在同一团粒子云里根本分不出来（作者实测反馈）。
+	//
+	// 这组参数给环绕波三层可辨识特征（全部是原版粒子，零新增贴图/模型/粒子类型）：
+	//   ① 主体尘埃：每 tick 12 颗、尺度 0.62（主波是 6 颗 / 0.45）⇒ 更亮更粗的一团；
+	//   ② 标志粒子：每 tick 4 颗 {@link ParticleTypes#END_ROD}（白亮）+ 2 颗
+	//      {@link ParticleTypes#SOUL_FIRE_FLAME}（青焰）⇒ 与主波的红橙/金饰完全不同色相，
+	//      在 DIM 光照下也一眼可见；
+	//   ③ 环面留痕：每 {@value #ORBIT_MARK_INTERVAL_TICKS} tick 在环平面上补
+	//      {@value #ORBIT_MARK_COUNT} 个<b>静止</b>的桩点（环平面由实体的唯一几何入口
+	//      {@code AbstractChargerWaveEntity#orbitPlaneAxes()} 给）⇒ "它在绕圈"这件事本身可见，
+	//      而不是只能看到一粒会移动的点。
+	//
+	// 这三个时刻各来一簇（作者要求：出生 / 命中 / 父波消散一起收尾）：
+	//   出生 = {@link #burstOrbitSpawn}、命中与消散 = 既有的 {@link #burst}（环绕波自己的
+	//   波级色 + 攻击态风格），三处都走本类，不新增任何发送通道。
+	// ==================================================================================
+
+	/** 环绕波主体尘埃：每 tick 颗数（主波拖尾是 6，见 {@code AbstractChargerWaveEntity#tick}）。 */
+	public static final int ORBIT_TRAIL_COUNT = 12;
+
+	/** 环绕波主体尘埃：粒子尺度（主波拖尾是 0.45f）。 */
+	public static final float ORBIT_TRAIL_SCALE = 0.62f;
+
+	/** 环绕波标志粒子 END_ROD：每 tick 颗数（白亮"信标"，与主波的染色尘埃完全两样）。 */
+	public static final int ORBIT_FLAG_END_ROD = 4;
+
+	/** 环绕波标志粒子 SOUL_FIRE_FLAME：每 tick 颗数（青焰，任何波级的冷暖反差都足够大）。 */
+	public static final int ORBIT_FLAG_SOUL_FIRE = 2;
+
+	/**
+	 * 环面留痕：每几 tick 补一圈静态桩点（越小圈越"实"）。
+	 *
+	 * <p>取 3 而不是更大值：原版染色尘埃的寿命是写死的一小段（本仓既有构造只有
+	 * {@code DustParticleOptions(Vector3f, float)} 两个参数，没有寿命入参），所以"圈"是由
+	 * <b>残留桩点</b>拼出来的——间隔一大就只剩几个孤点，间隔 3 tick 时同一时刻约有两圈桩点在
+	 * 场上，圆环是连续的。代价是常数颗（{@value #ORBIT_MARK_COUNT} 颗 / 3 tick）。</p>
+	 */
+	public static final int ORBIT_MARK_INTERVAL_TICKS = 3;
+
+	/** 环面留痕：一圈几颗桩点（沿环平面均分角度）。 */
+	public static final int ORBIT_MARK_COUNT = 8;
+
+	/** 环面留痕桩之色：电青（刻意不用任何波级色——它标记的是"轨道"这个几何事实）。 */
+	private static final Vec3 ORBIT_MARK_COLOR = new Vec3(0.35, 0.95, 1.0);
+
+	/** 环面留痕桩的粒子尺度（比尘埃略小：桩点是辅助，不抢主体）。 */
+	private static final float ORBIT_MARK_SCALE = 0.35f;
+
+	/** 出生簇：主尘埃颗数（比绽放 30 颗小，只在出生点炸一小团）。 */
+	private static final int ORBIT_SPAWN_COUNT = 24;
+
+	/**
+	 * <b>环绕波每 tick 的专属拖尾</b>（服务端）：主体尘埃 + 标志粒子 + 环面留痕桩。
+	 *
+	 * <p>调用方（{@code AbstractChargerWaveEntity#tick}）对环绕波<b>提前 return</b>，
+	 * 所以主波那条"6 颗 / 0.45f"的发送路径在环绕波上<b>从不执行</b>——两组参数不会互相覆盖。</p>
+	 *
+	 * @param server   服务端世界
+	 * @param center   环绕波当前位置（= 圆周点）
+	 * @param color    环绕波的渲染色（按<b>波级</b>取色，与主波同一处 {@code getWaveColorForLevel}）
+	 * @param axis     环平面法向（= 父波运动方向）
+	 * @param u        环平面基向量之一（见 {@code AbstractChargerWaveEntity#orbitPlaneAxes()}）
+	 * @param v        环平面基向量之二（u × v = axis，右手系）
+	 * @param radius   环绕半径（格；用实体自身的要素值，不在这里写常量）
+	 * @param phase    当前相位（弧度）——桩点绕它对称铺开，于是每 tick 都能看出波转到哪儿了
+	 * @param ticking  是否到了补"环面留痕桩"的那一 tick（节流由调用方按
+	 *                 {@link #ORBIT_MARK_INTERVAL_TICKS} 决定，本方法只负责画）
+	 */
+	public static void sendOrbitTrail(ServerLevel server, Vec3 center, Vec3 color, Vec3 axis,
+		Vec3 u, Vec3 v, double radius, double phase, boolean ticking) {
+		Vec3 base = color == null ? Vec3.ZERO : color;
+		Vec3 motion = axis == null ? new Vec3(0.0D, 0.0D, 1.0D) : axis.normalize();
+		// ① 主体尘埃：12 颗、尺度 0.62 —— 数量与粗细都压过主波拖尾（6 颗 / 0.45）
+		server.sendParticles(new DustParticleOptions(
+				new Vector3f((float) base.x, (float) base.y, (float) base.z), ORBIT_TRAIL_SCALE),
+			center.x, center.y, center.z, ORBIT_TRAIL_COUNT,
+			0.12, 0.12, 0.12, 0.01);
+		// ② 标志粒子：END_ROD 白亮（带一点沿飞行方向的前推速度，读作"跟着波走"）
+		server.sendParticles(ParticleTypes.END_ROD, center.x, center.y, center.z, ORBIT_FLAG_END_ROD,
+			0.10, 0.10, 0.10, 0.02);
+		server.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, center.x, center.y, center.z, ORBIT_FLAG_SOUL_FIRE,
+			motion.x * 0.02, motion.y * 0.02, motion.z * 0.02, 0.005);
+		// ③ 环面留痕：一圈静止桩点（速度近零 ⇒ 它们停在原地勾出圆环，波自己从中间穿过去）
+		if (ticking && u != null && v != null) {
+			DustParticleOptions mark = new DustParticleOptions(
+				new Vector3f((float) ORBIT_MARK_COLOR.x, (float) ORBIT_MARK_COLOR.y, (float) ORBIT_MARK_COLOR.z),
+				ORBIT_MARK_SCALE);
+			for (int i = 0; i < ORBIT_MARK_COUNT; i++) {
+				double theta = phase + (Math.PI * 2.0D * i) / ORBIT_MARK_COUNT;
+				Vec3 offset = u.scale(radius * Math.cos(theta)).add(v.scale(radius * Math.sin(theta)));
+				Vec3 at = center.add(offset);
+				server.sendParticles(mark, at.x, at.y, at.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+			}
+		}
+	}
+
+	/**
+	 * <b>环绕波出生簇</b>：出生点炸一小团（主色尘埃 + 一点 END_ROD + 一圈环面桩）。
+	 *
+	 * <p>出生点是父波位置（半径 0 处），所以这一簇既是"我来了"的提示，
+	 * 也顺手把整圈轨道标出来 —— 玩家发射后立刻能看到主波周围多了一个环。</p>
+	 */
+	public static void burstOrbitSpawn(ServerLevel server, Vec3 center, Vec3 color, Vec3 u, Vec3 v,
+		double radius, double phase) {
+		Vec3 base = color == null ? Vec3.ZERO : color;
+		server.sendParticles(new DustParticleOptions(
+				new Vector3f((float) base.x, (float) base.y, (float) base.z), ORBIT_TRAIL_SCALE),
+			center.x, center.y, center.z, ORBIT_SPAWN_COUNT, 0.25, 0.25, 0.25, 0.05);
+		server.sendParticles(ParticleTypes.END_ROD, center.x, center.y, center.z, ORBIT_FLAG_END_ROD,
+			0.20, 0.20, 0.20, 0.03);
+		if (u == null || v == null)
+			return;
+		DustParticleOptions mark = new DustParticleOptions(
+			new Vector3f((float) ORBIT_MARK_COLOR.x, (float) ORBIT_MARK_COLOR.y, (float) ORBIT_MARK_COLOR.z),
+			ORBIT_MARK_SCALE);
+		for (int i = 0; i < ORBIT_MARK_COUNT; i++) {
+			double theta = phase + (Math.PI * 2.0D * i) / ORBIT_MARK_COUNT;
+			Vec3 at = center.add(u.scale(radius * Math.cos(theta)))
+				.add(v.scale(radius * Math.sin(theta)));
+			server.sendParticles(mark, at.x, at.y, at.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+		}
+	}
 }

@@ -324,6 +324,25 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private double orbitPhase;
 
 	/**
+	 * 本 tick 的<b>当前相位</b>（弧度；只有环绕波有意义）——粒子侧拿它把"环面留痕桩"铺在
+	 * 波此刻所在的那一圈上，使"它绕到哪儿了"一眼可读。
+	 *
+	 * <p>刻意不在粒子侧重算 {@code 相位 + 角速度 × tickCount}：那会让"位置公式"与"粒子公式"
+	 * 变成两处真源（改一处忘一处就漂移）。这里只有一个写入点（{@link #applyOrbitElement()}）。</p>
+	 */
+	private double orbitCurrentPhase;
+
+	/**
+	 * 本 tick 的<b>父波位置</b>（只有环绕波有意义；父波取不到时为 {@code null}）。
+	 *
+	 * <p>用途有二：粒子侧要拿它算圆周点（位置已改写，父波位置本身没存下来）；
+	 * 以及心跳日志的"距父波距离"——这个距离恒等于 {@link #orbitRadius}，正是"半径 0.8 的环绕
+	 * 真的在绕"的机器可判证据。</p>
+	 */
+	@Nullable
+	private Vec3 orbitAnchorPos;
+
+	/**
 	 * <b>命中附加效果要素</b>：命中生物时追加施加的药水效果（{@code null} = <b>不做事</b>，
 	 * 即默认关闭）。
 	 *
@@ -528,15 +547,80 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			dir = new Vec3(0.0D, 0.0D, 1.0D);
 		}
 		dir = dir.normalize();
+		Vec3[] axes = orbitPlaneAxes(dir);
+		Vec3 u = axes[0];
+		Vec3 v = axes[1];
+		double theta = orbitPhase + orbitAngularSpeed * (double) tickCount;
+		Vec3 anchorPos = parent.position();
+		Vec3 offset = u.scale(orbitRadius * Math.cos(theta)).add(v.scale(orbitRadius * Math.sin(theta)));
+		setPos(anchorPos.add(offset));
+		// 只记两个原始事实，供粒子用（见两个字段的说明）；位置公式本身仍只有上面这一处。
+		this.orbitCurrentPhase = theta;
+		this.orbitAnchorPos = anchorPos;
+		return true;
+	}
+
+	/**
+	 * <b>环平面基向量</b>（环绕波几何的<b>唯一</b>实现）：给定环平面法向 {@code d}（父波运动方向），
+	 * 返回两个张成该平面的单位向量 {@code [u, v]}，满足 {@code u × v = d}（右手系）。
+	 *
+	 * <p>取法：{@code |d.y| > 0.9}（接近竖直飞行，用 +Y 会叉乘退化）时参考轴取 +X，否则取 +Y；</p>
+	 * <pre>
+	 *   u = normalize(reference × d)
+	 *   v = normalize(d × u)
+	 * </pre>
+	 *
+	 * <p><b>为什么抽成一处</b>：位置改写（{@link #applyOrbitElement()}）与粒子侧
+	 * （"环面留痕桩"必须铺在同一个环平面上）都要用这两个基向量；复制成两份的那一刻起，
+	 * 改了一处忘另一处就会让粒子圈与真实轨道错开。</p>
+	 */
+	public static Vec3[] orbitPlaneAxes(Vec3 d) {
+		Vec3 dir = d == null || d.lengthSqr() < 1.0E-9D ? new Vec3(0.0D, 0.0D, 1.0D) : d.normalize();
 		Vec3 reference = Math.abs(dir.y) > 0.9D
 			? new Vec3(1.0D, 0.0D, 0.0D)
 			: new Vec3(0.0D, 1.0D, 0.0D);
 		Vec3 u = reference.cross(dir).normalize();
 		Vec3 v = dir.cross(u).normalize();
-		double theta = orbitPhase + orbitAngularSpeed * (double) tickCount;
-		Vec3 offset = u.scale(orbitRadius * Math.cos(theta)).add(v.scale(orbitRadius * Math.sin(theta)));
-		setPos(parent.position().add(offset));
-		return true;
+		return new Vec3[] { u, v };
+	}
+
+	/**
+	 * <b>环绕波本 tick 的全部粒子</b>（只在服务端调用；唯一调用点是 {@link #tick()} 里
+	 * {@code isOrbiting()} 的那条分支）。
+	 *
+	 * <p>注意本方法<b>只负责粒子</b>：调用点不等价于 {@code return}，环绕波照样往下走命中判定、
+	 * 方块碰撞、波波碰撞与寿命/收尾分支 —— 观感与机制在这里是分开的两件事。</p>
+	 *
+	 * <p>三个时刻各来一簇（作者 2026-10-02 要求："出生、命中、父波消散一起收尾"三处都要能感知
+	 * 它存在过）：</p>
+	 * <ol>
+	 *   <li><b>出生</b>（{@code tickCount == 1}，实体刚被放进世界的第一 tick）：在父波位置炸一簇
+	 *       {@link ChargerWaveFx#burstOrbitSpawn}，并把整圈轨道一次标出来 —— 玩家发射后立刻能
+	 *       看到主波周围多了一个环；</li>
+	 *   <li><b>每 tick</b>：{@link ChargerWaveFx#sendOrbitTrail}（主体尘埃 + END_ROD + 青焰 +
+	 *       每逢 {@link ChargerWaveFx#ORBIT_MARK_INTERVAL_TICKS} 补一圈环面留痕桩）；</li>
+	 *   <li><b>命中与消散</b>：命中走既有的命中链（{@code hitEffect → ChargerWaveFx.burst →
+	 *       discard}，用的是环绕波自己的波级色与攻击态风格）；其余任何移除路径（父波没了、寿命与
+	 *       行程上限）在 {@link #remove} 里补最后一簇 —— 见那里。</li>
+	 * </ol>
+	 */
+	private void emitOrbitTrail(ServerLevel server) {
+		Vec3 anchorPos = this.orbitAnchorPos;
+		if (anchorPos == null) {
+			// 本 tick 还没成功改写位置（理论上不会发生：位置改写就在本 tick 移动段里）——
+			// 保守退化：只按自身位置发主体粒子，不画环面留痕（不留错位的圈）。
+			ChargerWaveFx.sendOrbitTrail(server, position(), renderColor, movement, null, null,
+				orbitRadius, orbitCurrentPhase, false);
+			return;
+		}
+		Vec3[] axes = orbitPlaneAxes(movement);
+		// 出生簇：实体加入世界后的第一 tick（tickCount 在 super.tick() 里 +1，故首 tick 读作 1）
+		if (tickCount == 1) {
+			ChargerWaveFx.burstOrbitSpawn(server, anchorPos, renderColor, axes[0], axes[1], orbitRadius,
+				orbitCurrentPhase);
+		}
+		ChargerWaveFx.sendOrbitTrail(server, position(), renderColor, movement, axes[0], axes[1],
+			orbitRadius, orbitCurrentPhase, tickCount % ChargerWaveFx.ORBIT_MARK_INTERVAL_TICKS == 0);
 	}
 
 	/**
@@ -677,7 +761,24 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 风格带来的颜色变换与点缀粒子全部在 ChargerWaveFx 的风格映射表里定义。
 		// ω（5 级）额外每 tick 叠 1 颗金色尾迹点缀 —— 金色是刻意叠加的装饰色（不是波的渲染色），
 		// 故继续用无风格重载，保持金饰不被染色、只占少数，避免整条波看起来发黄。
-		if (level() instanceof ServerLevel server) {
+		//
+		// ==================================================================================
+		// ★ 环绕波（可选要素）走<b>自己那一整套</b>粒子，主波那条路径整段跳过：
+		//   · 为什么必须另起一段：环绕波的实体类型/渲染器/波型与主波逐字相同，视觉 100% 靠粒子
+		//     （EmptyEntityRenderer），而"每 tick 6 颗、尺度 0.45"的主波拖尾在半径 0.8 格的环绕半径上
+		//     完全看不出是"另一枚在绕"（作者 2026-10-02 实测反馈："我并不能从视觉上直接判断是否有
+		//     环绕波生成"）。环绕波改用 ChargerWaveFx.sendOrbitTrail（12 颗 / 0.62 + END_ROD +
+		//     青焰 + 环面留痕桩）；
+		//   · 为什么是"二选一"而不是"两段叠加"：叠加等于环绕波也吃主波那 6 颗参数，
+		//     两组颜色/尺度会互相冲淡——这正是作者怕的"被主波粒子参数覆盖"（关卡
+		//     wave-orbit-particles-exclusive 守着这条）；
+		//   · 为什么<b>只</b>跳过粒子而不提前 return：后面的命中判定/方块碰撞/波波碰撞/收尾分支
+		//     对环绕波仍然有意义（它照样会撞上生物、撞上父波、寿命到点），提前 return 等于顺手
+		//     把它的命中与收尾一起关掉——那是改机制，不是改观感。
+		// ==================================================================================
+		if (level() instanceof ServerLevel orbitServer && isOrbiting()) {
+			emitOrbitTrail(orbitServer);
+		} else if (level() instanceof ServerLevel server) {
 			ChargerWaveFx.sendTrail(server, position(), getWaveType().trailStyle(), renderColor, 0.45f, 6,
 				movement.scale(0.12), 0.03);
 			if (isOmega())
@@ -895,6 +996,20 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 客户端在实体消散时补充球面均匀扩散绽放
 		if (reason == RemovalReason.DISCARDED && level().isClientSide) {
 			ChargerWaveFx.burstParticles(level(), position(), getWaveType().trailStyle(), renderColor);
+		}
+		// 环绕波的"收尾簇"（作者 2026-10-02 要求的三个时刻之一：出生 / 命中 / 收尾）。
+		// 为什么放在这里而不是放在每一条 discard 之前：环绕波是<b>被主波牵着走</b>的，
+		// 它的消散路径有多条（父波没了、命中目标、寿命与行程上限），散在各处写就必然漏；
+		// remove() 是所有路径的唯一汇合点，于是"它存在过"这件事在任何路径下都留下同一簇粒子。
+		if (isOrbiting() && level() instanceof ServerLevel orbitServer) {
+			if (tickCount == 1) {
+				// 出生即收尾（第一 tick 就查不到父波）：这是最容易被误判成"根本没生成"的形态，
+				// 所以额外在收尾点炸一簇带环面留痕的出生簇，屏幕上也能看见"它冒了一下"。
+				ChargerWaveFx.burstOrbitSpawn(orbitServer, position(), renderColor, null, null, orbitRadius,
+					orbitCurrentPhase);
+			} else {
+				ChargerWaveFx.burst(orbitServer, position(), getWaveType().trailStyle(), renderColor);
+			}
 		}
 		super.remove(reason);
 	}
