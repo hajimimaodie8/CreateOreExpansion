@@ -339,7 +339,7 @@ public class ChineseLangProvider extends LanguageProvider {
         // 场盒说法（半径 0 = 场盒就是机器本体，不写成"半径 0 格"）
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core", "场盒就是机器本体");
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius", "场盒半径 %s 格");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint", "范围内的普通波穿过即被点燃为攻击波");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint", "正上方展示框给出魔素时，范围内的普通波穿过即被点燃为攻击波");
         // 护目镜面板：没按住 Shift 时只有机器名 + 这一行提示（按住 Shift 一次性显示全部读数）
         add("createoreexpansion.goggles.transmuter_expand_hint", "按住 [%s] 查看机器详情");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "已绑定 %s 台机器 · 可加工配方");

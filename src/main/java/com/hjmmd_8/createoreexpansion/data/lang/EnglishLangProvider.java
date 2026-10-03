@@ -499,7 +499,7 @@ public class EnglishLangProvider extends LanguageProvider {
         // Field-box wording (radius 0 = the box is the machine itself, never "radius 0 blocks")
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core", "the field box is the machine itself");
         add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius", "field box radius %s blocks");
-        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint", "Normal waves crossing the field are ignited into attack waves");
+        add("createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint", "Normal waves crossing the field are ignited into attack waves when the frame above supplies an essence");
         // Goggles panel: without Shift only the machine name + this hint (Shift shows every readout at once)
         add("createoreexpansion.goggles.transmuter_expand_hint", "Hold [%s] for machine details");
         add("createoreexpansion.goggles.stellar_wave_transmuter_bind_hint", "Linked to %s machines · recipes");

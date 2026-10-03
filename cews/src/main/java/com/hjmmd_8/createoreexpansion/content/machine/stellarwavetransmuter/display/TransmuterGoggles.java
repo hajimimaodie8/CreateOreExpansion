@@ -215,7 +215,11 @@ public final class TransmuterGoggles {
 	 *       那个状态不在这里另写文案——由 Create 自己的"需求转速 / 显然…没有达到足够的转速"两行承担
 	 *       （见 {@code StellarWaveTransmuterBlockEntity#addToTooltip}），因此<b>未达门槛时本块照常
 	 *       列出三档（全灰）</b>，玩家能直接看到下一档要多少转速；</li>
-	 *   <li><b>说明行</b>：范围内的普通波穿过即被点燃为攻击波。</li>
+	 *   <li><b>说明行</b>：范围内的普通波穿过即被点燃为攻击波（<b>2026-10-03 起另有一个前提</b>：
+	 *       机器<b>正上方一格</b>的物品展示框里放着能识别出魔素的物品，<b>空框 / 没有框 ⇒ 不点燃</b>
+	 *       —— 见 {@link TransmuterEssenceFrames} 与 {@link TransmuterEssence}）。
+	 *       对应的词条 {@code createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint}
+	 *       的<b>文案值</b>已同步收窄（键名未动）。</li>
 	 * </ol>
 	 *
 	 * <p><b>本方法一个档位数字都不写</b>：档位、每档的转速区间、每档的场盒半径全部直读模式自报的

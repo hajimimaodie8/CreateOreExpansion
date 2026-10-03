@@ -119,7 +119,7 @@
   "createoreexpansion.goggles.speed_too_low": "Speed too low to process!",
   "createoreexpansion.goggles.stellar_wave_transmuter": "Stellar Wave Transmuter",
   "createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core": "the field box is the machine itself",
-  "createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint": "Normal waves crossing the field are ignited into attack waves",
+  "createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint": "Normal waves crossing the field are ignited into attack waves when the frame above supplies an essence",
   "createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius": "field box radius %s blocks",
   "createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm": "Attack speed: %s RPM (requires %s ~ %s RPM)",
   "createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry": "tier %s (%s ~ %s RPM, %s)",

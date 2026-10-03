@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.entity.WavePath;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.display.TransmuterGoggles;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 
@@ -40,6 +41,12 @@ import net.minecraft.world.phys.AABB;
  *       <b>场盒大小按转速分三档</b>（见下面的"攻击场三档"一段）。
  *       <b>未接入应力、或转速未达本模式门槛</b>（{@link #minimumRpm()} = 128 RPM，
  *       用户 2026-09-24 规格）时攻击场不点燃、一个实体都不查（波照旧飞过去，只是不赋攻击属性）。
+ *       <p><b>⚠ 2026-10-03 语义收窄（需求 cews-ess §3.4）：点燃多了一个前提</b>——
+ *       机器<b>正上方一格</b>的物品展示框里必须放着能识别出<b>魔素</b>的物品
+ *       （规则表见 {@link TransmuterEssence}，世界读取见 {@link TransmuterEssenceFrames}）；
+ *       <b>空展示框 / 没有展示框 / 框里物品认不出来 ⇒ 不点燃</b>（波照旧穿场飞过）。
+ *       上面那句「确实穿过场的普通波被点燃成攻击波」在 2026-10-03 之前成立，
+ *       此后<b>以本条为准</b>；收窄的理由与实现顺序见 {@link #applyField}。</p>
  *       攻击波是纯攻击、不参与加工（加工路径已由波基类按波型闸门挡住，本模式不提供任何加工逻辑）。
  *       <b>进入本模式时 4 个波口被无条件强制全开、之后就锁死不可切换</b>（见 {@link #onEnter} /
  *       {@link #locksWavePorts()}）。</li>
@@ -112,7 +119,13 @@ public enum TransmuterMode {
 		}
 	},
 
-	/** 攻击波变态：对波透明 + 自身是攻击场（点燃穿过场的普通波）。 */
+	/**
+	 * 攻击波变态：对波透明 + 自身是攻击场（点燃穿过场的普通波）。
+	 *
+	 * <p><b>2026-10-03（需求 cews-ess）起，点燃另有一个前提</b>：机器正上方一格的物品展示框
+	 * 必须给出可识别的魔素，<b>空框 / 没有框 ⇒ 不点燃</b>——见 {@link #applyField} 与
+	 * {@link TransmuterEssenceFrames}。</p>
+	 */
 	ATTACK("attack", ChatFormatting.RED) {
 		@Override
 		public WaveOutcome onWaveHit(AbstractChargerWaveEntity wave, BlockPos pos) {
@@ -169,7 +182,18 @@ public enum TransmuterMode {
 		}
 
 		/**
-		 * 攻击场：把"本轮确实穿过场盒"的普通波点燃成攻击波（{@link WaveTypes#ATTACK}）。
+		 * 攻击场：把"本轮确实穿过场盒"的普通波点燃成攻击波（{@link WaveTypes#ATTACK}），
+		 * 并按机器正上方展示框给出的<b>魔素</b>给这一发波染色。
+		 *
+		 * <p><b>★ 门槛与顺序（2026-10-03 需求 cews-ess §3.3 —— 本方法最容易写歪的一处）</b>：
+		 * 本方法在应力闸门之后、<b>点燃之前</b>先解析魔素，解析结果为空就<b>整场什么都不做</b>。
+		 * 顺序<b>不能倒</b>：{@code trySetWaveType} 是<b>不可撤回的一次性操作</b>
+		 * （本仓注释原文"一生只能变一次"），先点燃再解析的话，空框时波<b>已经被点燃</b>，
+		 * 既违反作者裁定，又白吃掉这发波唯一的一次点燃机会。
+		 * 解析结果也只在<b>点燃成功之后</b>经 {@code trySetEssence} 写进波——对"不造成伤害的波型"
+		 * 它是<b>静默忽略</b>的，所以"先设魔素、再点燃"同样什么都写不进去。
+		 * 本方法的这一顺序由关卡 {@code check-transmuter-essence.ps1} 正向钉住。</p>
+		 *
 		 *
 		 * <p><b>本场只做两件事</b>：一次实体查询（只找波实体）+ 逐个候选的"波最近走过的路径是否与
 		 * 场盒相交"判定（{@link AbstractChargerWaveEntity#pathCrosses}）。<b>不做任何方块遍历</b>；
@@ -222,17 +246,33 @@ public enum TransmuterMode {
 			// 里面已经把模式自报的 minimumRpm 一起判了）——两处只有一个定义。
 			if (!wavePowered(level, pos))
 				return;
+			// ===== ★ 魔素前提：解析必须排在"点燃"之前（2026-10-03 需求 cews-ess §3.3）=====
+			// 点燃那一步（下面的 trySetWaveType）是**不可撤回的一次性操作**：它写在 `&&` 的右侧，
+			// 执行过就是执行过。所以"空框不点燃"**不能**靠在它后面补一句 trySetEssence 来实现 ——
+			// 那样空框时波**已经被点燃了**，既违反作者裁定，又白吃掉这发波唯一的一次点燃机会。
+			// 解析是**机器级**的（一个展示框对应一种魔素，与具体哪枚波无关）⇒ 在波的循环**外**
+			// 做且只做一次，不要塞进循环里让每枚波各查一遍世界。
+			// 它与上面的应力闸门同级：都是"本模式要不要点燃"的前置条件，位置也同级。
+			WaveTrailStyle essence = TransmuterEssenceFrames.resolve(level, pos);
+			if (essence == null)
+				return; // 空框 / 没有框 / 框里物品不匹配任何魔素标签 ⇒ 本 tick 整场什么都不做
 			AABB field = fieldBox(pos, attackFieldRadius(speed));
 			for (AbstractChargerWaveEntity wave : level.getEntitiesOfClass(AbstractChargerWaveEntity.class,
 				queryBox(field)))
 				// 只调用一次"点燃"：是不是普通波由 trySetWaveType 自己判定（一生只能变一次），
 				// 这里不重复判断波型——写两遍就是两处口径，迟早不一致
-				if (wave.pathCrosses(field) && wave.trySetWaveType(WaveTypes.ATTACK))
+				if (wave.pathCrosses(field) && wave.trySetWaveType(WaveTypes.ATTACK)) {
+					// 魔素**只在点燃成功之后**才赋：trySetEssence 对"不造成伤害的波型"是静默忽略的
+					// （见 AbstractChargerWaveEntity#trySetEssence），顺序反过来就什么都写不进去。
+					// 这条顺序是既有的不变量（关卡 wave-essence-star-shock 与 boomerang-orbit-skill
+					// 对另外两处来源钉着同一条），本处由 check-transmuter-essence.ps1 钉住。
+					wave.trySetEssence(essence);
 					// 轨迹日志（事件流：被点燃的波各一行）：与穿波转换那条对称，用来判定
 					// "这发波走的是攻击场还是被加工波变态转换了"（trySetWaveType 返回 true 才写，
-					// 旁观飞过的波不会刷日志）
-					WaveDiag.trace("攻击场点燃（攻击波变态）：变器 [{}] 场内 {} 级波 → 攻击波", pos,
-						WaveLevels.glyph(wave.getWaveLevel()));
+					// 旁观飞过的波不会刷日志）。带上魔素名 ⇒ 实机验收可直接从日志读出这一发是什么魔素。
+					WaveDiag.trace("攻击场点燃（攻击波变态）：变器 [{}] 场内 {} 级波 → {} 魔素攻击波", pos,
+						WaveLevels.glyph(wave.getWaveLevel()), essence.displayName());
+				}
 		}
 
 		/**

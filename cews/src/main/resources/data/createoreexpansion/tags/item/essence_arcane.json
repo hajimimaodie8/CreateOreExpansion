@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "transmutation:transmutation_fluid_bucket",
+      "required": false
+    }
+  ]
+}

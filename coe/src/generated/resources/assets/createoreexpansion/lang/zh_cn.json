@@ -123,7 +123,7 @@
   "createoreexpansion.goggles.speed_too_low": "转速不足，无法加工！",
   "createoreexpansion.goggles.stellar_wave_transmuter": "星辉波变器",
   "createoreexpansion.goggles.stellar_wave_transmuter_attack_field_core": "场盒就是机器本体",
-  "createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint": "范围内的普通波穿过即被点燃为攻击波",
+  "createoreexpansion.goggles.stellar_wave_transmuter_attack_field_hint": "正上方展示框给出魔素时，范围内的普通波穿过即被点燃为攻击波",
   "createoreexpansion.goggles.stellar_wave_transmuter_attack_field_radius": "场盒半径 %s 格",
   "createoreexpansion.goggles.stellar_wave_transmuter_attack_rpm": "攻击转速：%s RPM（需求 %s ~ %s RPM）",
   "createoreexpansion.goggles.stellar_wave_transmuter_attack_tier_entry": "第 %s 档（%s ~ %s RPM，%s）",
