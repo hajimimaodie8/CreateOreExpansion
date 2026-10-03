@@ -72,10 +72,12 @@ public class EnergyTooltipHandler {
             fillColor = new Color(color % 0xFFFFFF);
         }
 
-        // 谁实现 EnergyGradientTool 谁做渐变条（翠玉之弓 + 回旋镖四把）；其余工具保持单色。
-        // 色标由物品自报（energyGradientStops）：回旋镖四把给的是**同档护甲套**那一套色标
-        // （作者 2026-10-03 小修；转调 ArmorEnergyColors#stopsOf，与护甲 tooltip 同源同款），
-        // 弓不覆写 ⇒ 用下面这条历史默认（绿 0x55FF55 -> 黄 0xFFFF55，本文件是它的唯一出处）。
+        // 谁实现 EnergyGradientTool 谁做渐变条（弓四把 + 回旋镖四把）；其余工具保持单色。
+        // 色标由物品自报（energyGradientStops）：两个家族给的**都是同档护甲套**那一套色标
+        // （作者 2026-10-03 小修 + 弓补齐那轮；转调 ArmorEnergyColors#stopsOf，与护甲 tooltip
+        // 同源同款）。翠玉档问出来的那两色与下面这条历史默认**逐字同值同序**，所以翠玉之弓
+        // 的渲染零变化；这条默认现在只剩"没覆写的 EnergyGradientTool 实现"这一个用途
+        // （本文件仍是那两个字面量的唯一出处，关卡 §14 钉着它）。
         if (stack.getItem() instanceof EnergyGradientTool gradientTool) {
             List<Color> stops = gradientTool.energyGradientStops(stack);
             if (stops.isEmpty()) {

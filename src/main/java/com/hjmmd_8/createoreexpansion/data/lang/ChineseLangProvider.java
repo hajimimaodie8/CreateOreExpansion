@@ -158,6 +158,11 @@ public class ChineseLangProvider extends LanguageProvider {
         add(CoeItems.THUNDERITE_HOE.get(), "雷鸣合金锄");
         add(CoeBlocks.THUNDERITE_BLOCK.get(), "雷鸣合金块");
         add(CoeItems.JADE_TOPAZ_BOW.get(), "翠玉之弓");
+        // 2026-10-03「把弓补齐到 4 把」批 1：三把新弓（技能留后续批）。
+        // 名字照预告对照文档 §二 第 12 行的写法（宝石之弓 / 星界长弓 / 雷鸣长弓）。
+        add(CoeItems.SAPPHIRE_RUBY_BOW.get(), "宝石之弓");
+        add(CoeItems.ASTRAL_BOW.get(), "星界长弓");
+        add(CoeItems.THUNDER_BOW.get(), "雷鸣长弓");
         add(CoeItems.JADE_TOPAZ_BOOMERANG.get(), "翠玉镖");
         add(CoeItems.SAPPHIRE_RUBY_BOOMERANG.get(), "宝石镖");
         add(CoeItems.ASTRAL_BOOMERANG.get(), "星界镖");

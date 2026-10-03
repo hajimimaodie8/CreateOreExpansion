@@ -10,6 +10,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.armor.CoeArmorItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.AbstractBoomerangEntity;
 import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.BoomerangItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.BoomerangTier;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.BowTier;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.BaseStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
@@ -731,23 +732,92 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW = CoeRegistrate.REGISTRATE
-            .item("jade_topaz_bow", JadeTopazBowItem::new)
-            .tag(AllTags.AllItemTags.SKILL_TOOLS.tag)
-            .tag(AllTags.AllItemTags.COOLDOWN_TOOLS.tag)
-            .model((ctx, provider) -> {})
-            .transform(skillItem())
-            .addEnergy()
-            .defaultEnergy(2000)
-            .maxEnergy(2000)
-            .color(ToolEnergyColorConfig.TOPAZ)
-            .build()
+    // ========== 弓四把（2026-10-03 批 1：物品 / 模型 / 贴图 / 注册 / 档位数值） ==========
+    // 声明处一行一件（族级 helper bow(...) 见本段末尾）；
+    // 数值真源 = BowTier（能量上限 / 耐久上限 / 取色 / 能量条色标全在那里），
+    // 行为逻辑四把共用 JadeTopazBowItem（无箭耗能、拉弓、发射、技能释放逐字相同）。
+    //
+    // ⚠ 模型/贴图是**手写**的（每把 4 张图 + 4 个模型 JSON，落在
+    //   coe/src/main/resources/assets/createoreexpansion/{textures,models}/item/）：
+    //   普通模型带 3 段 pulling overrides 指向 3 个拉弓模型，datagen 的 generated() 做不出这个形状
+    //   ⇒ 链上 .model((ctx, provider) -> {}) 是刻意的"不 datagen 模型"（与翠玉之弓原来逐字一致），
+    //     否则 datagen 会另生成一份同名模型、把手写的 overrides 顶掉（拉弓三段就没了）。
+
+    public static final ItemEntry<JadeTopazBowItem> JADE_TOPAZ_BOW =
+            bow("jade_topaz_bow", BowTier.JADE_TOPAZ)
             .addSkills(AllSkills.BOW_CURSE, 1)
             .addSkills(AllSkills.BOW_DISARM, 1)
             .skillColor(SkillOutlineColors.TOPAZ_GOLD)
             .skillCooldown(5 * 20)
             .build()
             .register();
+
+    /** 宝石之弓：批 1 只有物品/模型/贴图/档位数值，<b>技能留后续批</b>（见 {@link #bow} 的注释）。 */
+    public static final ItemEntry<JadeTopazBowItem> SAPPHIRE_RUBY_BOW =
+            bow("sapphire_ruby_bow", BowTier.SAPPHIRE_RUBY)
+            .build()
+            .register();
+
+    /** 星界之弓：批 1 只有物品/模型/贴图/档位数值，<b>技能留后续批</b>。 */
+    public static final ItemEntry<JadeTopazBowItem> ASTRAL_BOW =
+            bow("astral_bow", BowTier.ASTRAL)
+            .build()
+            .register();
+
+    /** 雷鸣之弓：批 1 只有物品/模型/贴图/档位数值，<b>技能留后续批</b>。 */
+    public static final ItemEntry<JadeTopazBowItem> THUNDER_BOW =
+            bow("thunder_bow", BowTier.THUNDER)
+            .build()
+            .register();
+
+    /**
+     * <b>弓族级注册链</b>（形态照 {@code boomerang(...)} / {@code armor(...)} / {@code grindingWheel(...)}：
+     * 共享的那段链只写一次，声明处每个物品一行）。
+     *
+     * <p>它返回<b>未收尾的</b> {@link SkillItemBuilder}（能量段已经 {@code build()} 过、技能段还没），
+     * 因为<b>技能是逐把不同的</b>：翠玉之弓有两条（凋零诅咒 / 缴械风暴 + 发光色 + 冷却），
+     * 三把新弓的<b>留后续批</b>（本轮任务书：批 1 只做物品 + 模型 + 贴图 + 注册 + 档位数值），
+     * 所以每把的声明各自收尾自己的技能段再 {@code .build().register()}。
+     * 这与本文件既有的 {@code skillItem()} 同一套路数（{@code .transform(skillItem())}
+     * 之后本来也是逐件写能量段/技能段）。</p>
+     *
+     * <p>链上每件事各自有唯一出口：</p>
+     * <ul>
+     *   <li>{@code .tag(SKILL_TOOLS / COOLDOWN_TOOLS)} —— 与翠玉之弓原来的两行<b>逐字相同</b>
+     *       （本模组自己的两个标签，见 {@code AllTags}；它们是铁砧附魔守卫的允许标签）。</li>
+     *   <li>{@code .model((ctx, provider) -> {})} —— <b>不 datagen 模型</b>：
+     *       四把弓的模型都是手写的（普通模型带 pulling 三段 overrides），见本段开头的注释。</li>
+     *   <li>{@code .transform(skillItem())} —— 进模组统一的物品构建链；创造页分区由它的
+     *       {@code build()} 声明为 {@code GEAR}（弓属装备区，见 {@code CoeCreativeSections}）。</li>
+     *   <li>{@code .addEnergy()} —— 能量走现成路径（{@code defaultEnergy == maxEnergy} = 初始即满），
+     *       数值随档（{@link BowTier#energy()}），注册时自动挂进工具充能配方
+     *       （{@code ChargingRecipeTools}）。</li>
+     *   <li>{@code .color(tier.color())} —— <b>单一</b>能量色（文字/绑定行）；
+     *       能量条的色标不走这里，走 {@code JadeTopazBowItem#energyGradientStops} → 护甲那张表。</li>
+     *   <li><b>耐久</b> —— <b>不在这条链上</b>：它由 {@link JadeTopazBowItem} 的构造器写进
+     *       {@code Item.Properties#durability(tier.durability())}（形态照本类原来弓那段的
+     *       {@code 384 * 4}）⇒ 上限随档走（1000 / 2000 / 3500 / 3500 的口径表，翠玉档按红线保持 1536）。</li>
+     * </ul>
+     *
+     * @param id   注册 id（同时是图标贴图名 {@code item/<id>} 与模型 JSON 的文件名）
+     * @param tier 数值档（见 {@link BowTier}）
+     */
+    private static SkillItemBuilder<JadeTopazBowItem, ?> bow(String id, BowTier tier) {
+        return CoeRegistrate.REGISTRATE
+            .item(id, p -> new JadeTopazBowItem(tier, p))
+            .tag(AllTags.AllItemTags.SKILL_TOOLS.tag)
+            .tag(AllTags.AllItemTags.COOLDOWN_TOOLS.tag)
+            .model((ctx, provider) -> {})
+            .transform(skillItem())
+            .addEnergy()
+            .defaultEnergy(tier.energy())
+            .maxEnergy(tier.energy())
+            .color(tier.color())
+            // 第一次 build()：收尾能量段（EnergyItemBuilder → SkillItemBuilder）。
+            // 第二次 build() 在各把的声明处（SkillItemBuilder → ItemBuilder，同时把创造页分区与
+            // 充能配方挂上），于是链末尾的 .register() 是 ItemBuilder 的 ⇒ 拿到的才是 ItemEntry。
+            .build();
+    }
 
     // ========== 回旋镖四把（2026-10-02 第一批：投掷 / 去程 / 回程 / 捡物 / 挖方块） ==========
     // 声明处一行一件（族级 helper boomerang(...) 见本段末尾）；

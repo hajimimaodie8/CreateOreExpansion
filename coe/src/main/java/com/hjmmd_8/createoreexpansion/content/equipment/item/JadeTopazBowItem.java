@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFactory;
 import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
 import net.minecraft.server.level.ServerPlayer;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergyColors;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.common.energy.EnergyGradientTool;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
@@ -16,6 +17,7 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 
+import java.awt.Color;
 import java.util.List;
 import javax.annotation.Nullable;
 
@@ -39,7 +41,17 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.EventHooks;
 
 /**
- * 翠玉之弓 —— 传说级能量武器（能量上限 2000，模组组件化能量体系）。
+ * 弓族物品类 —— <b>四把弓共用</b>（翠玉 {@code jade_topaz_bow} / 宝石 {@code sapphire_ruby_bow}
+ * / 星界 {@code astral_bow} / 雷鸣 {@code thunder_bow}），模组组件化能量体系。
+ *
+ * <p><b>2026-10-03「把弓补齐到 4 把」批 1</b>：本类原先只服务翠玉之弓，现在由四把共用
+ * —— 差异<b>只在构造时传进来的 {@link BowTier}</b>（能量上限 / 耐久上限 / 取色 / 能量条色标），
+ * 行为逻辑（无箭耗能 {@value #NO_ARROW_COST}、拉弓、发射、技能释放）四把逐字相同。
+ * 翠玉那把的注册值也因此一字未变：档位表里 {@code JADE_TOPAZ} 那一行就是它的现行值
+ * （能量 2000 / 耐久 1536 / 取色 TOPAZ，见 {@link BowTier} 类注释的"待裁"一节）。</p>
+ *
+ * <p>能量上限随档走（{@link BowTier#energy()} = 500 / 2000 / 5000 / 5000 的口径表，
+ * 翠玉档按红线保持现行 2000），耐久上限同表（{@link BowTier#durability()}）。</p>
  *
  * <p>技能（模组技能体系，绑定于 SKILLS 组件，tooltip 自动显示按键）：</p>
  * <ul>
@@ -50,6 +62,10 @@ import net.neoforged.neoforge.event.EventHooks;
  * <p>释放流程：按下时锁定技能键位 → 松手射击时经 {@link SkillsComponent#releaseSkillAt}
  * 统一释放（能量预检查/消耗/冷却走模组体系）→ 发射时把技能 id 写入箭的 persistentData，
  * 命中后由 {@code JadeTopazBowEventHandler} 读取并调用对应技能效果。</p>
+ *
+ * <p>⚠ <b>批 1 只补"物品 / 模型 / 贴图 / 注册 / 档位数值"</b>：三把新弓目前<b>没有绑技能</b>
+ * （{@code .addSkills(...)} 留后续批），因此它们的技能段是空的——按下技能键不会释放任何东西；
+ * 翠玉之弓的两条技能一字未动。</p>
  *
  * <p><b>P3p</b>：实现 {@link EnergyGradientTool} —— 共享库（core）的能量门面/能量 tooltip
  * 不能再 {@code instanceof JadeTopazBowItem}（库不 import 层），改判这个零方法标记契约；
@@ -72,8 +88,20 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	/** 拉满所需 tick */
 	public static final float MAX_PULL_TIME = 25.0F;
 
-	public JadeTopazBowItem(Properties properties) {
-		super(properties.durability(384 * 4));
+	/**
+	 * 这一把所属的<b>档位</b>（能量上限 / 耐久上限 / 取色 / 能量条色标的唯一来源，
+	 * 见 {@link BowTier}）。
+	 *
+	 * <p>⚠ 它在<b>注册期</b>就固定下来（每把弓 = 一个物品实例 + 一份档），不是逐堆可变的组件值。
+	 * 本类自 2026-10-03 弓补齐那轮起由<b>四把弓共用</b>（翠玉 / 宝石 / 星界 / 雷鸣），
+	 * 档位差异全部落在这一个字段上，行为逻辑四把逐字相同。</p>
+	 */
+	private final BowTier tier;
+
+	public JadeTopazBowItem(BowTier tier, Properties properties) {
+		// 耐久上限随档走（形态就是本类原来的 384 * 4，只是把那个写死的数换成档位表）。
+		super(properties.durability(tier.durability()));
+		this.tier = tier;
 	}
 
 	public static float getPowerForTime(int charge) {
@@ -242,5 +270,24 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		level.playSound(null, player.getX(), player.getY(), player.getZ(),
 				SoundEvents.ARROW_SHOOT, SoundSource.PLAYERS,
 				1.0F, 1.0F / (level.getRandom().nextFloat() * 0.4F + 1.2F) + power * 0.5F);
+	}
+
+	/**
+	 * <b>能量条/能量行的色标——按档问护甲那张取色表</b>（2026-10-03 弓补齐那轮）。
+	 *
+	 * <p>形态与回旋镖四把<b>逐字相同</b>（{@code BoomerangItem#energyGradientStops}）：
+	 * 档 → 同名护甲套（{@link BowTier#armorSet()}）→ 护甲自己的取色源
+	 * （{@link ArmorEnergyColors#stopsOf(com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet)}）。
+	 * 弓侧<b>一个色值都不复写</b>、也不自己拼渐变，因此色标条数跟着护甲走
+	 * （翠玉 2 / 宝石 2 / <b>星界 4</b> / 雷鸣 2），渲染器就是护甲 tooltip 用的那个多段重载。</p>
+	 *
+	 * <p>⚠ <b>翠玉之弓的渲染结果零变化</b>：翠玉套的色标（{@code 0x55FF55 → 0xFFFF55}）
+	 * 与 {@code EnergyTooltipHandler} 里弓那条历史默认<b>逐字同值、同序</b>
+	 * （护甲那张表的注释写明"与翠玉之弓同款"，两边本来就是一份）。
+	 * 所以本方法只是把"翠玉之弓靠默认值"改成"四把弓都自己回答"，颜色一格没动。</p>
+	 */
+	@Override
+	public List<Color> energyGradientStops(ItemStack stack) {
+		return ArmorEnergyColors.stopsOf(tier.armorSet());
 	}
 }

@@ -1,0 +1,13 @@
+{
+  "type": "createoreexpansion:charging",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:thunder_bow"
+    }
+  ],
+  "results": [
+    {
+      "id": "createoreexpansion:thunder_bow"
+    }
+  ]
+}

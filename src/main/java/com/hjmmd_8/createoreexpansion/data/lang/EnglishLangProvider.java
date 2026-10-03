@@ -273,6 +273,11 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.wheel_effect.quantity", "Effect: +%s to each result amount");
         add("createoreexpansion.wheel_effect.double", "Effect: %s%% chance to double results");
         add(CoeItems.JADE_TOPAZ_BOW.get(), "Jade Topaz Bow");
+        // 2026-10-03 "four bows" batch 1: the three new bows (skills come in a later batch).
+        // Names follow the plan doc's wording ("Gem Bow / Astral Longbow / Thunder Longbow").
+        add(CoeItems.SAPPHIRE_RUBY_BOW.get(), "Sapphire Ruby Bow");
+        add(CoeItems.ASTRAL_BOW.get(), "Astral Longbow");
+        add(CoeItems.THUNDER_BOW.get(), "Thunder Longbow");
         add(CoeItems.JADE_TOPAZ_BOOMERANG.get(), "Jade Topaz Boomerang");
         add(CoeItems.SAPPHIRE_RUBY_BOOMERANG.get(), "Sapphire Ruby Boomerang");
         add(CoeItems.ASTRAL_BOOMERANG.get(), "Astral Boomerang");

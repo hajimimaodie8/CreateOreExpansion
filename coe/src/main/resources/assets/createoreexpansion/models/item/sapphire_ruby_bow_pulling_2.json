@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/bow",
+  "textures": {
+    "layer0": "createoreexpansion:item/sapphire_ruby_bow_pulling_2"
+  }
+}

@@ -30,8 +30,11 @@ import net.minecraft.world.item.ItemStack;
  *       {@code ToolEnergyColorConfig.<档>.light -> .dark} 那条<b>两色标</b>渐变，
  *       作者原话否掉了它：「<i>能量条的样式和颜色应该与那个装备一样，而不是你自己造出一个
  *       新的渐变</i>」；</li>
- *   <li>翠玉之弓<b>不覆写</b>，默认返回空表 ⇒ 消费方回落到本契约的历史默认
- *       （翠玉之弓那条绿→黄，逐字不变；护甲翠玉套的配色也仍以它为源）；</li>
+ *   <li><b>弓四把</b>（2026-10-03「把弓补齐到 4 把」批 1）<b>同样覆写</b>，走的是<b>同一行</b>调用
+ *       （{@code JadeTopazBowItem#energyGradientStops} → {@code BowTier#armorSet()} →
+ *       {@code ArmorEnergyColors#stopsOf}）：翠玉档返回的绿 {@code 0x55FF55} → 黄 {@code 0xFFFF55}
+ *       与下面的历史默认<b>逐字同值、同序</b> ⇒ <b>翠玉之弓的渲染结果零变化</b>，
+ *       只是从"靠默认值"改成"自己回答"；三把新弓这才拿得到自己那一档的色标；</li>
  *   <li>以后再加"按材质变色的渐变条"，只需覆写这一个方法，不必再动任何一个消费方。</li>
  * </ul>
  */

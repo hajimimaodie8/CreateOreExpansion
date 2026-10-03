@@ -348,8 +348,11 @@ public final class CoeCreativeSections {
             || stack.is(ItemTags.LEG_ARMOR) || stack.is(ItemTags.FOOT_ARMOR)) {
             return new Classification("gear", GEAR_ARMOR);
         }
-        // 翠玉之弓：点名（§8 ③ 列的就是「点名（或它自己的类）」）
-        if ("jade_topaz_bow".equals(path)) {
+        // 弓四把：按注册名后缀（2026-10-03 弓补齐那轮把点名改成后缀——原来只点名
+        // jade_topaz_bow，新加的三把会掉进 DECLARED_FALLBACK_ORDER（50）被排到装备区末尾，
+        // 而不是跟在翠玉之弓旁边）。判据放宽后翠玉之弓仍走**同一个分支**，归属与族序一格未变。
+        // 全模组以 _bow 结尾的注册名只有这四把（crossbow 之类不带下划线，不会误命中）。
+        if (path.endsWith("_bow")) {
             return new Classification("gear", GEAR_BOW);
         }
         // 凝能佩 6 件：⚠ 它们同时带 Create 的 SKILL_TOOLS 标签，所以「装备」绝不能只靠 SKILL_TOOLS 判
