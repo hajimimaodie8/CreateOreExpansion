@@ -9,6 +9,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.skill.config.StarShockConfigs;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
 import net.minecraft.server.level.ServerLevel;
@@ -31,6 +32,9 @@ import net.minecraft.world.phys.Vec3;
  *   <li><b>波速</b> —— 由波级查 {@code WaveLevels#baseSpeed} 得来（6/7/8 格/秒），本类不额外写 speedOffset；</li>
  *   <li><b>波载荷</b> —— <b>不设置</b>（普通能量波不带载荷；只有星辉波变器的 {@code stellar_wave} 带）；</li>
  *   <li><b>剩余寿命</b> —— 不设置（沿用 {@code AbstractChargerWaveEntity} 的 200 tick 上限）。</li>
+ *   <li><b>魔素</b>（2026-10-03 需求 coe-ess 批 4 追加的第六项，纯观感）—— 主波
+ *       {@code trySetEssence(WaveTrailStyle.ARCANE)}（固定 = 异）；伴随波从
+ *       {@link #ORBIT_ESSENCE_POOL} 里<b>每枚各自随机抽</b>一种。</li>
  * </ol>
  *
  * <h2>发射路径与既有机器<b>逐条同形</b>（不是我另起一条）</h2>
@@ -179,6 +183,25 @@ public final class StarShockRuntime {
 
     /** <b>环绕初始相位</b>（弧度）：需求 §3.3(b) 给的是 <b>0</b>（出生在基向量 u 正方向一侧）。 */
     private static final double ORBIT_PHASE = 0.0D;
+
+    /**
+     * <b>伴随波（环绕波）的魔素抽签池</b> —— 需求 coe-ess §3.3 第 2 条：伴随波 = 从"剩下 7 种"
+     * （水/火/地/风/冰/雷/毒）里<b>每枚各自随机抽一种</b>。<b>不含异</b>（异是主波的固定魔素，
+     * 见 {@link #fireMainWave}）。
+     *
+     * <p><b>名单只有这一份</b>：{@link #fireOrbitWave} 那一次掷骰直接按本数组取。不许在别的
+     * 地方再抄一遍这 7 个名字（抄一份就多一个漂移源：改了一处、另一处照旧）；关卡
+     * {@code wave-essence-star-shock} 反过来钉着一条等式 —— <b>本池 = {@code WaveTrailStyle}
+     * 里除 {@code ARCANE} 以外的全部魔素</b>，所以将来给枚举追加第 9 种魔素时它会变红，
+     * 逼一次"新魔素要不要进伴随波池"的决定。</p>
+     *
+     * <p><b>不去重、不排除连续相同</b>（作者裁定）：顺序照 {@code WaveTrailStyle} 的声明序排，
+     * 便于与枚举逐字对照；抽中的结果只由那一次 {@code world.random} 决定，池里没有任何状态。</p>
+     */
+    private static final WaveTrailStyle[] ORBIT_ESSENCE_POOL = {
+        WaveTrailStyle.WATER, WaveTrailStyle.FIRE, WaveTrailStyle.EARTH, WaveTrailStyle.WIND,
+        WaveTrailStyle.ICE, WaveTrailStyle.LIGHTNING, WaveTrailStyle.POISON
+    };
 
     /** 命中附加嬗乱的持续 tick 数（需求 §3.3(d)：60 tick = 3 秒）。 */
     private static final int HIT_DISORDER_TICKS = 60;
@@ -504,6 +527,11 @@ public final class StarShockRuntime {
         ChargerWaveEntity wave = new ChargerWaveEntity(world, origin, look, waveLevel);
         // 波型 = 攻击态（与"变器攻击波变态"引燃出来的波型是同一个）
         wave.trySetWaveType(WaveTypes.ATTACK);
+        // 魔素（2026-10-03 需求 coe-ess 批 4，§3.3 第 1 条）：星界套的<b>主波固定 = 异</b>。
+        // 必须紧跟在 trySetWaveType 之后：trySetEssence 只在"会伤害的波型"上生效（魔素是攻击波
+        // 专有，作者裁定），波型还没转成攻击态时设它会返回 false 且什么都不写。
+        // 只设这一处 ⇒ 其它一切攻击波（变器攻击波变态、回旋镖…）保持未设 = 继承波型风格 = 火。
+        wave.trySetEssence(WaveTrailStyle.ARCANE);
         // 命中附加效果要素（需求 §3.3(d)）：既有命中链一个字不改，只在链尾追加一次 addEffect。
         // 星辉石凝能佩免疫嬗乱走既有的 MobEffectEvent.Applicable 拦截点，本类不写免疫判据。
         wave.setHitEffect(TransmutationEffects.TRANSMUTATION_DISORDER,
@@ -516,10 +544,11 @@ public final class StarShockRuntime {
         // 这一行让"技能几级、实际打出几级波、本次第几枚 / 共几枚、蓄力进度 t"在日志里可查
         // —— "3 级满蓄力到底出几枚"就靠这一行自证（作者 2026-10-02 裁定第 3 条：
         //   日志必须能证明"本次发射共 N 枚"）。
-        WaveDiag.trace("星芒嬗震发射：技能 {} 级 → {} 级波（{}），本次第 {} 枚 / 共 {} 枚（蓄力 t={}），批次 {}，位置 {}",
+        WaveDiag.trace("星芒嬗震发射：技能 {} 级 → {} 级波（{}），本次第 {} 枚 / 共 {} 枚（蓄力 t={}），魔素={}，批次 {}，位置 {}",
             cast.level, waveLevel, WaveLevels.glyph(waveLevel), cast.fired,
             StarShockConfigs.mainWaveCount(heldTicks, cast.config),
-            fmt2(StarShockConfigs.chargeProgress(heldTicks, cast.config)), cast.batch, origin);
+            fmt2(StarShockConfigs.chargeProgress(heldTicks, cast.config)),
+            WaveTrailStyle.ARCANE.name(), cast.batch, origin);
 
         // 每枚主波各自 0~1 枚环绕波（需求 §3.3(b)）：概率 = t × 该级上限，点按 t = 0 ⇒ 恒 0。
         // 骰子用世界随机（服务端权威），整发波的形状只由这一次掷骰决定。
@@ -560,6 +589,13 @@ public final class StarShockRuntime {
         int orbitLevel = StarShockConfigs.orbitWaveLevelFor(cast.level);
         ChargerWaveEntity orbit = new ChargerWaveEntity(world, parent.position(), parent.getMovement(), orbitLevel);
         orbit.trySetWaveType(WaveTypes.ATTACK);
+        // 魔素（2026-10-03 需求 coe-ess 批 4，§3.3 第 2 条）：伴随波 = 从 {@link #ORBIT_ESSENCE_POOL}
+        // 的 7 种里<b>每枚各自抽一种</b>（与"每枚主波各自滚骰"同粒度 ⇒ 一次长按可能同时出现
+        // 2~3 种不同魔素的伴随波，那是预期行为；不去重、不排除与上一枚相同）。
+        // 随机源用<b>本波已有的</b> world.random（服务端权威；§3.3 明确"不要 new Random()"，
+        // 本仓对可复现性有要求）。池与掷骰都只有这一处，见 ORBIT_ESSENCE_POOL 的说明。
+        WaveTrailStyle orbitEssence = ORBIT_ESSENCE_POOL[world.random.nextInt(ORBIT_ESSENCE_POOL.length)];
+        orbit.trySetEssence(orbitEssence);
         // 命中附加嬗乱与主波同一份（环绕波也是这条技能的波，打中谁都要挂嬗乱）
         orbit.setHitEffect(TransmutationEffects.TRANSMUTATION_DISORDER,
             HIT_DISORDER_TICKS, HIT_DISORDER_AMPLIFIER);
@@ -569,10 +605,11 @@ public final class StarShockRuntime {
         orbit.setOrbitAnchor(parent.getUUID(), ORBIT_RADIUS, ORBIT_ANGULAR_SPEED, ORBIT_PHASE);
         world.addFreshEntity(orbit);
         cast.orbitSpawned++;
-        WaveDiag.trace("星芒嬗震环绕波：技能 {} 级 → {} 级波（{}，主波一半伤害），本次第 {} 枚主波（t={}，概率 {}）；批次 {}（继承父波），绕 {} 的 r={} 格、{} 圈/秒",
+        WaveDiag.trace("星芒嬗震环绕波：技能 {} 级 → {} 级波（{}，主波一半伤害），本次第 {} 枚主波（t={}，概率 {}），魔素={}；批次 {}（继承父波），绕 {} 的 r={} 格、{} 圈/秒",
             cast.level, orbitLevel, WaveLevels.glyph(orbitLevel), cast.fired,
             fmt2(StarShockConfigs.chargeProgress(heldTicks, cast.config)),
             fmt2(StarShockConfigs.orbitChance(heldTicks, cast.config)),
-            parent.getFiringBatch(), parent.getId(), ORBIT_RADIUS, ORBIT_TURNS_PER_SECOND);
+            orbitEssence.name(), parent.getFiringBatch(), parent.getId(), ORBIT_RADIUS,
+            ORBIT_TURNS_PER_SECOND);
     }
 }
