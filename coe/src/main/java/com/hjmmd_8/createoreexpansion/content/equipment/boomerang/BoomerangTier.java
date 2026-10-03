@@ -344,6 +344,32 @@ public enum BoomerangTier {
     }
 
     /**
+     * <b>这一档有没有"十字挖掘"这个固有特性</b>（需求 2026-10-03 第二轮 §3.3；
+     * 作者裁定：<b>星界 / 雷鸣固有、不占技能槽</b> ⇒ "回旋镖只有两个技能"仍然成立）。
+     *
+     * <p>翠玉 / 宝石 <b>没有</b>：{@code ASTRAL, THUNDER -> true}、
+     * {@code JADE_TOPAZ, SAPPHIRE_RUBY -> false}。</p>
+     *
+     * <p><b>它是"哪几档开出十字"的唯一判据处</b>：实体侧只有
+     * {@code AbstractBoomerangEntity#onHitBlock} 普通支里那一句
+     * {@code tier().crossMine() ? mineCross(pos) : mineBlock(pos)} 问过它
+     * （容器支一个字没动）；物品注册 / 技能表 / 按键都不许再写第二份"星界雷鸣"的名单。</p>
+     *
+     * <p>⚠ 与 {@link #armorSet()} / {@link #baseSkillLevel()} / {@link #capabilityRange()}
+     * <b>同形</b>：派生量用 {@code switch (this)} 表达，<b>绝不</b>加成第 12 个构造参数 ——
+     * 构造参数表（11 项）被关卡 §29h-1 与 §29k <b>逐位钉住</b>，加一个参数那两处一起红。</p>
+     *
+     * <p><b>穷尽、不写 {@code default}</b>（与 {@link #armorSet()} 同理）：枚举一旦改名、
+     * 或将来加成五档，少一个分支<b>编译就不过</b> —— 而不是到运行期悄悄少挖一格。</p>
+     */
+    public boolean crossMine() {
+        return switch (this) {
+            case ASTRAL, THUNDER -> true;
+            case JADE_TOPAZ, SAPPHIRE_RUBY -> false;
+        };
+    }
+
+    /**
      * 原版挖掘进度里的 {@code digSpeed}（见类注释的推导：{@code 30 * maxHardness}）。
      *
      * <p>取 30 而不是 100：{@code i} 的两个分支里，<b>30 是"算正确工具/不需要正确工具"的那一支</b>

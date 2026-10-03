@@ -306,6 +306,19 @@ import net.minecraft.world.phys.Vec3;
  * —— 取物 −1 与"挖掉一个方块 −1"不再各记一笔（作者裁定"不重复扣"）：{@code mineBlock} 负责
  * "真的挖掉了"那一笔，{@link #onHitBlock(BlockPos)} 只在 {@code took && !destroyed}
  * （取到了、却没挖掉：挖不动，或命中每玩家战利品模组）时补记取物那一笔。</p>
+ *
+ * <h2>十一、批 4（2026-10-03 第二轮需求 §3.3）：十字挖掘 —— 星界 / 雷鸣的固有特性</h2>
+ * <p>作者裁定：十字挖掘是<b>星界镖 / 雷鸣镖的固有特性</b>（<b>不占技能槽</b> ⇒
+ * "回旋镖只有两个技能"仍然成立），翠玉 / 宝石没有；平面 = <b>垂直于飞行方向</b>的平面，
+ * 形状 = 中心 1 格 + 该平面内 4 个正交方向各 1 格 = <b>5 格</b>（臂长 1、不随等级变）。</p>
+ * <p>落地只有两处：判据 {@link BoomerangTier#crossMine()}（穷尽 {@code switch (this)}、
+ * <b>无 {@code default}</b> ⇒ 枚举改名或加档<b>编译就不过</b>；也不是第 12 个构造参数 ——
+ * 那 11 项被关卡逐位钉住）+ helper {@link #mineCross(BlockPos)}（垂面法向 = {@code |d|}
+ * 最大的世界轴、并列固定序 x→y→z；5 格<b>每一格</b>都走既有唯一破坏入口
+ * {@link #mineBlock(BlockPos)} ⇒ 每格各扣 1 耐久（共 −5）、挖不动由它自己跳过且不记账；
+ * <b>不吃能量</b>；方块穿透额度仍只扣 1 份；邻格是容器就跳过 —— <b>不挖也不开箱</b>；
+ * 零向量退化为单格，<b>不引"上一次有效方向"字段</b>）。
+ * 调用点只有 {@link #onHitBlock(BlockPos)} 的普通支一处 —— <b>容器支一字未动</b>。</p>
  */
 public abstract class AbstractBoomerangEntity extends Projectile implements OrbitAnchor {
 
@@ -386,6 +399,17 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	public static final int PICKUP_DELAY = 5;
 	/** 乘客的骑乘位再下移这么多（需求 4）。 */
 	public static final double PASSENGER_OFFSET_Y = 0.4D;
+
+	/**
+	 * <b>"飞行方向已经退化成一个点"的判据</b>（{@code |d|²} 的下限；批 4 十字挖掘的零向量兜底）。
+	 *
+	 * <p>数值与 {@link #checkImpact()} 第一行的"位移太小直接返回"<b>逐字相同</b>
+	 * （那里写的是字面量 {@code 1.0E-7D}）：命中判定本身就拒绝零位移，所以从
+	 * {@link #checkImpact()} 那条路进来的十字挖掘<b>到不了</b>"零向量"这一支。
+	 * 但 {@link #mineCross(BlockPos)} 是个独立入口（将来别处也能调），这里再判一次，
+	 * 绝不拿一个零向量去定"垂面轴"（{@code normalize()} 会出 NaN）。</p>
+	 */
+	private static final double DEGENERATE_DIRECTION_SQR = 1.0E-7D;
 
 	/**
 	 * <b>主人"被传送走了"的判据阈值</b>（格²；作者 2026-10-02 第三次裁定第 4 条）。
@@ -1192,7 +1216,8 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 * 命中方块：能挖就挖（{@link #mineBlock}），然后按模式与额度决定"穿过去还是掉头"
 	 * （2026-10-02 批 3：需求 §3.5）。
 	 *
-	 * <p>本方法只做两件事：<b>尝试挖</b>（{@code destroyed = mineBlock(pos)}）与
+	 * <p>本方法只做两件事：<b>尝试挖</b>（{@code destroyed = tier().crossMine() ? mineCross(pos)
+	 * : mineBlock(pos)}，见类注释第十一节）与
 	 * <b>扣额度</b>；"穿过去还是掉头"整条判据交给 {@link #turnAroundIfNotPiercing(int, boolean)}
 	 * 那一处（生物那条路径用的是同一个方法）——于是"花瓣段优先"这条规则<b>在代码里只有一处</b>。</p>
 	 *
@@ -1203,7 +1228,7 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 * {@link #mineBlock(BlockPos)} 把容器方块本身也挖走；每一步的先后都有理由（见下方代码注释）。
 	 * 判容器的顺序必须在挖掘<b>之前</b>。</p>
 	 *
-	 * <p>行为对照（四种情形）：</p>
+	 * <p>行为对照（四种情形 + 批 4 的第五条附加）：</p>
 	 * <ol>
 	 *   <li><b>容器（点按与长按都会走到）</b>：填表 → 取空 → 挖掉方块本身（挖不动则不挖），
 	 *       但"穿过去还是掉头"照旧按 {@code mayPierceThrough = false} 算
@@ -1213,6 +1238,11 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 *       优先于"额度用完"）；挖不动的方块也穿过——花瓣曲线是固定路径，与批 2 的花瓣段行为一致；</li>
 	 *   <li><b>点按 + 挖不动</b>：{@code mayPierceThrough = false} ⇒ 撞墙，照旧掉头（批 1/2 的行为）；</li>
 	 *   <li><b>点按 + 挖掉了</b>：额度没用完就<b>穿过去继续飞</b>，用完则<b>掉头</b>。</li>
+	 *   <li><b>批 4 附加（只影响星界 / 雷鸣的普通支）</b>：判据 {@link BoomerangTier#crossMine()}
+	 *       为 true 时上面的 {@code mineBlock(pos)} 换成 {@link #mineCross(BlockPos)} ——
+	 *       它多挖垂直面上的 4 个邻格，但<b>返回的仍是中心那一格的结果</b>，
+	 *       所以下面这四条行为（含"额度只扣 1 份"）逐字不变；中心格是容器时走上面那一支，
+	 *       十字<b>不介入</b>（邻格是容器则跳过，不挖也不开箱）。</li>
 	 * </ol>
 	 *
 	 * <p>额度只在<b>真的挖掉</b>时消耗：挖不动的方块不消耗额度（否则"额度被挖不穿的墙吃掉"
@@ -1254,7 +1284,12 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 			// 点按 ⇒ 撞到即回；花瓣近程 ⇒ 穿过去继续飞完这一瓣。判定仍然只有 turnAroundIfNotPiercing 一处。
 			return turnAroundIfNotPiercing(this.pierceBlocksLeft, false);
 		}
-		boolean destroyed = mineBlock(pos);
+		// ★ 批 4（需求 coe-boom2 §3.3）：星界 / 雷鸣镖的**固有特性** —— 十字挖掘。
+		// 判据只有 BoomerangTier#crossMine() 一处；true 就走十字 helper（它内部对**每一格**
+		// 仍是同一个 mineBlock 入口 ⇒ "每格各扣 1 耐久""挖不动就跳过、不记账"两条既有规则
+		// 一个字不改）。下面的额度记账与掉头判定**照旧只按中心这一格的结果**算 ⇒ 额度仍只扣 1 份。
+		// ⚠ 容器支（上面那一支）一个字没动：中心格是容器时走既有开箱取物，十字不介入。
+		boolean destroyed = tier().crossMine() ? mineCross(pos) : mineBlock(pos);
 		// 照旧**无条件**记账（与 onHitEntity 同形，不在命中路径里判模式：那条分歧只在
 		// turnAroundIfNotPiercing 一处）。花瓣段不读这份额度 ⇒ 记了也不影响花瓣行为。
 		ensurePierceQuota();
@@ -1342,6 +1377,89 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 			// 需求 §3.8：挖掉一个方块 ⇒ 额外 −1 耐久。**只记账、不写回**（见 flightWear 的注释）：
 			// 这里绝不能调 BoomerangItem#addWear —— 那正是"耐久被提前打到 0"的那条错路。
 			addFlightWear(BoomerangTier.WEAR_PER_HIT);
+		}
+		return destroyed;
+	}
+
+	// ================= 十字挖掘（2026-10-03 批 4：星界 / 雷鸣的固有特性） =================
+
+	/**
+	 * ★ <b>十字挖掘</b>（需求 coe-boom2 §3.3；作者裁定 = 星界 / 雷鸣的<b>固有特性、不占技能槽</b>）：
+	 * 除命中的那一格之外，再在<b>垂直于飞行方向</b>的平面上多挖 <b>4 个正交邻格</b>
+	 * （臂长 1、不随等级变）⇒ 一共 5 格。
+	 *
+	 * <p><b>平面怎么定（唯一判据处）</b>：垂面的法向取飞行方向 {@code d = getDeltaMovement()}
+	 * （与 {@link #checkImpact()} 用的是同一个向量、与 {@link #orbitDirection()} 同源）
+	 * 里 <b>{@code |d|} 最大的那个世界轴</b>，<b>并列时固定序 x → y → z</b>：</p>
+	 * <ul>
+	 *   <li>轴 <b>X</b>（沿 X 飞）⇒ 平面 YZ ⇒ 中心 + {@code (0,±1,0)} + {@code (0,0,±1)}
+	 *       （水平飞 = 上下 + 前后）；</li>
+	 *   <li>轴 <b>Y</b> ⇒ 平面 XZ ⇒ 中心 + {@code (±1,0,0)} + {@code (0,0,±1)}；</li>
+	 *   <li>轴 <b>Z</b> ⇒ 平面 XY ⇒ 中心 + {@code (±1,0,0)} + {@code (0,±1,0)}。</li>
+	 * </ul>
+	 * <p>⚠ <b>"不是永远水平"</b>：这一支跟着 {@code |d|} 走 —— 45° 斜向下飞时 X 与 Y 并列，
+	 * 固定序把平面定成 <b>YZ（竖直的）</b>；只有 {@code |d_y|} 真正最大（近乎垂直俯冲）时平面才接近
+	 * 水平，而那时它本来就是最接近真垂面的那个离散平面。把平面写死成"水平面"正是这一条的反面。</p>
+	 *
+	 * <p><b>每一格都走既有唯一破坏入口</b> {@link #mineBlock(BlockPos)}（临时换主手 +
+	 * {@code gameMode.destroyBlock} + {@code finally} 还原）：于是"硬度 / 挖掘等级 / 原版进度 /
+	 * 权限 / 时运 / 掉落归属"整条判定一个字不改；<b>挖不动它自己返回 false 且不记账</b>
+	 * （跳过的那格不扣耐久 —— §3.3 第 3 条），<b>挖掉了它自己记一笔 −1</b> ⇒ 5 格各扣 1、共 −5，
+	 * 本方法<b>一笔都不补记</b>（不碰 {@code addFlightWear}）。</p>
+	 *
+	 * <p><b>不消耗能量</b>（§3.3 第 4 条：挖方块早就改扣耐久了）；
+	 * <b>方块穿透额度仍只扣 1 份</b>（额度在 {@code onHitBlock} 那一处按"命中这一格挖没挖掉"记，
+	 * 本方法挖了几格都不参与）。</p>
+	 *
+	 * <p><b>邻格是容器 ⇒ 跳过</b>（不挖、<b>也不开箱</b>）：直接 {@code mineBlock} 会把箱子挖掉，
+	 * 而 {@code ChestBlock#onRemove} → {@code Containers.dropContentsOnDestroy} 会把里面
+	 * <b>还没取走</b>的东西撒一地（这正是批 7/8 花一整节避开的事）。这里问的是最窄的一句
+	 * "这一格装着东西吗"（方块实体 {@code instanceof Container}），<b>不是</b>既有那个
+	 * "能不能开箱取物"的判据 —— 十字不做取物，所以不该去问它（问了就等于在邻格也开箱）。</p>
+	 *
+	 * <p>⚠ <b>零向量兜底</b>（§3.3 的 ⚠）：方向退化时<b>不 normalize、也不引"上一次有效方向"字段</b>
+	 * —— 直接只挖命中的这一格（见 {@link #DEGENERATE_DIRECTION_SQR}）。</p>
+	 *
+	 * <p>⚠ <b>本方法不许自己掉头</b>（{@code setReturning} 全实体恰好 4 处，关卡钉着）；
+	 * 返回值只报<b>中心那一格</b>挖没挖掉，供 {@code onHitBlock} 决定"吃不吃额度、穿过去还是掉头"，
+	 * 与单格时代逐字同形。</p>
+	 *
+	 * @return {@code true} = <b>中心那一格</b>真的挖掉了（邻格挖了几格都不改这个答案）
+	 */
+	private boolean mineCross(BlockPos pos) {
+		Vec3 motion = getDeltaMovement();
+		if (motion.lengthSqr() < DEGENERATE_DIRECTION_SQR) {
+			// 零向量兜底：方向退化成一个点 ⇒ 退化为单格挖掘（不引入"上一次有效方向"字段）。
+			return mineBlock(pos);
+		}
+		double ax = Math.abs(motion.x);
+		double ay = Math.abs(motion.y);
+		double az = Math.abs(motion.z);
+		// 被垂直的轴 = |d| 最大的那个世界轴；并列时固定序 x -> y -> z（先 x、再 y、最后 z）。
+		int axis;
+		if (ax >= ay && ax >= az) {
+			axis = 0;
+		} else if (ay >= az) {
+			axis = 1;
+		} else {
+			axis = 2;
+		}
+		// 平面内 4 个正交邻格（臂长 1，与等级无关）：三条分支各一张表，别处不许再写第二份。
+		BlockPos[] ring = switch (axis) {
+			case 0 -> new BlockPos[] { pos.offset(0, 1, 0), pos.offset(0, -1, 0), pos.offset(0, 0, 1), pos.offset(0, 0, -1) };
+			case 1 -> new BlockPos[] { pos.offset(1, 0, 0), pos.offset(-1, 0, 0), pos.offset(0, 0, 1), pos.offset(0, 0, -1) };
+			default -> new BlockPos[] { pos.offset(1, 0, 0), pos.offset(-1, 0, 0), pos.offset(0, 1, 0), pos.offset(0, -1, 0) };
+		};
+		// 中心格：命中的就是它。走到这里说明它**不是容器**（容器在 onHitBlock 的前置支里就被截走了，
+		// 十字根本不介入）⇒ 直接交给唯一破坏入口。
+		boolean destroyed = mineBlock(pos);
+		for (BlockPos neighbour : ring) {
+			// 邻格是容器 ⇒ 跳过：不挖（内容会撒一地）、也不开箱（十字没有取物这一步）。
+			if (level().getBlockEntity(neighbour) instanceof Container) {
+				continue;
+			}
+			// 挖不动由 mineBlock 自己返回 false 且不记账；挖掉了它自己记一笔 WEAR_PER_HIT。
+			mineBlock(neighbour);
 		}
 		return destroyed;
 	}
