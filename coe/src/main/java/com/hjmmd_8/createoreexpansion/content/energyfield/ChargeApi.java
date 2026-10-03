@@ -40,7 +40,7 @@ import net.minecraft.world.entity.LivingEntity;
  * 等级夹取一律走 {@link ChargeConfigs}（需求 §5.1 #5 的唯一真源），关卡里有负向断言守着。
  * 连「无电荷 ⇒ 等级多少」这个哨兵值也是从表里推的（见 {@link #levelOf}）。</p>
  *
- * <p><b>★ 本批的中间态：异极 ⇒ 中和爆炸<b>还没有落地</b>（那是批 5）</b>（需求 §3.5）：
+ * <p><b>★ 本批的中间态：异极 ⇒ 中和爆炸「还没有落地」（那是批 5）</b>（需求 §3.5）：
  * {@link #apply} 检测到「实体身上是相反极性」时会调用 {@link #neutralize}，而那个方法
  * <b>本批是刻意留空的钩子</b>：它只记一行日志、<b>不改任何状态</b>，并带着
  * {@code TODO 批 5}。⇒ 今天的可观测行为是：异极施加 = <b>什么都不发生 + 一行日志</b>
@@ -48,7 +48,7 @@ import net.minecraft.world.entity.LivingEntity;
  * （批 3 的教训：静默分支无从判断它有没有被走到）。批 5 落地时把这个钩子换成真正的爆炸，
  * 并把关卡里「钩子是空的」那条断言一起改掉。</p>
  *
- * <p><b>Holder 身份：为什么本类<b>不需要</b>批 2 那个 {@code is(ResourceKey)} 兜底</b>：
+ * <p><b>Holder 身份：为什么本类不需要批 2 那个 {@code is(ResourceKey)} 兜底</b>：
  * {@code ChargeEffectRemovalHandler} 需要它，是因为它在 {@code MobEffectEvent.Remove} 里拿
  * <b>两个 {@code Holder} 变量做 {@code ==}</b>，而命令路径给出的注册表 {@code Holder.Reference}
  * 与我们自己的 {@code DeferredHolder} 壳<b>不是同一个对象</b>。本类走的是
@@ -65,7 +65,8 @@ import net.minecraft.world.entity.LivingEntity;
  * <p><b>注册时序</b>：{@code MobEffectInstance} 的构造器会调 {@code holder.value()}
  * （取 {@code MobEffect#fillEffectCures}）⇒ 本类<b>只能在 {@code RegisterEvent} 之后调用</b>
  * （正常玩法路径都在那之后；注册完成前构造实例会抛 {@code NullPointerException}）。
- * 只查询（{@link #polarityOf} / {@link #hasEffect} 那一路）是不需要 {@code value()} 的。</p>
+ * 只查询（{@link #polarityOf} / {@link #levelOf} / {@link #hasCharge} 那一路）是不需要
+ * {@code value()} 的。</p>
  *
  * <p><b>不碰的东西</b>（需求 §四）：不重写 {@code ChargePolarity} / {@code EnergyField} /
  * {@code FieldedEntity}，不改中毒，不加注册项，<b>不 import 任何可选模组类</b>
