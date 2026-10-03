@@ -120,9 +120,17 @@ import net.minecraft.world.phys.Vec3;
  *       {@link BoomerangTier#throwWear(boolean)}），挖方块与命中生物也各 −1
  *       （{@link BoomerangTier#WEAR_PER_HIT}）。<b>飞行期间一次都不写回</b>，回到玩家怀里时
  *       由 {@code settleWear} 一次结算（够了就扣、不够就爆）。</li>
- *   <li><b>不给原版耐久条</b>：覆写 {@link #isBarVisible} 恒 {@code false} —— 本模组口径是
- *       <b>能量才是条</b>（能量条画在 tooltip 里），耐久只以一行文字表达
- *       （{@link #appendHoverText}），否则同一个格子会同时出现"耐久条 + 能量条"两种资源条。</li>
+ *   <li><b>给原版耐久条</b>（<b>作者 2026-10-03 澄清</b>：他问的「回旋镖下面怎么没有能量条」
+ *       指的是<b>耐久条</b>，原话「<b>耐久条！说错了</b>」）：{@link #isBarVisible}
+ *       <b>不再恒 {@code false}</b>，回落原版判定（{@code super.isBarVisible} =
+ *       {@code stack.isDamaged()}）⇒ 物品格下方按原版口径画<b>耐久条</b>
+ *       （<b>满耐久不画、损坏了才画</b>）。耐久数字另有一行文字
+ *       （{@link #appendHoverText}），两者不冲突。
+ *       <p>⚠ 批 1 的旧形状（恒 {@code false}）与它的旧理由「<b>本模组口径是只留能量条</b>」
+ *       <b>都已被推翻</b>（留档见 {@link #isBarVisible} 的方法注释，未静默删除）：模组里
+ *       <b>根本不存在</b>"物品格下方的能量条"——能量条只画在 tooltip 里
+ *       （{@code EnergyTooltipHandler} + {@link #energyGradientStops}）⇒ 那条理由从建立起
+ *       就不成立，它当时的唯一效果是<b>连原版耐久条都不显示</b>。</p></li>
  *   <li><b>可附魔，但只认本模组附魔</b>：加了 {@code MAX_DAMAGE} 之后原版
  *       {@code Item#isEnchantable}（{@code 堆叠 1 && 有 MAX_DAMAGE}）自动为真 ⇒ 镖变成可附魔物；
  *       因此覆写 {@link #supportsEnchantment} 只放行本模组命名空间的附魔（原版"耐久/经验修补"
@@ -829,19 +837,33 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 	}
 
 	/**
-	 * <b>只让能量条显示，不给原版耐久条</b>（作者 2026-10-02 批 1：需求 §3.8 的表现面）。
+	 * <b>耐久条照原版画</b>（<b>作者 2026-10-03 澄清</b>：他要的就是这一条）。
 	 *
-	 * <p>原版默认是 {@code return stack.isDamaged()}（{@code Item.java:160-162}）——加了耐久之后，
-	 * 那把镖一旦被扣过耐久就会在物品格上多画一条"耐久条"，与 tooltip 里的能量条形成<b>两条资源条</b>。
-	 * 本模组口径：<b>条只画能量</b>（tooltip 的渐变条，见 {@link #energyGradientStops}），
-	 * 耐久改由 tooltip 的一行文字表达（{@link #appendHoverText}）。</p>
+	 * <p>原版默认<b>就是</b> {@code return stack.isDamaged()}（{@code Item#isBarVisible} 的默认
+	 * 实现，已在 1.21.1 的 NeoForge 合并源码里逐行核过）。<b>刻意不写行号</b>：本仓旧注释里
+	 * 那种 {@code Item.java:160-162} 式引用会随 NeoForge/映射版本漂移 —— 本轮实查的那份是
+	 * 21.1.248，那一句落在 185-186 行，与旧引的 160-162 根本不是同一套行号。本方法
+	 * <b>回落它</b>：{@code super.isBarVisible(stack)}（{@link BoomerangItem} 直接继承
+	 * {@link Item}，故 {@code super} 那一条就是原版默认）⇒ 物品格下方按
+	 * {@code damage / maxDamage} 画原版耐久条：<b>满耐久不画、扣过耐久才画</b>（原版语义，
+	 * 与 {@code JadeTopazBowItem} 之类普通可损坏物品完全一致）。</p>
 	 *
-	 * <p>⚠ 这里恒 {@code false}，不是 {@code super.isBarVisible(stack)}：后者一旦被改回默认，
-	 * 耐久条就会重新出现（关卡 §29j 钉着本方法体的形状）。</p>
+	 * <p><b>⛔ 批 1 的旧实现与旧理由都已作废</b>（留档，别改回去）：那时本方法恒
+	 * {@code return false;}，理由写的是「本模组口径是<b>只留能量条</b>」。作者 2026-10-03 澄清
+	 * 「<b>耐久条！说错了</b>」—— 他要看的就是镖的<b>耐久</b>条；而那条旧理由本身也站不住：
+	 * 本模组<b>没有</b>"物品格下方的能量条"这种东西（能量条只画在 tooltip 里，见
+	 * {@link #energyGradientStops} 与 {@code EnergyTooltipHandler}），所以
+	 * "关掉耐久条 = 只留能量条"这个交换<b>根本不存在</b>，它当时的唯一效果就是让镖
+	 * 连原版耐久条都不显示。</p>
+	 *
+	 * <p>⚠ 这里<b>不</b>改用 {@code getBarWidth}/{@code getBarColor} 把原版条挪去画能量比例：
+	 * 作者要的是<b>耐久</b>条，"把原版条改成能量条"是另一个需求、没有任何依据。
+	 * 关卡 {@code boomerang-durability-batch1}（§29j-2）钉着本方法体的形状（必须回落原版判定、
+	 * 不得再恒 {@code false}、不得动那两个画条方法）。</p>
 	 */
 	@Override
 	public boolean isBarVisible(ItemStack stack) {
-		return false;
+		return super.isBarVisible(stack);
 	}
 
 	/**
