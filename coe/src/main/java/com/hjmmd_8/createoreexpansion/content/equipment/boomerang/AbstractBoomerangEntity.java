@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.OrbitAnchor;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
 import java.util.ArrayList;
@@ -586,6 +587,30 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	// ================= 环绕技能（2026-10-02 批 4；需求 §3.6 / §3.7） =================
 
 	/**
+	 * <b>环绕波的魔素抽签池</b>（2026-10-03 需求 coe-boom2 批 3 §3.1）：每枚环绕波<b>各自</b>
+	 * 从这 <b>8 种全部</b>魔素里随机抽一种（水/火/地/风/冰/雷/毒/异）。
+	 *
+	 * <p><b>为什么是 8 种（含"异"）</b>：星芒嬗震那边排除 {@code ARCANE}，是因为它的<b>主波已经
+	 * 固定占了"异"</b>（见 {@code StarShockRuntime#ORBIT_ESSENCE_POOL} 那个 7 值池）。
+	 * 回旋镖这一侧<b>没有"主波占掉一个魔素"这回事</b>（镖本身不是波、不设魔素）⇒
+	 * 没有理由排除任何一种，8 种全在池里。</p>
+	 *
+	 * <p><b>名单只有这一份</b>：{@link #spawnOrbitWaves} 那一次掷骰直接按本数组取，顺序照
+	 * {@code WaveTrailStyle} 的<b>声明序</b>排，便于与枚举逐字对照。关卡
+	 * {@code boomerang-orbit-essence-pool} 正向钉"这 8 个就是枚举的全部 8 个魔素、顺序一致"，
+	 * 反向钉"本文件里每个魔素名只出现一次"；另一条
+	 * {@code boomerang-orbit-essence-invariant} 把本池与星芒嬗震的 7 值池对照：
+	 * <b>并集 = 8、交集 = 7</b>（两个池各自只有一份）。</p>
+	 *
+	 * <p><b>不去重、不排除连续相同</b>（与星芒嬗震同口径）：同一次投掷的 L 枚可以互不相同、
+	 * 也可以连着抽到同一种；结果只由那一次掷骰决定，池里没有任何状态。</p>
+	 */
+	private static final WaveTrailStyle[] ORBIT_ESSENCE_POOL = {
+		WaveTrailStyle.WATER, WaveTrailStyle.FIRE, WaveTrailStyle.EARTH, WaveTrailStyle.WIND,
+		WaveTrailStyle.ICE, WaveTrailStyle.LIGHTNING, WaveTrailStyle.POISON, WaveTrailStyle.ARCANE
+	};
+
+	/**
 	 * <b>环绕波批次号计数器</b>（服务端权威、进程内自减 ⇒ 分配出来的批次号<b>恒为负数</b>）。
 	 *
 	 * <p><b>为什么自造一个来源</b>：豁免判据 {@code sameFiringBatch} 比较的是"两枚波是不是
@@ -697,6 +722,13 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 				BoomerangSkillConfigs.ORBIT_WAVE_LEVEL);
 			orbit.setFiringBatch(batch); // 同一次投掷的 L 枚共用一个（负数）批次号
 			orbit.trySetWaveType(WaveTypes.ATTACK); // 要素 4：伤害那一支的门槛
+			// 要素 5（2026-10-03 需求 coe-boom2 批 3 §3.1）：魔素 = 8 种里<b>每枚各自随机</b>抽一种
+			// （含"异"——回旋镖这边没有"主波占掉一个魔素"这回事）。
+			// ⚠ <b>必须紧跟在 trySetWaveType(ATTACK) 之后</b>：trySetEssence 对"不造成伤害的波型"
+			// 直接 return false —— <b>静默空操作</b>（不报错、不打日志），顺序反了整批都没有魔素、
+			// 观感退回波型默认（火）。随机源用该波/世界的既有 RandomSource
+			// （{@code level().random}，服务端权威；禁自造随机源：新 Random / Math.random / RandomSource.create）。
+			orbit.trySetEssence(ORBIT_ESSENCE_POOL[level().random.nextInt(ORBIT_ESSENCE_POOL.length)]);
 			// 主人 = <b>投掷玩家本人</b>（2026-10-03 需求 coe-boom2 批 1 §3.2）：本批只<b>赋</b>不<b>排</b>
 			// —— 环绕波会绕着镖飞、离玩家很近（半径 1.5 格），"不伤发射者"要等批 2 改命中谓词。
 			// 取 {@code Projectile#getOwner()}（投掷者），<b>不是镖的 UUID</b>：镖 UUID 已经用作
