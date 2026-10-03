@@ -41,7 +41,15 @@ public class ChargedPositiveEffect extends MobEffect {
 
 	/**
 	 * 扣血节奏判定（照原版中毒 {@code PoisonMobEffect#shouldApplyEffectTickThisTick}，
-	 * 需求 §3.3）。批 1 就接上：批 3 只需要在 {@link #applyEffectTick} 里补伤害那两行。
+	 * 需求 §3.3）：{@code int i = 25 >> amplifier; return i > 0 ? duration % i == 0 : true;}
+	 * —— 实现与常量都在 {@link ChargeConfigs#shouldApplyDamageThisTick}（本文件零字面量）。
+	 *
+	 * <p>⚠ <b>{@code duration % i} 的陷阱</b>：{@code duration} 是「效果还剩多少 tick」。
+	 * 若将来出现<b>每 tick 刷新</b>这个效果的来源（把时长反复重置回满值），
+	 * {@code duration} 会被钉在同一个数上，{@code duration % i} 要么恒真要么恒假 ——
+	 * 扣血会变成「每 tick 都扣」或「永远不扣」，而且没有任何报错。
+	 * 本批<b>没有</b>这样的刷新源（四条获得途径的落地在批 4 / 批 5），故照抄原版即可；
+	 * 将来加「持续刷新的场」时必须回来重新评估这一段。</p>
 	 */
 	@Override
 	public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
@@ -49,21 +57,41 @@ public class ChargedPositiveEffect extends MobEffect {
 	}
 
 	/**
-	 * 每次触发时的行为 —— <b>批 1 是最小实现：什么都不做</b>。
+	 * 每次触发时的行为 —— <b>批 3：照原版中毒扣血，只删掉那道「不致死」保护</b>（需求 §3.3 / §5.3 陷阱 3）。
 	 *
-	 * <p>⚠ 返回值必须是 {@code true}：{@code MobEffectInstance#tick} 把
+	 * <p>原版中毒 {@code PoisonMobEffect#applyEffectTick} 的全部内容就是
+	 * {@code if (entity.getHealth() > 1.0F) entity.hurt(<伤害>, 1.0F);} 加一个 {@code return true;}。
+	 * 本实现<b>唯一的差别</b>是把那道 {@code getHealth() > 1.0F} 的门整条删掉：
+	 * 它正是原版中毒不会打死人的唯一原因，而作者要「扣到底了还是可以扣」（能扣死）。
+	 * 「是否扣血」的节奏由 {@link #shouldApplyEffectTickThisTick} 决定，
+	 * 「扣多少」由 {@link ChargeConfigs#DAMAGE_PER_TICK} 决定 —— 本文件依旧零字面量。</p>
+	 *
+	 * <p>⚠ 返回值必须<b>恒为 {@code true}</b>：{@code MobEffectInstance#tick} 把
 	 * {@code applyEffectTick} 的 {@code false} 当成「效果结束」并把时长清零
-	 * ⇒ 返回 false 会让这个 debuff 应用即消失。空实现也必须返回 true。</p>
+	 * ⇒ 返回 false 会让这个 debuff 应用即消失（扣血与消失同时发生，症状是「挂上就没」）。</p>
 	 *
-	 * <p>TODO 批 3：照中毒扣血 —— {@code entity.hurt(<伤害来源>, ChargeConfigs.DAMAGE_PER_TICK);}
-	 * 并且<b>刻意不照抄</b>原版中毒那道 {@code if (entity.getHealth() > 1.0F)} 保护：
-	 * 作者要「扣到底了还是可以扣」（需求 §3.3 / §5.3 陷阱 3），那道保护正是中毒不致死的唯一原因。
-	 * 伤害类型按作者 2026-10-03 裁定<b>不新建自定义 {@code DamageType}</b>（需求 §六 #4 被否决）
-	 * —— 批 3 从原版 / NeoForge 现成的类型里挑，不在本模组新增注册项。</p>
+	 * <p><b>伤害类型</b>：{@link net.minecraft.world.entity.Entity#damageSources()}{@code .magic()}
+	 * —— 与本模组既有的 {@code TransmutationDisorderEffect#applyDamage} 完全同口径
+	 * （执行会话 2026-10-03 按作者「不注册自定义 DamageType」的裁定选定）。
+	 * ⚠ 这与开工需求 §六 #4 的原文推断<b>不同</b>（原文建议新建自定义伤害类型，
+	 * 已被作者否决）⇒ 若作者裁定要独立伤害类型 / 死亡消息，就在此一处换成
+	 * {@code damageSources().damageTypes} 里的其它 Holder，别新增注册项。</p>
+	 *
+	 * <p><b>无敌帧（刻意照原版，不清 {@code invulnerableTime}）</b>：{@code LivingEntity#hurt}
+	 * 会占掉受击冷却（{@code invulnerableTime = 20}）。原版中毒同样不清，照抄即同观感：
+	 * 1.21 的伤害只有在 {@code invulnerableTime > 10} <b>且</b>本次伤害 ≤ 上次伤害时才被吞掉
+	 * —— 扣血间隔 Lv1..Lv4 = 25/12/6/3 tick，到下一次扣血时冷却早已 < 10，故每一下都实打实生效；
+	 * 只有 Lv5（间隔 1 tick）会出现「冷却期内等额伤害被吞、实际约每 2 tick 掉 1 点」，
+	 * 这正是原版中毒 Lv5 的既有行为。另一面：被扣血的那一瞬间如果恰好挨了别的伤害，
+	 * 双方会按 {@code hurt} 的同帧规则竞争（magic 不带 {@code BYPASSES_COOLDOWN}），
+	 * 观感上就是「电荷把那一下吃掉了」—— 原版中毒一模一样，本批刻意不修。</p>
 	 */
 	@Override
 	public boolean applyEffectTick(LivingEntity entity, int amplifier) {
-		// TODO 批 3：照中毒扣血（去掉 getHealth() > 1.0F 保护，能扣死）；本批刻意留空。
+		// 照 PoisonMobEffect#applyEffectTick，只删除 if (entity.getHealth() > 1.0F) 那道门：
+		// 中毒靠它不致死，作者要能扣死。伤害类型与既有嬗乱效果同口径（damageSources().magic()），
+		// 不新增自定义 DamageType；invulnerableTime 照原版不清（理由见 javadoc）。
+		entity.hurt(entity.damageSources().magic(), ChargeConfigs.DAMAGE_PER_TICK);
 		return true;
 	}
 }

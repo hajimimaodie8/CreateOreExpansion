@@ -19,7 +19,9 @@ import net.minecraft.util.Mth;
  *
  * <p><b>为什么不建自定义 {@code DamageType}</b>：作者 2026-10-03 裁定「不注册自定义 DamageType」
  * （需求 §六 #4 的推断被否决）⇒ 本类<b>刻意不含任何伤害类型 id 常量</b>，批 3 接扣血时
- * 从原版 / NeoForge 现成的伤害类型里选一个，不在本模组新建注册项。</p>
+ * 从原版现成的伤害来源里选了一个：{@code damageSources().magic()}（与既有嬗乱效果同口径），
+ * 不在本模组新建注册项 —— 伤害「种类」写在两个效果类的 {@code applyEffectTick} 里，
+ * 因为它不是一个可调的数，本表不重复声明。</p>
  */
 public final class ChargeConfigs {
 
@@ -71,7 +73,7 @@ public final class ChargeConfigs {
 	}
 
 	// ==================================================================================
-	// 二、扣血（批 3 接；照原版中毒的两行、去掉「不致死」那一道保护）
+	// 二、扣血（批 3 已接；照原版中毒的两行、去掉「不致死」那一道保护）
 	// ==================================================================================
 
 	/**
@@ -88,12 +90,18 @@ public final class ChargeConfigs {
 	 *
 	 * <p>需求 §3.3：原版中毒 {@code applyEffectTick} 里就是 {@code entity.hurt(..., 1.0F)}。
 	 * 「每秒」是作者的口语措辞，机制以中毒为准（需求 §3.3 的注解 + §六 #5）。</p>
+	 *
+	 * <p>伤害<b>种类</b>不在这里，它不是一个「数」：两个效果取的是
+	 * {@code entity.damageSources().magic()}（与既有嬗乱效果同口径，见
+	 * {@code ChargedPositiveEffect#applyEffectTick}）。⇒ 致死时的死亡消息是原版的
+	 * 「被魔法杀死」那一类，而不是「中毒」；作者若要专属死亡消息，改的是那一处调用，
+	 * 不是本表，也仍然<b>不新增自定义 {@code DamageType}</b>。</p>
 	 */
 	public static final float DAMAGE_PER_TICK = 1.0F;
 
 	/**
 	 * 本轮是否该扣血 —— <b>照原版中毒 {@code PoisonMobEffect#shouldApplyEffectTickThisTick}
-	 * 逐字搬来</b>（coe-charge 批 3 在 {@code applyEffectTick} 里用）。
+	 * 逐字搬来</b>（coe-charge 批 3 已在两个效果的 {@code applyEffectTick} 里接上）。
 	 *
 	 * <p>原版那两行：{@code int i = 25 >> amplifier; return i > 0 ? duration % i == 0 : true;}
 	 * —— {@code i <= 0} 时（amplifier ≥ 5，本需求到不了）每 tick 都算。</p>
