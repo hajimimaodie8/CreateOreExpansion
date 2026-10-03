@@ -446,6 +446,16 @@ configurations {
     runtimeClasspath.extendsFrom localRuntime
 }
 
+// ⚠ Sable Companion（core/compat/sable/** 编译期必需的那颗嵌套 jar）**不在这里定义**：
+//   根 build.gradle 的脚本体**不保证**先于子工程求值（本轮实测：`:core` 的脚本体先跑 ——
+//   `git archive HEAD` 出来的干净树里加一句 println 探针，打印顺序是 DBG-CORE → DBG-ROOT，
+//   因此根侧 `ext.xxx = ...` / `tasks.register(...)` 在 :core 的 dependencies 块里**取不到**，
+//   报 `Could not get unknown property 'xxx' for root project`）。
+//   于是提取任务定义在**唯一的真消费者** `core/build.gradle` 里（自带 configurations + task +
+//   产物 FileCollection），根侧不再声明它：实测根工程的 compileJava **不需要** companion
+//   （根 src/main/java 里没有任何 dev.ryanhcode.sable.companion.* 的引用 —— 全仓 grep 只命中
+//   core/compat/sable/** 与 cews 的字符串探针）。理由与反空转守护见 core/build.gradle。
+
 dependencies {
     // ── Skiller 技能内核（**只由第一层 :coe 内置**）─────────────────────────────────────
     // 本模组的「工具技能系统」自 2026-09 起改用 Leaf 的 Skiller 内核（MIT）。
@@ -575,21 +585,37 @@ dependencies {
     // 版本配对（2026-06 稳定版，配 Create 6.0.10）：Aeronautics 1.3.0（2026-06-13）要求 Sable 2.0.x，
     // Sable 2.0.3（2026-06-17）为同窗口最后稳定版；1.3.x 起不再依赖 Valkyrien Skies。
     // 注意：Modrinth 的 create-aeronautics 是 bundled 壳 jar（类全在 META-INF/jarjar 嵌套内，编译期不可见），
-    // 因此编译期用从 jarjar 提取的 aeronautics-neoforge jar（libs/，含 dev.eriksonn.aeronautics API）；
-    // 运行期仍用 bundled jar（内含 Aeronautics+Simulated+Offroad，避免重复加载）。
-    compileOnly files("libs/aeronautics-neoforge-1.21.1-1.3.0.jar")
+    // 运行期用 bundled jar（内含 Aeronautics+Simulated+Offroad，避免重复加载）——见下面的 localRuntime。
+    // ⚠ 2026-10-02：原先这里还有一行 `compileOnly files("libs/aeronautics-neoforge-1.21.1-1.3.0.jar")`
+    //   （从 bundled jar 的 jarjar 里提取出来的 25 MB 编译期 jar）。那次核实证明它是**死依赖**：
+    //   全仓（五根源码 + 资源 + 构建脚本）搜 `dev.eriksonn.aeronautics` 只命中本文件的注释本身，
+    //   没有任何 Java 源码引用它 ⇒ javac 根本不需要它，留着只会把 25 MB 二进制挂进编译面。
+    //   本模组的航空学联动实际走 Sable（core 的 compat/sable/**），所以直接删掉这一行。
     compileOnly("maven.modrinth:sable:2.0.3+mc1.21.1")
     // Sable 的位姿/包围盒数学类（Pose3d/BoundingBox3d/SubLevelAccess）位于 embedded 的
-    // sable-companion jar（Sable 主 jar 的 jarjar 内，编译期不可见）→ 从 jarjar 提取后加入编译期
-    compileOnly files("libs/sable-companion-common-1.21.1-1.6.0.jar")
+    // sable-companion jar（Sable 主 jar 的 META-INF/jarjar/ 内，javac 看不见嵌套 jar）。
+    // ⚠ 根工程**不声明**它：① 根 src/main/java 里没有任何 dev.ryanhcode.sable.companion.* 的引用
+    //   （2026-10-02 全仓 grep 只命中 core/compat/sable/** 与 cews 的字符串探针）⇒ 编译期不需要；
+    //   ② 根侧即使声明也**跨不到子工程**（根脚本体不保证先于子工程求值，实测 :core 先跑）。
+    //   真正的消费者 core 在自己的 build.gradle 里用 extractSableCompanion 构建期提取 —— 见那里。
+    // （2026-10-02 之前这里是 `files("libs/sable-companion-…jar")`，而 /libs/ 被 gitignore ⇒ clone 编译不过。）
     // Create Optical（机械动力：光学，聚光器 4 光频加工）+ Create: Vintage Improvements（卷簧机/杠杆锤等）——
-    // 星辉波变器联动：完全可选集成。compileOnly 编译期可用（本地 jar）；localRuntime 让 dev 客户端
+    // 星辉波变器联动：完全可选集成。compileOnly 编译期可用（**远程坐标**）；localRuntime 让 dev 客户端
     // （runClient/runData）直接加载这两个 mod 便于验证联动，发布不捆绑——玩家自装才生效。
     // 代码层用 ModList.isLoaded + try/catch 隔离，未安装时绝不加载其类。
-    compileOnly files("libs/create_optical-0.4.2.jar")
-    compileOnly files("libs/vintageimprovements-1.21.1-0.0.0.3.jar")
-    localRuntime files("libs/create_optical-0.4.2.jar")
-    localRuntime files("libs/vintageimprovements-1.21.1-0.0.0.3.jar")
+    // ⚠ 2026-10-02：这两颗原先也是 `files("libs/…jar")`（同样被 gitignore ⇒ clone 编译不过）。
+    //   · Create Optical 用的 **CurseForge** 坐标：Modrinth 上 1.21.1(neoforge) 与 1.20.1(forge)
+    //     两个文件共用版本号 0.4.2，而 Modrinth maven 按版本号取件 ⇒ 只会拿到 1.20.1 forge 那份
+    //     （实测 307 Location = …/versions/P1wv4ixj/，8,008,586 B，**不是**我们要的 8,003,762 B）。
+    //     CurseForge 文件 id 8036048 才是 1.21.1/neoforge 那份（8,003,762 B，与 libs/ 里原件的
+    //     sha1 d39b4d193b0c326159e9e3bfa7d5113bc19384a8 一致）。
+    //   · Vintage Improvements 本仓用的**不是** Modrinth 上游（上游只到 1.20.1），而是 SSWT 的
+    //     1.21.1 fork「Vintage Improvenents - SSW Edition」（CurseForge 项目 1255448）；
+    //     文件 id 8066287 = vintageimprovements-1.21.1-0.0.0.3.jar，1,433,638 B，sha1 与 libs/ 原件一致。
+    compileOnly("curse.maven:create-optical-1007714:8036048")
+    compileOnly("curse.maven:vintage-improvenents-ssw-edition-1255448:8066287")
+    localRuntime("curse.maven:create-optical-1007714:8036048")
+    localRuntime("curse.maven:vintage-improvenents-ssw-edition-1255448:8066287")
     localRuntime("maven.modrinth:create-aeronautics:1.3.0+mc1.21.1")
     localRuntime("maven.modrinth:sable:2.0.3+mc1.21.1")
     runtimeOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1"
@@ -615,7 +641,9 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-//    runtimeOnly("curse.maven:vintage-improvenents-ssw-edition-1255448-8381973")
+//    runtimeOnly("curse.maven:vintage-improvenents-ssw-edition-1255448:8066287")
+    // ⚠ 上面那行 2026-10-02 由 8381973 更正为 8066287：8381973 = 0.0.0.4（1,433,222 B），
+    //   8066287 = 0.0.0.3（1,433,638 B）—— 后者才与本仓用的版本、字节逐一对上（见上面的 compileOnly）。
 }
 
 // 数据生成（runData）不需要 Sable/Aeronautics：物理结构库对 datagen 无贡献，

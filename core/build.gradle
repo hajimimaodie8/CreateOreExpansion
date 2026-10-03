@@ -18,6 +18,67 @@ plugins {
     id 'coe-conventions'
 }
 
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// Sable Companion：编译期必需，**没有任何公开 maven 坐标** ⇒ 构建期从 Sable 主 jar 提取
+// ──────────────────────────────────────────────────────────────────────────────────────────
+// 要修的构建可复现性 bug（2026-10-02）：
+//   `core/src/main/java/.../compat/sable/SablePose.java` 直接 import
+//     dev.ryanhcode.sable.companion.math.Pose3d / Pose3dc（另有 SubLevelAccess 等）
+//   而这几个类**不在** Sable 主 jar 的顶层 —— 在它的 `META-INF/jarjar/sable-companion-common-*.jar`
+//   这个**嵌套 jar** 里（Sable 把 companion 当嵌套依赖打包）。javac **看不见嵌套 jar 里的类**。
+//   过去的做法：把嵌套 jar 手工解出来放进 `libs/`，再 `compileOnly files("libs/…")`。
+//   而 `.gitignore` 忽略整个 `/libs/`（第 66 行 `/libs/`）⇒ 仓库里没有它 ⇒
+//   **任何人 clone 下来 `gradlew compileJava` 必失败**（实测 :core:compileJava 报 11 个错误，
+//   全是"找不到 dev.ryanhcode.sable.companion.* 的类文件"）。
+// 现在的解法：Sable 主 jar 本来就由下面的 `maven.modrinth:sable:2.0.3+mc1.21.1` 从 Modrinth 下载，
+//   嵌套 jar 在那份 zip 里只是一个**普通文件条目** ⇒ 用 zipTree + Copy 把它原样取到 build/ 下。
+//   好处：① 仓库里**不存任何二进制**；② 不需要虚构远程坐标；③ 提取结果与所依赖的 Sable 版本严格同源
+//   （不会出现"手工拷贝的 companion 与 sable 主 jar 版本错配"这种隐蔽的不一致）。
+//
+// ⚠ 为什么定义在**本模块**而不是根 build.gradle（本轮实测教训，别挪回去）：
+//   根 build.gradle 的**脚本体不保证先于子工程求值** —— 在干净树里加 println 探针，实测打印顺序是
+//   `DBG-CORE-EVAL-START` → `DBG-ROOT-EVAL-START`（`:core` 先跑）。因此根侧写的 `ext.xxx = ...`
+//   或 `tasks.register(...)` 在 :core 的 dependencies 块里**根本取不到**，报
+//   `Could not get unknown property 'xxx' for root project`（本轮 BUILD FAILED 就是这个）。
+//   放在本模块自己体内则**无跨工程时序依赖**（同一脚本内先声明后使用，Groovy 顺序求值即可）。
+// ⚠ 提取任务必须**至少产出一个非空文件**并显式报错：Sable 换版本后嵌套条目若改名/消失，
+//   要在这里红掉，而不是静默给出空编译面（那会退化成"编译报一堆找不到类"——与本次要修的症状一模一样）。
+configurations {
+    sableCompanionBundle {
+        canBeConsumed = false
+        transitive = false   // 只要 Sable 主 jar 这一个文件，不要它自己的依赖图
+    }
+}
+
+dependencies {
+    sableCompanionBundle("maven.modrinth:sable:2.0.3+mc1.21.1")
+}
+
+def sableCompanionDir = layout.buildDirectory.dir("sable-companion")
+def extractSableCompanion = tasks.register("extractSableCompanion", Copy) {
+    description = "从 Sable 主 jar 的 META-INF/jarjar/ 里提取 sable-companion jar（编译期需要）"
+    from(zipTree(configurations.sableCompanionBundle.singleFile)) {
+        include "META-INF/jarjar/sable-companion-common-*.jar"
+        includeEmptyDirs = false
+        // ⚠ 必须用 eachFile 改**完整相对路径**：只写 `rename { ... }` 时 Gradle 只换文件名、
+        //   保留 `META-INF/jarjar/` 目录层，产物会落到 build/sable-companion/META-INF/jarjar/ 下
+        //   （本轮实测踩到：doLast 的守卫因此红掉，守卫本身是对的）。
+        //   固定输出名 + 拍平：调用方不需要知道 companion 的版本号，Sable 升级也不用改调用方。
+        eachFile { it.relativePath = new org.gradle.api.file.RelativePath(true, "sable-companion-common.jar") }
+    }
+    into(sableCompanionDir)
+    doLast {
+        def out = sableCompanionDir.get().file("sable-companion-common.jar").asFile
+        if (!out.isFile() || out.length() == 0L) {
+            throw new GradleException("extractSableCompanion: 没能从 Sable 主 jar 的 META-INF/jarjar/ 里提取出 sable-companion-common（期望产出 ${out}）。Sable 换版本后嵌套 jar 可能已改名，请核对 maven.modrinth:sable 的版本与本任务。")
+        }
+    }
+}
+
+// builtBy 保证 compileJava 之前先把提取任务跑掉（不是"顺手拷一份"的隐式时序）。
+def sableCompanionJar = files(sableCompanionDir.map { it.file("sable-companion-common.jar") })
+        .builtBy(extractSableCompanion)
+
 dependencies {
     // 库模式不注册 mod，但共享层将来要放的是「与 Create 打交道的契约」
     // （机器交互 / 应力口径 / 配方登记表…），所以这里保留 Create 的编译期依赖：
@@ -30,9 +91,12 @@ dependencies {
     // P3f：整包搬进 core 的 compat/sable/** 直接引用 Sable 的类型（Pose3d/Pose3dc、SubLevel、
     // ServerSubLevel、LevelPlot、ServerSubLevelContainer…），所以 core 自己也需要 Sable 的编译面。
     // 与根 build.gradle 同一坐标、同一写法（Sable 的位姿/包围盒数学类位于 embedded 的
-    // sable-companion jar，编译期不可见 → 从 jarjar 提取后作为本地 file 依赖；路径相对**根工程**）。
+    // sable-companion jar，**javac 看不见嵌套 jar**）⇒ 上面那行 `compileOnly sableCompanionJar`
+    // 就是本文件顶部 extractSableCompanion 构建期从 Sable 主 jar 里提取出来的那颗
+    // （原先写的是 files("libs/sable-companion-…jar")，而 /libs/ 被 .gitignore 整片忽略
+    //  ⇒ clone 下来 :core:compileJava 必失败）。
     // 两行都是 compileOnly：不进 core 的发布元数据，也不改变运行期由玩家自装 Sable 的事实。
-    compileOnly files(rootProject.file('libs/sable-companion-common-1.21.1-1.6.0.jar'))
+    compileOnly sableCompanionJar
     compileOnly("maven.modrinth:sable:2.0.3+mc1.21.1")
     // P3n：common 顶层整包（10 个文件）搬进 core 后，core 的编译面必须补齐它们用到的三个
     // 外部 API：Registrate 的构建器类型、Flywheel 的 PartialModel、Ponder（catnip）的 Lang。

@@ -59,12 +59,16 @@ dependencies {
     // 删它属于构建面改动、与"搬运代码"是两件事，本轮只登记事实、不动这一行。
     compileOnly("maven.modrinth:jade:15.8.3+neoforge")
 
-    // Create Optical / Vintage Improvements：**本地 jar**（libs/ 在根目录，所以用 rootProject.files）。
+    // Create Optical / Vintage Improvements：**远程坐标**（原先是从 libs/ 里取本地 jar，
+    // 而 `/libs/` 被 .gitignore 整片忽略 ⇒ clone 下来编译不过；2026-10-02 修）。
     // compat/jei/cews/{optical,vintageimprovements}/** 直接写它们的 FQN
     // （net.lpcamors.optical.* / com.negodya1.vintageimprovements.*），编译期必须在场；
     // 运行期由 ModList.isLoaded 守卫隔离，未安装时绝不加载其类。
-    compileOnly rootProject.files("libs/create_optical-0.4.2.jar")
-    compileOnly rootProject.files("libs/vintageimprovements-1.21.1-0.0.0.3.jar")
+    // 坐标与根 build.gradle 逐字同源（那份注释里有"为什么是这两个坐标"的取证）。
+    // ⚠ 别改成 `maven.modrinth:create-optical:0.4.2`：Modrinth 上 1.21.1(neoforge) 与
+    //   1.20.1(forge) 共用版本号 0.4.2，maven 按版本号取件只会给 1.20.1 forge 那份（实测）。
+    compileOnly("curse.maven:create-optical-1007714:8036048")
+    compileOnly("curse.maven:vintage-improvenents-ssw-edition-1255448:8066287")
 
     // ④ 不需要 skiller / curios / aeronautics / sable：
     //    · skiller 是独立 mod，必须留在**根 jar** 的 META-INF/jarjar/ 深度 1；
