@@ -619,5 +619,13 @@ public class EnglishLangProvider extends LanguageProvider {
         // ========== 电荷系统（coe-charge 批 1）：着正电 / 着负电 ==========
         add("effect.createoreexpansion.charged_positive", "Positively Charged");
         add("effect.createoreexpansion.charged_negative", "Negatively Charged");
+
+        // ========== 电荷伤害的自定义伤害类型（coe-charge 批 6，作者 2026-10-03 改判）==========
+        // id = createoreexpansion:charge（data/createoreexpansion/damage_type/charge.json 的
+        // message_id 也是 "charge"）⇒ 死亡消息键就是 death.attack.charge。
+        // 两个变体都要：没有攻击者时（debuff 每 tick 扣血）走 %1$s 那一条，
+        // 击杀credit 存在时走 .player 那一条（两条都在，免得出现未替换的 %2$s）。
+        add("death.attack.charge", "%1$s was killed by an electric charge");
+        add("death.attack.charge.player", "%1$s was killed by %2$s with an electric charge");
     }
 }

@@ -70,12 +70,13 @@ public class ChargedPositiveEffect extends MobEffect {
 	 * {@code applyEffectTick} 的 {@code false} 当成「效果结束」并把时长清零
 	 * ⇒ 返回 false 会让这个 debuff 应用即消失（扣血与消失同时发生，症状是「挂上就没」）。</p>
 	 *
-	 * <p><b>伤害类型</b>：{@link net.minecraft.world.entity.Entity#damageSources()}{@code .magic()}
-	 * —— 与本模组既有的 {@code TransmutationDisorderEffect#applyDamage} 完全同口径
-	 * （执行会话 2026-10-03 按作者「不注册自定义 DamageType」的裁定选定）。
-	 * ⚠ 这与开工需求 §六 #4 的原文推断<b>不同</b>（原文建议新建自定义伤害类型，
-	 * 已被作者否决）⇒ 若作者裁定要独立伤害类型 / 死亡消息，就在此一处换成
-	 * {@code damageSources().damageTypes} 里的其它 Holder，别新增注册项。</p>
+	 * <p><b>伤害类型</b>：{@link ChargeConfigs#CHARGE_DAMAGE_TYPE}
+	 * （{@code createoreexpansion:charge}）—— <b>作者 2026-10-03 裁定（批 6 执行期间改判）</b>：
+	 * 按开工需求 §六 #4 的原文新建自定义伤害类型（便于区分与免疫）。批 3 当时按作者前一版
+	 * 裁定走的 {@code damageSources().magic()}（与既有嬗乱效果同口径）<b>已被覆盖</b>；
+	 * 现在两个效果与中和爆炸共用<b>同一个</b>键，数据包文件见那个常量的 javadoc。
+	 * ⚠ 旧那条「电荷文件不得出现自定义伤害类型」的关卡负向断言已<b>反向改口径</b>
+	 * （现在是「必须恰好有这一个」，见 {@code charge-one-custom-damage-type}）。</p>
 	 *
 	 * <p><b>无敌帧（刻意照原版，不清 {@code invulnerableTime}）</b>：{@code LivingEntity#hurt}
 	 * 会占掉受击冷却（{@code invulnerableTime = 20}）。原版中毒同样不清，照抄即同观感：
@@ -89,9 +90,11 @@ public class ChargedPositiveEffect extends MobEffect {
 	@Override
 	public boolean applyEffectTick(LivingEntity entity, int amplifier) {
 		// 照 PoisonMobEffect#applyEffectTick，只删除 if (entity.getHealth() > 1.0F) 那道门：
-		// 中毒靠它不致死，作者要能扣死。伤害类型与既有嬗乱效果同口径（damageSources().magic()），
-		// 不新增自定义 DamageType；invulnerableTime 照原版不清（理由见 javadoc）。
-		entity.hurt(entity.damageSources().magic(), ChargeConfigs.DAMAGE_PER_TICK);
+		// 中毒靠它不致死，作者要能扣死。伤害类型 = ChargeConfigs.CHARGE_DAMAGE_TYPE
+		// （作者 2026-10-03 改判：按需求 §六 #4 原文新建自定义类型；两个效果与中和爆炸共用它）；
+		// invulnerableTime 照原版不清（理由见 javadoc）。
+		entity.hurt(entity.damageSources().source(ChargeConfigs.CHARGE_DAMAGE_TYPE),
+			ChargeConfigs.DAMAGE_PER_TICK);
 		return true;
 	}
 }

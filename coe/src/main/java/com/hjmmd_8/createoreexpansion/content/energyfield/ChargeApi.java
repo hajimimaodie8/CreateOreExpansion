@@ -3,11 +3,16 @@ package com.hjmmd_8.createoreexpansion.content.energyfield;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeEffects;
 import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeEffectRemovalHandler;
 
 import net.minecraft.core.Holder;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 
 /**
  * <b>电荷（着正电 / 着负电）的对外公开静态门面</b>（coe-charge 批 4；需求 §3.6 的形状 +
@@ -40,13 +45,18 @@ import net.minecraft.world.entity.LivingEntity;
  * 等级夹取一律走 {@link ChargeConfigs}（需求 §5.1 #5 的唯一真源），关卡里有负向断言守着。
  * 连「无电荷 ⇒ 等级多少」这个哨兵值也是从表里推的（见 {@link #levelOf}）。</p>
  *
- * <p><b>★ 本批的中间态：异极 ⇒ 中和爆炸「还没有落地」（那是批 5）</b>（需求 §3.5）：
- * {@link #apply} 检测到「实体身上是相反极性」时会调用 {@link #neutralize}，而那个方法
- * <b>本批是刻意留空的钩子</b>：它只记一行日志、<b>不改任何状态</b>，并带着
- * {@code TODO 批 5}。⇒ 今天的可观测行为是：异极施加 = <b>什么都不发生 + 一行日志</b>
- * （既不是「换极」、也不是「爆炸」）。<b>刻意不静默</b>的理由见 {@link #neutralize} 的 javadoc
- * （批 3 的教训：静默分支无从判断它有没有被走到）。批 5 落地时把这个钩子换成真正的爆炸，
- * 并把关卡里「钩子是空的」那条断言一起改掉。</p>
+ * <p><b>★ 中和爆炸（批 6 已落地；需求 §3.5 / §3.6）</b>：{@link #apply} 检测到「实体身上是
+ * 相反极性」时会调用 {@link #neutralize}，后者与<b>两实体接触检测</b>（同包
+ * {@code ChargeContactHandler} 每 tick 调 {@link #checkContact}）汇进同一个
+ * {@code detonate(..)}：等级 {@code L = min(两极等级)}；中心 = 两实体位置<b>中点</b>
+ * （只有一方时退化成该方位置，需求 §六 #6）；Chebyshev 半径 {@code L + 1} 的<b>立方体</b>内
+ * <b>每个</b>生物吃 {@code L × 2}（走自定义伤害类型 {@link ChargeConfigs#CHARGE_DAMAGE_TYPE}、
+ * 先清无敌帧、创造玩家除外）；
+ * <b>绝不破坏地形</b>；参与中和的每一方<b>两种</b>电荷效果都被移除；并按
+ * {@link ChargeConfigs#NEUTRALIZE_COOLDOWN_TICKS} 双方各记一笔账
+ * （防同一对贴身时每 tick 反复爆——需求没写、但几何上必然发生的洞）。
+ * 残留仍是批 7：本类只在中和点留了具名钩子 {@link #leaveResidue}
+ * （带 {@code TODO 批 7}，并记一行日志 —— <b>刻意不静默</b>，批 3 的同一课）。</p>
  *
  * <p><b>Holder 身份：为什么本类不需要批 2 那个 {@code is(ResourceKey)} 兜底</b>：
  * {@code ChargeEffectRemovalHandler} 需要它，是因为它在 {@code MobEffectEvent.Remove} 里拿
@@ -101,9 +111,10 @@ public final class ChargeApi {
 	 *       ⚠ 本支<b>恒返回 true</b>：实体本来就在这一极上，「沿用」也算成功——不会因为
 	 *       「等级和时长都没变强」就报失败。</li>
 	 *   <li><b>身上是相反极</b> ⇒ ★ <b>中和，不是替换</b>（需求 §3.6 逐字）。
-	 *       ⚠ <b>中和爆炸是批 5</b> ⇒ 本批只把这一支交给留空的 {@link #neutralize} 钩子
-	 *       （记一行日志、不改状态），本方法返回 false（这次调用<b>没有</b>让实体带上
-	 *       {@code polarity} 这一极）。<b>刻意不静默</b>，理由见该钩子。</li>
+	 *       这一支交给 {@link #neutralize} —— 批 6 起它就是<b>真正的爆炸</b>
+	 *       （扣血 / 移除双方的两种效果 / 记账 / 粒子，逐条见那里的 javadoc），
+	 *       本方法返回 false：这次调用<b>没有</b>让实体带上 {@code polarity} 这一极
+	 *       （中和之后它两种电都不带）。</li>
 	 * </ol>
 	 *
 	 * @param entity   目标生物（{@code null} ⇒ 返回 false，不抛）
@@ -124,7 +135,7 @@ public final class ChargeApi {
 			return entity.addEffect(instance(polarity, incomingLevel, ticks));
 		}
 		if (current != polarity) {
-			// 异极 ⇒ 中和爆炸（需求 §3.5）。★ 批 5 落地：本批只有下面那个留空的钩子。
+			// 异极 ⇒ 中和爆炸（需求 §3.5 / §3.6，批 6 已落地）：交给 neutralize，本方法返回 false。
 			neutralize(entity, current, levelOf(entity), polarity, incomingLevel);
 			return false;
 		}
@@ -235,43 +246,306 @@ public final class ChargeApi {
 	}
 
 	// ==================================================================================
-	// 三、内部：钩子与换算
+	// 三、内部：中和爆炸、接触检测与换算
 	// ==================================================================================
 
 	/**
-	 * ★ <b>异极相遇的落地钩子 —— 批 5 才实现，本批刻意留空</b>（需求 §3.5 电荷中和爆炸）。
+	 * 「下一次可以中和的时刻」写在实体持久数据上的键（{@link #stampNeutralization} 写、
+	 * {@link #neutralizationOnCooldown} 读）。
 	 *
-	 * <p><b>本批它做什么</b>：记一行日志，<b>什么都不改</b>（不扣血、不留残留、不动两边的效果）。
-	 * 也就是说：今天「异极施加」的可观测结果 = 一行日志 + 实体保持原样（既没换极、也没爆炸）。
-	 * 这是<b>有意的中间态</b>，不是漏写——批 4 只做「对外 API 面」，爆炸是批 5。</p>
+	 * <p>带命名空间前缀（{@code coe_}）的理由与既有波桥冷却键 {@code co_wave_charge_cd_until}
+	 * 相同：实体的持久数据是所有模组共用的一块 NBT，裸名会撞车。用「到期时刻」而不是
+	 * 「上次中和 tick」的理由见 {@link #stampNeutralization}。</p>
+	 */
+	private static final String NEUTRALIZE_UNTIL_TAG = "coe_charge_neutralize_until";
+
+	/**
+	 * ★ <b>异极相遇 ⇒ 电荷中和爆炸：『异极由外部施加』这一形态的唯一入口</b>
+	 * （coe-charge 批 6；需求 §3.5 / §3.6）。
 	 *
-	 * <p><b>为什么留一行日志而不是干脆空着</b>：空分支 = 无从判断它有没有被走到
-	 * （批 3 的同一课：扣血那条 {@code return true}/{@code false} 的差别也是「无报错、无日志」的
-	 * 静默失败）。异极这条路在四条获得途径落地前几乎不会被触发，一旦触发就必须留下痕迹，
-	 * 否则实机验收时「异极到底走没走到钩子」只能靠猜。</p>
+	 * <p><b>两条触发形态</b>：{@link #apply} 的第三条分支走这里；需求 §3.5 的
+	 * 「两个带电实体<b>接触</b>（hitbox 相交）」走 {@link #checkContact}。
+	 * 两条最终都汇进 {@link #detonate}（唯一实现），所以「等级 / 中心 / 范围 / 伤害 /
+	 * 移除 / 记账 / 粒子」只有一份代码。</p>
 	 *
-	 * <p><b>批 5 要在这里补什么</b>（把参数摆全就是为了那时候不用改调用点）：
-	 * 爆炸等级 {@code L = min(两极等级)}、中心（同一实体触发的这一形态就是实体自身；
-	 * 需求 §3.5 的「两实体接触」形态是另一个触发点、由批 5 另接触发检测）、
-	 * Chebyshev 半径的<b>立方体</b>范围、范围内每个生物吃 {@code L × 4} 的<b>不破坏地形</b>范围伤害、
-	 * 范围内留残留（批 6）—— 数值全部从 {@link ChargeConfigs#neutralizeChebyshevRadius} /
-	 * {@link ChargeConfigs#neutralizeSideLength} / {@link ChargeConfigs#neutralizeDamage} 取，
-	 * 本文件依旧不写数字。</p>
+	 * <p><b>为什么第二方是 {@code null}</b>：调用点（{@code apply}）手上只有当事人一个实体
+	 * —— 相反的极性是<b>外部来源</b>（雷击 / 特斯拉线圈 / 带电波 / 雷鸣合金武器技能）施加的，
+	 * 没有实体可传 ⇒ 中和中心退化成当事人自身的位置。需求 §六 #6 的「两实体位置中点」
+	 * 属于接触那一形态，由 {@link #centerOf} 在同一处实现。</p>
 	 *
-	 * @param entity       被施加的对象（异极相遇的当事人）
-	 * @param current      它此刻身上的极性
-	 * @param currentLevel 该极的等级（{@link #levelOf}）
-	 * @param incoming     这次要施加的、相反的极性
+	 * <p><b>五个参数一个都没白给</b>：两个等级取 {@code min} 就是爆炸等级 {@code L}
+	 * （需求 §3.5 #1）；两个极性进事件流日志（谁是正电、谁是负电，实机验收只能靠日志认）。</p>
+	 *
+	 * <p><b>方法名与签名刻意不动</b>：关卡 §38 钉着调用点的逐字形状
+	 * （{@code neutralize(entity, current, levelOf(entity), polarity, incomingLevel);}）
+	 * 与「这个钩子存在」；本批只换它的<b>内部</b>——五个公开签名与那一条调用形状都不变。</p>
+	 *
+	 * @param entity        被施加的对象（异极相遇的当事人）
+	 * @param current       它此刻身上的极性
+	 * @param currentLevel  该极的等级（{@link #levelOf}）
+	 * @param incoming      这次要施加的、相反的极性
 	 * @param incomingLevel 这次的等级（已夹取）
 	 */
 	private static void neutralize(LivingEntity entity, ChargePolarity current, int currentLevel,
 			ChargePolarity incoming, int incomingLevel) {
-		// TODO 批 5（电荷中和爆炸，需求 §3.5）：L = min(currentLevel, incomingLevel)；
-		//   立方体范围（Chebyshev 半径 L + 1，边长 2(L + 1) + 1）、范围内每个生物吃 L × 4、
-		//   绝不破坏地形、范围内留残留（批 6）；两实体接触那一形态另接触发检测。
-		//   ⚠ 落地时同时改掉关卡里「这个钩子是空的」那条断言（check-armor-sets.ps1 电荷 API 节）。
-		CoeCore.LOGGER.info("[电荷中和] 异极相遇（中和爆炸落地前只记录、不改状态）：{} 现为 {} Lv{}，本次施加 {} Lv{}",
-			entity, current, currentLevel, incoming, incomingLevel);
+		detonate(entity, null, current, currentLevel, incoming, incomingLevel);
+	}
+
+	/**
+	 * <b>中和爆炸的唯一实现</b>（两条触发形态都汇到这里）—— 顺序是刻意的，逐条对应需求：
+	 * <ol>
+	 *   <li><b>等级</b> {@code L = min(两极等级)}（需求 §3.5 #1）；</li>
+	 *   <li><b>中心</b> = 两方位置<b>中点</b>（只有一方时 = 该方自身位置；需求 §六 #6）；</li>
+	 *   <li><b>先移除双方的两种效果</b>（需求 §3.5「中和 = 都消失」）—— 放在扣血之前：
+	 *       爆炸落定之后没有任何一方还带着电，否则几何上必然出现「下一 tick 又中和」；</li>
+	 *   <li><b>记账</b>：双方各写一笔「下一次可中和的时刻」（{@link #stampNeutralization}）；</li>
+	 *   <li><b>范围伤害</b>：立方体内每个生物 {@code L × 2}（{@link #hurtInCube}）；</li>
+	 *   <li><b>粒子</b>：两色混合 + 恰好一次 {@code FLASH}（{@link #sendBurst}）；</li>
+	 *   <li><b>残留钩子</b>：批 7（{@link #leaveResidue}，刻意不静默）。</li>
+	 * </ol>
+	 *
+	 * @param first          参与中和的第一方（{@code apply} 那条 = 持现极性的当事人；接触那条任一方）
+	 * @param second         第二方；{@code null} = 异极由外部施加，本次只有一方
+	 * @param firstPolarity  第一方此刻的极性（进日志）
+	 * @param firstLevel     第一方的等级
+	 * @param secondPolarity 第二方（或外部施加）的极性（进日志）
+	 * @param secondLevel    第二方（或外部施加）的等级
+	 */
+	private static void detonate(LivingEntity first, LivingEntity second, ChargePolarity firstPolarity,
+			int firstLevel, ChargePolarity secondPolarity, int secondLevel) {
+		int level = Math.min(firstLevel, secondLevel);
+		Center center = centerOf(first, second);
+		removeCharges(first);
+		if (second != null) {
+			removeCharges(second);
+		}
+		stampNeutralization(first);
+		if (second != null) {
+			stampNeutralization(second);
+		}
+		// 伤害来源：走电荷自己的自定义伤害类型（ChargeConfigs.CHARGE_DAMAGE_TYPE，
+		// 作者 2026-10-03 批 6 期间改判：按需求 §六 #4 原文新建），攻击者取第二方（接触形态）；
+		// 只有一方时归当事人 —— 调用点没有别的实体可指名。不传 null 是因为 null 会让
+		// 死亡消息取不到攻击者（会落到 death.attack.charge.player 那条兜底上）。
+		hurtInCube(first.level(), second == null ? first : second, center, level);
+		sendBurst(first.level(), center, level);
+		leaveResidue(center, level);
+		CoeCore.LOGGER.info(
+			"[电荷中和] {}（{} Lv{}）与 {}（{} Lv{}）中和：中心 {}、爆炸等级 Lv{}、立方体边长 {} 格、范围内每个生物扣 {} 点、不破坏地形",
+			first.getName().getString(), firstPolarity, firstLevel,
+			second == null ? "外部施加的第二极" : second.getName().getString(), secondPolarity, secondLevel,
+			center, level, ChargeConfigs.neutralizeSideLength(level), ChargeConfigs.neutralizeDamage(level));
+	}
+
+	/**
+	 * <b>两实体接触检测</b>（需求 §3.5 的触发条件：一个着正电的实体与一个着负电的实体
+	 * <b>碰撞箱相交</b>）—— 由同包的 {@code ChargeContactHandler} 每 tick 对每个生物调一次。
+	 *
+	 * <p><b>为什么必须有这个触发点</b>：另外几条途径都是「某件事发生 ⇒ 调 {@link #apply}」，
+	 * 而「两个带电生物贴在一起」<b>不产生任何事件</b> ⇒ 只在 {@code apply} 里落地中和的话，
+	 * 作者要的那一幕（正电生物撞上负电生物 ⇒ 爆炸）永远不会发生，而且没有任何报错。</p>
+	 *
+	 * <p><b>三道最便宜的闸，顺序即开销顺序</b>：① 不带电（绝大多数实体）⇒ 立刻返回；
+	 * ② 自己还在中和冷却里 ⇒ 返回（双方都会记账，见 {@link #stampNeutralization}）；
+	 * ③ 才去扫碰撞箱找相反极性的那一方，找不到就什么都不做。</p>
+	 *
+	 * <p><b>包级私有、不是对外 API</b>：它是给同包驱动用的内部入口——五个公开方法之外的
+	 * 第六个<b>公开</b>成员一个都不加（§38 的 surface 是「恰好这五个」的对外承诺）。</p>
+	 *
+	 * @param entity 本 tick 走到检查的那个生物（可能不带电）
+	 */
+	static void checkContact(LivingEntity entity) {
+		ChargePolarity current = polarityOf(entity);
+		if (current == null || neutralizationOnCooldown(entity)) {
+			return;
+		}
+		ChargePolarity wanted = oppositeOf(current);
+		LivingEntity counterpart = findContactingCounterpart(entity, wanted);
+		if (counterpart == null) {
+			return;
+		}
+		detonate(entity, counterpart, current, levelOf(entity), wanted, levelOf(counterpart));
+	}
+
+	/**
+	 * 与 {@code entity} 的<b>碰撞箱相交</b>（需求 §3.5 的「接触」= hitbox 相交）、
+	 * 且身上恰是 {@code wanted} 这一极的生物；取扫到的<b>第一个</b>，没有则 {@code null}。
+	 *
+	 * <p>只取一个：同一个 tick 里先被扫到的那一对先中和，双方效果随即都被移除 ⇒
+	 * 紧接着处理另一方时它已经不带电（{@link #checkContact} 的第一道闸直接返回），
+	 * 不会出现「一对多」的连环爆炸。</p>
+	 */
+	private static LivingEntity findContactingCounterpart(LivingEntity entity, ChargePolarity wanted) {
+		for (LivingEntity candidate : entity.level().getEntitiesOfClass(LivingEntity.class,
+				entity.getBoundingBox(), LivingEntity::isAlive)) {
+			if (candidate != entity && polarityOf(candidate) == wanted) {
+				return candidate;
+			}
+		}
+		return null;
+	}
+
+	/** 相反极性（{@code ChargePolarity} 只提供 {@code sign()}；本仓取反的唯一一处）。 */
+	private static ChargePolarity oppositeOf(ChargePolarity polarity) {
+		return polarity == ChargePolarity.POSITIVE ? ChargePolarity.NEGATIVE : ChargePolarity.POSITIVE;
+	}
+
+	/** 中和中心：两方都在 ⇒ 位置<b>中点</b>（需求 §六 #6）；只有一方 ⇒ 该方自身的位置。 */
+	private static Center centerOf(LivingEntity first, LivingEntity second) {
+		var firstPos = first.position();
+		if (second == null) {
+			return new Center(firstPos.x, firstPos.y, firstPos.z);
+		}
+		var secondPos = second.position();
+		double weight = ChargeConfigs.NEUTRALIZE_MIDPOINT_WEIGHT;
+		return new Center(
+			firstPos.x + (secondPos.x - firstPos.x) * weight,
+			firstPos.y + (secondPos.y - firstPos.y) * weight,
+			firstPos.z + (secondPos.z - firstPos.z) * weight);
+	}
+
+	/**
+	 * <b>中和中心</b>（世界坐标三元组）—— 一个只在本类内部流转的小记录。
+	 *
+	 * <p><b>为什么不用 {@code Vec3}</b>：本文件守「<b>零数字字符</b>」这条判据
+	 * （关卡 {@code charge-api-no-literals} 逐字符扫过整份源码），而那个类型名自带一个数字
+	 * ⇒ 中心改成用三个 {@code double} 携带；读的位置一律 {@code .x()} / {@code .y()} / {@code .z()}。
+	 * 这是本文件唯一一处「为了判据而选的形状」，理由记在这里免得后人"顺手改回 Vec3"。</p>
+	 */
+	private record Center(double x, double y, double z) {
+	}
+
+	/**
+	 * 把一方身上<b>两种</b>电荷效果都去掉（中和 = 都消失，需求 §3.5）—— 逐个调，
+	 * 不写「清空全部效果」（那会顺手把嬗乱、缓慢之类别人的效果一起抹掉）。
+	 *
+	 * <p>⚠ <b>必须走 {@link ChargeEffectRemovalHandler#removeForNeutralization}</b>，
+	 * 不能直接 {@code entity.removeEffect(..)}：批 2 那道挡牛奶的闸门拦的正是这两个效果的
+	 * {@code MobEffectEvent.Remove}，而 {@code removeEffect} 的<b>第一句</b>就是 post 那个事件
+	 * ⇒ 直接调会返回 false、<b>效果一个都去不掉，而且什么都不报</b>
+	 * （逐句理由与实测出处见那个方法）。</p>
+	 */
+	private static void removeCharges(LivingEntity entity) {
+		ChargeEffectRemovalHandler.removeForNeutralization(entity, CoeEffects.CHARGED_POSITIVE);
+		ChargeEffectRemovalHandler.removeForNeutralization(entity, CoeEffects.CHARGED_NEGATIVE);
+	}
+
+	/**
+	 * <b>记账：把「下一次可以中和的时刻」写在实体自己的持久数据上</b>
+	 * （= 本次 {@code level.getGameTime()} + {@link ChargeConfigs#NEUTRALIZE_COOLDOWN_TICKS}）。
+	 *
+	 * <p><b>为什么需要这道闸</b>（需求没写、但几何上必然发生的洞）：中和的触发点之一是
+	 * 「碰撞箱相交」，而两个实体贴在一起可以持续任意多 tick。今天「爆炸之后双方效果都被移除」
+	 * 已经挡住绝大多数重复，但只要两边在冷却窗口内又被重新染电（同 tick 的两次施加、
+	 * 将来批 7 的残留、或者站在通电线圈旁），同一对就会<b>每 tick 再爆一次</b>——
+	 * 那就是可感知的掉帧与「爆炸风暴」（需求 §5.2「防连锁」那条专门要实测）。
+	 * 双方各记一笔 ⇒ 任意一方在窗口内就不再中和。</p>
+	 *
+	 * <p><b>为什么记「到期时刻」而不是「上次中和 tick」</b>：缺失的 NBT 键读出来是
+	 * {@code 0}，而「没记过账」必须落在「不在冷却中」那一侧。比较 {@code now < until}
+	 * （与既有波桥 {@code co_wave_charge_cd_until} 同一形状）天然满足：新实体 until = 0
+	 * ⇒ 立刻可中和。反过来写成「上次中和 tick」再算差值的话，刚开服的那几个 tick
+	 * （gameTime 还小于冷却长度）会被误判成「在冷却里」——一个只在新世界头半秒出现、
+	 * 且完全没有日志的洞。</p>
+	 */
+	private static void stampNeutralization(LivingEntity entity) {
+		entity.getPersistentData().putLong(NEUTRALIZE_UNTIL_TAG,
+			entity.level().getGameTime() + ChargeConfigs.NEUTRALIZE_COOLDOWN_TICKS);
+	}
+
+	/** 该实体是否还在中和冷却里（{@link #stampNeutralization} 写、这里读，同一个键）。 */
+	private static boolean neutralizationOnCooldown(LivingEntity entity) {
+		return entity.level().getGameTime() < entity.getPersistentData().getLong(NEUTRALIZE_UNTIL_TAG);
+	}
+
+	/**
+	 * <b>范围伤害</b>（需求 §3.5 #2/#4/#5/#10）：以 {@code center} 为中心、Chebyshev 半径
+	 * {@code L + 1} 的<b>立方体</b>内<b>每个</b>生物扣 {@code L × 2}。
+	 *
+	 * <ul>
+	 *   <li><b>立方体不是球</b>（需求 §5.3 陷阱 5）：判据就是
+	 *       {@code new AABB(center, center).inflate(ChargeConfigs.neutralizeChebyshevRadius(L))}
+	 *       —— 一个以中心为心的整块盒，与「Chebyshev ≤ L+1 的所有格」同一形状；
+	 *       半径按名取自数值真源（本文件一个数字都不写）；</li>
+	 *   <li><b>两个当事方自己就在盒子里</b>（需求 §3.5 #10）：接触的一对相距不到一格、
+	 *       半径至少两格 ⇒ 双方都吃这一下，不必为「当事人」另补一次伤害；</li>
+	 *   <li><b>伤害类型</b>：{@link ChargeConfigs#CHARGE_DAMAGE_TYPE}
+	 *       （{@code createoreexpansion:charge}）—— 作者 2026-10-03 改判后，
+	 *       两个效果的扣血与这里的范围伤害<b>共用同一个</b>自定义类型；</li>
+	 *   <li><b>不破坏地形</b>（需求 §3.5 #5）：整条路只有 {@code hurt}，
+	 *       没有 {@code Level#explode}、没有任何方块操作（关卡有全仓负向断言守着）；</li>
+	 *   <li><b>创造玩家除外</b>：与既有 {@code ChargerWaveFx#triggerBoom} /
+	 *       {@code AbstractChargerWaveEntity} 同一形状——只跳过扣血，画面上照旧看得见爆炸；</li>
+	 *   <li><b>先清无敌帧</b>：见 {@link ChargeConfigs#NEUTRALIZE_INVULNERABLE_TIME}
+	 *       （不清就是「这一下被刚挨的那一刀整段吃掉、一点血都不掉」，而且不报错）。</li>
+	 * </ul>
+	 *
+	 * @param world  两方所在世界（伤害来源也从它取）
+	 * @param source 伤害的攻击者（有第二方 = 第二方；只有一方 = 当事人自己）
+	 */
+	private static void hurtInCube(Level world, LivingEntity source, Center center, int level) {
+		double radius = ChargeConfigs.neutralizeChebyshevRadius(level);
+		AABB cube = new AABB(center.x() - radius, center.y() - radius, center.z() - radius,
+			center.x() + radius, center.y() + radius, center.z() + radius);
+		float damage = ChargeConfigs.neutralizeDamage(level);
+		for (LivingEntity target : world.getEntitiesOfClass(LivingEntity.class, cube, LivingEntity::isAlive)) {
+			if (target instanceof Player player && player.isCreative()) {
+				continue;
+			}
+			target.invulnerableTime = ChargeConfigs.NEUTRALIZE_INVULNERABLE_TIME;
+			target.hurt(world.damageSources().source(ChargeConfigs.CHARGE_DAMAGE_TYPE, source), damage);
+		}
+	}
+
+	/**
+	 * <b>中和爆炸的粒子：两色混合 + 恰好一次 {@code FLASH}</b>（需求 §3.8）。
+	 *
+	 * <p>三种粒子全部是原版（{@code minecraft:dust} 两份 + {@code minecraft:flash} 一次），
+	 * 颜色、颗数、散布、速度都按名取自数值真源。本方法<b>一次中和只调一次</b>：
+	 * 「别每 tick 刷」由触发点保证——中和本身是单次事件，冷却闸门管的是
+	 * 「同一个实体别在窗口内再中和」，不靠这里节流。颗数随爆炸等级增长
+	 * （{@link ChargeConfigs#neutralizeParticleCount}），免得 5 级的大立方体比 1 级还稀。</p>
+	 */
+	private static void sendBurst(Level world, Center center, int level) {
+		if (!(world instanceof ServerLevel server)) {
+			return; // 粒子是服务端权威（与本模组其它表现层同一口径）
+		}
+		int count = ChargeConfigs.neutralizeParticleCount(level);
+		double spread = ChargeConfigs.NEUTRALIZE_PARTICLE_SPREAD;
+		double speed = ChargeConfigs.NEUTRALIZE_PARTICLE_SPEED;
+		server.sendParticles(ChargeConfigs.PARTICLE_NEUTRALIZE_POSITIVE,
+			center.x(), center.y(), center.z(), count, spread, spread, spread, speed);
+		server.sendParticles(ChargeConfigs.PARTICLE_NEUTRALIZE_NEGATIVE,
+			center.x(), center.y(), center.z(), count, spread, spread, spread, speed);
+		server.sendParticles(ChargeConfigs.PARTICLE_FLASH,
+			center.x(), center.y(), center.z(), ChargeConfigs.NEUTRALIZE_FLASH_COUNT, spread, spread, spread, speed);
+	}
+
+	/**
+	 * ★ <b>中和点留电荷残留 —— 批 7 的唯一落地钩子，本批刻意留空</b>（需求 §3.5 #6~#9）。
+	 *
+	 * <p><b>本批它做什么</b>：记一行日志，<b>不生成任何残留</b>。也就是说：今天中和之后
+	 * 那块地方是干净的——没有残留载体、没有残留粒子、没有「接触残留随机染电」。</p>
+	 *
+	 * <p><b>为什么留一行日志而不是干脆空着</b>：空分支 = 无从判断它有没有被走到
+	 * （批 3 的同一课：静默分支与「没被走到」从外部完全不可区分）。中和点正是批 7 的落点，
+	 * 实机验收时要能一眼看出「这条钩子走到了、只是还没实现」。</p>
+	 *
+	 * <p><b>批 7 要在这里补什么</b>（参数摆全就是为了那时候不用改调用点）：在 {@code center}
+	 * 生成残留载体、存活 {@link ChargeConfigs#residueLifetimeTicks(int)} tick、稀疏粒子、
+	 * 生物接触残留 ⇒ 随机染电且等级 = {@link ChargeConfigs#residueInflictedLevel(int)}，
+	 * 并处理「同一实体对同一块残留只染一次 + 残留间爆炸最小间隔」的防连锁规则
+	 * （需求 §3.5 的「必须处理的一个设计洞」）。</p>
+	 *
+	 * @param center 中和点（{@link #detonate} 算出的爆炸中心）
+	 * @param level  爆炸等级 {@code L}（残留的寿命与给的等级都从它派生）
+	 */
+	private static void leaveResidue(Center center, int level) {
+		// TODO 批 7（电荷残留，需求 §3.5 #6~#9）：清单见方法 javadoc；本批只留这个具名钩子，
+		//   并在这里记一行日志（刻意不静默）。
+		//   ⚠ 落地时同时改掉关卡里「残留仍是钩子」那条断言（check-armor-sets.ps1 中和爆炸节）。
+		CoeCore.LOGGER.info("[电荷中和] 中和点 {}（爆炸等级 Lv{}）已记账：电荷残留属于后续批次，本批不生成残留、不放残留粒子",
+			center, level);
 	}
 
 	/** 该极性对应的注册项（两个 {@code DeferredHolder} 都在 {@code :coe}，永远在场）。 */

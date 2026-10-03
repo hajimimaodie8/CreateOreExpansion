@@ -1,8 +1,16 @@
 package com.hjmmd_8.createoreexpansion.content.energyfield.charge;
 
+import com.hjmmd_8.createoreexpansion.common.CoeCore;
+
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageType;
+
+import org.joml.Vector3f;
 
 /**
  * 电荷系统（着正电 / 着负电）—— <b>全部数值与表现常量的唯一真源</b>（coe-charge 批 1）。
@@ -17,11 +25,13 @@ import net.minecraft.util.Mth;
  * {@code common.registry.coe.CoeEffects}（注册）。爆炸 / 残留 / 四条途径 / 生物受场那几组
  * 常量是给批 4~8 备好的同一份真源，<b>此刻没有读取方</b>——各条注释里写明它属于哪一批。</p>
  *
- * <p><b>为什么不建自定义 {@code DamageType}</b>：作者 2026-10-03 裁定「不注册自定义 DamageType」
- * （需求 §六 #4 的推断被否决）⇒ 本类<b>刻意不含任何伤害类型 id 常量</b>，批 3 接扣血时
- * 从原版现成的伤害来源里选了一个：{@code damageSources().magic()}（与既有嬗乱效果同口径），
- * 不在本模组新建注册项 —— 伤害「种类」写在两个效果类的 {@code applyEffectTick} 里，
- * 因为它不是一个可调的数，本表不重复声明。</p>
+ * <p><b>自定义 {@code DamageType}：作者先否决、同日后改判为「按需求原文建」</b>
+ * （2026-10-03，批 6 执行期间）。需求 §六 #4 原文就建议新建一个（便于区分与免疫），
+ * 作者先裁定「不注册自定义 DamageType」⇒ 批 1~3 走的是 {@code damageSources().magic()}；
+ * 随后改判 ⇒ 现在本表持有 {@link #CHARGE_DAMAGE_TYPE}（{@code createoreexpansion:charge}），
+ * 两个效果的每次扣血与中和爆炸的范围伤害<b>全部</b>改走它，而且<b>只有这一个</b>
+ * 自定义伤害类型（数据包侧见该常量的 javadoc；旧那条「不得出现自定义伤害类型」的负向
+ * 断言已按这条裁定<b>反向改口径</b>，见关卡 {@code charge-one-custom-damage-type}）。</p>
  */
 public final class ChargeConfigs {
 
@@ -44,12 +54,17 @@ public final class ChargeConfigs {
 	public static final int MAX_LEVEL = 5;
 
 	/**
-	 * 每一级的时长（tick）：<b>200</b> tick = 10 秒。
+	 * 每一级的时长（tick）：<b>100</b> tick = 5 秒。
 	 *
-	 * <p>需求 §六 #1：{@code 时长 = 200 tick × 等级} ⇒ Lv1 10 秒、Lv5 50 秒。
-	 * 用 {@link #durationTicks(int)} 取，别在调用点乘。</p>
+	 * <p><b>作者 2026-10-03 裁定（批 6 执行期间改判）</b>：一级 5 秒、二级 10 秒、三级 15 秒、
+	 * 四级 20 秒、五级 25 秒 ⇒ {@code 时长 = 100 tick × 等级}。
+	 * ⚠ 需求文档 §六 #1 原本推的是 {@code 200 tick × 等级}（10/20/30/40/50 秒），
+	 * <b>已被这条裁定覆盖</b>。改这一个数就同时改五档（公式化的意义正在于此），
+	 * 引用它的四处（三条获得途径 + 对外 API 的示例）一处都不用动。</p>
+	 *
+	 * <p>用 {@link #durationTicks(int)} 取，别在调用点乘。</p>
 	 */
-	public static final int DURATION_TICKS_PER_LEVEL = 200;
+	public static final int DURATION_TICKS_PER_LEVEL = 100;
 
 	/**
 	 * 等级 → 效果 amplifier（0 基）。
@@ -71,6 +86,34 @@ public final class ChargeConfigs {
 	public static int clampLevel(int level) {
 		return Mth.clamp(level, MIN_LEVEL, MAX_LEVEL);
 	}
+
+	// ==================================================================================
+	// 一之二、自定义伤害类型（批 6 按作者裁定新增；需求 §六 #4 的原文方案）
+	// ==================================================================================
+
+	/**
+	 * <b>电荷伤害的自定义伤害类型 id：{@code createoreexpansion:charge}</b>
+	 * （作者 2026-10-03 裁定 —— 批 6 执行期间改判，覆盖了此前「不注册自定义 DamageType」的裁定）。
+	 *
+	 * <p>需求 §六 #4 原文就是「新建一个自定义伤害类型（例 {@code createoreexpansion:charge}）」
+	 * （理由：便于区分与免疫）。作者先说「不注册」，随后改判<b>按需求原文办</b> ⇒
+	 * 现在它回来了，而且<b>只有这一个</b>：两个效果的每次扣血（{@code applyEffectTick}）
+	 * 与中和爆炸的范围伤害<b>全部</b>走本键，见两处调用点。</p>
+	 *
+	 * <p><b>数据包侧</b>：{@code coe/src/main/resources/data/createoreexpansion/damage_type/charge.json}
+	 * （{@code message_id = "charge"} + {@code scaling = "when_caused_by_living_non_player"} +
+	 * {@code exhaustion = 0.0}，与中毒/magic 同一档口径）。伤害类型是<b>数据包注册表</b>，
+	 * 没有代码注册这一步，所以本表只持有这个 {@code ResourceKey}；死亡消息键
+	 * {@code death.attack.charge} 与 {@code death.attack.charge.player} 写在两个语言 provider 里
+	 * （英语 {@code EnglishLangProvider} / 中文 {@code ChineseLangProvider}），
+	 * 由 {@code runData} 铺到全部语言拷贝。</p>
+	 *
+	 * <p>⚠ 本类因此<b>必须</b> import {@code DamageType} / {@code ResourceKey} /
+	 * {@code Registries}：旧口径那条「电荷文件不得出现这些名字」的负向断言已按本裁定
+	 * <b>反向改口径</b>（现在是「必须恰好有这一个、且只能有这一个」）。</p>
+	 */
+	public static final ResourceKey<DamageType> CHARGE_DAMAGE_TYPE =
+		ResourceKey.create(Registries.DAMAGE_TYPE, CoeCore.modLoc("charge"));
 
 	// ==================================================================================
 	// 二、扣血（批 3 已接；照原版中毒的两行、去掉「不致死」那一道保护）
@@ -112,15 +155,18 @@ public final class ChargeConfigs {
 	}
 
 	// ==================================================================================
-	// 三、电荷中和爆炸（批 5 接）
+	// 三、电荷中和爆炸（批 6 已接；等级 / 范围 / 伤害 / 冷却 / 中心与扣血口径）
 	// ==================================================================================
 
 	/**
-	 * 爆炸等级到伤害的倍率：<b>4</b> ⇒ 区域内每个生物吃 {@code L × 4} 点伤害。
+	 * 爆炸等级到伤害的倍率：<b>2</b> ⇒ 区域内每个生物吃 {@code L × 2} 点伤害
+	 * （Lv1 = 2 点、Lv5 = 10 点）。
 	 *
-	 * <p>需求 §3.5 #4（作者原话「该区域内扣除的血量」）。</p>
+	 * <p>需求 §3.5 #4（作者原话「该区域内扣除的血量」）。
+	 * <b>作者 2026-10-03 裁定（批 6 执行期间改判）：这里从 4 调到 2</b>
+	 * —— Lv5 的范围内伤害从 20 点降到 10 点。改这一个数就同时改五档。</p>
 	 */
-	public static final int NEUTRALIZE_DAMAGE_PER_LEVEL = 4;
+	public static final int NEUTRALIZE_DAMAGE_PER_LEVEL = 2;
 
 	/**
 	 * 爆炸范围的 Chebyshev 半径 = {@code L + 1}（需求 §3.5 #2，<b>作者裁定</b>）：
@@ -151,8 +197,32 @@ public final class ChargeConfigs {
 	 */
 	public static final int NEUTRALIZE_COOLDOWN_TICKS = 10;
 
+	/**
+	 * 中和爆炸中心的<b>中点插值系数</b>：<b>0.5</b> ⇒ 爆炸中心 = 两实体位置的中点（需求 §六 #6）。
+	 *
+	 * <p>为什么不写在中和的实现里：那个文件的判据是「<b>一个数字字符都不许出现</b>」
+	 * （关卡 {@code charge-api-no-literals} 逐字符守着 {@code ChargeApi}），连 {@code 0.5}
+	 * 也不行 ⇒ 数值只能住在本表、按名引用。只有一方参与中和时（异极由外部施加）中心退化成
+	 * 该方自身的位置，不经过这个系数。</p>
+	 */
+	public static final double NEUTRALIZE_MIDPOINT_WEIGHT = 0.5D;
+
+	/**
+	 * 中和爆炸扣血前<b>写回目标 {@code invulnerableTime} 的值：0</b>。
+	 *
+	 * <p><b>为什么非清不可</b>（不清就是静默无效）：原版 {@code LivingEntity#hurt} 在
+	 * {@code invulnerableTime > 10} 时只结算「比上一击更大的那一部分」——{@code amount <= lastHurt}
+	 * 直接 {@code return false}。而中和的触发点常常就落在<b>同一 tick 刚刚结算过的另一刀</b>上
+	 * （被雷击 / 被带电波击中 / 被雷鸣合金武器命中，三条都是「先扣血、再染电」），那一刀已经把帧拉满
+	 * ⇒ 不清的话 {@code L × 4} 会<b>整段被吃掉、一点血都不掉</b>，而且没有任何报错。
+	 * 清帧后立刻 {@code hurt} ⇒ 冷却窗口由本次爆炸重新开启（保护长度不变），
+	 * 总伤害 = 原来那一下 + {@code L × 4}。仓内同一处口径的先例：
+	 * {@code WaveEssenceEffects#hurtThroughIFrames}（水/地魔素的额外伤害就是这么做才生效的）。</p>
+	 */
+	public static final int NEUTRALIZE_INVULNERABLE_TIME = 0;
+
 	// ==================================================================================
-	// 四、电荷残留（批 6 接）
+	// 四、电荷残留（批 7 接）
 	// ==================================================================================
 
 	/**
@@ -280,7 +350,69 @@ public final class ChargeConfigs {
 
 	/**
 	 * 中和爆炸 / 残留的一次性闪光粒子：{@code minecraft:flash}（需求 §3.8：
-	 * 爆炸「+ 一次 {@code FLASH}，⚠ 单次，别每 tick 刷」）。批 5 / 批 6 用。
+	 * 爆炸「+ 一次 {@code FLASH}，⚠ 单次，别每 tick 刷」）。批 6 的中和爆炸用
+	 * （颗数 {@link #NEUTRALIZE_FLASH_COUNT}）；批 7 的残留表现若沿用同一套，也取这里。
 	 */
 	public static final ParticleOptions PARTICLE_FLASH = ParticleTypes.FLASH;
+
+	// ----------------------------------------------------------------------------------
+	// 中和爆炸的一次性表现（批 6 接）—— 上面三条是常驻/共用粒子，这一块只服务爆炸那一下
+	// ----------------------------------------------------------------------------------
+
+	/**
+	 * 中和爆炸的<b>正电色粒子</b>：{@code minecraft:dust}，颜色 = {@link #POSITIVE_COLOR}
+	 * （玫红，取作者图标主色）。
+	 *
+	 * <p>需求 §3.8：中和爆炸是「爆炸式<b>两色混合</b>（正电色 + 负电色）+ 一次 {@code FLASH}」。
+	 * 两个颜色常量本来只有 {@code int} 形态（HUD 图标底色用），而粒子要
+	 * {@code ParticleOptions} ⇒ 在这里（数值真源）做一次 {@code 0xRRGGBB → 三分量 0~1}
+	 * 的换算，调用点仍然只按名取粒子。</p>
+	 */
+	public static final ParticleOptions PARTICLE_NEUTRALIZE_POSITIVE = dustOf(POSITIVE_COLOR);
+
+	/** 中和爆炸的<b>负电色粒子</b>：同 {@link #PARTICLE_NEUTRALIZE_POSITIVE}，颜色 = {@link #NEGATIVE_COLOR}（蓝）。 */
+	public static final ParticleOptions PARTICLE_NEUTRALIZE_NEGATIVE = dustOf(NEGATIVE_COLOR);
+
+	/**
+	 * 中和爆炸主粒子的<b>颗数基数</b>：<b>30</b>（每种颜色各发这么多 + 等级增量）。
+	 *
+	 * <p>需求 §3.8 只写「爆炸式两色混合」，没给密度 ⇒ 执行会话 2026-10-03 定：
+	 * 与既有波爆炸（{@code ChargerWaveFx#boomParticleCount} = {@code 30 + 等级 × 25}，
+	 * 1 级 55 颗）同一量级，但中和是<b>两色各发一份</b>、还要留出 FLASH，故增量取 20。
+	 * 逐级：Lv1 两色各 50（合计 100）、Lv5 各 130（合计 260）。</p>
+	 */
+	public static final int NEUTRALIZE_PARTICLE_BASE = 30;
+
+	/** 中和爆炸主粒子的<b>每级增量</b>：<b>20</b>（算式见 {@link #neutralizeParticleCount(int)}）。 */
+	public static final int NEUTRALIZE_PARTICLE_PER_LEVEL = 20;
+
+	/** 中和爆炸主粒子的散布半径（各轴，格）。【我定：爆炸是立体的，比绽放（0.5）散、比整波碰撞（1.2）略大】 */
+	public static final double NEUTRALIZE_PARTICLE_SPREAD = 1.2D;
+
+	/** 中和爆炸主粒子的初速系数。【我定：与既有波爆炸同值（0.15），密度更高时观感一致】 */
+	public static final double NEUTRALIZE_PARTICLE_SPEED = 0.15D;
+
+	/**
+	 * 中和爆炸的 {@code FLASH} 颗数：<b>1</b>（<b>恰好一次</b>）。
+	 *
+	 * <p>需求 §3.8 的「⚠ 单次，别每 tick 刷」：这个常量钉住「一次中和 = 一颗闪光」，
+	 * 免得将来有人把爆炸密度的算式顺手套到闪光上（{@code FLASH} 是强闪光粒子，多刷会糊屏）。</p>
+	 */
+	public static final int NEUTRALIZE_FLASH_COUNT = 1;
+
+	/** 中和爆炸主粒子颗数（<b>每种颜色</b>）= {@link #NEUTRALIZE_PARTICLE_BASE} + 等级 × {@link #NEUTRALIZE_PARTICLE_PER_LEVEL}。 */
+	public static int neutralizeParticleCount(int explosionLevel) {
+		return NEUTRALIZE_PARTICLE_BASE + explosionLevel * NEUTRALIZE_PARTICLE_PER_LEVEL;
+	}
+
+	/**
+	 * 把 {@code 0xRRGGBB} 拆成 {@code minecraft:dust} 要的三分量（0~1）并打包成粒子选项
+	 * （尺度取原版默认 1.0，不随等级变——大小是观感常量，不该跟着爆炸等级漂）。
+	 */
+	private static ParticleOptions dustOf(int rgb) {
+		return new DustParticleOptions(new Vector3f(
+			((rgb >> 16) & 0xFF) / 255.0F,
+			((rgb >> 8) & 0xFF) / 255.0F,
+			(rgb & 0xFF) / 255.0F), 1.0F);
+	}
 }

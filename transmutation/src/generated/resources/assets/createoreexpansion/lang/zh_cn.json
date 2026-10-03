@@ -303,6 +303,8 @@
   "createoreexpansion.wheel_effect.double": "效果：%s%% 概率产物翻倍",
   "createoreexpansion.wheel_effect.quantity": "效果：每种产物数量 +%s",
   "createoreexpansion.wheel_effect.speed": "效果：加工时间减少 %s%%",
+  "death.attack.charge": "%1$s 被电荷杀死了",
+  "death.attack.charge.player": "%1$s 被 %2$s 的电荷杀死了",
   "effect.createoreexpansion.charged_negative": "着负电",
   "effect.createoreexpansion.charged_positive": "着正电",
   "effect.createoreexpansion.transmutation_disorder": "嬗乱",

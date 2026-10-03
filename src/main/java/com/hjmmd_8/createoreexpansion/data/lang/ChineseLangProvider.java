@@ -604,6 +604,11 @@ public class ChineseLangProvider extends LanguageProvider {
         add("effect.createoreexpansion.charged_positive", "着正电");
         add("effect.createoreexpansion.charged_negative", "着负电");
 
+        // ========== 电荷伤害的自定义伤害类型（coe-charge 批 6，作者 2026-10-03 改判）==========
+        // 与英文侧逐键对齐（id = createoreexpansion:charge ⇒ death.attack.charge）。
+        add("death.attack.charge", "%1$s 被电荷杀死了");
+        add("death.attack.charge.player", "%1$s 被 %2$s 的电荷杀死了");
+
         // ========== Create 通用 ==========
         add("create.tooltip.holdForDescription", "按住 [%1$s] 可查看概要");
         add("create.tooltip.holdForControls", "按住 [%1$s] 可查看控制方法");

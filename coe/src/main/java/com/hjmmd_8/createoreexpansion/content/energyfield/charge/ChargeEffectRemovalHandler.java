@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeEffects;
 
 import net.minecraft.core.Holder;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
@@ -15,8 +16,14 @@ import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
  * 这两个 id 的 {@link MobEffectEvent.Remove}。
  *
  * <p>需求 §3.1「能否被牛奶解除：<b>不能</b>」+ §5.3 陷阱 1/2。挡住
- * {@code Remove} 之后，所有「清除效果」的路径都解不掉这两个 debuff，而
- * <b>唯一</b>能让它们消失的路径是自然到期（见下「为什么不订 {@code Expired}」）。</p>
+ * {@code Remove} 之后，<b>外部</b>「清除效果」的路径（牛奶 / {@code /effect clear} /
+ * 别的模组的净化）全都解不掉这两个 debuff；能让它们消失的路径有<b>两条</b>：
+ * ① 自然到期（见下「为什么不订 {@code Expired}」）；
+ * ② ★ <b>电荷中和爆炸</b>（批 6，需求 §3.5「中和 = 两种效果都消失」）—— 它是本模组
+ * <b>自己发起</b>的移除，走 {@link #removeForNeutralization} 这唯一一道放行。
+ * ⚠ 这道放行不是可选项：{@code LivingEntity#removeEffect} 的<b>第一句</b> post 的正是本类
+ * 拦的那个事件 ⇒ 不放行的话中和会<b>连一个效果都去不掉、而且什么都不报</b>
+ * （理由与实测出处见该方法的 javadoc）。</p>
  *
  * <p><b>为什么读 {@code getEffect()} 而不是 {@code getEffectInstance()}</b>：{@code Remove}
  * 的 {@code getEffectInstance()} 被 {@code @Nullable} 标注，且它自己的注释写明
@@ -74,14 +81,62 @@ public final class ChargeEffectRemovalHandler {
 	}
 
 	/**
+	 * 「这次移除是本模组的中和爆炸发起的」标记（只在 {@link #removeForNeutralization} 的调用栈
+	 * 内为 true，{@code finally} 复位）。
+	 *
+	 * <p><b>为什么不是 {@code ThreadLocal}、也不加 {@code volatile}</b>：① 本仓关卡
+	 * {@code charge-remove-guard-holder-identity} 对<b>本文件</b>做负向扫描
+	 * （{@code .get()} 命中数必须为 0 —— 那是「拿 Holder 与效果实例比」那类历史错误的哨兵）
+	 * ⇒ 读 {@code ThreadLocal#get()} 会踩到它；② 事件的派发<b>同线程同步</b>
+	 * （{@code EventHooks.onEffectRemoved} 直接 post），标记只在一次调用内为 true，
+	 * 而不加 {@code volatile} 恰好是最安全的方向：别的线程即使读到陈旧值也只会读到 false
+	 * ⇒ 照旧拦下它自己那次移除（那本来就不该放行）。</p>
+	 */
+	private static boolean neutralizationRemoval;
+
+	/**
 	 * 拦下这两个电荷效果的移除（{@code Remove} 本质是 {@code ICancellableEvent}；
 	 * cancel 之后调用方（{@code EventHooks.onEffectRemoved} 的返回值为 true）会跳过
 	 * {@code onEffectRemoved} 与 {@code iterator.remove()}，效果因此留在实体身上）。
 	 */
 	@SubscribeEvent
 	public static void onRemove(MobEffectEvent.Remove event) {
+		if (neutralizationRemoval) {
+			return; // 中和爆炸自己发起的移除：放行（唯一出口，见 removeForNeutralization）
+		}
 		if (isChargedEffect(event.getEffect())) {
 			event.setCanceled(true);
+		}
+	}
+
+	/**
+	 * ★ <b>中和爆炸专用的一次性放行</b>：把某个电荷效果<b>真的</b>从实体身上移除
+	 * （coe-charge 批 6；需求 §3.5「中和 = 两种效果都消失」）。
+	 *
+	 * <p><b>为什么不能直接调 {@code LivingEntity#removeEffect}</b>（本批最容易写成
+	 * 「静默无效」的一处）：那个方法的<b>第一句</b>就是
+	 * {@code EventHooks.onEffectRemoved(this, effect, null)}，而它 post 的正是本类拦下的
+	 * {@link MobEffectEvent.Remove} ⇒ 对本类认的这两个效果，{@code removeEffect} 会
+	 * <b>直接返回 false 并且什么都不做</b>（效果留在身上、扣血照旧、连一行日志都没有）。
+	 * 实机口径的来源：{@code build/patch/mcsrc-all} 的 {@code LivingEntity.java}
+	 * 与 {@code EventHooks.java}（{@code removeEffect} 与 {@code removeEffectsCuredBy}
+	 * 两条路都被本类拦下）。</p>
+	 *
+	 * <p><b>放行的是哪一半</b>：本方法只跳过本类自己那道判断，事件<b>照常派发</b>
+	 * （别的订阅者仍然看得到），{@code removeEffect} 因此走完它正常的后半段——
+	 * {@code onEffectRemoved} 清属性修饰、把移除包发给玩家、并把 {@code effectsDirty} 置位
+	 * （客户端 HUD 图标与效果粒子随之更新）。这些记账<b>一个都不能跳</b>：所以这里选
+	 * 「放行 + 走原版移除」，而不是「绕过事件直接删 map」（后者效果确实会消失，
+	 * 但玩家的 HUD 图标会一直留到自然到期，是另一种静默不一致）。</p>
+	 *
+	 * @return 同 {@code LivingEntity#removeEffect}：真的移除了才是 true
+	 */
+	public static boolean removeForNeutralization(LivingEntity entity, Holder<MobEffect> effect) {
+		neutralizationRemoval = true;
+		try {
+			return entity.removeEffect(effect);
+		} finally {
+			neutralizationRemoval = false;
 		}
 	}
 
