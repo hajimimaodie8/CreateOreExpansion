@@ -23,7 +23,9 @@ import net.minecraft.world.level.block.Blocks;
  * <ul>
  *   <li>(a) <b>雷</b>：<b>刻意留空</b>——作者明说"先不要进行任何效果设置，因为之后我要加一个
  *       带正电和带负电的 buff"，故 {@code case LIGHTNING} 里只有一行 {@code TODO} 注释 + 直接返回，
- *       <b>连日志都不打</b>（它没有任何效果可报）；</li>
+ *       <b>连日志都不打</b>（它没有任何效果可报）。
+ *       电荷本体的施加面 = {@code content.energyfield.ChargeApi}（coe-charge 批 5 起四条获得途径
+ *       都调它）；本臂仍然<b>刻意不调</b>它 —— 本方法只收 {@link Player}，而电荷要玩家与生物都能获得；</li>
  *   <li>(b) <b>水</b>：窒息音效（原版溺水受伤声） + 气泡/水花粒子 + <b>额外伤害</b>；</li>
  *   <li>(c) <b>火</b>：灼烧（原版点燃）；</li>
  *   <li>(d) <b>冰</b>："细雪冰冻"——原版 {@code setTicksFrozen}（冰凉覆盖层 + 细雪的减速）
@@ -252,8 +254,11 @@ public final class WaveEssenceEffects {
 				puffAtHit(server, player, ParticleTypes.END_ROD);
 			}
 			case LIGHTNING -> {
-				// TODO 正电/负电 buff（作者后续加）：本批**刻意什么都不做** —— 不留空方法、
-				// 不发粒子/音效/效果、也不打日志（没有发生的事不该出现在事件流里）。
+				// TODO 正电/负电 buff（作者后续加）：**雷这一支刻意什么都不做** —— 电荷的获得与查询
+				// 已收口在 content.energyfield.ChargeApi（coe-charge 批 5 起「被雷击 / 雷鸣合金技能命中 /
+				// 靠近通电线圈 / 被带电波击中」四条途径都调它）；这里不再自己施加，因为本臂只收 Player，
+				// 而电荷要玩家与生物都能获得。本批**不改代码**：不留空方法、不发粒子/音效/效果、
+				// 也不打日志（没有发生的事不该出现在事件流里）。
 				return;
 			}
 			default -> {

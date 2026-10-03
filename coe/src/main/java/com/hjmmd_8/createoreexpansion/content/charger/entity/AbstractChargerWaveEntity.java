@@ -1248,6 +1248,21 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			// 命中附加效果要素（可选、默认关闭）：既有链"伤害 ⇒ 护甲充能"之后<b>追加</b>一行，
 			// 未设要素时整段跳过（机器波/变器波命中行为逐字不变）。见 applyHitEffect 的说明。
 			applyHitEffect(target);
+			// ★ coe-charge 批 5（需求 §3.2 表格第 4 行）：**被带正电/负电的能量波击中 ⇒ 继承波的极性**
+			// （等级 = 波级；时长 = 数值真源的 durationTicks(波级)，即 200 tick × 波级，绝不在这里写乘法）。
+			// 刻意放在上面那条"目标就是玩家"的分支<b>之外</b> ⇒ <b>玩家与生物同时成立</b>（与魔素命中效果
+			// 那条"只对玩家"相反，需求 §3.2 #4 没有玩家限定）。
+			// 未带电的波（机器波 / 变器波 / 一切既有波）getChargePolarity() 返回 null ⇒ 第一句就跳过，
+			// 它们的命中行为与改造前<b>逐字相同</b>。
+			// 施加一律走 ChargeApi（四条获得途径共用同一个施加面）：同极合并、异极中和都由门面负责，
+			// 本类不构造 MobEffectInstance、也不认那两个 effect 类（免疫照旧走 addEffect 的既有通道）。
+			// ⚠ 既有命中链的<b>相对次序</b>一个字未动：伤害 ⇒ 护甲充能 ⇒ applyHitEffect ⇒ ★本段 ⇒ burst ⇒ discard。
+			com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity waveCharge = getChargePolarity();
+			if (waveCharge != null) {
+				com.hjmmd_8.createoreexpansion.content.energyfield.ChargeApi.apply(target, waveCharge,
+					getWaveLevel(),
+					com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs.durationTicks(getWaveLevel()));
+			}
 			ChargerWaveFx.burst(level(), position(), trailStyle(), renderColor);
 			discard();
 			return;

@@ -3,12 +3,15 @@ package com.hjmmd_8.createoreexpansion.content.lightning;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.recipe.RecipeAutomation;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
+import com.hjmmd_8.createoreexpansion.content.energyfield.ChargeApi;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.simibubi.create.foundation.recipe.RecipeApplier;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LightningBolt;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
@@ -45,7 +48,35 @@ public final class LightningEventHandler {
         // 兜底：未被闪电落地统一加工覆盖的单个掉落物（已被加工过的会取消事件，避免被闪电伤害）
         if (event.getEntity() instanceof ItemEntity itemEntity) {
             handleItemEntityStrike(event, itemEntity);
+        } else if (event.getEntity() instanceof LivingEntity living) {
+            // ★ coe-charge 批 5（需求 §3.2 #1）：**被雷电击中的生物**随机获得一种电荷。
+            //   刻意用 else-if 追加：上面那条 ItemEntity 分支（掉落物雷击加工）逐字未动，
+            //   而 ItemEntity 本来就不是 LivingEntity ⇒ 两条分支互斥、谁也不挡谁。
+            //   「同一次雷击只施加一次」由事件本身保证：EntityStruckByLightningEvent 每次雷击
+            //   对每个被击中的实体只发一次（限频不需要额外的计时器）。
+            applyLightningCharge(living);
         }
+    }
+
+    /**
+     * ★ coe-charge 批 5（需求 §3.2 #1）：被雷击 ⇒ <b>随机极性、等级
+     * {@link ChargeConfigs#LIGHTNING_LEVEL}、时长 {@link ChargeConfigs#durationTicks(int)}</b>。
+     *
+     * <p>施加一律走 {@link ChargeApi}（本模组四条获得途径共用同一个施加面）——这里
+     * <b>不</b>自己构造 {@code MobEffectInstance}、也不认那两个 effect 类：随机极性的口径
+     * （{@code entity.getRandom()}）、同极合并、异极中和全部由门面负责。</p>
+     *
+     * <p>与 {@code MedallionEffectHandler#onStruckByLightning} 的关系：雷鸣合金系列被雷击时
+     * 那个处理器会 {@code setCanceled(true)}（豁免销毁 + 补满能量），但事件取消<b>不会</b>
+     * 阻止其它监听器继续收到本事件 ⇒ 雷鸣系列玩家/生物被雷击时<b>照样染电</b>（这是需求
+     * §3.2 #1 的字面口径：被雷击就给，与是不是雷鸣系列无关）。</p>
+     */
+    private static void applyLightningCharge(LivingEntity living) {
+        if (living.level().isClientSide) {
+            return; // 服务端权威（效果、扣血、爆炸都只在服务端结算）
+        }
+        ChargeApi.applyRandom(living, ChargeConfigs.LIGHTNING_LEVEL,
+            ChargeConfigs.durationTicks(ChargeConfigs.LIGHTNING_LEVEL));
     }
 
     @SubscribeEvent
