@@ -77,7 +77,7 @@ public class WaveContraptionCollisions {
 						continue; // 认领了但本次不处理：下一个方块
 					if (outcome == WaveMachineHandler.Outcome.NOT_MINE) {
 						// contraption 上的其它方块：视为撞墙
-						ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+						ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 						wave.discard();
 					}
 					return true;

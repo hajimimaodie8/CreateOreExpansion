@@ -15,6 +15,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 
@@ -245,6 +246,17 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private static final net.minecraft.network.syncher.EntityDataAccessor<Integer> FIRING_BATCH =
 		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.INT);
 
+	/**
+	 * <b>魔素</b>的同步 key（2026-10-03 需求 coe-ess 批 3）：{@link WaveTrailStyle} 的<b>枚举名</b>，
+	 * 空串 / 未知名字 = 未设（⇒ 回落波型风格）。
+	 *
+	 * <p>照 {@link #WAVE_TYPE} 的既成形状：枚举本身没有 {@code EntityDataSerializer}，
+	 * 而字符串同步对"未知值 / 老客户端 / 缺省"都能容错 —— 读不出来就是"没有魔素"，
+	 * 而不是抛异常。{@code getEssence()} 的客户端分支就查这个值。</p>
+	 */
+	private static final net.minecraft.network.syncher.EntityDataAccessor<String> ESSENCE =
+		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.STRING);
+
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 		builder.define(WAVE_LEVEL, 0);
@@ -252,6 +264,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		builder.define(CHARGE, 0);
 		builder.define(WAVE_TYPE, "");
 		builder.define(FIRING_BATCH, 0);
+		builder.define(ESSENCE, "");
 	}
 
 	/**
@@ -503,6 +516,123 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return true;
 	}
 
+	// ==================================================================================
+	// 魔素（2026-10-03 需求 coe-ess 批 3）：攻击波专有的<b>纯视觉</b>属性
+	//
+	// 口径（作者裁定，逐条落在这里）：
+	//   · 默认 = <b>火</b>，但"默认"不靠字段初值——字段初值是 {@code null}（<b>未设</b>），
+	//     由 {@link #trailStyle()} 的回落把它读成"继承波型风格"；而攻击波的波型风格恰好就是
+	//     {@link WaveTrailStyle#DAMAGE}，且 {@link WaveTrailStyle#FIRE} 与它是同一份档案实例
+	//     ⇒ "默认火"在结构上成立，且老存档（没有该字段）逐字节走回落，观感零变化。
+	//   · 可缺省：NBT 只在该字段真的被设过时才写键（见 addAdditionalSaveData），
+	//     读到没有该键 ⇒ 保持 null ⇒ 回落波型风格；老存档不会崩。
+	//   · 允许中途改（<b>没有</b>"一生一次"约束——那是 {@link #trySetWaveType} 对波型的约束，
+	//     魔素不受它管）。
+	//   · <b>攻击波专有</b>：非攻击波被显式设置时<b>忽略</b>（不写字段、不报错、返回 false，见
+	//     {@link #trySetEssence}）。因此"读它"这件事不需要再写第二道"是不是攻击波"的特判——
+	//     非攻击波的身上不可能有非 null 的魔素。
+	// ==================================================================================
+
+	/** 魔素（服务端权威值；{@code null} = 未设 ⇒ 继承波型风格）。 */
+	@Nullable
+	private WaveTrailStyle essence;
+
+	/**
+	 * 本波的<b>魔素</b>（{@code null} = 未设）。服务端读本字段，客户端按同步名字现查枚举
+	 * （与 {@link #getWaveType()} 同一形状：两者都由 {@link #trySetEssence} 一起写，
+	 * 故不存在"服务端与客户端看到不同魔素"的窗口）。
+	 */
+	@Nullable
+	public WaveTrailStyle getEssence() {
+		if (level() != null && level().isClientSide)
+			return essenceByName(this.entityData.get(ESSENCE));
+		return essence;
+	}
+
+	/**
+	 * 按<b>枚举名</b>查魔素（同步数据与 NBT 的容错入口，<b>认不出来就是"没有"</b>）。
+	 *
+	 * <p><b>为什么不用 {@code WaveTrailStyle.valueOf}</b>：同步值可能是空串、未知名字，
+	 * 老存档里也可能留着被改过的字符串 —— {@code valueOf} 会抛
+	 * {@code IllegalArgumentException}，而这条路径跑在实体的 tick / 读档里（一抛就是崩）。
+	 * 本方法与 {@code ChargerWaveFx#profile} 的"未登记值静默回落"同一口径：
+	 * 认不出来 ⇒ {@code null} ⇒ {@link #trailStyle()} 回落"继承波型风格"（不崩、不改玩法）。</p>
+	 */
+	@Nullable
+	private static WaveTrailStyle essenceByName(String name) {
+		if (name == null || name.isEmpty())
+			return null;
+		for (WaveTrailStyle style : WaveTrailStyle.values()) {
+			if (style.name()
+				.equals(name))
+				return style;
+		}
+		return null;
+	}
+
+	/**
+	 * 设置<b>魔素</b>（<b>可随时改</b>——无"一生一次"约束）。
+	 *
+	 * <p><b>非攻击波被显式设置时忽略</b>（作者裁定：魔素是攻击波专有；§3.2 的"忽略 + 不设"）：
+	 * 不写字段、不报错，返回 {@code false}。判据取波型自报的 {@link WaveType#dealsDamage()}
+	 * （攻击态 = 会伤害的波），<b>不</b>在这里写死某一个内置波型 —— 扩展模组注册的
+	 * "会伤害的波型"因此自动获得魔素能力。</p>
+	 *
+	 * <p>{@code null} = 清除魔素（回落波型风格；任何波型都允许清除）。</p>
+	 *
+	 * @return 是否真的写进去了
+	 */
+	public boolean trySetEssence(@Nullable WaveTrailStyle target) {
+		if (target == null) {
+			this.essence = null;
+			this.entityData.set(ESSENCE, "");
+			return true;
+		}
+		if (!getWaveType().dealsDamage())
+			return false;
+		this.essence = target;
+		this.entityData.set(ESSENCE, target.name());
+		return true;
+	}
+
+	/**
+	 * <b>本波真正生效的拖尾风格</b> —— 全仓<b>唯一</b>的风格来源（2026-10-03 需求 coe-ess 批 3，口径 1）。
+	 *
+	 * <p><b>公式只有这一处</b>：{@code 有魔素（且已登记）⇒ 用魔素；否则继承波型风格}。
+	 * 全部 32 处风格消费点（波实体的拖尾/绽放/爆炸 · 命中解析 · 碰撞协调 · 第二层的差波器与
+	 * 波门处理器）都必须调本方法，<b>不许</b>在别处再写一份
+	 * {@code essence != null ? ... : ...} 的同形（关卡 {@code wave-essence-single-source} 守着这条）。</p>
+	 *
+	 * <p>刻意<b>不</b>写"只对攻击波读魔素"的特判（作者明确否决）：非攻击波身上不可能有魔素
+	 * （设置侧就忽略了，见 {@link #trySetEssence}），再判一次只会多一处会漂移的分支。</p>
+	 *
+	 * <p>{@code ChargerWaveFx.isRegistered} 那一问也是必需的：未登记的枚举值会被
+	 * {@code ChargerWaveFx#profile} 静默回落成 {@code NORMAL}（不崩、不改玩法）——
+	 * 那与"没有魔素 ⇒ 继承波型风格"是两回事，不先问就会让"设了一个没登记的魔素"表现为
+	 * "这枚攻击波突然变成裸染色尘埃"。</p>
+	 */
+	public WaveTrailStyle trailStyle() {
+		WaveTrailStyle essence = getEssence();
+		// ↓ 这一句是本方法唯一的"回落"分支：继承波型风格（= 老行为，也是默认魔素"火"的载体）。
+		return essence != null && ChargerWaveFx.isRegistered(essence) ? essence : getWaveType().trailStyle();
+	}
+
+	/**
+	 * 本波拖尾主粒子的<b>调用方基线尺度</b>（风格档案可覆盖，见 {@code StyleProfile#effectiveScale}）。
+	 *
+	 * <p>几何（{@link #isOrbiting()}）只影响<b>这一组量</b>（颗数 / 尺度）：环绕波比主波更粗更密
+	 * （作者 2026-10-02："即使有环绕波生成，过于不明显也是 bug"）。它<b>不</b>参与"用哪个风格档案"
+	 * 的选择 —— 那由 {@link #trailStyle()} 唯一决定（这才是需求 §3.4"粒子由魔素决定"的含义）。</p>
+	 */
+	private float trailScale() {
+		return isOrbiting() ? ChargerWaveFx.ORBIT_TRAIL_SCALE : 0.45f;
+	}
+
+	/** 本波拖尾主粒子的<b>调用方基线颗数</b>（见 {@link #trailScale()} 的说明）。 */
+	private int trailCount() {
+		return isOrbiting() ? ChargerWaveFx.ORBIT_TRAIL_COUNT : 6;
+	}
+
 	/**
 	 * <b>位置写入总入口</b>（覆写：区分"自己飞"与"被机器挪"）。
 	 *
@@ -714,8 +844,16 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
-	 * <b>环绕波本 tick 的全部粒子</b>（只在服务端调用；唯一调用点是 {@link #tick()} 里
+	 * <b>几何专属层的粒子</b>：只有"这枚波在环绕"这件事能产生的那两簇
+	 * （2026-10-03 需求 coe-ess §3.4 的 B 层；只在服务端调用，唯一调用点是 {@link #tick()} 里
 	 * {@code isOrbiting()} 的那条分支）。
+	 *
+	 * <p><b>本方法刻意只画几何</b>——环绕波的<b>风格粒子</b>（主体尘埃 + 该魔素的点缀，包括
+	 * "异"那套 END_ROD / 青焰）已并入风格层，与主波走同一个
+	 * {@link ChargerWaveFx#sendTrail} 调用。留在这里的两件东西都依赖环平面：
+	 * <b>环面留痕桩</b>（{@link ChargerWaveFx#sendOrbitMarks}）与<b>出生整圈标记</b>
+	 * （{@link ChargerWaveFx#burstOrbitSpawn}）。它们<b>不随魔素变</b>，也不进任何风格档案 ——
+	 * 主波没有环平面，把桩点塞进"异"档案会在平飞路径上画出一圈没有意义的点。</p>
 	 *
 	 * <p>注意本方法<b>只负责粒子</b>：调用点不等价于 {@code return}，环绕波照样往下走命中判定、
 	 * 方块碰撞、波波碰撞与寿命/收尾分支 —— 观感与机制在这里是分开的两件事。</p>
@@ -726,20 +864,18 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 *   <li><b>出生</b>（{@code tickCount == 1}，实体刚被放进世界的第一 tick）：在父波位置炸一簇
 	 *       {@link ChargerWaveFx#burstOrbitSpawn}，并把整圈轨道一次标出来 —— 玩家发射后立刻能
 	 *       看到主波周围多了一个环；</li>
-	 *   <li><b>每 tick</b>：{@link ChargerWaveFx#sendOrbitTrail}（主体尘埃 + END_ROD + 青焰 +
-	 *       每逢 {@link ChargerWaveFx#ORBIT_MARK_INTERVAL_TICKS} 补一圈环面留痕桩）；</li>
+	 *   <li><b>每 tick</b>：每逢 {@link ChargerWaveFx#ORBIT_MARK_INTERVAL_TICKS} 补一圈环面留痕桩
+	 *       （{@link ChargerWaveFx#sendOrbitMarks}）；</li>
 	 *   <li><b>命中与消散</b>：命中走既有的命中链（{@code hitEffect → ChargerWaveFx.burst →
-	 *       discard}，用的是环绕波自己的波级色与攻击态风格）；其余任何移除路径（父波没了、寿命与
-	 *       行程上限）在 {@link #remove} 里补最后一簇 —— 见那里。</li>
+	 *       discard}，用的是环绕波自己的波级色与其 {@link #trailStyle()}）；其余任何移除路径
+	 *       （父波没了、寿命与行程上限）在 {@link #remove} 里补最后一簇 —— 见那里。</li>
 	 * </ol>
 	 */
-	private void emitOrbitTrail(ServerLevel server) {
+	private void emitOrbitGeometry(ServerLevel server) {
 		Vec3 anchorPos = this.orbitAnchorPos;
 		if (anchorPos == null) {
 			// 本 tick 还没成功改写位置（理论上不会发生：位置改写就在本 tick 移动段里）——
-			// 保守退化：只按自身位置发主体粒子，不画环面留痕（不留错位的圈）。
-			ChargerWaveFx.sendOrbitTrail(server, position(), renderColor, movement, null, null,
-				orbitRadius, orbitCurrentPhase, false);
+			// 保守退化：这一 tick 不画任何几何粒子（宁可不画，也不画出错位的圈）。
 			return;
 		}
 		// 环平面法向取"位置改写实际用的那个"（见 orbitRingNormal 的说明）：父波方向被能量场掰弯时，
@@ -751,7 +887,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			ChargerWaveFx.burstOrbitSpawn(server, anchorPos, renderColor, axes[0], axes[1], orbitRadius,
 				orbitCurrentPhase);
 		}
-		ChargerWaveFx.sendOrbitTrail(server, position(), renderColor, normal, axes[0], axes[1],
+		ChargerWaveFx.sendOrbitMarks(server, position(), axes[0], axes[1],
 			orbitRadius, orbitCurrentPhase, tickCount % ChargerWaveFx.ORBIT_MARK_INTERVAL_TICKS == 0);
 	}
 
@@ -882,7 +1018,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		Vec3 levelColor = boostRemaining > 0
 			? getWaveColorForLevel(Math.min(waveLevel + boostStep, WaveLevels.MAX_LEVEL))
 			: getWaveColor();
-		Vec3 targetColor = ChargerWaveFx.styleColor(getWaveType().trailStyle(), levelColor);
+		Vec3 targetColor = ChargerWaveFx.styleColor(trailStyle(), levelColor);
 		renderColor = renderColor.lerp(targetColor, 0.15d);
 		// 距离足够近则直接贴合目标色，避免无限逼近
 		if (renderColor.distanceToSqr(targetColor) < 1.0E-5d)
@@ -890,41 +1026,59 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 		// 飞行粒子（密集，沿移动方向散布）：主体 = 当前渲染色（ω=玫红），颜色由本波的拖尾风格决定——
 		// 服务端走 ChargerWaveFx.sendTrail、Ponder 场景走 ChargerWaveFx.addTrailParticles，
-		// 此处只负责把风格（getWaveType().trailStyle()）与原有的位置/数量/散布/速度原样传过去，
+		// 此处只负责把风格（trailStyle()，唯一解析处）与原有的位置/数量/散布/速度原样传过去，
 		// 风格带来的颜色变换与点缀粒子全部在 ChargerWaveFx 的风格映射表里定义。
 		// ω（5 级）额外每 tick 叠 1 颗金色尾迹点缀 —— 金色是刻意叠加的装饰色（不是波的渲染色），
 		// 故继续用无风格重载，保持金饰不被染色、只占少数，避免整条波看起来发黄。
 		//
 		// ==================================================================================
-		// ★ 环绕波（可选要素）走<b>自己那一整套</b>粒子，主波那条路径整段跳过：
-		//   · 为什么必须另起一段：环绕波的实体类型/渲染器/波型与主波逐字相同，视觉 100% 靠粒子
-		//     （EmptyEntityRenderer），而"每 tick 6 颗、尺度 0.45"的主波拖尾在半径 0.8 格的环绕半径上
-		//     完全看不出是"另一枚在绕"（作者 2026-10-02 实测反馈："我并不能从视觉上直接判断是否有
-		//     环绕波生成"）。环绕波改用 ChargerWaveFx.sendOrbitTrail（12 颗 / 0.62 + END_ROD +
-		//     青焰 + 环面留痕桩）；
-		//   · 为什么是"二选一"而不是"两段叠加"：叠加等于环绕波也吃主波那 6 颗参数，
-		//     两组颜色/尺度会互相冲淡——这正是作者怕的"被主波粒子参数覆盖"（关卡
-		//     wave-orbit-particles-exclusive 守着这条）；
-		//   · 为什么<b>只</b>跳过粒子而不提前 return：后面的命中判定/方块碰撞/波波碰撞/收尾分支
-		//     对环绕波仍然有意义（它照样会撞上生物、撞上父波、寿命到点），提前 return 等于顺手
-		//     把它的命中与收尾一起关掉——那是改机制，不是改观感。
+		// ★ 粒子分派 = 【风格层】按魔素 + 【几何专属层】按 isOrbiting() 额外叠加
+		//   （2026-10-03 需求 coe-ess §3.4；本批把原来的"二选一"整段换掉）
+		//
+		// 旧形状（2026-10-02 起）是：
+		//     if (level() instanceof ServerLevel orbitServer && isOrbiting()) {
+		//         emitOrbitTrail(orbitServer);              ← 环绕波自己那整套
+		//     } else if (level() instanceof ServerLevel server) {
+		//         ChargerWaveFx.sendTrail(..., 0.45f, 6, ...)   ← 主波
+		//     }
+		// 它是"二选一"：环绕波<b>整段跳过</b>主波那条链路。需求 §3.4 要求改成两层叠加——
+		//
+		//   ① 风格层（由魔素决定，主波与环绕波走<b>同一条路</b>）：下面的 sendTrail /
+		//      addTrailParticles 调用点只有一个，风格实参就是 trailStyle()（唯一解析处）。
+		//      几何只经由两个<b>明确</b>输入进来：调用方基线（trailScale() / trailCount()，
+		//      环绕波更粗更密）与 mainOnly 旗标（isOrbiting()，雷魔素的强闪光"只挂主波"）。
+		//      两者都<b>不</b>参与"用哪个风格档案"——那才是"粒子由魔素决定"的含义。
+		//      环绕波原来那套粒子内容（12/0.62 + END_ROD + 青焰）已整份搬进
+		//      WaveTrailStyle.ARCANE 的档案，于是主波用"异"魔素时逐字节等于它。
+		//   ② 几何专属层（只有"这枚波在环绕"才有，与魔素无关）：环面留痕桩 + 出生整圈标记，
+		//      见下面的 isOrbiting() 分支与 emitOrbitGeometry。
+		//
+		// 为什么<b>只</b>跳过/叠加粒子而不提前 return：后面的命中判定/方块碰撞/波波碰撞/收尾分支
+		// 对环绕波仍然有意义（它照样会撞上生物、撞上父波、寿命到点），提前 return 等于顺手
+		// 把它的命中与收尾一起关掉——那是改机制，不是改观感（关卡
+		// wave-orbit-particles-exclusive 专门守着这条负向断言）。
 		// ==================================================================================
-		if (level() instanceof ServerLevel orbitServer && isOrbiting()) {
-			emitOrbitTrail(orbitServer);
-		} else if (level() instanceof ServerLevel server) {
-			ChargerWaveFx.sendTrail(server, position(), getWaveType().trailStyle(), renderColor, 0.45f, 6,
-				movement.scale(0.12), 0.03);
+		if (level() instanceof ServerLevel server) {
+			ChargerWaveFx.sendTrail(server, position(), trailStyle(), renderColor,
+				trailScale(), trailCount(), movement.scale(0.12), 0.03, isOrbiting());
 			if (isOmega())
 				server.sendParticles(ChargerWaveFx.waveParticle(OMEGA_GOLD, 0.5f), getX(), getY(), getZ(), 1,
 					movement.x * 0.3, movement.y * 0.3, movement.z * 0.3, 0.05);
 		} else if (ponderScene) {
 			// Ponder 场景：客户端粒子（PonderLevel.addParticle 已实现，会渲染在场景中）；
-			// 仍是每 tick 6 颗主粒子（与原 6 次 addParticle 循环等量），只是改成一次调用发完
-			ChargerWaveFx.addTrailParticles(level(), position(), getWaveType().trailStyle(), renderColor, 0.45f, 6,
-				movement.scale(0.12));
+			// 与上面<b>同一条风格链路</b>（只是不走网络包），故魔素在 Ponder 里同样生效
+			// （需求陷阱 8：只改服务端那条 = Ponder 里"雷闪光只挂主波"失效）。
+			ChargerWaveFx.addTrailParticles(level(), position(), trailStyle(), renderColor,
+				trailScale(), trailCount(), movement.scale(0.12), isOrbiting());
 			if (isOmega())
 				level().addParticle(ChargerWaveFx.waveParticle(OMEGA_GOLD, 0.5f), getX(), getY(), getZ(),
 					movement.x * 0.3, movement.y * 0.3, movement.z * 0.3);
+		}
+		// ---- 几何专属层：只有"这枚波在环绕"才有资格发（环面留痕桩 + 出生整圈标记）----
+		// 刻意放在风格层<b>之后</b>、且<b>不</b>写成风格层的 else ——两段是叠加关系，
+		// 环绕波既吃自己魔素的风格粒子，又额外吃这一层几何粒子。
+		if (isOrbiting() && level() instanceof ServerLevel orbitServer) {
+			emitOrbitGeometry(orbitServer);
 		}
 
 		// Ponder 场景：无真实方块/实体碰撞，飞一段距离后自动消散（remove 时客户端球面绽放）
@@ -965,7 +1119,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			// 命中附加效果要素（可选、默认关闭）：既有链"伤害 ⇒ 护甲充能"之后<b>追加</b>一行，
 			// 未设要素时整段跳过（机器波/变器波命中行为逐字不变）。见 applyHitEffect 的说明。
 			applyHitEffect(target);
-			ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
+			ChargerWaveFx.burst(level(), position(), trailStyle(), renderColor);
 			discard();
 			return;
 		}
@@ -1001,7 +1155,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		//   · 不匹配任何 charging 配方的掉落物 ⇒ 波直接穿过（用户报的这条）；
 		//   · 攻击态波 ⇒ 提前 return，连碰都不碰。
 		// 现在改为"物理碰撞"语义：波是实体，撞到东西就该没。
-		ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), renderColor);
+		ChargerWaveFx.burst(level(), position(), trailStyle(), renderColor);
 		discard();
 	}
 
@@ -1125,7 +1279,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		Vec3 center = position().add(other.position()).scale(0.5);
 
 		// 1. 范围爆炸：粒子 + 音效 + 区域效果
-		ChargerWaveFx.triggerBoom(level(), this, center, getWaveType().trailStyle(), renderColor,
+		ChargerWaveFx.triggerBoom(level(), this, center, trailStyle(), renderColor,
 			other.renderColor, boomLevel);
 
 		// 轨迹日志（事件流：一次碰撞一行）：用户口径是"任意两列波（不管波级）撞上就必须有影响"，
@@ -1153,7 +1307,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	public void remove(RemovalReason reason) {
 		// 客户端在实体消散时补充球面均匀扩散绽放
 		if (reason == RemovalReason.DISCARDED && level().isClientSide) {
-			ChargerWaveFx.burstParticles(level(), position(), getWaveType().trailStyle(), renderColor);
+			ChargerWaveFx.burstParticles(level(), position(), trailStyle(), renderColor);
 		}
 		// 环绕波的"收尾簇"（作者 2026-10-02 要求的三个时刻之一：出生 / 命中 / 收尾）。
 		// 为什么放在这里而不是放在每一条 discard 之前：环绕波是<b>被主波牵着走</b>的，
@@ -1166,7 +1320,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 				ChargerWaveFx.burstOrbitSpawn(orbitServer, position(), renderColor, null, null, orbitRadius,
 					orbitCurrentPhase);
 			} else {
-				ChargerWaveFx.burst(orbitServer, position(), getWaveType().trailStyle(), renderColor);
+				ChargerWaveFx.burst(orbitServer, position(), trailStyle(), renderColor);
 			}
 			// 收尾诊断行（与出生/心跳同一条通道，见 logOrbitDiag）：作者只靠日志判
 			// "生成了没有、是不是立刻没了、为什么没的"。三种原因一眼可分：
@@ -1469,6 +1623,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (tag.contains("WaveType"))
 			waveType = WaveTypes.byIdString(tag.getString("WaveType"));
 		this.entityData.set(WAVE_TYPE, waveType.id().toString());
+		// 魔素（攻击波专有、纯视觉；2026-10-03 需求 coe-ess 批 3）：<b>可缺省</b>——
+		// 老存档没有该键 ⇒ 保持 null（= 未设）⇒ trailStyle() 回落"继承波型风格"，
+		// 观感与改造前逐字相同。名字认不出（被改过 / 未来删过的值）同样当作"没有"，
+		// 不抛异常（见 essenceByName）。同步值一起写回，客户端渲染立刻拿到同一个魔素。
+		this.essence = tag.contains("Essence") ? essenceByName(tag.getString("Essence")) : null;
+		this.entityData.set(ESSENCE, this.essence == null ? "" : this.essence.name());
 		// 发射批次（0 = 无批次）：老存档没有该键 ⇒ 0，行为与改造前逐字一致（任何波都能与它湮灭）
 		this.entityData.set(FIRING_BATCH, tag.getInt("FiringBatch"));
 		// 通用可选要素（默认关闭）：老存档 / 未设要素的波没有这些键 ⇒ 保持字段默认值
@@ -1502,6 +1662,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		tag.putDouble("SpeedOffset", speedOffset);
 		tag.putString("WaveType", waveType.id().toString());
 		tag.putInt("FiringBatch", getFiringBatch());
+		// 魔素（攻击波专有、纯视觉；2026-10-03 需求 coe-ess 批 3）：<b>只在真的设了的时候才写键</b>
+		// ⇒ 没设魔素的波（= 一切既有波），存档内容与改造前逐字相同（"默认行为一个字不变"
+		// 包括 NBT 形状）；读到没有该键 ⇒ null ⇒ 回落波型风格。
+		if (essence != null) {
+			tag.putString("Essence", essence.name());
+		}
 		// 通用可选要素（默认关闭）：<b>只在真的设了的时候才写键</b> ⇒ 没设要素的波，
 		// 存档内容与改造前逐字相同（"默认行为一个字不变"包括 NBT 形状）。
 		if (orbitAnchorUuid != null) {

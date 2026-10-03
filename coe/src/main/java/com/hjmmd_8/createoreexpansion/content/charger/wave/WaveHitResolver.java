@@ -62,7 +62,7 @@ public final class WaveHitResolver {
 				.getBlockEntity(pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 				if (wave.getWaveLevel() >= 3)
 					rod.onGammaWaveHit();
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return;
 			}
@@ -71,7 +71,7 @@ public final class WaveHitResolver {
 			switch (WaveMachineHandlers.dispatchWorld(wave, pos, state)) {
 				case BURST -> {
 					// 撞墙湮灭（机器入口关闭 / 机壳面 / 波级不足分裂）
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return;
 				}
@@ -108,7 +108,7 @@ public final class WaveHitResolver {
 				if (wave.handleItemInventoryBlock(handler, pos))
 					return; // 钩子已处理（可能加工成功并继续/已消散），本 tick 结束
 				// 无匹配物品：同样视为撞墙，波在此消散（不穿过置物台/工作台）
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return;
 			}
@@ -117,7 +117,7 @@ public final class WaveHitResolver {
 		}
 		if (hitSolid) {
 			wave.onSolidBlockHit(solidPos); // 钩子：变体波在此引雷（见方法注释）
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 			wave.discard();
 			return;
 		}

@@ -268,7 +268,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 			waveOrigin, Math.max(1, carriedScanRadius), source.pos(), source.waveLevel(),
 			item.getItem()
 				.getItem());
-		ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), getRenderColor());
+		ChargerWaveFx.burst(level(), position(), trailStyle(), getRenderColor());
 		discard();
 		return true;
 	}
@@ -951,7 +951,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 				craftDebug("载荷释放异常（余料未能全部处置）：{}", t);
 			}
 		}
-		ChargerWaveFx.burst(level(), position(), getWaveType().trailStyle(), getRenderColor());
+		ChargerWaveFx.burst(level(), position(), trailStyle(), getRenderColor());
 		discard();
 	}
 

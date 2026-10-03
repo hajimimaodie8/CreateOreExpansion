@@ -487,6 +487,19 @@ public final class ChargerWaveFx {
 	}
 
 	/**
+	 * 该风格<b>是否在映射表里登记过</b>（{@link #PROFILES} 的成员判定）。
+	 *
+	 * <p><b>为什么魔素解析需要它</b>（2026-10-03 需求 coe-ess 批 3）：口径是
+	 * "有魔素<b>且已登记</b>就按魔素，否则继承波型风格"。{@link #profile(WaveTrailStyle)} 对
+	 * 未登记的值会<b>静默回落 NORMAL</b>（不崩、不改玩法）—— 若不先问这一句，
+	 * "设了一个没登记的魔素"会表现为"波突然变成裸染色尘埃"，而不是"回落波型风格"。
+	 * 这里只回答"表里有没有"，不做任何回落。</p>
+	 */
+	public static boolean isRegistered(WaveTrailStyle style) {
+		return style != null && PROFILES.containsKey(style);
+	}
+
+	/**
 	 * 按风格变换粒子颜色（纯函数入口，供需要自行取色的调用方使用）。
 	 *
 	 * @param style     风格
@@ -619,8 +632,13 @@ public final class ChargerWaveFx {
 	/**
 	 * 这一簇是否允许出现在本次发射上（{@link Accent#mainWaveOnly()} = 只挂主波）。
 	 *
-	 * @param orbiter 本次发射是否来自<b>环绕波</b>（当前调用点一律传 false；环绕波走自己的
-	 *                {@link #sendOrbitTrail}，批 3 把它并到风格链路时会传 true）
+	 * <p><b>2026-10-03 需求 coe-ess 批 3 起 {@code orbiter} 真的会被传 {@code true}</b>：
+	 * 批 1+2 只在档案里声明了这个旗标（调用点一律 {@code false}），批 3 把环绕波并进
+	 * <b>同一条风格链路</b>（主波与环绕波都走 {@link #sendTrail} / {@link #addTrailParticles}），
+	 * 于是"这枚波在环绕"这件事必须随调用一并带进来 —— 否则雷魔素的强闪光
+	 * （{@code FLASH}，作者要求"低概率 + 只挂主波"）会跟着环绕波一起刷。</p>
+	 *
+	 * @param orbiter 本次发射是否来自<b>环绕波</b>（{@code AbstractChargerWaveEntity#isOrbiting()}）
 	 */
 	private static boolean accentAllowed(Accent accent, boolean orbiter) {
 		return !accent.mainWaveOnly() || !orbiter;
@@ -689,6 +707,19 @@ public final class ChargerWaveFx {
 	 */
 	public static void sendTrail(ServerLevel server, Vec3 pos, WaveTrailStyle style, Vec3 baseColor,
 		float scale, int count, Vec3 spread, double speed) {
+		sendTrail(server, pos, style, baseColor, scale, count, spread, speed, false);
+	}
+
+	/**
+	 * 服务端拖尾（带 {@code orbiter} 旗标版）：本波的粒子构成与 {@link #sendTrail(ServerLevel, Vec3,
+	 * WaveTrailStyle, Vec3, float, int, Vec3, double)} 逐字相同，只多回答"这是不是环绕波"——
+	 * 它只影响 {@link Accent#mainWaveOnly()} 的点缀（见 {@link #accentAllowed}），
+	 * <b>不影响用哪个风格档案</b>（档案由 style 决定）。
+	 *
+	 * @param orbiter {@code true} = 本次发射来自环绕波（主波与环绕波走同一条路）
+	 */
+	public static void sendTrail(ServerLevel server, Vec3 pos, WaveTrailStyle style, Vec3 baseColor,
+		float scale, int count, Vec3 spread, double speed, boolean orbiter) {
 		StyleProfile profile = profile(style);
 		int effectiveCount = profile.effectiveCount(count);
 		float effectiveScale = profile.effectiveScale(scale);
@@ -698,7 +729,7 @@ public final class ChargerWaveFx {
 			effectiveCount, effectiveSpread.x, effectiveSpread.y, effectiveSpread.z, effectiveSpeed);
 		RandomSource random = server.random;
 		for (Accent accent : profile.accents()) {
-			if (!accentAllowed(accent, false))
+			if (!accentAllowed(accent, orbiter))
 				continue;
 			int extras = accentCount(effectiveCount, accent);
 			if (extras <= 0 || !accentRolls(random, accent))
@@ -728,6 +759,20 @@ public final class ChargerWaveFx {
 	 */
 	public static void addTrailParticles(Level level, Vec3 pos, WaveTrailStyle style, Vec3 baseColor,
 		float scale, int count, Vec3 velocity) {
+		addTrailParticles(level, pos, style, baseColor, scale, count, velocity, false);
+	}
+
+	/**
+	 * 客户端（Ponder 思索者场景等）拖尾（带 {@code orbiter} 旗标版）：粒子构成与
+	 * {@link #addTrailParticles(Level, Vec3, WaveTrailStyle, Vec3, float, int, Vec3)} 逐字相同，
+	 * 只多回答"这是不是环绕波"（只影响 {@link Accent#mainWaveOnly()} 的点缀）。
+	 *
+	 * <p><b>为什么两条路都要带这个旗标</b>：需求 coe-ess 的陷阱清单第 8 条 ——
+	 * Ponder 场景走的是本方法（客户端 {@code addParticle}），只改服务端那条等于"雷闪光只挂主波"
+	 * 在 Ponder 里失效。</p>
+	 */
+	public static void addTrailParticles(Level level, Vec3 pos, WaveTrailStyle style, Vec3 baseColor,
+		float scale, int count, Vec3 velocity, boolean orbiter) {
 		StyleProfile profile = profile(style);
 		int effectiveCount = profile.effectiveCount(count);
 		float effectiveScale = profile.effectiveScale(scale);
@@ -736,7 +781,7 @@ public final class ChargerWaveFx {
 			level.addParticle(particle, pos.x, pos.y, pos.z, velocity.x, velocity.y, velocity.z);
 		RandomSource random = level.random;
 		for (Accent accent : profile.accents()) {
-			if (!accentAllowed(accent, false))
+			if (!accentAllowed(accent, orbiter))
 				continue;
 			int extras = accentCount(effectiveCount, accent);
 			if (extras <= 0 || !accentRolls(random, accent))
@@ -978,32 +1023,33 @@ public final class ChargerWaveFx {
 	}
 
 	// ==================================================================================
-	// 环绕波专属粒子（2026-10-02 作者裁定："即使有环绕波生成，过于不明显也是 bug"）
+	// 环绕波粒子（2026-10-02 作者裁定："即使有环绕波生成，过于不明显也是 bug"；
+	// 2026-10-03 需求 coe-ess 批 3 按【风格层 / 几何专属层】重新切分）
 	//
-	// 为什么必须<b>另起一组参数</b>而不是复用主波拖尾：环绕波的实体类型、渲染器、波型
-	// 都与主波逐字相同（红线：不新增实体类型/贴图/模型），而它的视觉 100% 靠粒子
-	// （EmptyEntityRenderer）——主波拖尾是"每 tick 6 颗、尺度 0.45"，环绕波半径只有 0.8 格，
-	// 两者在同一团粒子云里根本分不出来（作者实测反馈）。
+	// 环绕波的实体类型、渲染器、波型都与主波逐字相同（红线：不新增实体类型/贴图/模型），
+	// 视觉 100% 靠粒子（EmptyEntityRenderer）。它在 2026-10-03 之前是"另一整套粒子"
+	// （`if (isOrbiting()) sendOrbitTrail(...) else sendTrail(...)` 的二选一），
+	// 现在按需求 §3.4 切成两层：
+	//   A · 风格层（由魔素决定，主波与环绕波走同一条路 = 同一个 {@link #sendTrail} /
+	//       {@link #addTrailParticles} 调用）：主体尘埃 = 调用方基线（主波 6 颗 / 0.45，
+	//       环绕波 12 颗 / 0.62）+ 该魔素档案的点缀。环绕波原先那套
+	//       "12 颗 / 0.62 + END_ROD + 青焰"已<b>整份搬进</b> {@link WaveTrailStyle#ARCANE}
+	//       的档案（"异"魔素 = 作者说的"伴随波现在的效果"）；档案引用本处常量，不复制字面量。
+	//   B · 几何专属层（只属于"这枚波在环绕"这个几何事实，与魔素无关，也不进任何风格档案）：
+	//       环面留痕桩（{@link #sendOrbitMarks}）+ 出生整圈标记（{@link #burstOrbitSpawn}）。
+	//       为什么不进档案：主波没有环平面，把桩点塞进"异"档案要么崩、要么在平飞路径上
+	//       画出一圈没有意义的点（需求 §3.4 的陷阱 3）。
 	//
-	// 这组参数给环绕波三层可辨识特征（全部是原版粒子，零新增贴图/模型/粒子类型）：
-	//   ① 主体尘埃：每 tick 12 颗、尺度 0.62（主波是 6 颗 / 0.45）⇒ 更亮更粗的一团；
-	//   ② 标志粒子：每 tick 4 颗 {@link ParticleTypes#END_ROD}（白亮）+ 2 颗
-	//      {@link ParticleTypes#SOUL_FIRE_FLAME}（青焰）⇒ 与主波的红橙/金饰完全不同色相，
-	//      在 DIM 光照下也一眼可见；
-	//   ③ 环面留痕：每 {@value #ORBIT_MARK_INTERVAL_TICKS} tick 在环平面上补
-	//      {@value #ORBIT_MARK_COUNT} 个<b>静止</b>的桩点（环平面由实体的唯一几何入口
-	//      {@code AbstractChargerWaveEntity#orbitPlaneAxes()} 给）⇒ "它在绕圈"这件事本身可见，
-	//      而不是只能看到一粒会移动的点。
-	//
-	// 这三个时刻各来一簇（作者要求：出生 / 命中 / 父波消散一起收尾）：
-	//   出生 = {@link #burstOrbitSpawn}、命中与消散 = 既有的 {@link #burst}（环绕波自己的
-	//   波级色 + 攻击态风格），三处都走本类，不新增任何发送通道。
+	// 三个时刻各来一簇（作者要求：出生 / 命中 / 父波消散一起收尾）：
+	//   出生 = {@link #burstOrbitSpawn}（几何层）、命中与消散 = 既有的 {@link #burst}
+	//   （吃的是 {@code AbstractChargerWaveEntity#trailStyle()}，即该波自己生效的魔素），
+	//   三处都走本类，不新增任何发送通道。
 	// ==================================================================================
 
-	/** 环绕波主体尘埃：每 tick 颗数（主波拖尾是 6，见 {@code AbstractChargerWaveEntity#tick}）。 */
+	/** 环绕波主体尘埃：每 tick 颗数（主波拖尾是 6）——环绕波走风格层时的<b>调用方基线</b>。 */
 	public static final int ORBIT_TRAIL_COUNT = 12;
 
-	/** 环绕波主体尘埃：粒子尺度（主波拖尾是 0.45f）。 */
+	/** 环绕波主体尘埃：粒子尺度（主波拖尾是 0.45f）——环绕波走风格层时的<b>调用方基线</b>。 */
 	public static final float ORBIT_TRAIL_SCALE = 0.62f;
 
 	/**
@@ -1015,22 +1061,22 @@ public final class ChargerWaveFx {
 	/** 环绕波主体尘埃：速度系数（"异"魔素的档案引用本常量）。 */
 	public static final double ORBIT_TRAIL_SPEED = 0.01;
 
-	/** 环绕波标志粒子 END_ROD：每 tick 颗数（白亮"信标"，与主波的染色尘埃完全两样）。 */
+	/** "异"魔素的标志粒子 END_ROD：每 tick 颗数（白亮"信标"，与主波的染色尘埃完全两样）。 */
 	public static final int ORBIT_FLAG_END_ROD = 4;
 
-	/** 环绕波标志粒子 SOUL_FIRE_FLAME：每 tick 颗数（青焰，任何波级的冷暖反差都足够大）。 */
+	/** "异"魔素的标志粒子 SOUL_FIRE_FLAME：每 tick 颗数（青焰，任何波级的冷暖反差都足够大）。 */
 	public static final int ORBIT_FLAG_SOUL_FIRE = 2;
 
-	/** 环绕波标志粒子 END_ROD：散布半径（各轴）。 */
+	/** "异"魔素的标志粒子 END_ROD：散布半径（各轴）。 */
 	public static final double ORBIT_FLAG_SPREAD = 0.10;
 
-	/** 环绕波标志粒子 END_ROD：速度系数。 */
+	/** "异"魔素的标志粒子 END_ROD：速度系数。 */
 	public static final double ORBIT_FLAG_SPEED = 0.02;
 
-	/** 环绕波标志粒子 SOUL_FIRE_FLAME：沿环平面法向的散布半径（见 {@link #sendOrbitTrail} ②）。 */
+	/** "异"魔素的标志粒子 SOUL_FIRE_FLAME：散布半径（各向同性；见 {@link WaveTrailStyle#ARCANE}）。 */
 	public static final double ORBIT_SOUL_SPREAD = 0.02;
 
-	/** 环绕波标志粒子 SOUL_FIRE_FLAME：速度系数。 */
+	/** "异"魔素的标志粒子 SOUL_FIRE_FLAME：速度系数。 */
 	public static final double ORBIT_SOUL_SPEED = 0.005;
 
 	/**
@@ -1056,54 +1102,36 @@ public final class ChargerWaveFx {
 	private static final int ORBIT_SPAWN_COUNT = 24;
 
 	/**
-	 * <b>环绕波每 tick 的专属拖尾</b>（服务端）：主体尘埃 + 标志粒子 + 环面留痕桩。
+	 * <b>几何专属层的「环面留痕桩」</b>（服务端）：一圈静止桩点，勾出"这枚波在绕圈"这件事本身。
 	 *
-	 * <p>调用方（{@code AbstractChargerWaveEntity#tick}）在环绕波上<b>只跳过主波那条拖尾</b>
-	 * （不提前 return：命中判定/方块碰撞/波波碰撞/收尾分支对环绕波仍然有意义），
-	 * 所以主波那条"6 颗 / 0.45f"的发送路径在环绕波上<b>从不执行</b>——两组参数不会互相覆盖。</p>
+	 * <p><b>它为什么单独一个方法</b>（2026-10-03 需求 coe-ess §3.4 的 A/B 分层）：本方法
+	 * <b>只画几何</b>——主体尘埃与标志粒子（END_ROD / 青焰）已整份搬进
+	 * {@link WaveTrailStyle#ARCANE} 的档案，走风格层（主波与环绕波同一条路）。
+	 * 留在本方法里的只有"铺在环平面上的一圈桩点"：它依赖环平面基向量与半径，
+	 * 而这两样只对"在环绕"这件事有意义 ⇒ 它是几何专属，与魔素无关，也不进任何风格档案。
+	 * 主波永远不调本方法（它没有环平面），所以主波用"异"魔素时不会画出无意义的桩点。</p>
 	 *
-	 * <p><b>哪些常量属于"风格"、哪些属于"几何"</b>（2026-10-03 需求 coe-ess 的 A/B 分层）：
-	 * ①② 的颗数/尺度/散布/速度是<b>粒子内容</b>，已同步登记进
-	 * {@link WaveTrailStyle#ARCANE} 的档案（且档案<b>引用本处常量</b>，不复制字面量）；
-	 * ③ 的环面留痕桩是<b>几何专属</b>——它只属于"这枚波在环绕"这个事实，不进任何风格档案。</p>
-	 *
-	 * @param server   服务端世界
-	 * @param center   环绕波当前位置（= 圆周点）
-	 * @param color    环绕波的渲染色（按<b>波级</b>取色，与主波同一处 {@code getWaveColorForLevel}）
-	 * @param axis     环平面法向（= 父波运动方向）
-	 * @param u        环平面基向量之一（见 {@code AbstractChargerWaveEntity#orbitPlaneAxes()}）
-	 * @param v        环平面基向量之二（u × v = axis，右手系）
-	 * @param radius   环绕半径（格；用实体自身的要素值，不在这里写常量）
-	 * @param phase    当前相位（弧度）——桩点绕它对称铺开，于是每 tick 都能看出波转到哪儿了
-	 * @param ticking  是否到了补"环面留痕桩"的那一 tick（节流由调用方按
-	 *                 {@link #ORBIT_MARK_INTERVAL_TICKS} 决定，本方法只负责画）
+	 * @param server  服务端世界
+	 * @param center  环绕波当前位置（= 圆周点）
+	 * @param u       环平面基向量之一（见 {@code AbstractChargerWaveEntity#orbitPlaneAxes()}）
+	 * @param v       环平面基向量之二（u × v = 环平面法向，右手系）
+	 * @param radius  环绕半径（格；用实体自身的要素值，不在这里写常量）
+	 * @param phase   当前相位（弧度）——桩点绕它对称铺开，于是每 tick 都能看出波转到哪儿了
+	 * @param ticking 是否到了补"环面留痕桩"的那一 tick（节流由调用方按
+	 *                {@link #ORBIT_MARK_INTERVAL_TICKS} 决定，本方法只负责画）
 	 */
-	public static void sendOrbitTrail(ServerLevel server, Vec3 center, Vec3 color, Vec3 axis,
-		Vec3 u, Vec3 v, double radius, double phase, boolean ticking) {
-		Vec3 base = color == null ? Vec3.ZERO : color;
-		Vec3 motion = axis == null ? new Vec3(0.0D, 0.0D, 1.0D) : axis.normalize();
-		// ① 主体尘埃：12 颗、尺度 0.62 —— 数量与粗细都压过主波拖尾（6 颗 / 0.45）
-		server.sendParticles(new DustParticleOptions(
-				new Vector3f((float) base.x, (float) base.y, (float) base.z), ORBIT_TRAIL_SCALE),
-			center.x, center.y, center.z, ORBIT_TRAIL_COUNT,
-			ORBIT_TRAIL_SPREAD, ORBIT_TRAIL_SPREAD, ORBIT_TRAIL_SPREAD, ORBIT_TRAIL_SPEED);
-		// ② 标志粒子：END_ROD 白亮（带一点沿飞行方向的前推速度，读作"跟着波走"）
-		server.sendParticles(ParticleTypes.END_ROD, center.x, center.y, center.z, ORBIT_FLAG_END_ROD,
-			ORBIT_FLAG_SPREAD, ORBIT_FLAG_SPREAD, ORBIT_FLAG_SPREAD, ORBIT_FLAG_SPEED);
-		server.sendParticles(ParticleTypes.SOUL_FIRE_FLAME, center.x, center.y, center.z, ORBIT_FLAG_SOUL_FIRE,
-			motion.x * ORBIT_SOUL_SPREAD, motion.y * ORBIT_SOUL_SPREAD, motion.z * ORBIT_SOUL_SPREAD,
-			ORBIT_SOUL_SPEED);
-		// ③ 环面留痕：一圈静止桩点（速度近零 ⇒ 它们停在原地勾出圆环，波自己从中间穿过去）
-		if (ticking && u != null && v != null) {
-			DustParticleOptions mark = new DustParticleOptions(
-				new Vector3f((float) ORBIT_MARK_COLOR.x, (float) ORBIT_MARK_COLOR.y, (float) ORBIT_MARK_COLOR.z),
-				ORBIT_MARK_SCALE);
-			for (int i = 0; i < ORBIT_MARK_COUNT; i++) {
-				double theta = phase + (Math.PI * 2.0D * i) / ORBIT_MARK_COUNT;
-				Vec3 offset = u.scale(radius * Math.cos(theta)).add(v.scale(radius * Math.sin(theta)));
-				Vec3 at = center.add(offset);
-				server.sendParticles(mark, at.x, at.y, at.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
-			}
+	public static void sendOrbitMarks(ServerLevel server, Vec3 center, Vec3 u, Vec3 v,
+		double radius, double phase, boolean ticking) {
+		if (!ticking || u == null || v == null)
+			return;
+		DustParticleOptions mark = new DustParticleOptions(
+			new Vector3f((float) ORBIT_MARK_COLOR.x, (float) ORBIT_MARK_COLOR.y, (float) ORBIT_MARK_COLOR.z),
+			ORBIT_MARK_SCALE);
+		for (int i = 0; i < ORBIT_MARK_COUNT; i++) {
+			double theta = phase + (Math.PI * 2.0D * i) / ORBIT_MARK_COUNT;
+			Vec3 offset = u.scale(radius * Math.cos(theta)).add(v.scale(radius * Math.sin(theta)));
+			Vec3 at = center.add(offset);
+			server.sendParticles(mark, at.x, at.y, at.z, 1, 0.0D, 0.0D, 0.0D, 0.0D);
 		}
 	}
 

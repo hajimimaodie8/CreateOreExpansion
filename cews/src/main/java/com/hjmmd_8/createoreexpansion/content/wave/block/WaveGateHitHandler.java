@@ -82,13 +82,13 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 				// 顺基准且已达机型承载上限（翡翠 3 = γ / 蓝宝石·星辉石 5 = ω）→ 过载爆炸后湮灭。
 				// 爆炸规模按波自身等级放大（用户 2026-09-14 定稿）：翡翠机 3 级（105 颗），
 				// 蓝宝石/星辉石机 5 级（155 颗）——与"波波碰撞取较低等级"同一套取值口径。
-				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
+				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.trailStyle(),
 					wave.getRenderColor(), null, boomLevel(wave));
 				return true;
 			}
 			case VANISH_FLOOR_BOOM -> {
 				// 1 级（α）波逆基准 / 单开口遣返：降级无路可降 → 爆炸后湮灭（等级恒为 1，即 α 级规模）
-				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.getWaveType().trailStyle(),
+				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.trailStyle(),
 					wave.getRenderColor(), null, boomLevel(wave));
 				return true;
 			}
@@ -206,7 +206,7 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 		AbstractContraptionEntity entity, BlockPos pos) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -224,7 +224,7 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 			default -> {
 				// 调制结果（VANISH_OVERLOAD_BOOM/VANISH_FLOOR_BOOM/PASS_BOOST_LATER/PASS_DOWNGRADE/BOUNCE_DOWNGRADE）
 				// 依赖转速，纯 state 判定（speed=0）不会产生；防御性按撞墙
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -236,7 +236,7 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 		AbstractContraptionEntity entity, BlockPos pos) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -253,7 +253,7 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 			}
 			default -> {
 				// PASS_SPEED_UP/DOWN 依赖转速，纯 state 判定不会产生；防御性按撞墙
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -277,7 +277,7 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 			? handleRegulator(wave, gateBe, pos, localWavePos)
 			: handleWaveSpeedRegulator(wave, gateBe, pos, localWavePos);
 		if (vanish) {
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 			wave.discard();
 			return Outcome.CONSUMED;
 		}

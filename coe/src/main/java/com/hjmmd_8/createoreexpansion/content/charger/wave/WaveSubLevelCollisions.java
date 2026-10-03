@@ -81,7 +81,7 @@ public class WaveSubLevelCollisions {
 				if (bridge.getBlockEntity(hit, pos) instanceof ReinforcedLightningRodBlockEntity rod) {
 					if (wave.getWaveLevel() >= 3)
 						rod.onGammaWaveHit();
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return;
 				}
@@ -100,7 +100,7 @@ public class WaveSubLevelCollisions {
 			}
 		}
 		if (hitSolid) {
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 			wave.discard();
 		}
 	}

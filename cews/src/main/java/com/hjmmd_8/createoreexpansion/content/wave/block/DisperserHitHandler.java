@@ -337,7 +337,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 			if (r == OctaEnergyWaveDispersal.Result.SPLIT) {
 				int childLevel = wave.getWaveLevel() - OctaEnergyWaveDispersal.decrementOf(state);
 				if (childLevel <= 0) {
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 					wave.discard();
 					return Outcome.CONSUMED;
 				}
@@ -374,7 +374,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		BlockPos pos, Direction.Axis axis, Vec3 localMove, Vec3 relCenter, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -410,7 +410,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		AbstractContraptionEntity entity, BlockPos pos, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -443,7 +443,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		AbstractContraptionEntity entity, BlockPos pos, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return true;
 			}
@@ -483,7 +483,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		int childLevel = wave.getWaveLevel() - decrement;
 		if (childLevel <= 0) {
 			// 波级不足分裂：撞墙消散
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 			wave.discard();
 			return true;
 		}
@@ -520,7 +520,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		if (state.getBlock() instanceof EnergyWaveDisperserBlock) {
 			boolean vanish = handleDisperser(wave, state, pos, localWavePos, hit);
 			if (vanish) {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return Outcome.CONSUMED;
 			}
@@ -534,7 +534,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		if (state.getBlock() instanceof SixFaceDisperserBlock) {
 			boolean vanish = handleSixFaceDisperser(wave, state, pos, localWavePos, hit);
 			if (vanish) {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return Outcome.CONSUMED;
 			}
@@ -548,7 +548,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		if (state.getBlock() instanceof OctaEnergyWaveDifferencerBlock) {
 			boolean vanish = handleOctaDisperser(wave, state, pos, localWavePos, hit);
 			if (vanish) {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.getWaveType().trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
 				wave.discard();
 				return Outcome.CONSUMED;
 			}

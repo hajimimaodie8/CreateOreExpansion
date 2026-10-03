@@ -47,8 +47,8 @@ public enum WaveTrailStyle {
 	 * {@code END_ROD} + 青焰 {@code SOUL_FIRE_FLAME}。
 	 *
 	 * <p>⚠ <b>不含环面留痕桩</b>：那是"这枚波在环绕"这个几何事实专属（见
-	 * {@code ChargerWaveFx.sendOrbitTrail} 的第三段），主波没有环平面，塞进风格档案里要么崩、
-	 * 要么画出一圈没有意义的桩点。</p>
+	 * {@code ChargerWaveFx.sendOrbitMarks} 与 {@code burstOrbitSpawn}），主波没有环平面，
+	 * 塞进风格档案里要么崩、要么画出一圈没有意义的桩点。</p>
 	 */
 	ARCANE
 }
