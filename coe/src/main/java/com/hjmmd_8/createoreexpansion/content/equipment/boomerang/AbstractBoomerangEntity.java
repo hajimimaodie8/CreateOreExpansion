@@ -25,6 +25,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.RandomizableContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ExperienceOrb;
@@ -39,6 +40,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -229,8 +231,8 @@ import net.minecraft.world.phys.Vec3;
  *
  * <p><b>容器怎么判（唯一判据处 {@link #containerAt(BlockPos)}，三道闸门）</b>：</p>
  * <ol>
- *   <li><b>机器闸门</b>（{@link #NEVER_LOOT_NAMESPACES}）：Create 的机器与本模组自己的机器
- *       （充能器等）一律不碰 —— 作者明确要求"不动我们自己的机器"。按<b>注册命名空间</b>判，
+ *   <li><b>机器闸门</b>（{@link #NEVER_TOUCH_NAMESPACES}）：Create 的机器与本模组自己的机器
+ *       （充能器等）一律<b>连碰都不碰</b> —— 作者明确要求"不动我们自己的机器"。按<b>注册命名空间</b>判，
  *       绝不 import 可选模组的类（AGENTS.md 红线）；
  *   <br>⚠ 实测口径：Create 全仓<b>只有</b> {@code foundation.blockEntity.ItemHandlerContainer}
  *       一个类实现原版 {@code Container}，而它不是任何一种方块实体；本模组全仓 0 个
@@ -241,16 +243,13 @@ import net.minecraft.world.phys.Vec3;
  *       （木桶 / 潜影盒 / 漏斗 / 发射器 / 投掷器 / 熔炉 / 烟熏炉 / 高炉 / 酿造台 / 合成器 …，
  *       以及别的模组实现了 {@code Container} 的方块）。
  *       <br>⚠ <b>末影箱天然不在内</b>（{@code EnderChestBlockEntity} 只 implements
- *       {@code LidBlockEntity}，本仓从 MC 源码核对过）；{@code lootr} 走第 ① 道闸门
- *       （每个玩家一份战利品表，抽共享容器是错的）。</li>
+ *       {@code LidBlockEntity}，本仓从 MC 源码核对过）。</li>
  * </ol>
  *
  * <p><b>物品怎么搬（{@link #lootContainer(Container)} + {@link #carry(ItemStack)}，零新机制）</b>：
  * 逐槽 {@code removeItemNoUpdate} 全取 ⇒ 每份物品生成一个<b>既有</b> {@link ItemEntity} 再
  * {@code startRiding(this)} 上船 —— 与 {@link #pickUpItems()} 走的是<b>同一条承载路径</b>
- * （原版乘客链 + {@link #canCarry(Entity)}），容器本身<b>不破坏、只被清空</b>。
- * 代价与"挖掉一个方块"同价：真取到东西才 {@code addFlightWear(WEAR_PER_HIT)}，
- * <b>不吃穿刺额度</b>（作者默认值，见报告）。</p>
+ * （原版乘客链 + {@link #canCarry(Entity)}）。<b>不吃穿刺额度</b>（作者默认值，见报告）。</p>
  *
  * <p><b>溢出去哪</b>：掉落物本来就是乘客 ⇒ 回到玩家手里时走的仍是
  * {@link #finishFlight(boolean)} → {@link #handPassengersToPlayer(Player)}
@@ -258,6 +257,54 @@ import net.minecraft.world.phys.Vec3;
  * {@code ItemEntity#playerTouch} 只在 {@code inventory.add(...)} 成功时才消失 ⇒
  * <b>装得下进背包、装不下的留在原地 = 玩家旁边</b>（镖是贴到主人身上才交还的），
  * <b>绝不会掉回箱子那儿</b>；镖爆掉时也照样先交给玩家（批 2 的既有语义）。</p>
+ *
+ * <h2>十、批 7 第二轮（2026-10-03 同日改口径）：主动填表 → 取空 → 连箱子方块一起挖走</h2>
+ * <p><b>作者第二轮要求（三条）</b>：① 战利品箱子是"玩家主动打开箱子那一瞬间"才刷出物品的，
+ * 所以镖必须<b>自己主动刷新箱子里的物品</b>；② 把箱子的物品<b>连带被挖掘掉掉落的箱子本身</b>
+ * 都吸回来；③ 若玩家装了"不同玩家打开箱子时刷新的物品互相独立"的特殊战利品箱子模组，
+ * 那就<b>不要把箱子挖掉</b>（只取物）。</p>
+ *
+ * <p><b>改动一：取物前主动填一次战利品表（以投掷者本人为玩家）</b>
+ * —— {@link #unpackLootTables(BlockPos, Player)}（大箱子两半都填，源码依据全在它的注释里）。
+ * ⚠ 顺带更正本功能上一轮的一条<b>错误判断</b>：批 7 的注释写"带 LootTable 的容器此刻还是空的、
+ * 镖什么都取不到"——<b>不精确</b>。1.21.1 里 {@code RandomizableContainerBlockEntity#removeItemNoUpdate}
+ * /{@code getItem}/{@code isEmpty} <b>各自</b>都会先调 {@code unpackLootTable(null)}
+ * （{@code mcsrc-all/.../RandomizableContainerBlockEntity.java:49-88}），所以旧代码其实取得到东西；
+ * 真正的问题是<b>填表用的是 {@code null} 玩家</b>（没有幸运值、没有 {@code THIS_ENTITY}、
+ * 也不触发 {@code GENERATE_LOOT}）⇒ 拿到的<b>不是"他那一份"</b>。本轮的改动因此是
+ * "把隐式的、没玩家的填表换成显式的、按投掷者填"，而不是"从取不到变成取得到"。</p>
+ *
+ * <p><b>改动二：取空之后把容器方块本身也挖掉</b>
+ * —— 走<b>既有唯一挖掘入口</b> {@link #mineBlock(BlockPos)}（临时换主手 + {@code gameMode.destroyBlock}
+ * + {@code finally} 还原），掉落的箱子方块由既有吸附（{@link #pickUpItems()}，
+ * 每个服务端 tick 一次、就在同一 tick 的末尾）带走 ⇒ 与掉落物同一条链。</p>
+ * <ul>
+ *   <li><b>顺序铁律"先取空、再挖"</b>：反过来的话，{@code ChestBlock#onRemove} →
+ *       {@code Containers.dropContentsOnDestroy}（{@code mcsrc-all/net/minecraft/world/Containers.java:51-58}）
+ *       会把<b>还在容器里</b>的东西全撒到地上；而且那条路走的是 {@code getItem(...)}，
+ *       对还没填过表的容器又会{@code unpackLootTable(null)} —— 等于把战利品<b>按"没有玩家"</b>roll 一遍，
+ *       直接推翻改动一。取空的容器再被破坏时 {@code dropContents} 只会拿到 27 个空槽。</li>
+ *   <li><b>挖不动就不挖</b>（硬度/挖掘等级没过、权限不允许）：物品<b>已经取走了</b>，方块留在原地 ——
+ *       如实报告这个组合行为，不额外补偿。</li>
+ *   <li><b>大箱子只挖命中的那一半</b>：{@link #mineBlock(BlockPos)} 只作用在镖撞到的那个坐标上，
+ *       另一半会由原版 {@code updateShape} 变回单箱（内容已被一起取空）⇒ 世界上剩一个空箱子。
+ *       要不要"两半都挖掉"需求没写，取最小偏差（见报告）。</li>
+ * </ul>
+ *
+ * <p><b>改动三：每玩家战利品模组的容器 ⇒ 只取不挖</b>
+ * —— {@link #PER_PLAYER_LOOT_NAMESPACES}（{@code lootr}）+ 唯一判据 {@link #perPlayerLoot(BlockPos)}；
+ * 这类容器照旧取物（投掷者自己那份），但 {@code onHitBlock} 里那道
+ * {@code if (!perPlayerLoot(pos)) { destroyed = mineBlock(pos); }} 让它<b>绝不</b>被挖掉。
+ * ⚠ <b>语义变更留档</b>：批 7 那张表把 {@code lootr} 与机器并列、含义是"完全不碰"，
+ * 现在拆成两张表（{@link #NEVER_TOUCH_NAMESPACES} = 完全不碰的机器 /
+ * {@link #PER_PLAYER_LOOT_NAMESPACES} = 只取不挖），旧名 {@code NEVER_LOOT_NAMESPACES} 已删。
+ * 判据只读方块注册命名空间（一个字符串，绝不 import 可选模组类）；它的脆弱性与扩展方式
+ * 逐条写在 {@link #PER_PLAYER_LOOT_NAMESPACES} 的注释里。</p>
+ *
+ * <p><b>改动四：同一次命中只记一次耐久</b>
+ * —— 取物 −1 与"挖掉一个方块 −1"不再各记一笔（作者裁定"不重复扣"）：{@code mineBlock} 负责
+ * "真的挖掉了"那一笔，{@link #onHitBlock(BlockPos)} 只在 {@code took && !destroyed}
+ * （取到了、却没挖掉：挖不动，或命中每玩家战利品模组）时补记取物那一笔。</p>
  */
 public abstract class AbstractBoomerangEntity extends Projectile implements OrbitAnchor {
 
@@ -1112,15 +1159,19 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 * <b>扣额度</b>；"穿过去还是掉头"整条判据交给 {@link #turnAroundIfNotPiercing(int, boolean)}
 	 * 那一处（生物那条路径用的是同一个方法）——于是"花瓣段优先"这条规则<b>在代码里只有一处</b>。</p>
 	 *
-	 * <p>⚠ <b>2026-10-03 批 7 加了前置一支</b>（作者需求：开箱取物）：若这个方块是容器
-	 * （{@link #containerAt(BlockPos)} 非空）⇒ <b>不挖</b>，改为 {@link #lootContainer(Container)} 搬空，
-	 * 再按"挖不动的方块"同一条口径决定穿过去还是掉头。判容器的顺序必须在挖掘<b>之前</b>。</p>
+	 * <p>⚠ <b>2026-10-03 批 7 加了前置一支</b>（作者需求：开箱取物），<b>同一天第二轮又改了它的口径</b>
+	 * （见类注释第十节）：若这个方块是容器（{@link #containerAt(BlockPos)} 非空）⇒
+	 * <b>先</b> {@link #unpackLootTables(BlockPos, Player)} 按投掷者填一次战利品表、
+	 * <b>再</b> {@link #lootContainer(Container)} 搬空、<b>最后</b>才
+	 * {@link #mineBlock(BlockPos)} 把容器方块本身也挖走；每一步的先后都有理由（见下方代码注释）。
+	 * 判容器的顺序必须在挖掘<b>之前</b>。</p>
 	 *
 	 * <p>行为对照（四种情形）：</p>
 	 * <ol>
-	 *   <li><b>容器（点按与长按都会走到）</b>：搬空、方块保留、{@code mayPierceThrough = false}
+	 *   <li><b>容器（点按与长按都会走到）</b>：填表 → 取空 → 挖掉方块本身（挖不动则不挖），
+	 *       但"穿过去还是掉头"照旧按 {@code mayPierceThrough = false} 算
 	 *       ⇒ 点按掉头；花瓣近程穿过去继续飞（判定与"挖不动的方块"共用一处），
-	 *       真取到东西才 −1 耐久、不吃方块额度；</li>
+	 *       取到东西才 −1 耐久且<b>整次命中只记一次</b>、不吃方块额度；</li>
 	 *   <li><b>花瓣段</b>：挖掉了就吃一份额度，然后<b>一律不掉头</b>（"必须飞完一瓣才能返回"
 	 *       优先于"额度用完"）；挖不动的方块也穿过——花瓣曲线是固定路径，与批 2 的花瓣段行为一致；</li>
 	 *   <li><b>点按 + 挖不动</b>：{@code mayPierceThrough = false} ⇒ 撞墙，照旧掉头（批 1/2 的行为）；</li>
@@ -1133,16 +1184,37 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 * @return {@code true} = 已转入回程（调用方不得再前进）；挖穿且还有额度时是 {@code false}
 	 */
 	private boolean onHitBlock(BlockPos pos) {
-		// ★ 2026-10-03 批 7（作者需求：开箱取物）：**先判容器、再谈挖掘** —— 顺序不能反，
-		// 反了就会先把箱子挖掉、把里面东西撒一地（本功能要的正是"容器保持存在、只是被清空"）。
+		// ★ 2026-10-03 批 7（作者需求：开箱取物）+ 同日第二轮改口径（见类注释第十节）：
+		// **先判容器、再谈挖掘** —— 顺序不能反：反了就会先把箱子挖掉，而 ChestBlock#onRemove →
+		// Containers.dropContentsOnDestroy 会把里面**还没取走**的东西撒一地（而且那条路会走
+		// getItem(...) → unpackLootTable(null)，等于把战利品表按"没有玩家"roll 一遍）。
+		// 本功能要的是"先按投掷者本人填一次战利品表 ⇒ 取空 ⇒ 再把容器方块本身也挖走"。
 		// 点按与长按都走这一处（两种模式共用 checkImpact()，批 3 起就是同一条命中入口）。
 		Container container = containerAt(pos);
 		if (container != null) {
 			ensurePierceQuota();
-			lootContainer(container);
-			// 容器方块保留 ⇒ 对"穿过去还是掉头"这条既有判定而言，它就是"挖不动的方块"
-			// （mayPierceThrough = false，且不消耗方块额度）：点按 ⇒ 撞墙即回；
-			// 花瓣近程 ⇒ 穿过去继续飞完这一瓣。判定仍然只有 turnAroundIfNotPiercing 一处。
+			Player thrower = getOwner() instanceof Player owner ? owner : null;
+			// ★ ① 主动填一次战利品表（**以投掷者本人为玩家**）：1.21.1 只在"玩家打开容器"
+			// 那一刻才 unpackLootTable，镖是隔着老远开箱的，所以这一步必须自己来。
+			unpackLootTables(pos, thrower);
+			// ★ ② 逐槽取空（**取物先于挖掘**：见本方法开头那段顺序依据）。
+			boolean took = lootContainer(container);
+			// ★ ③ 取空之后才轮到"把容器方块本身也挖走"（作者第二轮要求）：走既有唯一挖掘入口
+			// mineBlock(pos) ⇒ 箱子作为方块掉落物生成 ⇒ 由既有吸附带回（与掉落物同一条链）。
+			// ⚠ 每玩家各自战利品表的模组容器**只取不挖**（作者第三轮要求）：见 perPlayerLoot(...)。
+			boolean destroyed = false;
+			if (!perPlayerLoot(pos)) {
+				destroyed = mineBlock(pos);
+			}
+			if (took && !destroyed) {
+				// ★ 耐久**只记一次**（作者 2026-10-03 裁定）：mineBlock 已经为"挖掉了一个方块"
+				// 记过一笔，这里只在**这次没能挖掉**（挖不动 ⇒ 不挖 / 每玩家战利品模组 ⇒ 不挖）
+				// 时补记"取物"那一笔 —— 同一次命中绝不出现两笔。
+				addFlightWear(BoomerangTier.WEAR_PER_HIT);
+			}
+			// 容器对"穿过去还是掉头"这条既有判定而言照旧按"挖不动的方块"算
+			// （mayPierceThrough = false，且不消耗方块额度 —— 批 7 的作者默认值不变）：
+			// 点按 ⇒ 撞到即回；花瓣近程 ⇒ 穿过去继续飞完这一瓣。判定仍然只有 turnAroundIfNotPiercing 一处。
 			return turnAroundIfNotPiercing(this.pierceBlocksLeft, false);
 		}
 		boolean destroyed = mineBlock(pos);
@@ -1240,38 +1312,69 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	// ================= 开箱取物（2026-10-03 批 7：作者需求，Quark 没有这个功能） =================
 
 	/**
-	 * <b>永不抽取的方块命名空间</b>（唯一一张表；{@link #containerAt(BlockPos)} 的第一道闸门）。
+	 * <b>完全不许碰的方块命名空间</b>（"不抽取、不破坏、什么都不做"；{@link #containerAt(BlockPos)} 的第一道闸门）。
 	 *
 	 * <ul>
 	 *   <li>{@code create} —— Create 的机器方块（作者："不动我们自己的机器"）；</li>
-	 *   <li>{@link CoeCore#REGISTRY_NAMESPACE} —— 本模组自己的机器（充能器等，同一句要求）；</li>
-	 *   <li>{@code lootr} —— 每玩家各自一份战利品表的特殊容器（抽共享容器是错的）。
-	 *       <br>⚠ <b>按命名空间判定、绝不 import 它的类</b>：可选模组的类不许进 {@code content/} 包
-	 *       （AGENTS.md 红线；这里连可选依赖都不是，所以只能这么判）。</li>
+	 *   <li>{@link CoeCore#REGISTRY_NAMESPACE} —— 本模组自己的机器（充能器等，同一句要求）。</li>
 	 * </ul>
+	 *
+	 * <p>⚠ <b>本表 2026-10-03 第二轮改过名与语义</b>：它原来叫 {@code NEVER_LOOT_NAMESPACES}、
+	 * 里面<b>混着</b> {@code lootr}，含义是"命名空间 ⇒ 完全不碰"。作者第二轮把
+	 * {@code lootr} 这一类单独拎出来（见 {@link #PER_PLAYER_LOOT_NAMESPACES}：取物但<b>不</b>破坏），
+	 * 于是这张表只剩"真的一个字都不碰"的机器命名空间 —— 名字随之改成
+	 * {@code NEVER_TOUCH_NAMESPACES}（旧名留着会让人以为 {@code lootr} 还在里面）。</p>
 	 *
 	 * <p>⚠ <b>当下这是冗余的防御</b>：命名空间为 {@code create} / 本模组的方块实体<b>没有一个</b>
 	 * 实现原版 {@code Container}（Create 全仓只有 {@code foundation.blockEntity.ItemHandlerContainer}
 	 * 一个类实现它、且不是方块实体；本模组 0 个）⇒ 第三道闸门已经挡住它们。留着它是为了让
 	 * "不动我们自己的机器"这条要求在<b>将来某个机器真的实现了 Container 时</b>也自动成立。</p>
 	 */
-	private static final Set<String> NEVER_LOOT_NAMESPACES =
-		Set.of("create", "lootr", CoeCore.REGISTRY_NAMESPACE);
+	private static final Set<String> NEVER_TOUCH_NAMESPACES =
+		Set.of("create", CoeCore.REGISTRY_NAMESPACE);
+
+	/**
+	 * <b>"每个玩家各自一份战利品"的模组容器命名空间</b>（作者 2026-10-03 第三轮要求：
+	 * 这类容器<b>照旧取物、但绝不挖掉方块</b>）。
+	 *
+	 * <p>为什么不能共用心智：这类模组的容器按"谁打开"给谁现生成一份自己的战利品
+	 * （{@code lootr} 就是），所以它<b>不是</b> {@link #NEVER_TOUCH_NAMESPACES} 那种"完全不碰"
+	 * ——作者明确要求"照旧取物（拿到投掷者自己那份）、但别把箱子挖掉"。</p>
+	 *
+	 * <p><b>判据为什么只有一串命名空间字符串</b>：可选模组的类<b>不许进 {@code content/} 包</b>
+	 * （AGENTS.md 红线；{@code lootr} 连可选依赖都不是），所以这里只能按方块的<b>注册命名空间</b>判。
+	 * <br>⚠ <b>这条判据天生脆弱，如实记下来</b>：</p>
+	 * <ul>
+	 *   <li><b>漏判</b>：某个这类模组若用了别的命名空间、或把容器做成别的形态
+	 *       （不是方块实体 / 不给原版 {@code Container} 接口 / 方块注册在别人的命名空间下，
+	 *       例如整合包用 KubeJS 之类把方块挪到自定义 ns），这里会判不出来 ⇒
+	 *       它会走进"普通容器"那一支（被取空<b>并且</b>被挖掉）；</li>
+	 *   <li><b>误判</b>：命名空间里任何一个普通方块容器只要实现了 {@code Container}，
+	 *       也会被当成"只取不挖"（比破坏它更安全，是刻意选的失败方向）。</li>
+	 * </ul>
+	 * <p><b>将来怎么扩展（只有这一处要动）</b>：往这个集合里加命名空间；
+	 * 若某个模组需要更细的判据（例如同一个命名空间里只有部分方块是"每玩家"），
+	 * 就把判据从"命名空间集合"升级成"一个具名的判据方法"（现在的调用点只有
+	 * {@link #perPlayerLoot(BlockPos)} 一处，改它不影响别处）。</p>
+	 */
+	private static final Set<String> PER_PLAYER_LOOT_NAMESPACES =
+		Set.of("lootr");
 
 	/**
 	 * ★ <b>"这个方块是不是可以开箱取物的容器"的唯一判据处</b>（作者需求 §2；不是就返回 {@code null}）。
 	 *
 	 * <p>三道闸门，顺序固定（口径与实测见类注释第九节）：</p>
 	 * <ol>
-	 *   <li>空方块 / {@link #NEVER_LOOT_NAMESPACES} 里的命名空间 ⇒ 不是；</li>
+	 *   <li>空方块 / {@link #NEVER_TOUCH_NAMESPACES} 里的命名空间 ⇒ 不是；</li>
 	 *   <li>箱子 / 陷阱箱（{@code instanceof ChestBlock}）⇒ 交给原版
 	 *       {@link ChestBlock#getContainer}
 	 *       （{@code override = true}：镖是飞过去的，不理会"箱子上方被挡"这类开盖条件），
 	 *       于是<b>大箱子两半一起被清空</b>；</li>
 	 *   <li>其余：方块实体 {@code instanceof Container} ⇒ 就是它（木桶 / 潜影盒 / 漏斗 / 发射器 /
 	 *       熔炉 / 酿造台 / 合成器 …，以及别的模组实现了 {@code Container} 的方块）。
-	 *       <br>末影箱天然落空（{@code EnderChestBlockEntity} 不是 {@code Container}），
-	 *       {@code lootr} 已在第 ① 道被拦。</li>
+	 *       <br>末影箱天然落空（{@code EnderChestBlockEntity} 不是 {@code Container}）；
+	 *       {@code lootr} 那类"每玩家一份"的容器<b>仍然会被判成容器</b>（要取物），
+	 *       只是随后<b>不挖它</b> —— 见 {@link #perPlayerLoot(BlockPos)}。</li>
 	 * </ol>
 	 *
 	 * <p><b>不上锁判定</b>：{@code BaseContainerBlockEntity#canOpen(Player)} 只有锁判定、没有距离，
@@ -1287,7 +1390,7 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 			return null;
 		}
 		ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-		if (NEVER_LOOT_NAMESPACES.contains(id.getNamespace())) {
+		if (NEVER_TOUCH_NAMESPACES.contains(id.getNamespace())) {
 			return null;
 		}
 		if (state.getBlock() instanceof ChestBlock chest) {
@@ -1298,17 +1401,86 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	}
 
 	/**
+	 * ★ <b>"这个容器是不是每玩家各自一份战利品的模组容器"</b>（作者 2026-10-03 第三轮；
+	 * 唯一消费点 = {@link #onHitBlock(BlockPos)} 里"挖不挖"的那一道闸门）。
+	 *
+	 * <p>判据 = 该方块<b>注册命名空间</b>（读的是方块注册表 id、一个纯字符串）落在
+	 * {@link #PER_PLAYER_LOOT_NAMESPACES} 里。这类容器<b>照旧取物</b>（投掷者自己那份），
+	 * 但<b>绝不挖掉方块</b>——它的战利品是"每个玩家一份"，把方块拆了等于毁掉别人的那一份。</p>
+	 *
+	 * <p>⚠ 判据本身为什么脆弱、将来往哪儿扩展：见 {@link #PER_PLAYER_LOOT_NAMESPACES} 的注释。
+	 * 本方法<b>只做判定、绝不破坏</b>（关卡 29s 有一条负向断言钉着"这个判据里没有挖方块"）。</p>
+	 */
+	private boolean perPlayerLoot(BlockPos pos) {
+		BlockState state = level().getBlockState(pos);
+		return PER_PLAYER_LOOT_NAMESPACES.contains(
+			BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace());
+	}
+
+	/**
+	 * ★ <b>主动把战利品表填一次</b>（作者 2026-10-03 第二轮要求；<b>必须早于逐槽取物</b>）。
+	 *
+	 * <p><b>为什么必须存在这一步</b>（1.21.1 源码依据，逐条可查）：</p>
+	 * <ul>
+	 *   <li>{@code RandomizableContainerBlockEntity}（箱子 / 木桶 / 潜影盒 / 发射器 … 的父类）
+	 *       把"填表"这件事推迟到<b>第一次碰槽位</b>：{@code getItem} / {@code removeItemNoUpdate} /
+	 *       {@code isEmpty} 都各自先调一次 {@code this.unpackLootTable(null)}
+	 *       （{@code mcsrc-all/net/minecraft/world/level/block/entity/RandomizableContainerBlockEntity.java:49-88}）；</li>
+	 *   <li>而原版"玩家打开箱子"那一刻走的是 {@code createMenu(...)} →
+	 *       {@code this.unpackLootTable(playerInventory.player)}（同文件 :97-104），
+	 *       <b>只有那一条路带得上玩家</b>；</li>
+	 *   <li>{@code unpackLootTable(Player)} 里，玩家参数决定两件事：
+	 *       {@code withLuck(player.getLuck())} 与 {@code THIS_ENTITY} 这个掉落上下文参数
+	 *       （{@code mcsrc-all/net/minecraft/world/RandomizableContainer.java:81-100}），
+	 *       另外还会给投掷者触发 {@code CriteriaTriggers.GENERATE_LOOT}
+	 *       ——这正是"拿到的是<b>他的</b>那一份战利品"的含义。</li>
+	 * </ul>
+	 *
+	 * <p><b>所以</b>：如果只靠 {@code removeItemNoUpdate} 那条隐式路，填表用的是
+	 * {@code unpackLootTable(null)}（没有玩家、没有幸运值、没有"谁拿的"）。本方法在取物<b>之前</b>
+	 * 显式按 {@code thrower} 填一次，把 {@code lootTable} 字段清掉
+	 * （{@code unpackLootTable} 内部第一步就是 {@code setLootTable(null)}）⇒ 后面的逐槽取物
+	 * 不会再填第二次。</p>
+	 *
+	 * <p><b>大箱子两半都要填</b>：{@link #containerAt(BlockPos)} 拿到的是
+	 * {@code ChestBlock#getContainer(...)} 合并出来的 {@code CompoundContainer}，而
+	 * {@code CompoundContainer} <b>不暴露</b>它的两半（{@code mcsrc-all/net/minecraft/world/CompoundContainer.java}
+	 * 只有 getItem/removeItem 那套转发）⇒ 只能按"另一半在世界里的位置"各自进去填一次
+	 * （另一半的方向 = 原版 {@code ChestBlock#getConnectedDirection(BlockState)}，它对 LEFT/RIGHT
+	 * 两半各自指向对面），否则"大箱子的另一半"会留着一张没填的表，
+	 * 到被挖时才由 {@code dropContents} 用 {@code null} 玩家 roll 出来。</p>
+	 *
+	 * @param thrower 投掷者本人（{@code getOwner()}；拿不到时是 {@code null}，退化成原版隐式行为）
+	 */
+	private void unpackLootTables(BlockPos pos, Player thrower) {
+		unpackLootTableAt(pos, thrower);
+		BlockState state = level().getBlockState(pos);
+		if (state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
+			unpackLootTableAt(pos.relative(ChestBlock.getConnectedDirection(state)), thrower);
+		}
+	}
+
+	/** 单个方块位置上的战利品表填充（{@link #unpackLootTables(BlockPos, Player)} 的逐半实现）。 */
+	private void unpackLootTableAt(BlockPos pos, Player thrower) {
+		if (level().getBlockEntity(pos) instanceof RandomizableContainer container) {
+			container.unpackLootTable(thrower);
+		}
+	}
+
+	/**
 	 * ★ <b>把一个容器搬空</b>（唯一搬运处）：逐槽全取 ⇒ 每份物品上船（{@link #carry(ItemStack)}）。
 	 *
-	 * <p>容器<b>不破坏、只被清空</b>；{@code removeItemNoUpdate} 逐槽取、最后
-	 * {@code setChanged()} 只标脏一次（{@code removeItem} 会每槽标一次）。</p>
+	 * <p>只做"扫槽 + 取走 + 标脏一次"；{@code removeItemNoUpdate} 逐槽取、最后
+	 * {@code setChanged()} 只标脏一次（{@code removeItem} 会每槽标一次）。
+	 * 战利品表的<b>主动填充不在这里</b>——它是调用方在<b>取物之前</b>做的
+	 * （{@link #unpackLootTables(BlockPos, Player)}）。</p>
 	 *
-	 * <p><b>代价</b>：真的取到东西才记一笔 −{@link BoomerangTier#WEAR_PER_HIT} 耐久
-	 * （与"挖掉一个方块"同价；空容器不记账 —— 与 {@code mineBlock} 只在
-	 * {@code destroyed} 时记账同形）。<b>不吃穿刺额度</b>：容器没被破坏，走的是
-	 * {@code turnAroundIfNotPiercing(..., mayPierceThrough = false)} 那条"挖不动的方块"口径。</p>
+	 * <p><b>代价</b>：<b>本方法不记耐久</b>（2026-10-03 第二轮改）：容器事件现在可能既取物又挖方块，
+	 * 耐久统在 {@link #onHitBlock(BlockPos)} 那一处记，<b>同一次命中只记一次</b>
+	 * （挖掉了由 {@code mineBlock} 记，没挖掉才由那一处补记）。<b>不吃穿刺额度</b>：
+	 * 容器走的仍是 {@code turnAroundIfNotPiercing(..., mayPierceThrough = false)} 那条"挖不动的方块"口径。</p>
 	 *
-	 * @return {@code true} = 至少取到了物品（决定要不要记耐久）
+	 * @return {@code true} = 至少取到了物品（调用方据此决定要不要补记耐久）
 	 */
 	private boolean lootContainer(Container container) {
 		boolean took = false;
@@ -1325,7 +1497,6 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		}
 		if (took) {
 			container.setChanged();
-			addFlightWear(BoomerangTier.WEAR_PER_HIT);
 		}
 		return took;
 	}
