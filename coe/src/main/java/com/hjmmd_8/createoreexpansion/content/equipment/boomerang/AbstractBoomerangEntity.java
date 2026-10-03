@@ -13,14 +13,17 @@ import java.util.Set;
 import org.joml.Vector3f;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.Container;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -33,6 +36,8 @@ import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -213,6 +218,46 @@ import net.minecraft.world.phys.Vec3;
  * <p><b>顺带堵掉的一条旧缝</b>：旧写法在 {@code collect → finishFlight → discard} 之后还会再扫一次
  * 吸附（同一 tick、实体已 {@code discard}），那一窗口里上船的掉落物会挂到一个<b>已被移除、
  * 再也不会 tick</b> 的载具上。现在那一处有 {@code !isRemoved()} 守卫。</p>
+ *
+ * <h2>九、批 7（2026-10-03）：开箱取物 —— 撞到容器方块就把它搬空（作者需求）</h2>
+ * <p><b>作者要求</b>：野外探险时，镖应该能"<b>把箱子里面的所有物品都戴到自己身上，多出来的物品
+ * 变成掉落物，掉落在自己旁边</b>"（Quark 没有这个功能）。</p>
+ *
+ * <p><b>触发</b>：{@link #containerAt(BlockPos)} 非空 —— 即去程命中判定
+ * （{@link #checkImpact()} → {@link #onHitBlock(BlockPos)}）撞到的那个方块是容器。
+ * <b>点按与长按共用这一条</b>（两种模式的命中判定本来就是同一处，批 3 起就是）。</p>
+ *
+ * <p><b>容器怎么判（唯一判据处 {@link #containerAt(BlockPos)}，三道闸门）</b>：</p>
+ * <ol>
+ *   <li><b>机器闸门</b>（{@link #NEVER_LOOT_NAMESPACES}）：Create 的机器与本模组自己的机器
+ *       （充能器等）一律不碰 —— 作者明确要求"不动我们自己的机器"。按<b>注册命名空间</b>判，
+ *       绝不 import 可选模组的类（AGENTS.md 红线）；
+ *   <br>⚠ 实测口径：Create 全仓<b>只有</b> {@code foundation.blockEntity.ItemHandlerContainer}
+ *       一个类实现原版 {@code Container}，而它不是任何一种方块实体；本模组全仓 0 个
+ *       ⇒ 下面第 ③ 道闸门<i>今天已经</i>把机器全挡掉了，这道命名空间闸门是<b>冗余的防御</b>；</li>
+ *   <li><b>大箱子合并</b>：{@code ChestBlock#getContainer(..., true)} —— 箱子/陷阱箱走原版合并器，
+ *       两半<b>一起</b>取（{@code ChestBlockEntity} 只暴露自己那一半）；</li>
+ *   <li><b>方块容器</b>：方块实体 {@code instanceof Container}
+ *       （木桶 / 潜影盒 / 漏斗 / 发射器 / 投掷器 / 熔炉 / 烟熏炉 / 高炉 / 酿造台 / 合成器 …，
+ *       以及别的模组实现了 {@code Container} 的方块）。
+ *       <br>⚠ <b>末影箱天然不在内</b>（{@code EnderChestBlockEntity} 只 implements
+ *       {@code LidBlockEntity}，本仓从 MC 源码核对过）；{@code lootr} 走第 ① 道闸门
+ *       （每个玩家一份战利品表，抽共享容器是错的）。</li>
+ * </ol>
+ *
+ * <p><b>物品怎么搬（{@link #lootContainer(Container)} + {@link #carry(ItemStack)}，零新机制）</b>：
+ * 逐槽 {@code removeItemNoUpdate} 全取 ⇒ 每份物品生成一个<b>既有</b> {@link ItemEntity} 再
+ * {@code startRiding(this)} 上船 —— 与 {@link #pickUpItems()} 走的是<b>同一条承载路径</b>
+ * （原版乘客链 + {@link #canCarry(Entity)}），容器本身<b>不破坏、只被清空</b>。
+ * 代价与"挖掉一个方块"同价：真取到东西才 {@code addFlightWear(WEAR_PER_HIT)}，
+ * <b>不吃穿刺额度</b>（作者默认值，见报告）。</p>
+ *
+ * <p><b>溢出去哪</b>：掉落物本来就是乘客 ⇒ 回到玩家手里时走的仍是
+ * {@link #finishFlight(boolean)} → {@link #handPassengersToPlayer(Player)}
+ * （{@code stopRiding} + 清拾取延迟 + {@code playerTouch}）。
+ * {@code ItemEntity#playerTouch} 只在 {@code inventory.add(...)} 成功时才消失 ⇒
+ * <b>装得下进背包、装不下的留在原地 = 玩家旁边</b>（镖是贴到主人身上才交还的），
+ * <b>绝不会掉回箱子那儿</b>；镖爆掉时也照样先交给玩家（批 2 的既有语义）。</p>
  */
 public abstract class AbstractBoomerangEntity extends Projectile implements OrbitAnchor {
 
@@ -1067,8 +1112,15 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 * <b>扣额度</b>；"穿过去还是掉头"整条判据交给 {@link #turnAroundIfNotPiercing(int, boolean)}
 	 * 那一处（生物那条路径用的是同一个方法）——于是"花瓣段优先"这条规则<b>在代码里只有一处</b>。</p>
 	 *
-	 * <p>行为对照（三种情形）：</p>
+	 * <p>⚠ <b>2026-10-03 批 7 加了前置一支</b>（作者需求：开箱取物）：若这个方块是容器
+	 * （{@link #containerAt(BlockPos)} 非空）⇒ <b>不挖</b>，改为 {@link #lootContainer(Container)} 搬空，
+	 * 再按"挖不动的方块"同一条口径决定穿过去还是掉头。判容器的顺序必须在挖掘<b>之前</b>。</p>
+	 *
+	 * <p>行为对照（四种情形）：</p>
 	 * <ol>
+	 *   <li><b>容器（点按与长按都会走到）</b>：搬空、方块保留、{@code mayPierceThrough = false}
+	 *       ⇒ 点按掉头；花瓣近程穿过去继续飞（判定与"挖不动的方块"共用一处），
+	 *       真取到东西才 −1 耐久、不吃方块额度；</li>
 	 *   <li><b>花瓣段</b>：挖掉了就吃一份额度，然后<b>一律不掉头</b>（"必须飞完一瓣才能返回"
 	 *       优先于"额度用完"）；挖不动的方块也穿过——花瓣曲线是固定路径，与批 2 的花瓣段行为一致；</li>
 	 *   <li><b>点按 + 挖不动</b>：{@code mayPierceThrough = false} ⇒ 撞墙，照旧掉头（批 1/2 的行为）；</li>
@@ -1081,6 +1133,18 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 * @return {@code true} = 已转入回程（调用方不得再前进）；挖穿且还有额度时是 {@code false}
 	 */
 	private boolean onHitBlock(BlockPos pos) {
+		// ★ 2026-10-03 批 7（作者需求：开箱取物）：**先判容器、再谈挖掘** —— 顺序不能反，
+		// 反了就会先把箱子挖掉、把里面东西撒一地（本功能要的正是"容器保持存在、只是被清空"）。
+		// 点按与长按都走这一处（两种模式共用 checkImpact()，批 3 起就是同一条命中入口）。
+		Container container = containerAt(pos);
+		if (container != null) {
+			ensurePierceQuota();
+			lootContainer(container);
+			// 容器方块保留 ⇒ 对"穿过去还是掉头"这条既有判定而言，它就是"挖不动的方块"
+			// （mayPierceThrough = false，且不消耗方块额度）：点按 ⇒ 撞墙即回；
+			// 花瓣近程 ⇒ 穿过去继续飞完这一瓣。判定仍然只有 turnAroundIfNotPiercing 一处。
+			return turnAroundIfNotPiercing(this.pierceBlocksLeft, false);
+		}
 		boolean destroyed = mineBlock(pos);
 		// 照旧**无条件**记账（与 onHitEntity 同形，不在命中路径里判模式：那条分歧只在
 		// turnAroundIfNotPiercing 一处）。花瓣段不读这份额度 ⇒ 记了也不影响花瓣行为。
@@ -1173,7 +1237,115 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		return destroyed;
 	}
 
-	// ================= 回程捡物 =================
+	// ================= 开箱取物（2026-10-03 批 7：作者需求，Quark 没有这个功能） =================
+
+	/**
+	 * <b>永不抽取的方块命名空间</b>（唯一一张表；{@link #containerAt(BlockPos)} 的第一道闸门）。
+	 *
+	 * <ul>
+	 *   <li>{@code create} —— Create 的机器方块（作者："不动我们自己的机器"）；</li>
+	 *   <li>{@link CoeCore#REGISTRY_NAMESPACE} —— 本模组自己的机器（充能器等，同一句要求）；</li>
+	 *   <li>{@code lootr} —— 每玩家各自一份战利品表的特殊容器（抽共享容器是错的）。
+	 *       <br>⚠ <b>按命名空间判定、绝不 import 它的类</b>：可选模组的类不许进 {@code content/} 包
+	 *       （AGENTS.md 红线；这里连可选依赖都不是，所以只能这么判）。</li>
+	 * </ul>
+	 *
+	 * <p>⚠ <b>当下这是冗余的防御</b>：命名空间为 {@code create} / 本模组的方块实体<b>没有一个</b>
+	 * 实现原版 {@code Container}（Create 全仓只有 {@code foundation.blockEntity.ItemHandlerContainer}
+	 * 一个类实现它、且不是方块实体；本模组 0 个）⇒ 第三道闸门已经挡住它们。留着它是为了让
+	 * "不动我们自己的机器"这条要求在<b>将来某个机器真的实现了 Container 时</b>也自动成立。</p>
+	 */
+	private static final Set<String> NEVER_LOOT_NAMESPACES =
+		Set.of("create", "lootr", CoeCore.REGISTRY_NAMESPACE);
+
+	/**
+	 * ★ <b>"这个方块是不是可以开箱取物的容器"的唯一判据处</b>（作者需求 §2；不是就返回 {@code null}）。
+	 *
+	 * <p>三道闸门，顺序固定（口径与实测见类注释第九节）：</p>
+	 * <ol>
+	 *   <li>空方块 / {@link #NEVER_LOOT_NAMESPACES} 里的命名空间 ⇒ 不是；</li>
+	 *   <li>箱子 / 陷阱箱（{@code instanceof ChestBlock}）⇒ 交给原版
+	 *       {@link ChestBlock#getContainer}
+	 *       （{@code override = true}：镖是飞过去的，不理会"箱子上方被挡"这类开盖条件），
+	 *       于是<b>大箱子两半一起被清空</b>；</li>
+	 *   <li>其余：方块实体 {@code instanceof Container} ⇒ 就是它（木桶 / 潜影盒 / 漏斗 / 发射器 /
+	 *       熔炉 / 酿造台 / 合成器 …，以及别的模组实现了 {@code Container} 的方块）。
+	 *       <br>末影箱天然落空（{@code EnderChestBlockEntity} 不是 {@code Container}），
+	 *       {@code lootr} 已在第 ① 道被拦。</li>
+	 * </ol>
+	 *
+	 * <p><b>不上锁判定</b>：{@code BaseContainerBlockEntity#canOpen(Player)} 只有锁判定、没有距离，
+	 * 但它会<b>给玩家发"容器已上锁"提示音与消息</b>（{@code Container#stillValid} 那条路则是
+	 * "玩家离容器 4 格内"，而镖本来就是在远处开箱的，用它等于把整个功能关掉）⇒ 这里两个都不用，
+	 * 代价是<b>上锁的容器也会被搬空</b>（原版生存里没有天然上锁的容器，见报告"我定的部分"）。</p>
+	 *
+	 * @return 该位置的容器（可能是两半合并后的 {@code CompoundContainer}）；不是容器则 {@code null}
+	 */
+	private Container containerAt(BlockPos pos) {
+		BlockState state = level().getBlockState(pos);
+		if (state.isAir()) {
+			return null;
+		}
+		ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+		if (NEVER_LOOT_NAMESPACES.contains(id.getNamespace())) {
+			return null;
+		}
+		if (state.getBlock() instanceof ChestBlock chest) {
+			return ChestBlock.getContainer(chest, state, level(), pos, true);
+		}
+		BlockEntity blockEntity = level().getBlockEntity(pos);
+		return blockEntity instanceof Container container ? container : null;
+	}
+
+	/**
+	 * ★ <b>把一个容器搬空</b>（唯一搬运处）：逐槽全取 ⇒ 每份物品上船（{@link #carry(ItemStack)}）。
+	 *
+	 * <p>容器<b>不破坏、只被清空</b>；{@code removeItemNoUpdate} 逐槽取、最后
+	 * {@code setChanged()} 只标脏一次（{@code removeItem} 会每槽标一次）。</p>
+	 *
+	 * <p><b>代价</b>：真的取到东西才记一笔 −{@link BoomerangTier#WEAR_PER_HIT} 耐久
+	 * （与"挖掉一个方块"同价；空容器不记账 —— 与 {@code mineBlock} 只在
+	 * {@code destroyed} 时记账同形）。<b>不吃穿刺额度</b>：容器没被破坏，走的是
+	 * {@code turnAroundIfNotPiercing(..., mayPierceThrough = false)} 那条"挖不动的方块"口径。</p>
+	 *
+	 * @return {@code true} = 至少取到了物品（决定要不要记耐久）
+	 */
+	private boolean lootContainer(Container container) {
+		boolean took = false;
+		for (int slot = 0; slot < container.getContainerSize(); slot++) {
+			if (container.getItem(slot).isEmpty()) {
+				continue;
+			}
+			ItemStack taken = container.removeItemNoUpdate(slot);
+			if (taken.isEmpty()) {
+				continue;
+			}
+			carry(taken);
+			took = true;
+		}
+		if (took) {
+			container.setChanged();
+			addFlightWear(BoomerangTier.WEAR_PER_HIT);
+		}
+		return took;
+	}
+
+	/**
+	 * <b>把一份物品挂上本镖</b>（复用既有承载路径的<b>唯一</b>生成点）。
+	 *
+	 * <p>与 {@link #pickUpItems()} 同一条链：既有 {@link ItemEntity} + 原版 {@code startRiding}
+	 * 乘客链 + 同一个 {@link #PICKUP_DELAY} 拾取延迟 ⇒ <b>零新机制</b>（不新增实体类型、贴图、模型、
+	 * 渲染器，也不给镖加内部库存）。生成点取镖当前的位置：万一上船失败，同一 tick 末尾的
+	 * {@link #pickUpItems()} 也会把它吸上来（两处用的是同一个 {@code canCarry}）。</p>
+	 */
+	private void carry(ItemStack stack) {
+		ItemEntity item = new ItemEntity(level(), getX(), getY(), getZ(), stack);
+		level().addFreshEntity(item);
+		item.startRiding(this);
+		item.setPickUpDelay(PICKUP_DELAY);
+	}
+
+	// ================= 吸附（去程与回程共用；批 6 起不再只是"回程捡物"） =================
 
 	/**
 	 * ★ <b>唯一吸附实现</b>：每服务端 tick 扫一次膨胀 {@value #PICKUP_RADIUS} 格的区域，
