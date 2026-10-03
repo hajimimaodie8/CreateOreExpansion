@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 
 import net.minecraft.tags.BlockTags;
@@ -152,7 +153,13 @@ public enum BoomerangTier {
      * 只是"距离判据万一失效"时的兜底。</p>
      */
     private final int returnDistance;
-    /** 能量条配色（沿用同材质工具的配色）。 */
+    /**
+     * 本档注册进物品的<b>单一能量色</b>（写进 {@code ToolDataComponents.ENERGY_COLOR}，供
+     * 文字/绑定行这类不画渐变的场合取用；注册点在 {@code CoeItems#boomerang} 的 {@code .color(...)}）。
+     *
+     * <p>⚠ <b>它不是能量条的色标</b>：条的色标自 2026-10-03 小修起一律问护甲那张表
+     * （{@link #armorSet()} → {@code ArmorEnergyColors#stopsOf}），本字段只剩文字色这一个用途。</p>
+     */
     private final ToolEnergyColorConfig color;
 
     BoomerangTier(float damage, int energy, int durability, float maxHardness, int miningLevel,
@@ -286,6 +293,28 @@ public enum BoomerangTier {
 
     public ToolEnergyColorConfig color() {
         return color;
+    }
+
+    /**
+     * <b>这一档对应的护甲套</b>（作者 2026-10-03 小修：「能量条的样式和颜色应该与那个装备一样，
+     * 而不是你自己造出一个新的渐变」）。
+     *
+     * <p>四档与四套<b>一一对应</b>：翠玉镖 ↔ 翠玉套、宝石镖 ↔ 宝石套、星界镖 ↔ 星界套、
+     * 雷鸣镖 ↔ 雷鸣套。唯一消费点是 {@code BoomerangItem#energyGradientStops}，它拿本方法的结果
+     * 去问护甲那套取色源（{@code ArmorEnergyColors#stopsOf(ArmorSet)}）——<b>同一个方法、一行调用</b>，
+     * 回旋镖侧既不复写色值、也不自己拼渐变。因此色标条数也跟着护甲走
+     * （翠玉 2 / 宝石 2 / <b>星界 4</b> / 雷鸣 2），四把镖与四套护甲逐格一致。</p>
+     *
+     * <p>⚠ 用 {@code switch} 而不是 {@code ArmorSet.valueOf(name())}：枚举一改名，后者要到
+     * <b>运行期</b>才炸；而 {@code switch} 少一个分支<b>编译就不过</b>。</p>
+     */
+    public ArmorSet armorSet() {
+        return switch (this) {
+            case JADE_TOPAZ -> ArmorSet.JADE_TOPAZ;
+            case SAPPHIRE_RUBY -> ArmorSet.SAPPHIRE_RUBY;
+            case ASTRAL -> ArmorSet.ASTRAL;
+            case THUNDER -> ArmorSet.THUNDER;
+        };
     }
 
     /**

@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.energy.EnergyGradientTool;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergyColors;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
@@ -102,8 +103,9 @@ import net.minecraft.world.phys.Vec3;
  *       镖挖石头/矿石<b>什么都不会掉</b>。</li>
  * </ul>
  *
- * <p>能量条与能量文案走 {@link EnergyGradientTool}：渐变两端色取<b>本档自己的配色</b>
- * （{@link #energyGradientStops} → {@link BoomerangTier#color()}），四把各不相同。</p>
+ * <p>能量条与能量文案走 {@link EnergyGradientTool}：色标<b>与同档护甲套同一个取色源</b>
+ * （{@link #energyGradientStops} → {@link BoomerangTier#armorSet()} →
+ * {@code ArmorEnergyColors#stopsOf}，作者 2026-10-03 小修），四把镖因此与四套护甲逐格一致。</p>
  *
  * <h2>六、耐久（作者 2026-10-02 批 1 建面、批 2 接扣减；需求 §3.1 / §3.8）</h2>
  * <p>四把镖各有耐久上限（{@link BoomerangTier#durability()} = 1000 / 2000 / 3500 / 3500），
@@ -889,20 +891,35 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 	}
 
 	/**
-	 * <b>能量条/能量文案的渐变色标 = 本档自己的配色</b>（左→右：亮色 → 暗色）。
+	 * <b>能量条/能量文案的渐变色标 = 同档护甲套那一套</b>（左→右；作者 2026-10-03 小修）。
 	 *
-	 * <p>两端色一律读 {@link BoomerangTier#color()}，也就是
-	 * {@code ToolEnergyColorConfig.JADE / SAPPHIRE / STELLARSTONE / THUNDERITE}
-	 * 这四个常量本身（与同材质工具/盔甲同一个数据源，这里不复制任何一个色值）。</p>
+	 * <p>色标<b>不再由本类拼</b>：唯一一行就是问护甲那张表
+	 * {@link ArmorEnergyColors#stopsOf(com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet)}
+	 * （档 → 套的对应关系在 {@link BoomerangTier#armorSet()}，与四套同名一一对应）。
+	 * 于是回旋镖与护甲的条<b>同源同款</b>：同一条渲染路径
+	 * （{@code BarTooltipRender.energyGradient(int,int,int,List<Color>)}，
+	 * 护甲 tooltip 走的就是它），同一条色标表，<b>连色标条数也一致</b>
+	 * （翠玉 2 / 宝石 2 / 星界 <b>4</b> / 雷鸣 2）。</p>
 	 *
-	 * <p>⚠ 这个方法就是作者 2026-10-02 报的那个 bug（"剩下那三种类型的回旋镖的能量条并不与
-	 * 它们的类型匹配"）的修复点：{@link EnergyGradientTool} 原先没有取色方法，两个消费方
-	 * 各自写死翠玉之弓那条黄绿渐变，于是<b>四把镖共用同一条颜色</b>——翠玉那把"看着对"，
-	 * 只是因为它的档位色恰好等于那条渐变的起点。删掉这个覆写 = 四把又变回同一个色。</p>
+	 * <p><b>两条都已作废的旧形状</b>（留档，别改回去）：</p>
+	 * <ol>
+	 *   <li>更早的 {@link EnergyGradientTool} 是零方法标记，两个消费方各自写死翠玉之弓那条
+	 *       黄绿渐变 ⇒ <b>四把镖共用同一条颜色</b>（2026-10-02 作者报的 bug）；</li>
+	 *   <li>随后的修法是本方法返回 {@code List.of(tier.color().light, tier.color().dark)}
+	 *       ——四把分开了，但那仍是<b>回旋镖自己拼的两色标渐变</b>（{@code ToolEnergyColorConfig}
+	 *       的亮/暗两端），与护甲套经过作者逐套指定的配色（星界四段、宝石蓝→红…）不一样。
+	 *       作者 2026-10-03 原话否掉的就是它：「<i>能量条的样式和颜色应该与那个装备一样，
+	 *       而不是你自己造出一个新的渐变</i>」。</li>
+	 * </ol>
+	 *
+	 * <p>⇒ 本方法体<b>只许</b>是下面这一行：出现字面色（{@code new Color(0x…)}）、出现
+	 * {@code tier.color()} 或 {@code ToolEnergyColorConfig}，都等于又造了第二个色标来源。
+	 * 关卡 {@code boomerang-bar-colour}（§29i）钉着这一行的形状、档→套的双射、以及"回旋镖侧
+	 * 一个 {@code 0x} 字面色都没有"。</p>
 	 */
 	@Override
 	public List<Color> energyGradientStops(ItemStack stack) {
-		return List.of(tier.color().light, tier.color().dark);
+		return ArmorEnergyColors.stopsOf(tier.armorSet());
 	}
 
 	/**

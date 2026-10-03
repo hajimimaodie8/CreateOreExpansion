@@ -22,9 +22,14 @@ import net.minecraft.world.item.ItemStack;
  *
  * <p>现在色标由<b>物品自己</b>回答（{@link #energyGradientStops(ItemStack)}）：</p>
  * <ul>
- *   <li>回旋镖四把覆写它，返回<b>自己档位</b>的
- *       {@code ToolEnergyColorConfig} 两端色（JADE / SAPPHIRE / STELLARSTONE / THUNDERITE，
- *       见 {@code BoomerangTier#color()}）——四把各不相同；</li>
+ *   <li>回旋镖四把覆写它，<b>转调护甲那张取色表</b>
+ *       （{@code ArmorEnergyColors#stopsOf(ArmorSet)}，档→套的对应在
+ *       {@code BoomerangTier#armorSet()}）——即「与同档护甲套一模一样」的色标，
+ *       条数也跟着护甲走（翠玉 2 / 宝石 2 / 星界 4 / 雷鸣 2）。
+ *       ⚠ 2026-10-03 小修前的实现是回旋镖自己拼
+ *       {@code ToolEnergyColorConfig.<档>.light -> .dark} 那条<b>两色标</b>渐变，
+ *       作者原话否掉了它：「<i>能量条的样式和颜色应该与那个装备一样，而不是你自己造出一个
+ *       新的渐变</i>」；</li>
  *   <li>翠玉之弓<b>不覆写</b>，默认返回空表 ⇒ 消费方回落到本契约的历史默认
  *       （翠玉之弓那条绿→黄，逐字不变；护甲翠玉套的配色也仍以它为源）；</li>
  *   <li>以后再加"按材质变色的渐变条"，只需覆写这一个方法，不必再动任何一个消费方。</li>

@@ -73,7 +73,8 @@ public class EnergyTooltipHandler {
         }
 
         // 谁实现 EnergyGradientTool 谁做渐变条（翠玉之弓 + 回旋镖四把）；其余工具保持单色。
-        // 色标由物品自报（energyGradientStops）：回旋镖四把给的是各自档位的配色，
+        // 色标由物品自报（energyGradientStops）：回旋镖四把给的是**同档护甲套**那一套色标
+        // （作者 2026-10-03 小修；转调 ArmorEnergyColors#stopsOf，与护甲 tooltip 同源同款），
         // 弓不覆写 ⇒ 用下面这条历史默认（绿 0x55FF55 -> 黄 0xFFFF55，本文件是它的唯一出处）。
         if (stack.getItem() instanceof EnergyGradientTool gradientTool) {
             List<Color> stops = gradientTool.energyGradientStops(stack);

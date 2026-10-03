@@ -359,7 +359,8 @@ public final class ToolEnergy {
 	 *
 	 * <p>色标由物品自报（{@code energyGradientStops}，左→右）；<b>文本行沿用历史方向（右→左）</b>，
 	 * 所以从色标末端往回取：弓不覆写 ⇒ 落到历史默认，逐字仍是黄 {@code 0xFFFF55} → 绿
-	 * {@code 0x55FF55}（与改动前完全一致）；回旋镖四把则各自取到自己档位的两端色。</p>
+	 * {@code 0x55FF55}（与改动前完全一致）；回旋镖四把则取到<b>同档护甲套</b>那一套色标
+	 * （2026-10-03 小修起转调 {@code ArmorEnergyColors#stopsOf}，与护甲条同源）。</p>
 	 */
 	private static Component toolLineComponent(ItemStack tool, int energy, int max) {
 		String text = tool.getHoverName().getString() + "：" + energy + "/" + max;

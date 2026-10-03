@@ -35,6 +35,13 @@ import org.jetbrains.annotations.Nullable;
  * <p><b>不属于四套的护甲</b>（原版/他模组护甲 + 散构聚能 ⇒ 也能储能 2500）没有"套"可言，
  * 回落到工具默认色 {@link ToolEnergyColorConfig#DEFAULT}。</p>
  *
+ * <h2>这张表不是护甲专用的（作者 2026-10-03 小修）</h2>
+ * <p>四把<b>回旋镖</b>的能量条也读这里：作者原话「<i>能量条的样式和颜色应该与那个装备一样，
+ * 而不是你自己造出一个新的渐变</i>」⇒ 档→套一一对应（翠玉/宝石/星界/雷鸣），
+ * 由 {@code BoomerangItem#energyGradientStops} <b>一行调用</b>
+ * {@link #stopsOf(ArmorSet)} 取同一份色标 —— <b>回旋镖侧一个色值都不复写</b>，
+ * 因此连色标条数（星界四段）都跟着护甲走。</p>
+ *
  * @since 1.0.0
  */
 public final class ArmorEnergyColors {
@@ -71,6 +78,9 @@ public final class ArmorEnergyColors {
 
     /**
      * 该套的能量条色标（左 → 右）。
+     *
+     * <p>⚠ <b>第二个消费方是回旋镖</b>（2026-10-03 小修）：四把镖按同名的套取用同一份色标，
+     * 所以本方法的返回表就是"回旋镖 ↔ 护甲逐格一致"的保证书。</p>
      *
      * @param set 四套之一；{@code null} ⇒ 默认色
      */
