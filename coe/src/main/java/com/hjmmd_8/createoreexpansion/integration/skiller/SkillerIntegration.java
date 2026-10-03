@@ -191,7 +191,7 @@ public final class SkillerIntegration {
         event.register(SkillerRegistries.SKILL, skillId("plunder"),
                 () -> new ItemSkillRegistration<HitSkillContext>(
                         CoeSkillTypes.HIT, HitContextFactory.KEY, new PlunderItemSkill()));
-        // 血契置换（coe-pact 批 1）：技能条目登记在册，**执行体属批 2**（本类两个方法目前是空的）。
+        // 血契置换（coe-pact 批 1 登记条目；批 2 已把执行体填进 BloodPactItemSkill）。
         // 为什么批 1 就得先有这条登记：skiller:skill 是数据驱动白名单，
         //   漏了 ⇒ 物品上这个技能实例反序列化返回 null（症状是"看着接好了、其实没绑上"），
         //   而且 tools/check-skill-registry-parity.ps1 要求 AllSkills 与内核白名单逐字对齐。
@@ -199,7 +199,8 @@ public final class SkillerIntegration {
         //   LivingIncomingDamageEvent 发生在扣血之前 ⇒ 天然满足"未受到攻击之前"的血量口径。
         // ⚠ 不另造共用空壳类：tools/check-armor-sets.ps1 断言 integration/skiller/skill 下
         //   只有一个 *Stub*.java（EquipmentSkillStub.java），所以血契置换用自己的实现槽位。
-        // ⚠ 批 1 不接冷却（D2 载体未裁定）、不绑两把剑（批 3）⇒ 现在没有任何物品携带它。
+        // ⚠ 冷却走按技能记的 PerSkillCooldown（作者 2026-10-03 裁定 B）；
+        //   两把剑的绑定仍属批 3 ⇒ 现在没有任何物品携带它。
         event.register(SkillerRegistries.SKILL, skillId("blood_pact"),
                 () -> new ItemSkillRegistration<HitSkillContext>(
                         CoeSkillTypes.HIT, HitContextFactory.KEY, new BloodPactItemSkill()));

@@ -20,9 +20,10 @@ public class BloodPactConfig extends AutoSkillConfig {
     /**
      * 技能冷却（tick）：600 tick = 30 秒（作者 2026-10-03 定），1~5 级恒为此值。
      *
-     * <p>⚠ <b>冷却载体待作者裁定（A 沿用按物品记 / B 新建按技能记 / C 三个都改）</b>：
-     * 本字段在本批（coe-pact 批 1）<b>没有任何读取方</b> —— 批 1 只把数值放进配置，
-     * 接线属批 2 且等裁定。</p>
+     * <p>载体 = <b>按技能记</b>的 {@code PerSkillCooldown}（coe-pact 批 2 接上；作者 2026-10-03
+     * 裁定 B）—— 唯一读取方是 {@code integration/skiller/skill/BloodPactItemSkill}。
+     * 与按物品记的剥取 / 夺取冷却（{@code ToolSkillCooldown}）<b>互不读取</b>，
+     * 所以 30 秒不会连坐到同一把剑的另外两个技能。</p>
      *
      * <p>另注：同族既有配置（{@code SkinConfig} / {@code PlunderConfig}）的冷却字段记的是
      * <b>秒</b>；这里按作者原话记 <b>tick</b>，秒数由 {@link #cooldownSeconds()} 换算

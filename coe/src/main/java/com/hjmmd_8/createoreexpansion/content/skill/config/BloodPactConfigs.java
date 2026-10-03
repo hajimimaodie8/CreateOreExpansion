@@ -17,19 +17,18 @@ package com.hjmmd_8.createoreexpansion.content.skill.config;
  *         ⇒ 本类与 {@link BloodPactConfig} 都<b>不含比例字段</b>。</li>
  * </ul>
  *
- * <h2>⚠ 冷却载体待作者裁定（A / B / C），批 2 才接</h2>
- * <p>D2 未裁定 ⇒ 本批（coe-pact 批 1）<b>只把冷却值放进配置</b>、<b>不接任何载体</b>：
- * {@link BloodPactConfig#cooldownTicks} 目前<b>没有任何读取方</b>。三个候选载体：</p>
- * <ul>
- *     <li><b>A</b> 沿用现有的「按物品记」（{@code ToolSkillCooldown} / 原版 {@code ItemCooldowns}，
- *         剥取 / 夺取走的就是这条）；</li>
- *     <li><b>B</b> 新建「按技能记」；</li>
- *     <li><b>C</b> 三个都改。</li>
- * </ul>
+ * <h2>冷却载体 = <b>B（新建"按技能记"）</b> —— 作者 2026-10-03 裁定，coe-pact 批 2 已接</h2>
+ * <p>{@link BloodPactConfig#cooldownTicks} 的唯一读取方是
+ * {@code integration/skiller/skill/BloodPactItemSkill}，载体是
+ * {@code content/equipment/tool/energy/PerSkillCooldown}（玩家持久数据
+ * {@code createoreexpansion:skill_cd_<技能 id>}，键 = 技能 id）。<b>不是</b>按物品记的
+ * {@code ToolSkillCooldown}：后者的判定（{@code CoeSkillSupport#onCooldown}）是整把物品一个键，
+ * 拿它接 30 秒会让同一把剑上的剥取 / 夺取一起冻结 —— 作者明确否掉了这种"连坐"。</p>
+ * <p>老存档：冷却键不存在 ⇒ 读到 0 ⇒ <b>未冷却</b>（最自然的缺省，无需迁移）。</p>
  * <p>本仓技能配置里的冷却字段历来记<b>秒</b>（{@code SkinConfig#cooldownSeconds} /
  * {@code PlunderConfig#cooldownSeconds}，{@code CoeSkillSupport.cooldownTicks} 负责 ×20）。
  * 这里按作者原话记 <b>tick</b>（{@link #COOLDOWN_TICKS} = 600），秒数由
- * {@link BloodPactConfig#cooldownSeconds()} 现算 —— 两种口径都只有一个真源，批 2 不必各自换算。</p>
+ * {@link BloodPactConfig#cooldownSeconds()} 现算 —— 两种口径都只有一个真源。</p>
  */
 public final class BloodPactConfigs {
 
@@ -39,7 +38,7 @@ public final class BloodPactConfigs {
     /**
      * 冷却时长（tick）：<b>600 tick = 30 秒</b>（作者 2026-10-03 定），Lv1~Lv5 恒为此值。
      *
-     * <p>⚠ 载体待作者裁定，批 2 接 —— 见类注释。</p>
+     * <p>载体 = 按技能记的 {@code PerSkillCooldown}（coe-pact 批 2 已接）—— 见类注释。</p>
      */
     public static final int COOLDOWN_TICKS = 600;
 
@@ -48,7 +47,7 @@ public final class BloodPactConfigs {
      *
      * @param energyCost    单次技能能量消耗（= {@code 100 × 等级}，照同族既有值）
      * @param cooldownTicks 技能冷却 tick（1~5 级恒为 {@link #COOLDOWN_TICKS} = 600 tick = 30 秒；
-     *                      <b>载体待裁定</b>，批 1 不接）
+     *                      等级只影响消耗、不影响冷却，需求 §六 #4）
      */
     public record Level(int energyCost, int cooldownTicks) {
     }
