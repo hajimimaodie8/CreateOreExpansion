@@ -663,6 +663,19 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private UUID ownerUuid;
 
 	/**
+	 * <b>本波是否已经给主人充过能</b>（2026-10-03 批 2，我加的一道"一次飞行只充一次"闸门）。
+	 *
+	 * <p><b>为什么需要它</b>：主人被排除在命中列表之外 ⇒ 波不再"撞上就消散"，而是<b>穿过去继续飞</b>；
+	 * 而波每 tick 只走 0.025~0.6 格、命中盒是 1.0 格见方 ⇒ 同一枚波会<b>连续好几 tick</b> 罩住主人。
+	 * 若不记账，主人一趟就吃到 3~4 份充能，与旧口径（撞一次 ⇒ 充一次 ⇒ 消散）不等 ——
+	 * 那是把"打你自己来充能"悄悄放大成"站进波里刷能量"。</p>
+	 *
+	 * <p>默认 {@code false}（原始类型字段，不写初值）；<b>刻意不进同步、不进 NBT</b>：
+	 * 充能是服务端行为，而波实体类型是 {@code noSave()}（不进区块存档）⇒ 一次飞行一份状态就够。</p>
+	 */
+	private boolean ownerCharged;
+
+	/**
 	 * <b>唯一容错解析入口</b>（照 {@link #essenceByName} 的形状：认不出来就是"没有主人"）：
 	 * 把<b>同步值</b> {@code Optional<UUID>} 读成 {@code @Nullable UUID} ——
 	 * 空同步值（{@code Optional.empty()}）⇒ {@code null}。
@@ -1186,7 +1199,30 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 命中生物：<b>所有波型都碰撞消散</b>（用户 2026-10-01："能量波碰到实体后应该立刻消失，
 		// 而不是穿过去，这是非常不合常理的"）。伤害仍然<b>只有攻击态</b>造成 ——
 		// 普通态专事加工、变体态走远程加工，它们只是"撞上就消失"，不兼职武器。
-		List<LivingEntity> entities = level().getEntitiesOfClass(LivingEntity.class, hitBox, e -> e.isAlive());
+		// ★ 2026-10-03（coe-boom2 批 2，作者裁定 <b>B 方案</b>）：主人从<b>命中列表</b>里排除
+		// （{@code !isOwner(e)}）⇒ 波从主人身上穿过去、照飞：主人不吃命中伤害、不上魔素命中效果、
+		// 不触发 burst、波也不 discard（"波照飞、不消散、不受伤害、不上魔素效果"）。
+		// 缺省（无主人 = 一切机器波 / 变器波）时 {@link #isOwner} 恒 false ⇒ 本行与改造前
+		// <b>逐字等价</b>。<b>反例</b>：把"无主人"当成"排除所有人"（isOwner 在 owner==null 时返回 true）
+		// 会让机器波穿过所有人 —— 那是灾难级，关卡 wave-owner-hit 专门守着这一条。
+		List<LivingEntity> entities = level().getEntitiesOfClass(LivingEntity.class, hitBox, e -> e.isAlive() && !isOwner(e));
+		// ★ <b>只给主人充能</b>（B 方案的核心，2026-10-03）：主人既然已被排除在上面那个列表之外，
+		// 就不会再走下面那条原路径（那一条只服务"列表里的玩家"）⇒ 全类给主人充能<b>恰好这一处</b>。
+		// 要保住的既有口径 = 2026-10-01"让能量波去打你自己来充能"：入口与参数照原路径<b>逐字抄</b>
+		// （{@code ArmorEnergy.chargeWorn} + {@code ChargingRecipe.energyForLevel(this.waveLevel)}），
+		// <b>不新造充能量、不新造半径</b>——判据就是同一个 hitBox（与命中判定同一处口径）。
+		// ⛔ 这一段<b>只有充能</b>：不造成伤害、不施加魔素命中效果、不触发绽放、不销毁波（波照飞）。
+		// 两道闸门：① 无主人（机器波）⇒ getOwnerUuid() 为 null ⇒ 连查询都不发，行为逐字不变；
+		// ② ownerCharged ⇒ 一次飞行只充一次（波速 0.025~0.6 格/tick、命中盒 1.0 格见方，同一枚波
+		// 会连续好几 tick 罩住主人；不设这道闸门就是把"撞一次充一次"变成"过一趟充三四次"）。
+		if (getOwnerUuid() != null && !ownerCharged) {
+			List<Player> ownersInBox = level().getEntitiesOfClass(Player.class, hitBox,
+				p -> p.isAlive() && isOwner(p));
+			if (!ownersInBox.isEmpty()) {
+				ownerCharged = true;
+				ArmorEnergy.chargeWorn(ownersInBox.get(0), ChargingRecipe.energyForLevel(this.waveLevel));
+			}
+		}
 		if (!entities.isEmpty()) {
 			LivingEntity target = entities.get(0);
 			if (getWaveType().dealsDamage()
