@@ -1,5 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.wave.api;
 
+import java.util.Locale;
+
+import net.minecraft.network.chat.Component;
+
 /**
  * 波型对应的<b>拖尾／绽放视觉风格</b>。
  *
@@ -50,5 +54,26 @@ public enum WaveTrailStyle {
 	 * {@code ChargerWaveFx.sendOrbitMarks} 与 {@code burstOrbitSpawn}），主波没有环平面，
 	 * 塞进风格档案里要么崩、要么画出一圈没有意义的桩点。</p>
 	 */
-	ARCANE
+	ARCANE;
+
+	/** 魔素显示名的词条前缀（八种魔素各一条，中英各一份；见两个 {@code LangProvider}）。 */
+	private static final String LANG = "createoreexpansion.wave_essence.";
+
+	/**
+	 * <b>魔素的显示名</b>（2026-10-03 需求 coe-ess 批 5）：查词条
+	 * {@code createoreexpansion.wave_essence.<枚举名小写>}（water/fire/…/arcane），
+	 * 缺词条时回退<b>枚举名本身</b> —— 照 {@code WaveType#displayName()} 的同一条惯例：
+	 * 宁可显示一个认得出的英文名，也不让玩家看见裸键。
+	 *
+	 * <p><b>全仓只有这一处构造魔素词条键</b>：Jade 波实体提示（{@code compat.jade.WaveJadePlugin}）
+	 * 与波情查询仪的动作栏读数（{@code cews: WaveReadout#line()}）都调本方法 ⇒ 改键名 / 加语言
+	 * 只改这一处，两处显示不可能对不上。</p>
+	 *
+	 * <p>只有后八个值（水/火/地/风/冰/雷/毒/异）有词条。前三个值
+	 * （{@link #NORMAL}／{@link #MECHANICAL}／{@link #DAMAGE}）是<b>波型风格</b>、不是魔素；
+	 * 万一被当魔素显式设置（API 允许传任意风格），这里读到的是枚举名 —— 不崩、不显示裸键。</p>
+	 */
+	public Component displayName() {
+		return Component.translatableWithFallback(LANG + name().toLowerCase(Locale.ROOT), name());
+	}
 }

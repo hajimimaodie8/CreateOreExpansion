@@ -177,6 +177,11 @@ public class EnglishLangProvider extends LanguageProvider {
         // strikes are its indented detail lines, so the empty wording must not say "empty" outright.
         add("createoreexpansion.jade.wave_payload_none", "none (no items/fluid/energy)");
         add("createoreexpansion.jade.wave_lifetime", "Lifetime: %s s");
+        // Essence (requirement coe-ess, 2026-10-03): an attack-wave-only look property. The line is
+        // only emitted for a wave that really has one; the name comes from
+        // WaveTrailStyle#displayName() and the colour from ChargerWaveFx#styleColorRgb (the one
+        // colour source).
+        add("createoreexpansion.jade.wave_essence", "Essence: %s");
         add("createoreexpansion.jade.wave_charge", "Charge: %s");
         add("createoreexpansion.jade.wave_charge_none", "Charge: none");
         add("createoreexpansion.jade.charge_positive", "Positive");
@@ -185,6 +190,17 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.wave_type.normal", "Normal Wave");
         add("createoreexpansion.wave_type.omni", "Omni Wave");
         add("createoreexpansion.wave_type.attack", "Attack Wave");
+        // Essence display names (eight: water / fire / earth / wind / ice / lightning / poison /
+        // arcane), looked up by WaveTrailStyle#displayName. Only the eight essence values have an
+        // entry: the first three WaveTrailStyle values are wave-type styles, not essences.
+        add("createoreexpansion.wave_essence.water", "Water");
+        add("createoreexpansion.wave_essence.fire", "Fire");
+        add("createoreexpansion.wave_essence.earth", "Earth");
+        add("createoreexpansion.wave_essence.wind", "Wind");
+        add("createoreexpansion.wave_essence.ice", "Ice");
+        add("createoreexpansion.wave_essence.lightning", "Lightning");
+        add("createoreexpansion.wave_essence.poison", "Poison");
+        add("createoreexpansion.wave_essence.arcane", "Arcane");
         // Wave payload details (summary line: jade.wave_payload)
         add("createoreexpansion.jade.stellar_wave_payload_items", "items %s/%s, %s/%s kinds");
         add("createoreexpansion.jade.stellar_wave_payload_item_list", "Items: %s");
@@ -213,6 +229,10 @@ public class EnglishLangProvider extends LanguageProvider {
         // Appendix by wave type: normal -> none, omni -> processable recipe TYPES, attack -> damage
         add("createoreexpansion.wave_gauge.tail_omni", "Processable recipe types: %s");
         add("createoreexpansion.wave_gauge.tail_attack", "Attack damage: %s");
+        // The essence is the second attack-wave appendix (same order as the Jade tooltip: the five
+        // grouped elements first, then the per-type extras). A wave without an essence emits no
+        // such segment, so every pre-existing attack wave reads exactly as before.
+        add("createoreexpansion.wave_gauge.tail_essence", "Essence: %s");
         add("createoreexpansion.wave_gauge.no_wave", "No energy wave nearby");
         add("createoreexpansion.wave_gauge.tooltip", "Right-click to scan the nearest wave");
         add(CewsBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");

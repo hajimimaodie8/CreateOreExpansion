@@ -512,6 +512,29 @@ public final class ChargerWaveFx {
 	}
 
 	/**
+	 * 某种风格／魔素的<b>固定色板</b>，打包成 {@code 0xRRGGBB}（文本着色用）。
+	 *
+	 * <p>取值 = {@link #styleColor(WaveTrailStyle, Vec3)} 在"波色 = 纯白"上的结果，也就是该魔素
+	 * 调色板的<b>亮端主色</b>（水 = 亮蓝、冰 = 淡蓝……见上面那段调色板注释）。</p>
+	 *
+	 * <p><b>为什么要有这个打包口</b>（2026-10-03 需求 coe-ess 批 5）：Jade 的波实体提示与波情
+	 * 查询仪的动作栏读数都要"文字颜色与魔素匹配"，而颜色的唯一真源是本类的调色板 ⇒ 两个显示点
+	 * 都调本方法，显示层因此<b>没有第二份颜色表</b>；只回一个 {@code int} 是因为
+	 * {@code Style#withColor} 要的就是它 —— 否则两个调用方各写一遍 Vec3→int 的换算，
+	 * 那本身就是第二份实现（同一个事实两份真源是本仓红线）。</p>
+	 *
+	 * <p>{@code style} 为 {@code null} 或未登记的值时经 {@link #profile} 回落 {@code NORMAL}
+	 * （原样返回入参色 = 纯白），不会崩。</p>
+	 */
+	public static int styleColorRgb(WaveTrailStyle style) {
+		Vec3 color = styleColor(style, new Vec3(1.0D, 1.0D, 1.0D));
+		int r = Mth.clamp((int) Math.round(color.x * 255.0D), 0, 255);
+		int g = Mth.clamp((int) Math.round(color.y * 255.0D), 0, 255);
+		int b = Mth.clamp((int) Math.round(color.z * 255.0D), 0, 255);
+		return (r << 16) | (g << 8) | b;
+	}
+
+	/**
 	 * 机械风格的颜色变换：把波的渲染色"合金化"。
 	 *
 	 * <p>两步纯数学，无分支：</p>

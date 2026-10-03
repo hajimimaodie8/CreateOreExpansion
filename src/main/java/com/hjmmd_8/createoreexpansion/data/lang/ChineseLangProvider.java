@@ -434,6 +434,9 @@ public class ChineseLangProvider extends LanguageProvider {
         // 故物资为空的措辞要写明"未携带物品/流体/电量"，不能说成"空载"（否则与明细行自相矛盾）
         add("createoreexpansion.jade.wave_payload_none", "无（未携带物品/流体/电量）");
         add("createoreexpansion.jade.wave_lifetime", "剩余寿命：%s 秒");
+        // 魔素（2026-10-03 需求 coe-ess）：攻击波专有的观感属性，只有"真的设了魔素"的波才占这一行。
+        // 取值口 WaveTrailStyle#displayName()，文字颜色查 ChargerWaveFx#styleColorRgb（唯一颜色真源）
+        add("createoreexpansion.jade.wave_essence", "魔素：%s");
         add("createoreexpansion.jade.wave_charge", "电荷：%s");
         add("createoreexpansion.jade.wave_charge_none", "电荷：未带电");
         add("createoreexpansion.jade.charge_positive", "正电荷");
@@ -442,6 +445,16 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.wave_type.normal", "普通波");
         add("createoreexpansion.wave_type.omni", "全能波");
         add("createoreexpansion.wave_type.attack", "攻击波");
+        // 魔素显示名（八种，水/火/地/风/冰/雷/毒/异；取名字口 WaveTrailStyle#displayName 查这些词条）。
+        // ⚠ 只有后八个枚举值有词条：前三个（NORMAL/MECHANICAL/DAMAGE）是波型风格、不是魔素
+        add("createoreexpansion.wave_essence.water", "水");
+        add("createoreexpansion.wave_essence.fire", "火");
+        add("createoreexpansion.wave_essence.earth", "地");
+        add("createoreexpansion.wave_essence.wind", "风");
+        add("createoreexpansion.wave_essence.ice", "冰");
+        add("createoreexpansion.wave_essence.lightning", "雷");
+        add("createoreexpansion.wave_essence.poison", "毒");
+        add("createoreexpansion.wave_essence.arcane", "异");
         // 波载荷明细（概要行见 jade.wave_payload；件数/种类数与护目镜"辅料载荷"同口径）
         add("createoreexpansion.jade.stellar_wave_payload_items", "物品 %s/%s 件 · %s/%s 种");
         add("createoreexpansion.jade.stellar_wave_payload_item_list", "物品：%s");
@@ -469,6 +482,9 @@ public class ChineseLangProvider extends LanguageProvider {
         // 不写"种类"以免被读成配方条目数）；攻击波给攻击伤害
         add("createoreexpansion.wave_gauge.tail_omni", "可加工配方类型：%s 种");
         add("createoreexpansion.wave_gauge.tail_attack", "攻击伤害：%s");
+        // 魔素也是"攻击波的追加读数"之一，紧跟在攻击伤害之后（与 Jade 的行序同一条口径：
+        // 五要素成组 → 附加读数）；未设魔素的攻击波这一段不出现，读数与改造前逐字相同
+        add("createoreexpansion.wave_gauge.tail_essence", "魔素：%s");
         add("createoreexpansion.wave_gauge.no_wave", "附近没有能量波");
         add("createoreexpansion.wave_gauge.tooltip", "右键查询最近的波情");
         // 工作盆物品行：由 BasinLiveItemStorage 直接接管 Jade 原生行，故不再需要单独的实时行词条

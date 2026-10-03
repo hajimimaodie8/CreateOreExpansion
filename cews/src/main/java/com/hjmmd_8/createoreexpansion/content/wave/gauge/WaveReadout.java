@@ -5,8 +5,10 @@ import java.util.Locale;
 import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
@@ -18,7 +20,14 @@ import net.minecraft.network.chat.MutableComponent;
  *
  * <p>五要素（成组显示，顺序固定）：波速（格/秒）→ 波级（只显示希腊字母）→ 波载荷 → 波型 →
  * <b>剩余寿命</b>（秒；用户 2026-09-14 新增的第五项）。五要素之后按<b>波型</b>追加一项：
- * 普通波不追加；全能波追加"可加工配方种类：N"；攻击波追加"攻击伤害：X"。</p>
+ * 普通波不追加；全能波追加"可加工配方种类：N"；攻击波追加"攻击伤害：X"，并在真的设了魔素时
+ * 再追加"魔素：Y"（2026-10-03 需求 coe-ess 批 5，与 Jade 的波实体提示是仅有的两处显示）。</p>
+ *
+ * <p><b>魔素口径</b>（2026-10-03 需求 coe-ess 批 5）：{@code essence} = 波实体
+ * {@code getEssence()} 的原值，<b>{@code null} 就是"这枚波没有魔素"</b>（魔素是攻击波专有的
+ * 显式赋值；未设 = 观感继承波型风格，默认正是火）。未设时<b>整段不出现</b>，既有的攻击波
+ * （变器攻击波变态、回旋镖…）读数因此逐字不变；名字查 {@code WaveTrailStyle#displayName()}、
+ * 颜色查 {@code ChargerWaveFx#styleColorRgb}（全仓唯一颜色真源，与 Jade 那一行同一对来源）。</p>
  *
  * <p><b>寿命口径</b>：取 {@code AbstractChargerWaveEntity#getRemainingLifetime()}（= 寿命上限
  * {@code MAX_LIFETIME_TICKS} − 已存活 tick 数）换算成秒，与 Jade 的"剩余寿命"行<b>同一个取值点</b>，
@@ -40,9 +49,10 @@ import net.minecraft.network.chat.MutableComponent;
  * @param type                  波型（显示名走 {@link WaveType#displayName()}，本类不对波型 id 写 switch）
  * @param processableRecipeTypes 全能波"能加工几种配方"的取值（<b>类型数</b>口径，见下）
  * @param remainingLifetime     剩余寿命（秒；见类注释的寿命口径）
+ * @param essence               魔素；{@code null} = 未设（攻击波专有，见类注释的魔素口径）
  */
 public record WaveReadout(double speed, int level, WavePayloadReadout payload, WaveType type,
-	int processableRecipeTypes, double remainingLifetime) {
+	int processableRecipeTypes, double remainingLifetime, @Nullable WaveTrailStyle essence) {
 
 	/** 本物品全部词条前缀（中英词条见 data/lang 的两个 LangProvider）。 */
 	private static final String LANG = "createoreexpansion.wave_gauge.";
@@ -50,7 +60,8 @@ public record WaveReadout(double speed, int level, WavePayloadReadout payload, W
 	/** 取一只能量波的波情读数（只读，不改动波的状态）。 */
 	public static WaveReadout of(AbstractChargerWaveEntity wave) {
 		return new WaveReadout(wave.getWaveSpeed(), wave.getWaveLevel(), WavePayloadReadout.of(wave),
-			wave.getWaveType(), processableRecipeTypes(wave), wave.getRemainingLifetime() / 20.0d);
+			wave.getWaveType(), processableRecipeTypes(wave), wave.getRemainingLifetime() / 20.0d,
+			wave.getEssence());
 	}
 
 	/**
@@ -99,15 +110,31 @@ public record WaveReadout(double speed, int level, WavePayloadReadout payload, W
 
 	/**
 	 * 按波型追加的读数：普通波 {@code null}（不追加任何东西）；
-	 * 全能波给可加工配方种类；攻击波给攻击伤害。判型按波型 id（扩展模组注册的新波型自然不命中）。
+	 * 全能波给可加工配方种类；攻击波给攻击伤害（真的设了魔素时再追加魔素）。
+	 * 判型按波型 id（扩展模组注册的新波型自然不命中）。
 	 */
 	@Nullable
 	private Component appendix() {
 		if (is(WaveTypes.OMNI))
 			return Component.translatable(LANG + "tail_omni", processableRecipeTypes);
 		if (is(WaveTypes.ATTACK))
-			return Component.translatable(LANG + "tail_attack", damageText());
+			return attackTail();
 		return null;
+	}
+
+	/**
+	 * 攻击波的追加读数：<b>攻击伤害</b>，并在真的设了魔素时接着给<b>魔素</b>。
+	 *
+	 * <p>顺序与 Jade 那条口径一致（五要素成组 → 附加读数）；两段用既有的 {@code join} 词条连接，
+	 * 中英各自控标点。未设魔素时返回值与改造前<b>逐字相同</b>（只有"攻击伤害：X"那一项）。</p>
+	 */
+	private Component attackTail() {
+		MutableComponent tail = Component.translatable(LANG + "tail_attack", damageText());
+		if (essence != null)
+			tail.append(Component.translatable(LANG + "join"))
+				.append(Component.translatable(LANG + "tail_essence", essence.displayName())
+					.withStyle(style -> style.withColor(ChargerWaveFx.styleColorRgb(essence))));
+		return tail;
 	}
 
 	/** 本波型是否就是给定波型（按 id 比，不用对象同一性，扩展模组同 id 注册也认）。 */

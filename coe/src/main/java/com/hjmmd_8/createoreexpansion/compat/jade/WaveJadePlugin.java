@@ -2,8 +2,10 @@ package com.hjmmd_8.createoreexpansion.compat.jade;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.hjmmd_8.createoreexpansion.util.RecipeTypeNames;
@@ -56,6 +58,10 @@ import snownee.jade.api.config.IPluginConfig;
  *   <li><b>剩余寿命</b>（{@code jade.wave_lifetime}：秒，1 位小数。用户 2026-09-14 新增的
  *       <b>第五要素</b>——取值点是 {@code AbstractChargerWaveEntity#getRemainingLifetime()}，
  *       与"波情查询仪"的动作栏读数同一个取值点，两处不会对不上；Jade 每帧重建本行，故数值是动态的）；</li>
+ *   <li><b>魔素</b>（{@code jade.wave_essence}：2026-10-03 需求 coe-ess 批 5 追加，排在五要素之后。
+ *       <b>只有真的设了魔素才占这一行</b>：没设 = 这枚波没有魔素、观感继承波型风格（默认即火）；
+ *       名字查 {@code WaveTrailStyle#displayName()}，文字颜色查
+ *       {@code ChargerWaveFx#styleColorRgb}（唯一颜色真源）。查询仪的读数用同一对来源）；</li>
  *   <li>其后依次：变体波"可加工"配方类型清单（{@link StellarWaveEntity} 独有）、
  *       电荷状态（能量场作用前提）。</li>
  * </ol>
@@ -192,6 +198,26 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 		tooltip.add(GoggleUtil.indented(Component
 			.translatable("createoreexpansion.jade.wave_lifetime", String.format("%.1f", remaining))
 			.withStyle(ChatFormatting.GRAY)));
+
+		// 波情·魔素（2026-10-03 需求 coe-ess 批 5）：<b>只有真的设了魔素的波才占这一行</b>。
+		// 行序：五要素（速→级→载→型→寿）保持成组不变，魔素排在其后、附加读数之前。
+		//
+		// 为什么"未设 ⇒ 整行不显示"（而不是显示继承来的风格名）：魔素是<b>攻击波专有的显式赋值</b>，
+		// 没设就是"这枚波没有魔素"、观感继承波型风格（默认正是火，见
+		// AbstractChargerWaveEntity#trailStyle 的回落）。若把继承来的风格名当魔素写出来，
+		// NORMAL / OMNI 这类结构上不可能有魔素的波也会多出一行"魔素"，而它们的风格名
+		// （原生风格／机械感）根本不是魔素 —— 那是在报一个不存在的属性。
+		// 于是：既有的一切波（机器波 / 变器波 / 回旋镖 / 老存档）读数逐字不变，
+		// 星界套的主波与伴随波则必然各有一行（两处都显式赋了魔素）。
+		//
+		// 颜色：ChargerWaveFx.styleColorRgb（全仓唯一颜色真源 = 魔素调色板的亮端主色）——
+		// Jade 的 ITooltip 支持逐行着色（"波级"行就是这么做的），所以不必退化成 tooltip 纯文本。
+		WaveTrailStyle essence = wave.getEssence();
+		if (essence != null) {
+			tooltip.add(GoggleUtil.indented(Component
+				.translatable("createoreexpansion.jade.wave_essence", essence.displayName())
+				.withStyle(style -> style.withColor(ChargerWaveFx.styleColorRgb(essence)))));
+		}
 
 		// ===== 波情块之后的附加读数 =====
 
