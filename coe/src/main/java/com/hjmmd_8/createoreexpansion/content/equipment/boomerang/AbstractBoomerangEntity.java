@@ -697,6 +697,11 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 				BoomerangSkillConfigs.ORBIT_WAVE_LEVEL);
 			orbit.setFiringBatch(batch); // 同一次投掷的 L 枚共用一个（负数）批次号
 			orbit.trySetWaveType(WaveTypes.ATTACK); // 要素 4：伤害那一支的门槛
+			// 主人 = <b>投掷玩家本人</b>（2026-10-03 需求 coe-boom2 批 1 §3.2）：本批只<b>赋</b>不<b>排</b>
+			// —— 环绕波会绕着镖飞、离玩家很近（半径 1.5 格），"不伤发射者"要等批 2 改命中谓词。
+			// 取 {@code Projectile#getOwner()}（投掷者），<b>不是镖的 UUID</b>：镖 UUID 已经用作
+			// 环绕锚点（下面 setOrbitAnchor 的 getUUID()），两者语义不同、不能混用。
+			orbit.setOwner(getOwner());
 			orbit.setCustomDamage(damage); // 2 × 等级（既有实体的可选自定义伤害）
 			orbit.setOrbitAnchor(getUUID(), BoomerangSkillConfigs.ORBIT_RADIUS,
 				BoomerangSkillConfigs.ORBIT_ANGULAR_SPEED,

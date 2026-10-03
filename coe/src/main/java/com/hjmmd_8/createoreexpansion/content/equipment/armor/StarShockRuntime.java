@@ -527,6 +527,10 @@ public final class StarShockRuntime {
         ChargerWaveEntity wave = new ChargerWaveEntity(world, origin, look, waveLevel);
         // 波型 = 攻击态（与"变器攻击波变态"引燃出来的波型是同一个）
         wave.trySetWaveType(WaveTypes.ATTACK);
+        // 主人 = <b>施法玩家本人</b>（2026-10-03 需求 coe-boom2 批 1 §3.2）：本批只<b>赋</b>不<b>排</b>
+        // —— 命中谓词一个字没改（那是批 2，等作者裁定）。写在 addFreshEntity 之前：波一进世界
+        // 就可能命中，"生成瞬间"的保护必须在那之前把字段写好。缺省（不赋）时字段是"无主人"。
+        wave.setOwner(player);
         // 魔素（2026-10-03 需求 coe-ess 批 4，§3.3 第 1 条）：星界套的<b>主波固定 = 异</b>。
         // 必须紧跟在 trySetWaveType 之后：trySetEssence 只在"会伤害的波型"上生效（魔素是攻击波
         // 专有，作者裁定），波型还没转成攻击态时设它会返回 false 且什么都不写。
@@ -589,6 +593,10 @@ public final class StarShockRuntime {
         int orbitLevel = StarShockConfigs.orbitWaveLevelFor(cast.level);
         ChargerWaveEntity orbit = new ChargerWaveEntity(world, parent.position(), parent.getMovement(), orbitLevel);
         orbit.trySetWaveType(WaveTypes.ATTACK);
+        // 主人 = <b>施法玩家本人</b>（2026-10-03 需求 coe-boom2 批 1 §3.2；同上，本批只赋不排）。
+        // 取 {@code cast.player} 而不是父波：主人永远是"发这条技能的人"，父波只是环绕锚点
+        // （父波自己也带着同一个主人，但两者是<b>两个独立字段</b>，不互相继承）。
+        orbit.setOwner(cast.player);
         // 魔素（2026-10-03 需求 coe-ess 批 4，§3.3 第 2 条）：伴随波 = 从 {@link #ORBIT_ESSENCE_POOL}
         // 的 7 种里<b>每枚各自抽一种</b>（与"每枚主波各自滚骰"同粒度 ⇒ 一次长按可能同时出现
         // 2~3 种不同魔素的伴随波，那是预期行为；不去重、不排除与上一枚相同）。

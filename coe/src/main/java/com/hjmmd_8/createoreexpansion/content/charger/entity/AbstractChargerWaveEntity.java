@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
@@ -258,6 +259,18 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private static final net.minecraft.network.syncher.EntityDataAccessor<String> ESSENCE =
 		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.STRING);
 
+	/**
+	 * <b>主人</b>（= 发射者）的同步 key（2026-10-03 需求 {@code coe-boom2} §3.2，
+	 * "不伤发射者"的<b>数据层</b>）：{@code Optional<UUID>}，{@code Optional.empty()} = <b>无主人</b>。
+	 *
+	 * <p>用原版就有的 {@code EntityDataSerializers.OPTIONAL_UUID}：空值有<b>专门的表示</b>
+	 * （既不是 null 也不是空串），与 {@link #ESSENCE} 拿字符串表"未设"是同一个口径 ——
+	 * 读不出来就是"没有主人"，不会抛异常。老存档 / 机器波 / 一切未赋主人的波读到的都是
+	 * {@code Optional.empty()}。</p>
+	 */
+	private static final net.minecraft.network.syncher.EntityDataAccessor<Optional<UUID>> OWNER =
+		SynchedEntityData.defineId(AbstractChargerWaveEntity.class, net.minecraft.network.syncher.EntityDataSerializers.OPTIONAL_UUID);
+
 	@Override
 	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 		builder.define(WAVE_LEVEL, 0);
@@ -266,6 +279,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		builder.define(WAVE_TYPE, "");
 		builder.define(FIRING_BATCH, 0);
 		builder.define(ESSENCE, "");
+		builder.define(OWNER, Optional.empty());
 	}
 
 	/**
@@ -632,6 +646,76 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/** 本波拖尾主粒子的<b>调用方基线颗数</b>（见 {@link #trailScale()} 的说明）。 */
 	private int trailCount() {
 		return isOrbiting() ? ChargerWaveFx.ORBIT_TRAIL_COUNT : 6;
+	}
+
+	// ==================================================================================
+	// 主人（2026-10-03 需求 coe-boom2 批 1）：<b>可缺省的"发射者" UUID</b>
+	//
+	// 本批只建<b>数据层</b>（字段 + 同步 + NBT 两侧可缺省 + 唯一容错解析入口 + 判据 isOwner）：
+	// <b>命中谓词一个字不改</b>（那是批 2，等作者裁定）。
+	// 缺省语义 = <b>无主人 = 不排除任何人</b> ⇒ 机器波 / 变器波 / 一切既有波在"没人 setOwner"时
+	// 行为与改造前<b>逐字相同</b>，老存档（没有该键）也不会崩。
+	// ⚠ 唯一用途 = "不伤发射者"；<b>不许</b>拿它去做归属 / 阵营 / 只打敌人（作者 2026-10-03 明确禁止）。
+	// ==================================================================================
+
+	/** 主人 UUID（服务端权威值；{@code null} = 无主人 = 不排除任何人）。 */
+	@Nullable
+	private UUID ownerUuid;
+
+	/**
+	 * <b>唯一容错解析入口</b>（照 {@link #essenceByName} 的形状：认不出来就是"没有主人"）：
+	 * 把<b>同步值</b> {@code Optional<UUID>} 读成 {@code @Nullable UUID} ——
+	 * 空同步值（{@code Optional.empty()}）⇒ {@code null}。
+	 *
+	 * <p><b>为什么这里刻意不解析字符串、全类零处 {@code UUID.fromString}</b>：
+	 * {@code UUID.fromString} 是"字符串 ⇒ UUID"的<b>裸解析</b>，遇到空串 / 被改过的值就抛
+	 * {@code IllegalArgumentException}；而这条路径跑在实体的 <b>tick 与读档</b>里，一抛就是崩
+	 * （与 {@code WaveTrailStyle.valueOf} 同一个坑，见 {@link #essenceByName}）。
+	 * 本字段的两种原始表示本来就都是原版自带的容错读法：同步值用
+	 * {@code OPTIONAL_UUID}（空值有专门表示），存档用 {@link CompoundTag#hasUUID}。</p>
+	 */
+	@Nullable
+	private static UUID ownerOf(@Nullable Optional<UUID> synced) {
+		return synced == null || synced.isEmpty() ? null : synced.get();
+	}
+
+	/**
+	 * 本波的<b>主人 UUID</b>（{@code null} = 无主人）。服务端读字段，客户端读<b>同步值</b>
+	 * （与 {@link #getWaveType()} / {@link #getEssence()} 同一形状：两侧都拿得到同一个答案）。
+	 */
+	@Nullable
+	public UUID getOwnerUuid() {
+		if (level() != null && level().isClientSide) {
+			return ownerOf(this.entityData.get(OWNER));
+		}
+		return this.ownerUuid;
+	}
+
+	/**
+	 * <b>唯一的主人判据</b>：比 UUID（{@code e.getUUID()}）。
+	 *
+	 * <p>刻意<b>不做</b> {@code server.getEntity(uuid)} 查询：那个查询在"跨维度 / 已卸载 /
+	 * 尚未落地"时返回 null，会让"是不是发射者"凭空变成 false；而发射者本人此刻就在命中判定的
+	 * 现场，直接拿它的 UUID 比是唯一不会漂移的判据。</p>
+	 *
+	 * <p><b>本批（批 1）还没有任何调用方</b>：命中谓词一个字没改（见 §3.2 的批 2）。
+	 * 缺省（无主人）⇒ 恒 {@code false} ⇒ 不排除任何人。</p>
+	 */
+	public boolean isOwner(@Nullable Entity e) {
+		UUID owner = getOwnerUuid();
+		return owner != null && e != null && owner.equals(e.getUUID());
+	}
+
+	/**
+	 * 记下本波的<b>主人</b>（= 发射者）；{@code null} = 清除（回到"无主人 = 不排除任何人"）。
+	 *
+	 * <p><b>全仓只有三处会调它</b>：星芒嬗震的主波与环绕波、回旋镖的环绕波。其余一切波的生成点
+	 * （三台充能器 / 列车充能器 / 差波器子波 / 两个变体波生成点）<b>一律不调</b> ⇒ 它们的字段保持
+	 * {@code null}，命中行为与改造前逐字相同（关卡 {@code wave-owner-assignments} 把"恰好 3 处"钉死）。</p>
+	 */
+	public void setOwner(@Nullable Entity owner) {
+		this.ownerUuid = owner == null ? null : owner.getUUID();
+		this.entityData.set(OWNER, this.ownerUuid == null ? Optional.empty() : Optional.of(this.ownerUuid));
 	}
 
 	/**
@@ -1638,6 +1722,13 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 不抛异常（见 essenceByName）。同步值一起写回，客户端渲染立刻拿到同一个魔素。
 		this.essence = tag.contains("Essence") ? essenceByName(tag.getString("Essence")) : null;
 		this.entityData.set(ESSENCE, this.essence == null ? "" : this.essence.name());
+		// 主人（2026-10-03 需求 coe-boom2 批 1）：<b>可缺省</b>——老存档（没有该键）/ 一切未赋主人的波
+		// ⇒ 保持 null（= 无主人 = 不排除任何人），命中行为与改造前逐字相同。
+		// 读侧走 CompoundTag#hasUUID（原版自带的容错读法，缺键 / 非 UUID 都不抛异常）；
+		// 全类零处 UUID.fromString（裸解析会在读档里抛异常，见 ownerOf）。同步值一起写回，
+		// 客户端拿得到同一个主人（缺省时写回 Optional.empty()）。
+		this.ownerUuid = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
+		this.entityData.set(OWNER, this.ownerUuid == null ? Optional.empty() : Optional.of(this.ownerUuid));
 		// 发射批次（0 = 无批次）：老存档没有该键 ⇒ 0，行为与改造前逐字一致（任何波都能与它湮灭）
 		this.entityData.set(FIRING_BATCH, tag.getInt("FiringBatch"));
 		// 通用可选要素（默认关闭）：老存档 / 未设要素的波没有这些键 ⇒ 保持字段默认值
@@ -1676,6 +1767,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 包括 NBT 形状）；读到没有该键 ⇒ null ⇒ 回落波型风格。
 		if (essence != null) {
 			tag.putString("Essence", essence.name());
+		}
+		// 主人（2026-10-03 需求 coe-boom2 批 1）：<b>只在真的设过主人的时候才写键</b>（{@code != null} 守卫）
+		// ⇒ 没设主人的波（= 一切既有波），存档内容与改造前逐字相同（"默认行为一个字不变"包括 NBT 形状）；
+		// 读到没有该键 ⇒ null ⇒ 无主人 ⇒ 不排除任何人。
+		if (ownerUuid != null) {
+			tag.putUUID("Owner", ownerUuid);
 		}
 		// 通用可选要素（默认关闭）：<b>只在真的设了的时候才写键</b> ⇒ 没设要素的波，
 		// 存档内容与改造前逐字相同（"默认行为一个字不变"包括 NBT 形状）。
