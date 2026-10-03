@@ -186,6 +186,33 @@ import net.minecraft.world.phys.Vec3;
  *       "锚点没了即 discard"语义）；</li>
  *   <li><b>消耗 15×L</b>：与模式消耗、穿刺 20×L 相加在 {@code BoomerangItem#throwCost} 同一处。</li>
  * </ul>
+ *
+ * <h2>八、批 6（2026-10-03）：吸附只有一处 —— 两种模式都经过它（作者报的 bug）</h2>
+ * <p><b>作者原话</b>：「点按直线收回，掉落物什么的，带回自己，但是<b>长按并不能</b>。长按的话，
+ * <b>掉落物都存在原地，经验也没有回</b>。」</p>
+ *
+ * <p><b>真因（几何，不是拾取码本身）</b>：{@link #pickUpItems()} 一直只有一处实现，但它的
+ * <b>唯一调用点</b>被关在 {@code DATA_RETURNING} 分支里（回程才吸附）。点按之所以"看起来正常"，
+ * 是因为点按的去程是一条直线、回程是<b>原路返回</b>，回程那几 tick 正好一路掠过掉落点；
+ * 而长按的花瓣曲线两端都收敛到出手点 P（{@code r(±Δθ/2) = 0}，见 {@link BoomerangCurveConfigs}）
+ * ⇒ 花瓣走完那一刻镖已经<b>回到主人身上</b>，回程只剩不到一 tick 就 {@code collect}
+ * （距离 &lt; {@link #RETURN_ARRIVE_SQR}）⇒ 花瓣弧上挖出来的掉落物与经验<b>一个都没机会上船</b>。</p>
+ *
+ * <p><b>修法（唯一实现 + 唯一调用点，两模式共用）</b>：把吸附从"回程专属"抬成
+ * <b>每服务端 tick 一次、去程与回程都经过</b>的那一处（见 {@link #tick()} 末尾），
+ * 并且去程那一支<b>不再早退</b>（旧的 {@code else if (tickOutbound()) { return; }} 会连吸附一起跳过）。
+ * 于是花瓣弧上"镖飞过掉落点"的那些 tick 就能直接吸走，与点按走的是同一条路径、
+ * 同一份 {@link #pickUpItems()}／{@link #canCarry(Entity)}（关卡 §29r 钉着"只有一处实现、
+ * 两模式都经过它、花瓣段不得绕过"）。</p>
+ *
+ * <p><b>连带必须补的一道闸门</b>：{@link #canHitEntity(Entity)} —— 乘客的骑乘位就在镖身上，
+ * 而 {@code ProjectileUtil} 的候选只排除载具自己、不排除乘客；吸附一旦在去程也跑，
+ * "镖带着战利品飞"就是常态，不拦的话镖会在下一个 tick 把自己的掉落物当敌人打死
+ * （{@code ItemEntity} 5 点血 vs 镖 6~12 点 {@code indirectMagic}）。</p>
+ *
+ * <p><b>顺带堵掉的一条旧缝</b>：旧写法在 {@code collect → finishFlight → discard} 之后还会再扫一次
+ * 吸附（同一 tick、实体已 {@code discard}），那一窗口里上船的掉落物会挂到一个<b>已被移除、
+ * 再也不会 tick</b> 的载具上。现在那一处有 {@code !isRemoved()} 守卫。</p>
  */
 public abstract class AbstractBoomerangEntity extends Projectile implements OrbitAnchor {
 
@@ -260,7 +287,7 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	public static final double AIR_DRAG = 0.99D;
 	/** 水中阻力。 */
 	public static final double WATER_DRAG = 0.8D;
-	/** 回程捡物的扫描半径（以自身碰撞盒外扩）。 */
+	/** 吸附扫描半径（以自身碰撞盒外扩）—— 去程与回程共用（批 6 起不再只是回程捡物）。 */
 	public static final double PICKUP_RADIUS = 2.0D;
 	/** 捡到的掉落物上船后的拾取延迟（tick）——防止它刚贴上就被路过的玩家顺手吸走。 */
 	public static final int PICKUP_DELAY = 5;
@@ -774,12 +801,24 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 			} else if (!level().isClientSide && this.liveTime > MAX_OUTBOUND_TICKS) {
 				// 兜底（分工见 MAX_OUTBOUND_TICKS 的注释）：距离判据万一失效，也不许永远飞下去。
 				setReturning(true);
-			} else if (tickOutbound()) {
-				return; // 本 tick 不再前进（命中方块且没挖穿 / 已转入回程）：免得钻进墙里
+			} else {
+				// ⚠ 2026-10-03（批 6，作者报"长按的掉落物/经验没被带回"）：这里**不再早退**。
+				// 旧写法是 `else if (去程那一步) { return; }`，而那一早退唯一的作用就是跳过
+				// 下面的吸附点；"本 tick 不再前进（免得钻进墙里）"已经由去程那一步内部的位移决定。
+				tickOutbound();
 			}
 		}
 
-		if (!level().isClientSide && this.entityData.get(DATA_RETURNING)) {
+		// ★★ <b>唯一吸附点</b>（批 6 的修复处，作者报的 bug）：**去程与回程都经过这里**。
+		// 旧写法把它关在 `DATA_RETURNING` 里（只有回程吸附）⇒ 点按（直线去、原路回）看起来正常，
+		// 长按却漏：花瓣的回程是"从花瓣终点直线飞回主人"，而花瓣终点**就是出手点 P**
+		// （r(±Δθ/2) = 0，见 BoomerangCurveConfigs）⇒ 回程几乎没有路程、第一个回程 tick 就
+		// collect（距离 < RETURN_ARRIVE_SQR），花瓣弧上的掉落物与经验永远等不到吸附 ——
+		// 正是作者原话「掉落物都存在原地，经验也没有回」。
+		// 现在两种模式共用这一个点：点按去程也顺手吸（同一条路径、同一份实现，没有第二份）。
+		// `!isRemoved()`：collect → finishFlight → discard 之后旧写法还会再扫一次，
+		// 那一窗口里上船的掉落物会挂到一个已被移除、再也不会 tick 的载具上（顺手堵掉这条旧缝）。
+		if (!level().isClientSide && !isRemoved()) {
 			pickUpItems();
 		}
 	}
@@ -1137,8 +1176,12 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	// ================= 回程捡物 =================
 
 	/**
-	 * 回程每 tick 扫一次膨胀 {@value #PICKUP_RADIUS} 格：掉落物与经验球上船
-	 * （{@code startRiding(this)} + 掉落物设拾取延迟 {@value #PICKUP_DELAY}）。
+	 * ★ <b>唯一吸附实现</b>：每服务端 tick 扫一次膨胀 {@value #PICKUP_RADIUS} 格的区域，
+	 * 掉落物与经验球上船（{@code startRiding(this)} + 掉落物设拾取延迟 {@value #PICKUP_DELAY}）。
+	 *
+	 * <p>⚠ <b>批 6 起它不再只属于回程</b>：调用点仍然唯一（{@link #tick()} 末尾），
+	 * 但<b>去程（含花瓣段）与回程都经过它</b> —— 那正是「长按的掉落物/经验没被带回」的修复落点
+	 * （见类注释第八节）。这里<b>不许</b>出现第二个调用点、也不许有第二份扫描代码。</p>
 	 */
 	private void pickUpItems() {
 		AABB area = getBoundingBox().inflate(PICKUP_RADIUS);
@@ -1160,6 +1203,26 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	@Override
 	public boolean canAddPassenger(Entity passenger) {
 		return canCarry(passenger);
+	}
+
+	/**
+	 * ★ <b>本镖不打自己的乘客</b>（批 6 修 bug 时一并补上的必要闸门）。
+	 *
+	 * <p><b>为什么必须有</b>：乘客的骑乘位就在镖身上（{@link #getPassengerRidingPosition} 再下移
+	 * {@value #PASSENGER_OFFSET_Y} 格），而 {@link ProjectileUtil#getEntityHitResult} 的候选来自
+	 * {@code level.getEntities(this, box, ...)} —— 那个入口<b>只排除载具自己、不排除乘客</b>
+	 * （{@code Level#getEntities} 的判据是 {@code e != except}）。于是射线起点本来就落在乘客的
+	 * 碰撞盒里（乘客盒膨胀 0.3 后覆盖镖脚下 0.4 格那一带，正好含起点）⇒ 不去掉它，
+	 * 镖飞出去的<b>下一个 tick</b> 就会把自己的战利品当敌人打：{@code ItemEntity} 只有 5 点血，
+	 * 而镖的 {@code indirectMagic} 是 {@link BoomerangTier#damage()} 的 6~12 点 ⇒ <b>掉落物当场被自己销毁</b>。</p>
+	 *
+	 * <p>2026-10-03 之前这条闸门<b>不必要</b>（乘客只在回程上船，而 {@link #checkImpact()} 只在去程跑）；
+	 * 批 6 把吸附抬成"两种模式、每个服务端 tick 都跑"之后它就成了必答题
+	 * （见类注释第八节）。关卡 §29r 钉着这一处。</p>
+	 */
+	@Override
+	protected boolean canHitEntity(Entity target) {
+		return target.getVehicle() != this && super.canHitEntity(target);
 	}
 
 	/** 乘客骑乘位整体下移 {@value #PASSENGER_OFFSET_Y}（需求 4）。 */
