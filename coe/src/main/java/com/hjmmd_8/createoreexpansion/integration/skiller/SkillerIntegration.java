@@ -12,6 +12,7 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemContext
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemSkillContext;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BloodPactItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.EquipmentSkillStub;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BowShootItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.HoeItemSkill;
@@ -179,7 +180,7 @@ public final class SkillerIntegration {
     }
 
     /**
-     * 注册受击系技能：{@code skin}（剥取）与 {@code plunder}（夺取）。
+     * 注册受击系技能：{@code skin}（剥取）、{@code plunder}（夺取）与 {@code blood_pact}（血契置换）。
      *
      * <p>触发点是 {@code content/skill/handler/HurtLivingEntityHandler}（已经接过新内核）。</p>
      */
@@ -190,6 +191,18 @@ public final class SkillerIntegration {
         event.register(SkillerRegistries.SKILL, skillId("plunder"),
                 () -> new ItemSkillRegistration<HitSkillContext>(
                         CoeSkillTypes.HIT, HitContextFactory.KEY, new PlunderItemSkill()));
+        // 血契置换（coe-pact 批 1）：技能条目登记在册，**执行体属批 2**（本类两个方法目前是空的）。
+        // 为什么批 1 就得先有这条登记：skiller:skill 是数据驱动白名单，
+        //   漏了 ⇒ 物品上这个技能实例反序列化返回 null（症状是"看着接好了、其实没绑上"），
+        //   而且 tools/check-skill-registry-parity.ps1 要求 AllSkills 与内核白名单逐字对齐。
+        // 为什么不在内核里执行：需求 §5.1 #7 把交换接在受击链上；触发事件
+        //   LivingIncomingDamageEvent 发生在扣血之前 ⇒ 天然满足"未受到攻击之前"的血量口径。
+        // ⚠ 不另造共用空壳类：tools/check-armor-sets.ps1 断言 integration/skiller/skill 下
+        //   只有一个 *Stub*.java（EquipmentSkillStub.java），所以血契置换用自己的实现槽位。
+        // ⚠ 批 1 不接冷却（D2 载体未裁定）、不绑两把剑（批 3）⇒ 现在没有任何物品携带它。
+        event.register(SkillerRegistries.SKILL, skillId("blood_pact"),
+                () -> new ItemSkillRegistration<HitSkillContext>(
+                        CoeSkillTypes.HIT, HitContextFactory.KEY, new BloodPactItemSkill()));
     }
 
     /** 技能条目 id：{@code createoreexpansion:<path>}（必须与旧 {@code AllSkills} 一字不差）。 */

@@ -214,6 +214,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.grade", "平场");
         add("skill.createoreexpansion.skin", "剥取");
         add("skill.createoreexpansion.plunder", "夺取");
+        // 血契置换（coe-pact 批 1）：中文名照需求 §3.3 的定名，逐字写死。
+        add("skill.createoreexpansion.blood_pact", "血契置换");
         add("skill.createoreexpansion.hoe", "耕作");
         add("skill.createoreexpansion.bow_curse", "凋零诅咒");
         add("skill.createoreexpansion.bow_disarm", "缴械风暴");

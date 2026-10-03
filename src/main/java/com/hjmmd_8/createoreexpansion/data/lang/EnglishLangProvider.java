@@ -335,6 +335,9 @@ public class EnglishLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.grade", "Grade");
         add("skill.createoreexpansion.skin", "Skin");
         add("skill.createoreexpansion.plunder", "Plunder");
+        // 血契置换（coe-pact 批 1）：id 与语言键照需求 §六 #2 的推断值 blood_pact
+        // （本仓 snake_case 风格）。英文名是执行会话给的等义译法（报告里贴出）。
+        add("skill.createoreexpansion.blood_pact", "Blood Pact");
         add("skill.createoreexpansion.hoe", "Tend");
         add("skill.createoreexpansion.bow_curse", "Wither Curse");
         add("skill.createoreexpansion.bow_disarm", "Disarm Storm");
