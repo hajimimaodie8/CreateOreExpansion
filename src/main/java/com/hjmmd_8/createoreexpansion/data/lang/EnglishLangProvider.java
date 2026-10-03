@@ -317,6 +317,11 @@ public class EnglishLangProvider extends LanguageProvider {
         // pierce / orbit + skill.createoreexpansion.<id>（本仓 snake_case 风格，与 fall_guard 同形）。
         add("skill.createoreexpansion.pierce", "Pierce");
         add("skill.createoreexpansion.orbit", "Orbit");
+        // 回旋镖的两条"能量不足"提示 + 一条"本次消耗"（作者 2026-10-02 第五次裁定）。
+        // 中文侧照作者原话逐字，英文是执行会话给的等义简洁译法（报告里贴出）。
+        add("createoreexpansion.tool.low_energy_use", "Not enough energy to use the boomerang");
+        add("createoreexpansion.tool.low_energy_skill", "Not enough energy to release the skill");
+        add("createoreexpansion.tool.consumed_amount", " (this throw used %s)");
 
         // ========== 技能类型 ==========
         add("skillType.createoreexpansion.excavation_skill", "Excavation Skill");

@@ -215,6 +215,11 @@ public class ChineseLangProvider extends LanguageProvider {
         // 回旋镖技能（2026-10-02 批 3 穿刺 / 批 4 环绕）：需求 §3.5 / §3.6 的技能名。
         add("skill.createoreexpansion.pierce", "穿刺");
         add("skill.createoreexpansion.orbit", "环绕");
+        // 回旋镖的两条"能量不足"提示 + 一条"本次消耗"（作者 2026-10-02 第五次裁定）。
+        // ⚠ 两条"能量不足"的中文值照作者原话**逐字**（不加标点、不改字）。
+        add("createoreexpansion.tool.low_energy_use", "由于能量不足无法使用回旋镖");
+        add("createoreexpansion.tool.low_energy_skill", "由于能量不足无法释放技能");
+        add("createoreexpansion.tool.consumed_amount", "（本次投掷消耗 %s 点）");
 
         // ========== 技能类型 ==========
         add("skillType.createoreexpansion.excavation_skill", "挖掘技能");

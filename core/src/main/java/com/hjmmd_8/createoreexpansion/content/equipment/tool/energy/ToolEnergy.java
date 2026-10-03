@@ -41,6 +41,31 @@ public final class ToolEnergy {
 	/** 能量不足时在快捷栏上方显示的提示文案（全模组统一） */
 	public static final String LOW_ENERGY_MESSAGE = "由于能量不足，无法释放技能！";
 
+	/**
+	 * <b>能量不足 —— 普通使用（没带技能）</b>的语言键（作者 2026-10-02 第五次裁定）。
+	 *
+	 * <p>中文键值照作者原话逐字：「<b>由于能量不足无法使用回旋镖</b>」。
+	 * 回旋镖点按/长按投掷、且<b>没按技能键</b>时能量不够 ⇒ 用这一条。</p>
+	 */
+	public static final String LOW_ENERGY_USE_KEY = "createoreexpansion.tool.low_energy_use";
+
+	/**
+	 * <b>能量不足 —— 抛出时带了技能</b>的语言键（作者 2026-10-02 第五次裁定）。
+	 *
+	 * <p>中文键值照作者原话逐字：「<b>由于能量不足无法释放技能</b>」。
+	 * 回旋镖投掷时按住了技能键（键一/键二生效）而能量不够 ⇒ 用这一条。</p>
+	 */
+	public static final String LOW_ENERGY_SKILL_KEY = "createoreexpansion.tool.low_energy_skill";
+
+	/**
+	 * <b>「本次消耗 N 点」</b>的语言键（作者第五次裁定第 4 条：技能生效后要有能量消耗提示）。
+	 *
+	 * <p>参数 {@code %s} = 本次实际消耗（模式 + 技能）。它<b>只</b>由
+	 * {@link #sendRemainingEnergyWithMedallion(Player, ItemStack, ItemStack, int)} 追加，
+	 * 其余既有调用点（{@code cost < 0}）逐字不变。</p>
+	 */
+	public static final String CONSUMED_AMOUNT_KEY = "createoreexpansion.tool.consumed_amount";
+
 	private ToolEnergy() {}
 
 	/**
@@ -226,6 +251,23 @@ public final class ToolEnergy {
 				.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colorRGB))));
 	}
 
+	/**
+	 * <b>能量不足提示（按语言键取文案）</b>—— 2026-10-02 第五次裁定新增的重载。
+	 *
+	 * <p>为什么要它：回旋镖那一发要区分两种情况（"普通使用"与"带了技能"），
+	 * 而作者明确要求用<b>语言键</b>而不是硬编码字符串（{@link #LOW_ENERGY_MESSAGE} 是历史
+	 * 硬编码文案，仍归既有调用点使用，本重载不碰它）。颜色/通道与老的那一条<b>完全一致</b>
+	 * （物品自己的能量色 + {@link #sendToolEnergyHint} 这个唯一出口）。</p>
+	 *
+	 * @param langKey 语言键（{@link #LOW_ENERGY_USE_KEY} / {@link #LOW_ENERGY_SKILL_KEY}）
+	 */
+	public static void sendLowEnergy(Player player, ItemStack stack, String langKey) {
+		int colorRGB = getEnergyColor(stack);
+		sendToolEnergyHint(player,
+			Component.translatable(langKey)
+				.setStyle(Style.EMPTY.withColor(TextColor.fromRgb(colorRGB))));
+	}
+
 	public static void sendRemainingEnergy(Player player, ItemStack stack) {
 		// 只有头部佩戴工程师护目镜时才能查看释放后的能量消耗（剩余能量）
 		if (!GogglesItem.isWearingGoggles(player))
@@ -268,11 +310,31 @@ public final class ToolEnergy {
 	 * 无佩：仅工具行。
 	 */
 	public static void sendRemainingEnergyWithMedallion(Player player, ItemStack tool, ItemStack medallion) {
+		sendRemainingEnergyWithMedallion(player, tool, medallion, -1);
+	}
+
+	/**
+	 * <b>同上，并可额外带上"本次消耗 N 点"</b>（{@code consumed < 0} = 不带，与上面那个重载逐字等价）。
+	 *
+	 * <p>2026-10-02 第五次裁定第 4 条：回旋镖投掷<b>带了技能</b>时要有一条能量消耗提示，
+	 * 与工具/弓"释放技能之后的提示"<b>同一条通道、同一个出口</b>。它复用下面同一段拼装
+	 * （{@link #toolLineComponent} + 佩段），只在行尾追加一小段 —— 于是
+	 * <b>既有调用点（弓的无箭射击、工具技能）输出一个字节都没变</b>。</p>
+	 *
+	 * @param consumed 本次实际消耗（模式 + 技能）；{@code < 0} = 不显示这一段
+	 */
+	public static void sendRemainingEnergyWithMedallion(Player player, ItemStack tool, ItemStack medallion,
+														int consumed) {
 		if (!GogglesItem.isWearingGoggles(player))
 			return;
 		int toolEnergy = getEnergy(tool);
 		int toolMax = getMaxEnergy(tool);
 		Component toolLine = toolLineComponent(tool, toolEnergy, toolMax);
+		if (consumed >= 0) {
+			toolLine = toolLine.copy().append(Component
+				.translatable(CONSUMED_AMOUNT_KEY, consumed)
+				.withStyle(Style.EMPTY.withColor(TextColor.fromRgb(getEnergyColor(tool)))));
+		}
 		if (medallion.isEmpty()) {
 			sendToolEnergyHint(player, toolLine);
 			return;

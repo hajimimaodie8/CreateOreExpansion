@@ -264,6 +264,26 @@ public enum BoomerangTier {
         return returnDistance;
     }
 
+    /**
+     * <b>花瓣段的"能力范围"</b>（格；作者 2026-10-02 第三次裁定第 3 条）。
+     *
+     * <p>裁定口径：长按（花瓣）在<b>近程无限制</b>——沿轨迹上的方块全破坏、生物全伤害、不吃额度；
+     * 一旦它"到了一个比较远的地方"，就<b>回到上限规则</b>：那时遇到<b>超出本档能力</b>的方块
+     * （挖不动 / 超过 {@code maxHardness} / 挖掘等级不够）就「既不破坏也不伤害，直接返回」。</p>
+     *
+     * <p>⚠⚠ <b>本方法返回的阈值目前是暂定值，正在向作者确认</b>：现在取
+     * {@code = returnDistance()}（翠玉 5 / 宝石 10 / 星界 15 / 雷鸣 20 格）。
+     * <b>它就是那一处"唯一真源"</b>——作者回话后只改这一行的方法体
+     * （例如改成固定 10 格或 {@code returnDistance() * 2}），
+     * {@code AbstractBoomerangEntity#withinCapabilityRange()} 与关卡都不用动。</p>
+     *
+     * <p>为什么不做成第 12 个构造参数：与 {@link #baseSkillLevel()} 同理——构造参数表（11 项）
+     * 被关卡 §29h-1 / §29k 逐位钉住，而本值可以从既有字段派生。</p>
+     */
+    public int capabilityRange() {
+        return returnDistance();
+    }
+
     public ToolEnergyColorConfig color() {
         return color;
     }

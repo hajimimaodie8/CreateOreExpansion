@@ -26,12 +26,25 @@ import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsE
  * 而是在 NeoForge 给出的唯一"手部渲染前"钩子上<b>缩放一次 PoseStack</b>：物品整体绕手部锚点收小
  * ⇒ 肉眼就是"往里收"。没有旋转、没有位移（越少的自由维度，越不容易在手感上翻车）。</p>
  *
- * <h2>二、钩子的位置与时机（读 {@code ItemInHandRenderer:463} 得到）</h2>
+ * <h2>二、钩子的位置与时机（读 {@code ItemInHandRenderer:463-464} 得到）</h2>
  * <p>{@code IClientItemExtensions#applyForgeHandTransform} 在第一人称手臂渲染的"普通物品"分支
  * <b>最开头</b>被调用（在 {@code getUseAnimation()} 那套位移之前、{@code renderItem} 之前）。
  * 返回 {@code false} = "照旧继续走原版变换"，我们只往 PoseStack 上叠一个 {@code scale}。
  * 不在使用中、或手上不是回旋镖时直接返回 —— 此时 PoseStack 一个字都不动（恒等），
  * 所以别的物品、别的动作逐字不受影响。</p>
+ *
+ * <p>⚠⚠ <b>必须返回 {@code false}（硬要求，不是风格）</b>：NeoForge 的补丁把调用点写成
+ * <pre>
+ *   if (!IClientItemExtensions.of(stack).applyForgeHandTransform(poseStack, ...))   // :463
+ *   if (player.isUsingItem() &amp;&amp; player.getUseItemRemainingTicks() &gt; 0 &amp;&amp; ...) {    // :464
+ *       switch (stack.getUseAnimation()) { ... }                                   // :466
+ *   }
+ * </pre>
+ * （原版 {@code ItemInHandRenderer.java:463-464} 就是这种"悬空 {@code if}"形状）——
+ * 返回 {@code true} 会让<b>整个 {@code isUsingItem} 分支被跳过</b>，包括 {@code case BOW}
+ * 那套拉弓位移 ⇒ <b>把 {@code BoomerangItem#getUseAnimation} 刚拿到的原版姿态当场抵消掉</b>。
+ * 本类只往 PoseStack 上叠一个 {@code scale}，所以恒返回 {@code false}。
+ * 关卡 {@code boomerang-use-state} 钉着这一条。</p>
  *
  * <h2>三、进度口径：与"封顶 40 tick"同一个常量</h2>
  * <pre>
@@ -102,7 +115,10 @@ public final class BoomerangChargeClient {
 			float progress = (float) BoomerangItem.chargeTicks(held) / BoomerangItem.HOLD_CHARGE_CAP_TICKS;
 			float scale = 1.0F - FULL_CHARGE_SHRINK * Mth.clamp(progress, 0.0F, 1.0F);
 			poseStack.scale(scale, scale, scale);
-			return false; // 照旧走原版变换（我们只把姿态"叠"上去）
+			// ⚠ 恒 false：true 会跳过 ItemInHandRenderer:464 起的整个"使用中姿态"分支
+			// （含 case BOW 的拉弓位移），等于把 BoomerangItem#getUseAnimation 抵消掉。
+			// 我们只把姿态"叠"上去，原版怎么走就怎么走。
+			return false;
 		}
 	}
 }

@@ -267,6 +267,20 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	/** 乘客的骑乘位再下移这么多（需求 4）。 */
 	public static final double PASSENGER_OFFSET_Y = 0.4D;
 
+	/**
+	 * <b>主人"被传送走了"的判据阈值</b>（格²；作者 2026-10-02 第三次裁定第 4 条）。
+	 *
+	 * <p>判据 = <b>主人一 tick 内的位置跳变</b>超过 {@code 16} 格（{@code 16² = 256}）：
+	 * 玩家任何正常移动都在 4 格/tick 以内（自由落体终端速度 3.92 格/tick 就是上限，
+	 * 冲刺 0.28 / 鞘翅+烟花约 3.5）⇒ 16 格留了 4 倍余量；而传送（{@code /tp}、传送门换维度、
+	 * 死亡重生、末影珍珠 ≥ 20 格）必然远超它。</p>
+	 *
+	 * <p>为什么不用"与主人的距离绝对值"：主人正常跑位/飞行也能在 300 tick 的回程寿命里
+	 * 拉开上百格（回程只有 0.7 格/tick），那样会把"正常拉开距离"误判成传送；
+	 * 而"一 tick 跳变"是传送的<b>充分</b>特征（没有正常移动能做到）。</p>
+	 */
+	public static final double OWNER_TELEPORT_JUMP_SQR = 16.0D * 16.0D;
+
 	/** 存活 tick（去程 + 回程；进 NBT）。 */
 	private int liveTime;
 	/** 回程段已飞 tick（进 NBT —— 超时判定要能跨存档继续数）。 */
@@ -309,6 +323,20 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 */
 	private double petalProgress;
 
+	// ── 主人瞬移检测（作者 2026-10-02 第三次裁定第 4 条；只在服务端维护，不进 NBT） ──
+	// 为什么要它：主人被 /tp 或传送门扔到极远处时，镖既追不上也"回不到手里"，只能
+	// 飞满 MAX_RETURN_TICKS 再收尾。这里改为**一 tick 内主人位置跳变超过阈值就当场收尾**，
+	// 并把镖交还玩家（见 teleportRecover / finishFlight(false)）。上一 tick 的位置只用于
+	// 算跳变，重载后从"当前点"重新起算（一 tick 的判据不需要跨存档）。
+	/** 主人上一 tick 的 X（服务端）。 */
+	private double lastOwnerX;
+	/** 主人上一 tick 的 Y（服务端）。 */
+	private double lastOwnerY;
+	/** 主人上一 tick 的 Z（服务端）。 */
+	private double lastOwnerZ;
+	/** 上一 tick 的主人位置是否已记录（第一 tick 只记不比，免得把出生点当成"跳变"）。 */
+	private boolean lastOwnerTracked;
+
 	/**
 	 * <b>本次投掷还剩多少"生物穿透额度"</b>（需求 §3.5；批 3）。{@code -1} = 尚未初始化。
 	 *
@@ -320,6 +348,34 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	private int pierceMobsLeft = -1;
 	/** 还剩多少"方块穿透额度"（{@code 5 × 有效技能等级}）；{@code -1} = 尚未初始化。见 {@link #pierceMobsLeft}。 */
 	private int pierceBlocksLeft = -1;
+
+	// ================= 技能携带标记（作者 2026-10-02 第二次裁定） =================
+	//
+	// 裁定原文（要点）：穿刺与环绕**不是主动释放的技能**，而是"**按住技能键时，该次投掷自带
+	// 的效果**"——与装备技能同一种东西（按住才生效的被动效果），**没有任何"释放"动作**：
+	//   · 按住技能键 + 右键投掷 ⇒ 这一发自带该效果；
+	//   · 不按技能键 + 右键投掷 ⇒ 这一发什么都不带（也不扣 20L / 15L）；
+	//   · 投掷本身永远是右键；技能键只是"这次投掷带不带这个效果"的开关。
+	// 因此**不走** CoeSkillRelease / 内核释放路径、**没有**冷却、没有主动触发：这里只有
+	// 两个"这次投掷带不带"的布尔值，由 BoomerangItem#releaseUsing 在投掷那一刻读技能键写一次。
+	//
+	// ⚠ 这与批 3/批 4 的旧口径相反（旧："不需要开关、只要投掷就生效"）——旧口径已被作者
+	// 2026-10-02 的第二次裁定**推翻**，本类与 BoomerangItem 的注释都把它写下来了（本仓规则：
+	// 口径被推翻要写明，不许静默删除）。
+
+	/**
+	 * <b>本次投掷是否携带穿刺技能</b>（= 投掷那一刻按住了键一；见类注释与
+	 * {@code BoomerangItem#skillKeyHeld}）。
+	 *
+	 * <p>它只决定一件事：{@link #ensurePierceQuota()} 里"技能来源"那一份要不要算。
+	 * 它<b>不</b>是本实体自己读的键（那样每次命中都读一次，与"投掷那一刻决定"的自相矛盾），
+	 * 也不是内建额度（长按自带的那 1 只 / 1 个与它无关，见
+	 * {@code BoomerangSkillConfigs#BUILTIN_PIERCE_MOBS_ON_HOLD}）。</p>
+	 */
+	private boolean pierceSkillCarried;
+
+	/** <b>本次投掷是否携带环绕技能</b>（= 投掷那一刻按住了键二；只决定投掷时生不生成环绕波）。 */
+	private boolean orbitSkillCarried;
 
 	protected AbstractBoomerangEntity(EntityType<? extends AbstractBoomerangEntity> type, Level level) {
 		super(type, level);
@@ -355,9 +411,18 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		if (this.pierceMobsLeft >= 0) {
 			return;
 		}
-		int level = BoomerangItem.effectiveSkillLevel(getItemStack(), tier().baseSkillLevel());
-		this.pierceMobsLeft = BoomerangSkillConfigs.pierceMobQuota(level);
-		this.pierceBlocksLeft = BoomerangSkillConfigs.pierceBlockQuota(level);
+		// 额度只有一个来源：**穿刺技能**（投掷那一刻按住键一，作者 2026-10-02 第二次裁定）。
+		// 「长按自带 1 / 1」那个暂定值已被第三次裁定废除（花瓣段不吃任何额度，见
+		// BoomerangSkillConfigs 里那一段留档）⇒ 没携带技能时额度恒 0，判定自然退化成
+		// "碰到即回"（点按段）。
+		if (this.pierceSkillCarried) {
+			int level = BoomerangItem.effectiveSkillLevel(getItemStack(), tier().baseSkillLevel());
+			this.pierceMobsLeft = BoomerangSkillConfigs.pierceMobQuota(level);
+			this.pierceBlocksLeft = BoomerangSkillConfigs.pierceBlockQuota(level);
+		} else {
+			this.pierceMobsLeft = 0;
+			this.pierceBlocksLeft = 0;
+		}
 	}
 
 	/** 本次投掷剩余的<b>生物</b>穿透额度（初始化后；只读给关卡/调试用）。 */
@@ -370,6 +435,33 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	public int getPierceBlocksLeft() {
 		ensurePierceQuota();
 		return this.pierceBlocksLeft;
+	}
+
+	// ================= 技能携带标记（作者 2026-10-02 第二次裁定） =================
+
+	/**
+	 * <b>写入"这一发带不带那两个效果"</b>（投掷那一刻<b>唯一</b>一处写入口，由
+	 * {@code BoomerangItem#releaseUsing} 调用）。
+	 *
+	 * <p>为什么在实体上而不是物品上：与穿刺额度同理 —— <b>一次投掷一个实体</b>，
+	 * 记在实体上天然"每次投掷各一份"，绝不会跨投掷累计（记在栈上就会）。</p>
+	 *
+	 * @param pierceSkill 投掷那一刻是否按住键一（穿刺）
+	 * @param orbitSkill  投掷那一刻是否按住键二（环绕）
+	 */
+	public void setCarriedSkills(boolean pierceSkill, boolean orbitSkill) {
+		this.pierceSkillCarried = pierceSkill;
+		this.orbitSkillCarried = orbitSkill;
+	}
+
+	/** 本次投掷是否携带穿刺技能（决定 {@link #ensurePierceQuota()} 里"技能来源"那一份）。 */
+	public boolean isPierceSkillCarried() {
+		return this.pierceSkillCarried;
+	}
+
+	/** 本次投掷是否携带环绕技能（生成环绕波的那一处读它）。 */
+	public boolean isOrbitSkillCarried() {
+		return this.orbitSkillCarried;
 	}
 
 	// ================= 环绕技能（2026-10-02 批 4；需求 §3.6 / §3.7） =================
@@ -465,6 +557,12 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 *                  而每 tick 的环平面法向仍从锚点<b>实时</b>取（镖转弯时环跟着转）
 	 */
 	public void spawnOrbitWaves(ItemStack stack, Vec3 flightDir) {
+		// ★ 第一道门：**这次投掷必须携带环绕技能**（投掷那一刻按住了键二；作者 2026-10-02
+		// 第二次裁定）。不按技能键 ⇒ 一枚都不生成。判据是投掷时写在实体上的标记，
+		// **不是**这里现读按键（"投掷那一刻读一次"是唯一口径，见 setCarriedSkills）。
+		if (!this.orbitSkillCarried) {
+			return;
+		}
 		if (!(level() instanceof ServerLevel server)) {
 			return; // 实体由服务端生成（两端各造一枚就成双份）
 		}
@@ -507,13 +605,47 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 */
 	private boolean turnAroundIfNotPiercing(int quotaLeft, boolean mayPierceThrough) {
 		if (isPetalFlight()) {
-			return false; // ← "飞完一瓣"优先于"额度用完"（唯一一处表达这条优先级）
+			// ★ 花瓣段（作者 2026-10-02 第三次裁定）：**近程无限制** —— 沿花瓣轨迹上所有方块都破坏、
+			// 所有生物都伤害，**不吃任何额度**（"长按自带 1/1"那个暂定值当场作废）。
+			// 只有**飞远了**（超出本档"能力范围"）才回到上限规则：那时遇到**超出本档能力**的方块
+			// （挖不动 ⇒ mayPierceThrough == false）就「既不破坏也不伤害，直接返回」。
+			// 近程遇到挖不动的方块 ⇒ **穿过去继续飞完这一瓣**（"无限制"那一句的最小读法；
+			// 需求没写死这一种情形，见报告 §⑥）。
+			if (mayPierceThrough || withinCapabilityRange()) {
+				return false;
+			}
+		} else {
+			// 点按段（逐字沿用批 3 口径）：撞不动（墙）或额度用完 ⇒ 掉头；否则穿过去继续飞。
+			boolean quotaSpent = quotaLeft <= 0;
+			if (mayPierceThrough && !quotaSpent) {
+				return false;
+			}
 		}
-		if (!mayPierceThrough || quotaLeft <= 0) {
-			setReturning(true);
-			return true;
+		// ⚠ 全实体只剩这一个 setReturning(true) 在这条规则里（另外三处分别在距离判据、
+		// 去程时间上限、飞完一瓣）——关卡 §29n-4 把"恰好 4 处"钉死，别再复制一份。
+		setReturning(true);
+		return true;
+	}
+
+	/**
+	 * <b>花瓣段专用的"能力范围"判据</b>（作者 2026-10-02 第三次裁定第 3 条）：离主人
+	 * <b>不超过本档"能力范围"</b>（{@link BoomerangTier#capabilityRange()}）⇒ 近程，破坏与伤害无限制。
+	 *
+	 * <p>⚠ <b>阈值是待作者确认的暂定值</b>：现在 {@code capabilityRange() == returnDistance()}
+	 * （5/10/15/20 格）。它是<b>唯一一处</b>取值点 —— 作者回话后只改
+	 * {@code BoomerangTier#capabilityRange()} 那一行，本方法一个字不用动。</p>
+	 *
+	 * <p>参照点与 {@link #outboundRangeExceeded} <b>同一个</b>（{@code owner.position() + (0,1,0)}）：
+	 * 两条距离判据（点按的"飞太远就掉头"与花瓣的"飞远了回到上限"）必须用同一把尺子，
+	 * 否则"多远算远"会有两个答案。</p>
+	 */
+	private boolean withinCapabilityRange() {
+		Entity owner = getOwner();
+		if (owner == null) {
+			return false; // 拿不到主人 ⇒ 按"超出"处理（保守：不再无限制破坏）
 		}
-		return false;
+		int limit = tier().capabilityRange();
+		return position().distanceToSqr(owner.position().add(0.0D, 1.0D, 0.0D)) <= (double) limit * limit;
 	}
 
 	// ================= 同步数据读写 =================
@@ -610,6 +742,14 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		Entity owner = getOwner();
 		if (!level().isClientSide && (owner == null || !owner.isAlive())) {
 			ownerGone();
+			return;
+		}
+
+		// ★ 主人瞬移兜底（作者 2026-10-02 第三次裁定第 4 条）：/tp、传送门换维度、死亡重生…
+		// 一旦发现（换维度，或一 tick 跳变超过 OWNER_TELEPORT_JUMP_SQR）就**当场收尾**：
+		// 清除实体 + 把镖交还玩家（finishFlight(false)，绝不掉在地上、也不继续飞）。
+		if (!level().isClientSide && owner != null && ownerTeleported(owner)) {
+			teleportRecover();
 			return;
 		}
 
@@ -868,11 +1008,14 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		target.hurt(damageSources().indirectMagic(this, null), tier().damage());
 		hitCount++;
 		addFlightWear(BoomerangTier.WEAR_PER_HIT);
-		// 穿刺：吃掉一份生物额度。需求 §六 推断值 #4：穿透命中同样扣耐久（上面那行已扣）。
+		// 需求 §六 推断值 #4：穿透命中同样扣耐久（上面那行已扣）。
+		// ⚠ 这里照旧**无条件**记账（不在命中路径里判花瓣/点按 —— 那条分歧只属于
+		// turnAroundIfNotPiercing 一处，关卡 §29n-4 钉着这条）。花瓣段不读这份额度，
+		// 所以"记了但没用"是零影响（花瓣段的判据是能力范围，见那个 helper）。
 		ensurePierceQuota();
 		this.pierceMobsLeft = Math.max(0, this.pierceMobsLeft - 1);
 		// 额度用完即掉头（生物永远允许"穿过"⇒ mayPierceThrough = true）；
-		// 花瓣段那一支由 turnAroundIfNotPiercing 内部挡掉（飞完一瓣优先）。
+		// 花瓣段那一支由 turnAroundIfNotPiercing 内部挡掉（近程无限制）。
 		turnAroundIfNotPiercing(this.pierceMobsLeft, true);
 		return true;
 	}
@@ -900,12 +1043,14 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 */
 	private boolean onHitBlock(BlockPos pos) {
 		boolean destroyed = mineBlock(pos);
+		// 照旧**无条件**记账（与 onHitEntity 同形，不在命中路径里判模式：那条分歧只在
+		// turnAroundIfNotPiercing 一处）。花瓣段不读这份额度 ⇒ 记了也不影响花瓣行为。
 		ensurePierceQuota();
 		if (destroyed) {
 			this.pierceBlocksLeft = Math.max(0, this.pierceBlocksLeft - 1);
 		}
-		// 唯一一处"要不要掉头"：花瓣段不掉头（飞完一瓣优先）；挖不动 ⇒ 掉头；额度用完 ⇒ 掉头；
-		// 挖掉了且还有额度 ⇒ 穿过去继续飞。
+		// 唯一一处"要不要掉头"：点按段挖不动 ⇒ 掉头 / 额度用完 ⇒ 掉头 / 挖掉了且还有额度 ⇒ 穿过去；
+		// 花瓣段近程一律不掉头（无限制），飞远了遇挖不动的方块才掉头（见上面那个 helper）。
 		return turnAroundIfNotPiercing(this.pierceBlocksLeft, destroyed);
 	}
 
@@ -1071,8 +1216,50 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	 * 的路径，绕开它等于给了一条免费躲避爆掉的捷径。</p>
 	 */
 	private void returnTimedOut() {
-		CoeCore.LOGGER.debug("[回旋镖] 回程超时（{} tick）就地落地：{}", MAX_RETURN_TICKS, this);
-		finishFlight(true);
+		// ⚠ 2026-10-02 第三次裁定改了这条尾路径的落点：作者要求"**归还给玩家本身**"。
+		// 旧口径（批 1/批 2：就地落地 spawnAtLocation）已作废 —— 现在与"抵达主人"走同一支
+		// finishFlight(false)：镖进原槽 → 背包 → 实在放不下才掉在玩家脚下（giveToPlayer 三步），
+		// 乘客一并交给玩家。耐久结算照旧（绕开它就是免费躲避爆掉的捷径）。
+		CoeCore.LOGGER.debug("[回旋镖] 回程超时（{} tick）⇒ 直接交还玩家：{}", MAX_RETURN_TICKS, this);
+		finishFlight(false);
+	}
+
+	/**
+	 * <b>主人被传送走了的兜底收尾</b>（作者 2026-10-02 第三次裁定第 4 条）。
+	 *
+	 * <p>判据见 {@link #ownerTeleported(Entity)}。收尾走 {@link #finishFlight(boolean)}
+	 * 的 {@code landInWorld = false} 那一支：<b>乘客交给玩家、镖交给玩家</b>（原槽 → 背包 →
+	 * 掉在玩家脚下），然后 {@code discard()}。<b>不掉在地上、不继续飞</b>——这正是作者原话
+	 * 「自动清除该实体，并将回旋镖归还给玩家本身」。</p>
+	 */
+	private void teleportRecover() {
+		CoeCore.LOGGER.debug("[回旋镖] 主人被传送（换维度或一 tick 跳变超 {} 格）⇒ 清除实体并交还玩家：{}",
+			Math.sqrt(OWNER_TELEPORT_JUMP_SQR), this);
+		finishFlight(false);
+	}
+
+	/**
+	 * <b>主人这一 tick 是不是被传送了</b>（判据与理由见 {@link #OWNER_TELEPORT_JUMP_SQR}）。
+	 *
+	 * <p>两种情况算传送：① 主人<b>换了维度</b>（{@code owner.level() != level()}，
+	 * 传送门 / 指令 / 重生都会命中）；② 主人一 tick 内的位置跳变超过阈值。</p>
+	 *
+	 * <p>本方法<b>顺带推进</b>上一 tick 位置（每次调用都记录当前点）⇒ 每个服务端 tick 必须
+	 * 恰好调用一次；调用点在 {@link #tick()} 顶部，owner 兜底之后。</p>
+	 */
+	private boolean ownerTeleported(Entity owner) {
+		if (owner.level() != level()) {
+			return true;
+		}
+		double dx = owner.getX() - this.lastOwnerX;
+		double dy = owner.getY() - this.lastOwnerY;
+		double dz = owner.getZ() - this.lastOwnerZ;
+		boolean tracked = this.lastOwnerTracked;
+		this.lastOwnerX = owner.getX();
+		this.lastOwnerY = owner.getY();
+		this.lastOwnerZ = owner.getZ();
+		this.lastOwnerTracked = true;
+		return tracked && dx * dx + dy * dy + dz * dz > OWNER_TELEPORT_JUMP_SQR;
 	}
 
 	/**
@@ -1180,6 +1367,9 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		// 已用掉一部分的额度必须读回来，否则"飞出去半趟、卸载区块"就能白刷一份额度。
 		this.pierceMobsLeft = tag.contains("PierceMobsLeft") ? tag.getInt("PierceMobsLeft") : -1;
 		this.pierceBlocksLeft = tag.contains("PierceBlocksLeft") ? tag.getInt("PierceBlocksLeft") : -1;
+		// 技能携带标记（同前）：没有该键 = 老存档/没带 ⇒ false（与"不按技能键"同义）
+		this.pierceSkillCarried = tag.getBoolean("PierceSkillCarried");
+		this.orbitSkillCarried = tag.getBoolean("OrbitSkillCarried");
 		// 花瓣曲线状态（批 2）：模式 + 锚点 + 基准角 + 进度（写侧见 addAdditionalSaveData）。
 		if (tag.getBoolean("PetalFlight")) {
 			this.entityData.set(DATA_PETAL, true);
@@ -1223,6 +1413,10 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 			tag.putInt("PierceMobsLeft", this.pierceMobsLeft);
 			tag.putInt("PierceBlocksLeft", this.pierceBlocksLeft);
 		}
+		// 技能携带标记（作者 2026-10-02 第二次裁定）：投掷那一刻的按键结果，重载后必须还在，
+		// 否则"区块卸载再回来"会把这一发带的效果（以及环绕波的生成资格）抹掉。
+		tag.putBoolean("PierceSkillCarried", this.pierceSkillCarried);
+		tag.putBoolean("OrbitSkillCarried", this.orbitSkillCarried);
 		// 花瓣曲线状态（2026-10-02 批 2）：模式 + 锚点 + 基准角 + 进度。
 		// ⚠ 这三项平时走同步数据（两端要一起算曲线），但同步数据不进存档 ⇒ 重载一次就会
 		// 退化成"点按直线"（进度归零 = 从头再飞一瓣），所以必须各自落一份 NBT。
