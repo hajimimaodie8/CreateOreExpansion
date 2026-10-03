@@ -599,6 +599,11 @@ public class ChineseLangProvider extends LanguageProvider {
         add("item.minecraft.lingering_potion.effect.long_transmutation_disorder", "漫长滞留型嬗乱药水");
         add("item.minecraft.tipped_arrow.effect.long_transmutation_disorder", "漫长的嬗乱之箭");
 
+        // ========== 电荷系统（coe-charge 批 1）：着正电 / 着负电 ==========
+        // 名字取需求原文的叫法（需求 §3.1 表 + 作者原话「着正电与着负电」）。
+        add("effect.createoreexpansion.charged_positive", "着正电");
+        add("effect.createoreexpansion.charged_negative", "着负电");
+
         // ========== Create 通用 ==========
         add("create.tooltip.holdForDescription", "按住 [%1$s] 可查看概要");
         add("create.tooltip.holdForControls", "按住 [%1$s] 可查看控制方法");

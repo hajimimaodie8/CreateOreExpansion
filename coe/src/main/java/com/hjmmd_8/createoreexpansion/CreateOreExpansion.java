@@ -12,6 +12,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.LayerCreativeTab;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeEffects;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.AllEntityTypes;
@@ -230,6 +231,9 @@ public class CreateOreExpansion {
         // 嬗化构件两个物品也在这里触发类初始化（在 CoeItems 之后 = 与拆分前的条目先后一致）。
         TransmutationFluids.register();
         TransmutationEffects.register(modEventBus);
+        // coe-charge 批 1：电荷系统的两个负面效果（着正电 / 着负电）——COE 层自己的
+        // MobEffect 注册器，触发点全仓只此一处（重复挂总线会在 RegisterEvent 上重复注册）。
+        CoeEffects.register(modEventBus);
         TransmutationItems.register();
         AllStructureProcessors.register(modEventBus);
         MedallionBindingRecipe.register(modEventBus);

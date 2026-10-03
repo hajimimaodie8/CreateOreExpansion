@@ -615,5 +615,9 @@ public class EnglishLangProvider extends LanguageProvider {
         add("item.minecraft.splash_potion.effect.long_transmutation_disorder", "Long Splash Transmutation Potion");
         add("item.minecraft.lingering_potion.effect.long_transmutation_disorder", "Long Lingering Transmutation Potion");
         add("item.minecraft.tipped_arrow.effect.long_transmutation_disorder", "Arrow of Long Transmutation Disorder");
+
+        // ========== 电荷系统（coe-charge 批 1）：着正电 / 着负电 ==========
+        add("effect.createoreexpansion.charged_positive", "Positively Charged");
+        add("effect.createoreexpansion.charged_negative", "Negatively Charged");
     }
 }

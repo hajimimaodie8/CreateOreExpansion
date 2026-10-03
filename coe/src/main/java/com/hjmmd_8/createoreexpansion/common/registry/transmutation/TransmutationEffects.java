@@ -29,7 +29,13 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  */
 public final class TransmutationEffects {
 
-	/** 本层（以及整个模组）唯一的 MOB_EFFECT 延迟注册器。 */
+	/**
+	 * 本层（TRANS 线）的 MOB_EFFECT 延迟注册器。
+	 *
+	 * <p>⚠ 它<b>不是</b>「整个模组唯一」的那一个：coe-charge 批 1 给 COE 层的电荷效果另开了
+	 * {@code common.registry.coe.CoeEffects}（同一个注册表、同一命名空间、两份 id 不冲突）。
+	 * 口径是「内容在哪一条线，就由那一条线的注册器声明」——见 {@code CoeEffects} 的类注释。</p>
+	 */
 	public static final DeferredRegister<MobEffect> EFFECTS =
 		DeferredRegister.create(Registries.MOB_EFFECT, CoeCore.REGISTRY_NAMESPACE);
 

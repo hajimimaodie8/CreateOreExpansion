@@ -299,6 +299,8 @@
   "createoreexpansion.wheel_effect.double": "Effect: %s%% chance to double results",
   "createoreexpansion.wheel_effect.quantity": "Effect: +%s to each result amount",
   "createoreexpansion.wheel_effect.speed": "Effect: Processing time reduced by %s%%",
+  "effect.createoreexpansion.charged_negative": "Negatively Charged",
+  "effect.createoreexpansion.charged_positive": "Positively Charged",
   "effect.createoreexpansion.transmutation_disorder": "Transmutation Disorder",
   "enchantment.createoreexpansion.loose_convergence": "Loose Convergence",
   "enchantment.createoreexpansion.reduce_consumption": "Reduced Consumption",
