@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveEssenceEffects;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandler;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandlers;
@@ -1115,6 +1116,14 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			// "让能量波去打你自己来充能"。刻意放在创造模式判定之外：创造玩家也照充。
 			if (target instanceof Player wearer) {
 				ArmorEnergy.chargeWorn(wearer, ChargingRecipe.energyForLevel(this.waveLevel));
+				// 魔素命中效果（2026-10-03 需求 coe-ess 批 6）：作者原话是"不同的魔素打中<b>玩家</b>"
+				// ⇒ <b>只在这一条"目标就是玩家"的分支里</b>施加，生物那条路一次都不调
+				// （生物照旧只吃波级伤害）。而且只有真的赋了魔素的波才有效果：
+				// 未设魔素 ⇒ WaveEssenceEffects 第一句返回，机器波/变器攻击波逐字不变。
+				// 免疫不在这里判：三种 MobEffect 走原版 addEffect ⇒ MobEffectEvent.Applicable
+				// ⇒ 既有免疫判据（如凝能佩免嬗乱）自动生效（本类刻意不认那个效果名，见
+				// 关卡 wave-hit-effect-chain 的负向断言）。
+				WaveEssenceEffects.applyOnPlayerHit(this, wearer);
 			}
 			// 命中附加效果要素（可选、默认关闭）：既有链"伤害 ⇒ 护甲充能"之后<b>追加</b>一行，
 			// 未设要素时整段跳过（机器波/变器波命中行为逐字不变）。见 applyHitEffect 的说明。
