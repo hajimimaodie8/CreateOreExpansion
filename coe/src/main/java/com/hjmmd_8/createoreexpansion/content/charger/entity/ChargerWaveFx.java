@@ -285,7 +285,7 @@ public final class ChargerWaveFx {
 	 *                       （作者 2026-10-03 对雷闪光的建议"低概率 + 只挂主波"就落在这里）
 	 * @param spreadOverride 本簇的<b>绝对</b>散布（各轴半径）；{@code null} = 按
 	 *                       {@code 生效散布 × spreadScale} 缩放。用于把某一簇钉到既有常量上
-	 *                       （"异"的 END_ROD / 青焰对齐 {@code sendOrbitTrail}）
+	 *                       （"异"的 END_ROD / 青焰按环绕波那组 ORBIT_FLAG_* / ORBIT_SOUL_* 常量钉死）
 	 */
 	public record Accent(AccentParticle particle, double ratio, double spreadScale, double speedScale,
 		double chance, boolean mainWaveOnly, Vec3 spreadOverride) {
@@ -460,7 +460,7 @@ public final class ChargerWaveFx {
 				null, null, null, null));
 		profiles.put(WaveTrailStyle.ARCANE,
 			new StyleProfile(UnaryOperator.identity(), List.of(
-				// 与 sendOrbitTrail 逐项对齐（全部引用那组常量，不复制字面量）：
+				// 与环绕波原来那套常量逐项对齐（全部引用那组常量，不复制字面量）：
 				//   END_ROD 每 tick 4 颗、散布 0.10、速度 0.02
 				new Accent(AccentParticle.of(ParticleTypes.END_ROD),
 					(double) ORBIT_FLAG_END_ROD / ORBIT_TRAIL_COUNT, 1.0D, ORBIT_FLAG_SPEED / ORBIT_TRAIL_SPEED,
