@@ -1,10 +1,13 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.PerSkillCooldown;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowDisarmConfig;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.AutoSkillConfig;
+import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowShootSkillContext;
 import com.leaf.skiller.foundation.Consumable;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
@@ -36,6 +39,22 @@ import java.util.function.ToIntFunction;
  *       （旧：tryConsume → startTicks → 写标记）。</li>
  * </ul>
  *
+ * <h2>2026-10-03 弓技能批 1：三把弓继承这同一对技能之后，本类多担两件事</h2>
+ * <ol>
+ *   <li><b>等级的唯一读取点</b> = {@link #effectiveLevel} → 弓侧的
+ *       {@code JadeTopazBowItem#effectiveSkillLevel(ItemStack)}（基准/上限都取档位表：
+ *       起始 1/2/3/3、上限 5/3/3/3）。写进标记的等级、取配置的等级、算能量费的等级
+ *       <b>是同一个值</b>；命中段只读箭上写好的那个等级
+ *       —— 两段式（松手写 / 命中读）必须同改，改一边就是静默失效。</li>
+ *   <li><b>冷却载体按弓分家</b> = {@link #perSkillCooldown(ItemStack)} → 档位表
+ *       {@code BowTier#perSkillCooldown()}：翠玉之弓仍走<b>按物品记</b>
+ *       （{@link ToolSkillCooldown} + {@link CoeSkillSupport#onCooldown}，与它升级前逐字相同）；
+ *       三把继承弓走<b>按技能记</b>（{@link PerSkillCooldown}，同一把弓上两条技能互不连坐）。
+ *       秒数两个分支同源（{@link CoeSkillSupport#cooldownTicks} ← 各等级的
+ *       {@code BowCurseConfig#cooldownSeconds} / {@code BowDisarmConfig#cooldownSeconds}）。
+ *       允许两条并存是作者明确裁定（第 6 条），边界就是那一个 switch。</li>
+ * </ol>
+ *
  * @param <C> 该弓技能的配置类型（两个技能各一份分级数值表）
  * @since 1.0.0
  */
@@ -66,26 +85,27 @@ public class BowShootItemSkill<C extends AutoSkillConfig> implements ItemSkill<B
         if (player == null || bow.isEmpty()) {
             return;
         }
-        C config = CoeSkillSupport.configForLevel(bow, instance, configType);
+        // 本技能实例的注册 id：冷却的"按技能记"分支与弓/箭上的技能标记都用它。
+        ResourceLocation skillId = CoeSkillSupport.skillIdOf(instance);
+        int level = effectiveLevel(bow, instance);
+        C config = CoeSkillSupport.configForLevel(skillId, level, configType);
         if (config == null) {
             return;
         }
         // 冷却中：不执行（consumeResource 里同样跳过，不会白扣能量）
-        if (CoeSkillSupport.onCooldown(player, bow)) {
+        if (onCooldown(player, bow, skillId)) {
             return;
         }
 
         int ticks = CoeSkillSupport.cooldownTicks(bow, cooldownSeconds.applyAsInt(config));
         if (ticks > 0) {
-            ToolSkillCooldown.startTicks(player, bow, ticks);
+            startCooldown(player, bow, skillId, ticks);
         }
 
         // 标记本次射击携带的技能 id 与有效等级（发射时写进箭，命中时由旧 handler 按等级取配置生效）
-        ResourceLocation skillId = CoeSkillSupport.skillIdOf(instance);
         if (skillId == null) {
             return;
         }
-        int level = CoeSkillSupport.effectiveLevel(bow, instance);
         bow.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY, custom -> custom.update(tag -> {
             tag.putString(JadeTopazBowItem.TAG_SKILL, skillId.toString());
             tag.putInt(JadeTopazBowItem.TAG_SKILL_LEVEL, level);
@@ -100,15 +120,77 @@ public class BowShootItemSkill<C extends AutoSkillConfig> implements ItemSkill<B
         if (player == null || bow.isEmpty()) {
             return;
         }
-        C config = CoeSkillSupport.configForLevel(bow, instance, configType);
+        ResourceLocation skillId = CoeSkillSupport.skillIdOf(instance);
+        int level = effectiveLevel(bow, instance);
+        C config = CoeSkillSupport.configForLevel(skillId, level, configType);
         if (config == null) {
             return;
         }
-        if (CoeSkillSupport.onCooldown(player, bow)) {
+        if (onCooldown(player, bow, skillId)) {
             return;
         }
-        int cost = CoeSkillSupport.cost(bow, energyCost.applyAsInt(config),
-                CoeSkillSupport.effectiveLevel(bow, instance));
+        int cost = CoeSkillSupport.cost(bow, energyCost.applyAsInt(config), level);
         CoeSkillSupport.consume(player, bow, consumable, cost);
+    }
+
+    /**
+     * 本次释放的<b>有效技能等级 —— 唯一读取点</b>（2026-10-03 弓技能批 1）。
+     *
+     * <p>弓侧：{@code JadeTopazBowItem#effectiveSkillLevel(ItemStack)}（基准与上限都取档位表
+     * {@code BowTier#baseSkillLevel()} / {@code maxSkillLevel()}，形态照
+     * {@code BoomerangItem#effectiveSkillLevel}）。标记用的等级、取配置用的等级、算能量费用
+     * 的等级<b>必须是同一个值</b>（三处各算一遍就是"取配置用一档、扣费用另一档"的静默偏差）。</p>
+     *
+     * <p>非弓物品（本技能只被弓携带，这条是防御性回落）仍走内核口径
+     * {@link CoeSkillSupport#effectiveLevel}：实例等级经注册表 {@code maxLevel} 钳位。</p>
+     */
+    private static int effectiveLevel(ItemStack bow, ISkillInstance<?> instance) {
+        return bow.getItem() instanceof JadeTopazBowItem bowItem
+                ? bowItem.effectiveSkillLevel(bow)
+                : CoeSkillSupport.effectiveLevel(bow, instance);
+    }
+
+    /**
+     * <b>本把弓的技能冷却走哪个载体</b>（作者 2026-10-03 弓技能批 1 第 6 条，边界在档位表
+     * {@code BowTier#perSkillCooldown()}）：三把继承弓 = <b>按技能记</b>
+     * （{@link PerSkillCooldown}，同一把弓上的凋零诅咒与缴械风暴各记各的，互不连坐）；
+     * 翠玉之弓 = <b>按物品记</b>（{@link ToolSkillCooldown} —— 它的既有行为，红线不许动）。
+     */
+    private static boolean perSkillCooldown(ItemStack bow) {
+        return bow.getItem() instanceof JadeTopazBowItem bowItem && bowItem.tier().perSkillCooldown();
+    }
+
+    /**
+     * 是否正在冷却中（创造模式恒 false，与 {@link CoeSkillSupport#onCooldown} 同语义）。
+     *
+     * <p>判定与时长是分开的两件事（与旧实现一致）：这里只判"就绪没有"，
+     * 按技能记用技能键、按物品记用 stack 上的组件（两种载体互不读取）。</p>
+     */
+    private static boolean onCooldown(Player player, ItemStack bow, ResourceLocation skillId) {
+        if (player.isCreative()) {
+            return false;
+        }
+        return perSkillCooldown(bow)
+                ? !PerSkillCooldown.isReady(player, skillId)
+                : CoeSkillSupport.onCooldown(player, bow);
+    }
+
+    /**
+     * 进入冷却：两条载体各写自己那一格（写与显示都在各自载体的同一个入口里）。
+     *
+     * <p>⚠ 迅启附魔的减冷却（{@code ToolEnchantments#reduceCooldown}）在"按物品记"那条路上是
+     * {@link ToolSkillCooldown#startTicks} 内部做的；{@link PerSkillCooldown#startTicks} 是
+     * coe-pact 批 2 的纯新增载体、**不做**这一步（血契置换是固定的 30 秒）。四把弓都在
+     * {@code createoreexpansion:skill_boostable} 标签里（经 {@code #skill_tools}）⇒ 迅启对弓可用，
+     * 所以"按技能记"这一支在这里补上<b>同一条折扣</b>，否则三把继承弓会比翠玉之弓少一档缩减
+     * （同两条技能、同一张数值表，只有起始等级不同 —— 写在报告里）。</p>
+     */
+    private static void startCooldown(Player player, ItemStack bow, ResourceLocation skillId, int ticks) {
+        if (perSkillCooldown(bow)) {
+            PerSkillCooldown.startTicks(player, skillId, ToolEnchantments.reduceCooldown(bow, ticks));
+        } else {
+            // 按物品记：减冷却在它内部自己应用（不要在这里再减一次）
+            ToolSkillCooldown.startTicks(player, bow, ticks);
+        }
     }
 }

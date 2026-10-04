@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
+import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
 
 /**
  * <b>弓四档材质的数值真源</b>（唯一出处：物品注册读它写能量/耐久/配色）。
@@ -23,6 +24,10 @@ import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyCo
  *       / {@code ENERGY_COLOR_DARK}，供文字/绑定行这类不画渐变的场合取用）。
  *       它<b>不是</b>能量条的色标：条的色标一律问护甲那张表
  *       （{@link #armorSet()} → {@code ArmorEnergyColors#stopsOf}，与回旋镖同一形态）。</li>
+ *   <li><b>技能列（2026-10-03 弓技能批 1）</b> —— {@link #baseSkillLevel()}（起始等级 1/2/3/3）、
+ *       {@link #maxSkillLevel()}（上限 5/3/3/3）、{@link #skillOutlineColor()}（描边发光色）、
+ *       {@link #perSkillCooldown()}（冷却载体：翠玉按物品记、三把继承弓按技能记）。
+ *       四项都是 {@code switch (this)} 的派生量，<b>不进构造参数表</b>（那三项已被关卡 §30b 逐位钉住）。</li>
  *   <li><b>不含</b>伤害 / 拉弓时间 / 初速 —— 那三项是 {@code JadeTopazBowItem} 里<b>写死的单档常量</b>
  *       （{@code DAMAGE_MULTIPLIER} / {@code MAX_PULL_TIME} / 发射初速 {@code power * 3.0F}），
  *       作者本轮没有给档位差异，因此<b>四把弓目前完全相同</b>。要按档拉开就往这里加列，
@@ -113,6 +118,94 @@ public enum BowTier {
             case SAPPHIRE_RUBY -> ArmorSet.SAPPHIRE_RUBY;
             case ASTRAL -> ArmorSet.ASTRAL;
             case THUNDER -> ArmorSet.THUNDER;
+        };
+    }
+
+    // ========== 技能列（2026-10-03 弓技能批 1）—— 四个 switch，不加构造参数 ==========
+    // 与 BoomerangTier 的 baseSkillLevel()/crossMine() 同一路数：这些是「四档 → 四个值」的
+    // 派生量，不影响任何既有档位字段的语义，用 switch(this) 表达同样只有一处真源；
+    // 而构造参数表（energy, durability, color）已被关卡 §30b 逐位钉住，加参数会让那里一起动。
+
+    /**
+     * <b>本档绑定技能的起始（基准）等级</b>（作者 2026-10-03 弓技能批 1 给死）：
+     * 翠玉 <b>1</b> / 宝石 <b>2</b> / 星界 <b>3</b> / 雷鸣 <b>3</b>。
+     *
+     * <p>三把继承弓在注册链上按它写入绑定等级（{@code CoeItems#inheritedBow}），运行时
+     * 也按它取基准（{@link JadeTopazBowItem#effectiveSkillLevel} 的读取点唯一）。</p>
+     *
+     * <p>⚠ 翠玉之弓那一行同样是<b>活的</b>：它的绑定等级是注册处写死的字面量 {@code 1}
+     * （红线：那两行一个字不许动），而运行时的基准仍从本方法取 ⇒ 本行的 {@code 1}
+     * 必须与那一行逐字一致；关卡 {@code §30e} 就是钉这件事的。</p>
+     */
+    public int baseSkillLevel() {
+        return switch (this) {
+            case JADE_TOPAZ -> 1;
+            case SAPPHIRE_RUBY -> 2;
+            case ASTRAL, THUNDER -> 3;
+        };
+    }
+
+    /**
+     * <b>本档技能等级上限</b>（作者 2026-10-03 弓技能批 1 第 7 条：新绑的两条技能上限 3 级）：
+     * 宝石 / 星界 / 雷鸣 = <b>3</b>；翠玉 = <b>5</b>。
+     *
+     * <p>⚠ 翠玉那一行的 {@code 5} 是<b>刻意</b>的：作者同时写明「翠玉之弓那两条的 maxLevel 不动
+     * （默认 5）」⇒ 翠玉弓的读数必须仍旧是 {@code 5}（{@code AllSkills} 的注册默认值，
+     * 那一段属红线、一个字不许改）。它实际到不了 4/5（基准 1 + 技艺提升封顶 +2 ⇒ ≤3），
+     * 所以本行与「上限 3」在翠玉弓上的<b>可观测结果逐值相同</b>——这正是作者写的那个括号。</p>
+     *
+     * <p>为什么上限住在<b>档位表</b>而不是 {@code AllSkills} 的 {@code .maxLevel(3)}：
+     * 那个 {@code maxLevel} 是<b>按技能注册</b>的（{@code AllSkills.RegisteredDataSkill#maxLevel()}），
+     * 本模组两条弓技能是<b>复用同一对 id</b>的（作者第 3 条：不新建 id），改成 3 会连翠玉弓一起改
+     * ——与红线冲突。等级的上限本来就是「哪把弓」的属性 ⇒ 落在档位表这一处真源，
+     * 读取点只有 {@link JadeTopazBowItem#effectiveSkillLevel} 一个。</p>
+     */
+    public int maxSkillLevel() {
+        return switch (this) {
+            // 翠玉弓：保持注册默认 5（它的绑定链不写等级上限，见 CoeItems:748-751 那四行）。
+            case JADE_TOPAZ -> 5;
+            // 三把继承弓：作者给死 3（配置表仍保留 5 档，Lv4/Lv5 只是够不到）。
+            case SAPPHIRE_RUBY, ASTRAL, THUNDER -> 3;
+        };
+    }
+
+    /**
+     * <b>本档技能描边的发光色</b>（{@code SkillOutlineColors}，供三把继承弓的注册链取用）。
+     *
+     * <p>口径 = <b>同档工具已经在用的那一色</b>（{@code CoeItems} 里同档工具逐件都是这一色）：
+     * 翠玉 {@code TOPAZ_GOLD} / 宝石 {@code SAPPHIRE_BLUE} / 星界 {@code STELLARSTONE_PINK} /
+     * 雷鸣 {@code THUNDER_PURPLE}。弓侧不新造色值。</p>
+     *
+     * <p>⚠ 翠玉那一行 = 翠玉之弓注册处写死的那一字面量（{@code SkillOutlineColors.TOPAZ_GOLD}），
+     * 但它<b>不被消费</b>：翠玉之弓的绑定链不许改（红线），所以它走自己那一行；
+     * 本行留着是让关卡能把「表里的色 == 那一行的字面量」当一致性断言钉住。</p>
+     */
+    public SkillOutlineColors.SkillColor skillOutlineColor() {
+        return switch (this) {
+            case JADE_TOPAZ -> SkillOutlineColors.TOPAZ_GOLD;
+            case SAPPHIRE_RUBY -> SkillOutlineColors.SAPPHIRE_BLUE;
+            case ASTRAL -> SkillOutlineColors.STELLARSTONE_PINK;
+            case THUNDER -> SkillOutlineColors.THUNDER_PURPLE;
+        };
+    }
+
+    /**
+     * <b>本档的技能冷却走哪个载体</b>（作者 2026-10-03 弓技能批 1 第 6 条）：
+     * 三把继承弓 = {@code true}（<b>按技能记</b>，{@code PerSkillCooldown}）；
+     * 翠玉之弓 = {@code false}（<b>按物品记</b>，{@code ToolSkillCooldown} —— 它的既有行为，
+     * 红线：不许动）。</p>
+     *
+     * <p>两条并存是作者明确允许的（"允许两条并存"），边界就是本方法：
+     * 同一把弓上的两条技能互不连坐（各自 5s / 7s 的秒数来自
+     * {@code BowCurseConfigs} / {@code BowDisarmConfigs}，与等级同源）只在 {@code true} 这一侧成立；
+     * 翠玉那一侧仍是"同一把弓共用一个冷却格"，与它升级前逐字相同。</p>
+     *
+     * <p>消费点唯一：{@code BowShootItemSkill} 的 {@code onCooldown} / {@code startCooldown}。</p>
+     */
+    public boolean perSkillCooldown() {
+        return switch (this) {
+            case JADE_TOPAZ -> false;
+            case SAPPHIRE_RUBY, ASTRAL, THUNDER -> true;
         };
     }
 }

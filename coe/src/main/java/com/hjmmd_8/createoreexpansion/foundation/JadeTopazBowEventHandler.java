@@ -28,8 +28,15 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  * <p>职责：</p>
  * <ul>
  *     <li>读取箭上携带的技能标记（发射时写入），命中生物实体后分发到对应效果；</li>
- *     <li>所有命中（含普通箭）都会滚动一次基础概率效果（凋零/缓慢/转化紊乱+缴械）。</li>
+ *     <li>本模组四把弓射出的箭（箭上有 {@link JadeTopazBowItem#TAG_SOURCE_BOW} 来源标记）命中时
+ *         滚动一次基础概率效果（凋零/缓慢/转化紊乱+缴械）。</li>
  * </ul>
+ *
+ * <p><b>基础效果的生效范围（2026-10-03 弓技能批 1 第 5 条）</b>：原先"任何玩家的任何箭"都会滚
+ * 那套 50%/20%/20%/10% —— 原版弓、别家模组的弓射出的箭也带这套效果。现在收窄为
+ * "<b>箭来自本模组四把弓</b>"，判据是发射点无条件写下的来源标记
+ * （{@link JadeTopazBowItem#isFromOurBow}，唯一判据）。技能那一段不变：它的判据是
+ * {@link JadeTopazBowItem#TAG_SKILL}（只有本模组弓会写）。</p>
  *
  * <p><b>分发已改成按 id 字符串</b>（2026-09-30 技能换核第 3 阶段）：原先用
  * {@code skill instanceof BowCurseSkill} 判断，为此必须保留旧技能实现类；现在改为比较
@@ -59,6 +66,13 @@ public class JadeTopazBowEventHandler {
 		if (!(event.getRayTraceResult() instanceof EntityHitResult hit))
 			return;
 		if (!(hit.getEntity() instanceof LivingEntity target))
+			return;
+
+		// 生效范围闸门（2026-10-03 弓技能批 1 第 5 条）：基础概率效果只对"本模组四把弓射出的箭"
+		// 生效。发射点在 JadeTopazBowItem#shootProjectile 无条件写下来源标记（四把弓共用那一个点）；
+		// 原版弓 / 别家模组的弓 / 别的来源的箭没有这个键 ⇒ 直接返回，不再滚那 50%/20%/20%/10%。
+		// ⚠ 只收窄这一段：下面技能那一段的判据是箭上的技能标记（只有本模组弓会写），一个字没动。
+		if (!JadeTopazBowItem.isFromOurBow(arrow))
 			return;
 
 		// 基础概率效果（普通箭与技能箭均触发）

@@ -732,10 +732,13 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    // ========== 弓四把（2026-10-03 批 1：物品 / 模型 / 贴图 / 注册 / 档位数值） ==========
-    // 声明处一行一件（族级 helper bow(...) 见本段末尾）；
-    // 数值真源 = BowTier（能量上限 / 耐久上限 / 取色 / 能量条色标全在那里），
+    // ========== 弓四把（2026-10-03 批 1：物品 / 模型 / 贴图 / 注册 / 档位数值；批 2：技能继承） ==========
+    // 声明处一行一件（族级 helper bow(...) 与 inheritedBow(...) 见本段末尾）；
+    // 数值真源 = BowTier（能量上限 / 耐久上限 / 取色 / 能量条色标 / 技能四项派生量全在那里），
     // 行为逻辑四把共用 JadeTopazBowItem（无箭耗能、拉弓、发射、技能释放逐字相同）。
+    //
+    // ⚠ 技能继承（本批）：三把新弓复用翠玉之弓那两条技能 id（bow_curse / bow_disarm），
+    //   起始等级与描边色取自档位表；翠玉之弓那四行（下面 748-751）一个字没动。
     //
     // ⚠ 模型/贴图是**手写**的（每把 4 张图 + 4 个模型 JSON，落在
     //   coe/src/main/resources/assets/createoreexpansion/{textures,models}/item/）：
@@ -752,32 +755,30 @@ public final class CoeItems {
             .build()
             .register();
 
-    /** 宝石之弓：批 1 只有物品/模型/贴图/档位数值，<b>技能留后续批</b>（见 {@link #bow} 的注释）。 */
+    /**
+     * 宝石之弓：<b>继承翠玉之弓那两条技能</b>（同一对 id），起始等级 2（档位表
+     * {@link BowTier#baseSkillLevel()}）、等级上限 3、描边色 {@code SAPPHIRE_BLUE}；
+     * 技能冷却走<b>按技能记</b>（两条技能各记各的）。
+     */
     public static final ItemEntry<JadeTopazBowItem> SAPPHIRE_RUBY_BOW =
-            bow("sapphire_ruby_bow", BowTier.SAPPHIRE_RUBY)
-            .build()
-            .register();
+            inheritedBow("sapphire_ruby_bow", BowTier.SAPPHIRE_RUBY);
 
-    /** 星界之弓：批 1 只有物品/模型/贴图/档位数值，<b>技能留后续批</b>。 */
+    /** 星界之弓：继承同一对技能，起始等级 3、上限 3、描边色 {@code STELLARSTONE_PINK}；冷却按技能记。 */
     public static final ItemEntry<JadeTopazBowItem> ASTRAL_BOW =
-            bow("astral_bow", BowTier.ASTRAL)
-            .build()
-            .register();
+            inheritedBow("astral_bow", BowTier.ASTRAL);
 
-    /** 雷鸣之弓：批 1 只有物品/模型/贴图/档位数值，<b>技能留后续批</b>。 */
+    /** 雷鸣之弓：继承同一对技能，起始等级 3、上限 3、描边色 {@code THUNDER_PURPLE}；冷却按技能记。 */
     public static final ItemEntry<JadeTopazBowItem> THUNDER_BOW =
-            bow("thunder_bow", BowTier.THUNDER)
-            .build()
-            .register();
+            inheritedBow("thunder_bow", BowTier.THUNDER);
 
     /**
      * <b>弓族级注册链</b>（形态照 {@code boomerang(...)} / {@code armor(...)} / {@code grindingWheel(...)}：
      * 共享的那段链只写一次，声明处每个物品一行）。
      *
      * <p>它返回<b>未收尾的</b> {@link SkillItemBuilder}（能量段已经 {@code build()} 过、技能段还没），
-     * 因为<b>技能是逐把不同的</b>：翠玉之弓有两条（凋零诅咒 / 缴械风暴 + 发光色 + 冷却），
-     * 三把新弓的<b>留后续批</b>（本轮任务书：批 1 只做物品 + 模型 + 贴图 + 注册 + 档位数值），
-     * 所以每把的声明各自收尾自己的技能段再 {@code .build().register()}。
+     * 因为<b>技能是逐把分家的</b>：翠玉之弓有两条（凋零诅咒 / 缴械风暴 + 发光色 + 冷却）写在它自己那四行，
+     * 三把继承弓走 {@link #inheritedBow}（同一对 id + 发光色 + 档位起始等级），
+     * 两边各自收尾自己的技能段再 {@code .build().register()}。
      * 这与本文件既有的 {@code skillItem()} 同一套路数（{@code .transform(skillItem())}
      * 之后本来也是逐件写能量段/技能段）。</p>
      *
@@ -814,9 +815,49 @@ public final class CoeItems {
             .maxEnergy(tier.energy())
             .color(tier.color())
             // 第一次 build()：收尾能量段（EnergyItemBuilder → SkillItemBuilder）。
-            // 第二次 build() 在各把的声明处（SkillItemBuilder → ItemBuilder，同时把创造页分区与
-            // 充能配方挂上），于是链末尾的 .register() 是 ItemBuilder 的 ⇒ 拿到的才是 ItemEntry。
+            // 第二次 build() 在技能段那一侧（翠玉之弓的声明处 / inheritedBow(...) 里），
+            // 它把创造页分区与充能配方挂上；于是链末尾的 .register() 是 ItemBuilder 的
+            // ⇒ 拿到的才是 ItemEntry。
             .build();
+    }
+
+    /**
+     * <b>三把继承弓的族级注册链</b>（2026-10-03 弓技能批 1）—— 族级 {@link #bow} 链
+     * <b>+ 继承翠玉之弓那两条技能</b>（同一对 id，不新建技能条目、不加白名单、不加语言键）。
+     *
+     * <p>为什么另起一个 helper 而不是把技能塞进 {@link #bow}：翠玉之弓那四行
+     * （{@code .addSkills(AllSkills.BOW_CURSE, 1)} / {@code .addSkills(AllSkills.BOW_DISARM, 1)} /
+     * {@code .skillColor(...)} / {@code .skillCooldown(5 * 20)}）是<b>红线</b>——一个字不许动，
+     * 而它走的正是同一个 {@code bow(...)} 链。所以族级链保持"只到能量段"，
+     * 技能段按弓分家：翠玉在自己那四行、三把继承弓在本 helper 里（各写一次，不逐件复制）。</p>
+     *
+     * <p>链上每一件事的唯一出口：</p>
+     * <ul>
+     *   <li>{@code .addSkills(AllSkills.BOW_CURSE / BOW_DISARM, tier.baseSkillLevel())} ——
+     *       起始等级<b>取自档位表</b>（1/2/3/3，作者给死），链上不写等级字面量
+     *       （与回旋镖那条 {@code .addSkills(AllSkills.PIERCE, tier.baseSkillLevel())} 逐字同形）；</li>
+     *   <li>{@code .skillColor(tier.skillOutlineColor())} —— 描边发光色取<b>同档工具已经在用的那一色</b>
+     *       （宝石 {@code SAPPHIRE_BLUE} / 星界 {@code STELLARSTONE_PINK} / 雷鸣 {@code THUNDER_PURPLE}），
+     *       弓侧不新造色值；</li>
+     *   <li><b>等级上限</b>不在这条链上：它是 {@code BowTier#maxSkillLevel()}（三把 = 3），
+     *       运行时由 {@code JadeTopazBowItem#effectiveSkillLevel} 一处读取 —— 理由见那个方法
+     *       （{@code AllSkills} 的 {@code maxLevel} 是按技能注册的，而两条技能是四把弓复用的，
+     *       动它就会连翠玉之弓一起改，与红线冲突）；</li>
+     *   <li><b>冷却载体</b>也不在这条链上：{@code BowTier#perSkillCooldown()} 说这三把按技能记
+     *       ⇒ 它们<b>刻意不写</b> {@code .skillCooldown(...)}（那一行是"按物品记"的注册入口，
+     *       只有翠玉之弓保留它）。</li>
+     * </ul>
+     *
+     * @param id   注册 id（同时是图标贴图名 {@code item/<id>} 与模型 JSON 的文件名）
+     * @param tier 数值档（见 {@link BowTier}；起始等级与描边色也从这里取）
+     */
+    private static ItemEntry<JadeTopazBowItem> inheritedBow(String id, BowTier tier) {
+        return bow(id, tier)
+            .addSkills(AllSkills.BOW_CURSE, tier.baseSkillLevel())
+            .addSkills(AllSkills.BOW_DISARM, tier.baseSkillLevel())
+            .skillColor(tier.skillOutlineColor())
+            .build()
+            .register();
     }
 
     // ========== 回旋镖四把（2026-10-02 第一批：投掷 / 去程 / 回程 / 捡物 / 挖方块） ==========

@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerPlayer;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergyColors;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.common.energy.EnergyGradientTool;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import java.awt.Color;
@@ -16,6 +17,7 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -57,9 +59,16 @@ import net.neoforged.neoforge.event.EventHooks;
  * 统一释放（能量预检查/消耗/冷却走模组体系）→ 发射时把技能 id 写入箭的 persistentData，
  * 命中后由 {@code JadeTopazBowEventHandler} 读取并调用对应技能效果。</p>
  *
- * <p>⚠ <b>批 1 只补"物品 / 模型 / 贴图 / 注册 / 档位数值"</b>：三把新弓目前<b>没有绑技能</b>
- * （{@code .addSkills(...)} 留后续批），因此它们的技能段是空的——按下技能键不会释放任何东西；
- * 翠玉之弓的两条技能一字未动。</p>
+ * <p><b>2026-10-03 弓技能批 1（技能继承）</b>：三把新弓<b>继承</b>翠玉之弓那两条技能
+ * ——<b>复用同一对 id</b>（{@code createoreexpansion:bow_curse} / {@code :bow_disarm}，
+ * 不新建 id、不新建技能条目、不动语言键），差异只在<b>起始等级</b>与<b>等级上限</b>，
+ * 两者都取自 {@link BowTier#baseSkillLevel()} / {@link BowTier#maxSkillLevel()}
+ * （绑定在 {@code CoeItems#inheritedBow}，运行时的唯一读取点是
+ * {@link #effectiveSkillLevel(ItemStack)}）。翠玉之弓的两条技能与那四行注册链<b>一字未动</b>。</p>
+ *
+ * <p>本批同时补了两件事，都在本类：① 箭的来源标记 {@link #TAG_SOURCE_BOW}
+ * （把基础概率效果收窄到本模组四把弓，见 {@link #isFromOurBow}）；
+ * ② 技能冷却的载体边界 {@link BowTier#perSkillCooldown()}（翠玉按物品记、三把继承弓按技能记）。</p>
  *
  * <p><b>P3p</b>：实现 {@link EnergyGradientTool} —— 共享库（core）的能量门面/能量 tooltip
  * 不能再 {@code instanceof JadeTopazBowItem}（库不 import 层），改判这个零方法标记契约；
@@ -71,6 +80,24 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	public static final String TAG_SKILL = "jade_topaz_skill";
 	/** 箭 persistentData / 弓暂存标记：本次射击携带的技能有效等级（一技能多等级，命中时按等级取配置） */
 	public static final String TAG_SKILL_LEVEL = "jade_topaz_skill_level";
+	/**
+	 * 箭 persistentData：<b>射出它的那把弓是哪一个本模组物品</b>（注册 id 字符串，
+	 * 例如 {@code createoreexpansion:sapphire_ruby_bow}）。
+	 *
+	 * <p><b>2026-10-03 弓技能批 1 第 5 条（生效范围补门）</b>：基础概率效果
+	 * （{@code JadeTopazBowEventHandler#applyBaseEffects} 的 50%/20%/20%/10%）原先对
+	 * <b>任何玩家的任何箭</b>生效 —— 于是原版弓、别家模组的弓射出的箭也会带这套效果。
+	 * 现在收窄为「箭来自本模组四把弓」，判据就是本标记：</p>
+	 * <ul>
+	 *   <li><b>写</b>：{@link #shootProjectile}（本模组四把弓共用的发射点，<b>无条件</b>写，
+	 *       与是否按了技能键无关）——形状照 {@link #TAG_SKILL} 的做法：同一个
+	 *       {@code persistentData} 上的一个字符串键，发射时写、命中时读；</li>
+	 *   <li><b>读</b>：{@link #isFromOurBow} —— 唯一判据，命中处理器拿它给基础效果补门。</li>
+	 * </ul>
+	 * <p>⚠ 技能那一段<b>不</b>改判据：技能箭本来就带 {@link #TAG_SKILL}（只有本模组弓会写），
+	 * 且两段式（松手写标记 / 命中读标记）一个字没动。</p>
+	 */
+	public static final String TAG_SOURCE_BOW = "jade_topaz_source_bow";
 
 	/** 无箭时发射魔法箭消耗的能量 */
 	public static final int NO_ARROW_COST = 10;
@@ -96,6 +123,36 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		// 耐久上限随档走（形态就是本类原来的 384 * 4，只是把那个写死的数换成档位表）。
 		super(properties.durability(tier.durability()));
 		this.tier = tier;
+	}
+
+	/** 本把弓的档位（能量/耐久/取色/技能四项派生量的唯一来源，见 {@link BowTier}）。 */
+	public BowTier tier() {
+		return tier;
+	}
+
+	/**
+	 * <b>本把弓上技能的有效等级 —— 唯一读取点</b>（2026-10-03 弓技能批 1；形态照
+	 * {@code BoomerangItem#effectiveSkillLevel(ItemStack, int)}，回旋镖那轮的同一件事）。
+	 *
+	 * <p>口径 = {@code SkillEnergyCost.effectiveLevel(stack, 基准, 上限)}：
+	 * 基准取 {@link BowTier#baseSkillLevel()}（1/2/3/3），上限取 {@link BowTier#maxSkillLevel()}
+	 * （翠玉 5 / 三把继承弓 3），两者都来自档位表 ⇒ 这一行里没有任何等级字面量。
+	 * 技艺提升 / 技艺回溯照旧由 {@code SkillEnergyCost} 从物品附魔读
+	 * （{@code skill_boostable} 标签含 {@code #createoreexpansion:skill_tools}，四把弓都在里面）。</p>
+	 *
+	 * <p><b>为什么等级上限住在档位表而不动 {@code AllSkills} 的 {@code .maxLevel(...)}</b>：
+	 * 两条弓技能是<b>复用同一对 id</b>绑到四把弓上的（作者第 3 条：不新建 id），而
+	 * {@code AllSkills} 的 {@code maxLevel} 是<b>按技能注册</b>的一份值 —— 改成 3 会连
+	 * 翠玉之弓一起改（作者第 7 条明令翠玉那两条的 maxLevel 不动 = 默认 5）。上限本来就是
+	 * 「哪把弓」的属性，所以落在档位表这一处真源。</p>
+	 *
+	 * <p>消费点两处、共用这一个读数：{@code BowShootItemSkill#release}（写进弓/箭的
+	 * {@link #TAG_SKILL_LEVEL}）与同类的 {@code consumeResource}（按同一等级算能量费）；
+	 * 命中段的 {@code JadeTopazBowEventHandler} 只读箭上写好的那个等级
+	 * —— <b>两段式必须同改，改一边不改另一边就是静默失效</b>。</p>
+	 */
+	public int effectiveSkillLevel(ItemStack stack) {
+		return SkillEnergyCost.effectiveLevel(stack, tier.baseSkillLevel(), tier.maxSkillLevel());
 	}
 
 	public static float getPowerForTime(int charge) {
@@ -230,6 +287,12 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 				0.0F, velocity, inaccuracy);
 
 		if (projectile instanceof Arrow arrow && shooter instanceof Player player) {
+			// 生效范围补门（本批第 5 条）：本模组四把弓射出的箭带来源标记，无条件写
+			// （与是否按了技能键无关；命中处理器据它决定要不要滚基础概率效果）。
+			// 形状照下面 TAG_SKILL 的做法：persistentData 上一个字符串键，发射时写、命中时读。
+			arrow.getPersistentData().putString(TAG_SOURCE_BOW,
+					BuiltInRegistries.ITEM.getKey(this).toString());
+
 			// 从弓读取本次射击携带的技能与等级（技能类 release 时写入）；无标记则普通箭
 			String skill = getSkill(player.getUseItem());
 			boolean skillB = "bow_disarm".equals(lastPathOf(skill));
@@ -252,6 +315,17 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	public static String getSkill(ItemStack stack) {
 		return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
 				.copyTag().getString(TAG_SKILL);
+	}
+
+	/**
+	 * <b>这支箭是不是本模组四把弓射出来的</b> —— 生效范围闸门的唯一判据
+	 * （2026-10-03 弓技能批 1 第 5 条；标记由 {@link #shootProjectile} 写，见 {@link #TAG_SOURCE_BOW}）。
+	 *
+	 * <p>原版弓 / 别家模组的弓 / 任何别的来源射出的箭都<b>没有</b>这个键 ⇒ 返回 false
+	 * ⇒ 命中处理器不滚那套基础概率效果（技能那一段另有它自己的 {@link #TAG_SKILL} 判据，不受影响）。</p>
+	 */
+	public static boolean isFromOurBow(Arrow arrow) {
+		return !arrow.getPersistentData().getString(TAG_SOURCE_BOW).isEmpty();
 	}
 
 	/** 读取弓上暂存的技能有效等级（技能类 release 时写入；无标记为 0） */

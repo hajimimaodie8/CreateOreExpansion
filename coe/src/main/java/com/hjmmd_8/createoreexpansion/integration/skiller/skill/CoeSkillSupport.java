@@ -89,6 +89,31 @@ public final class CoeSkillSupport {
     }
 
     /**
+     * 按<b>调用方自己算好的等级</b>取该技能注册的等级配置（2026-10-03 弓技能批 1 新增）。
+     *
+     * <p>存在的理由：等级有<b>两个</b>合法来源 —— 内核口径（{@code instance.level()} 经注册表的
+     * {@code maxLevel} 钳位，见 {@link #configForLevel(ItemStack, ISkillInstance, Class)}）与
+     * <b>物品自己的口径</b>（弓：基准/上限都取档位表，读取点唯一
+     * {@code JadeTopazBowItem#effectiveSkillLevel}）。后者的调用方已经有等级了，
+     * 再让它按内核口径重算一遍就会"取配置用 5、扣费用 3"这类静默偏差。本重载只做
+     * 「id → 注册条目 → 该等级配置 → 类型校验」，不参与任何等级计算。</p>
+     *
+     * @param skillId 技能注册 id（null 或未注册时返回 null）
+     * @param level   调用方算好的等级（1 起；本方法不做钳位，钳位是等级读取点的事）
+     * @param type    期望的配置类型（与技能注册时 {@code config()} 的类型一致）
+     * @return 该等级的配置；技能没注册/类型不符时返回 null
+     */
+    @Nullable
+    public static <C extends SkillConfig> C configForLevel(@Nullable ResourceLocation skillId, int level, Class<C> type) {
+        AllSkills.RegisteredDataSkill registered = skillId == null ? null : AllSkills.getData(skillId);
+        if (registered == null) {
+            return null;
+        }
+        SkillConfig config = registered.configForLevel(level);
+        return type.isInstance(config) ? type.cast(config) : null;
+    }
+
+    /**
      * 统一的资源消耗入口（技能在 {@code consumeResource} 里调）。
      *
      * <p><b>为什么要在这里发提示</b>：新内核的流程是「所有实例先
