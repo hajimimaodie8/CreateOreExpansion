@@ -1,0 +1,19 @@
+{
+  "type": "createoreexpansion:grinding",
+  "ingredients": [
+    {
+      "item": "createoreexpansion:raw_topaz"
+    }
+  ],
+  "processing_time": 200,
+  "results": [
+    {
+      "count": 2,
+      "id": "createoreexpansion:topaz_small_shard"
+    },
+    {
+      "chance": 0.5,
+      "id": "createoreexpansion:topaz_small_shard"
+    }
+  ]
+}

@@ -52,6 +52,49 @@ public class GrindingRecipe extends StandardProcessingRecipe<RecipeWrapper> impl
 		return 4;
 	}
 
+	/**
+	 * <b>本类型的配方 JSON 里带 {@code processing_time}（9 条角磨配方一律 200）</b>——本方法声明
+	 * "允许声明时长"，是那 9 条能被加载的前提。
+	 *
+	 * <p><b>为什么必须有这个覆写</b>：Create 的 {@code ProcessingRecipe#validate()} 里有一条
+	 * {@code if (processingDuration > 0 && !canSpecifyDuration()) errors.add("Recipe specified a
+	 * duration. Durations have no impact on this type of recipe.")}，而
+	 * {@code ProcessingRecipe#codec(...)} 把这个 {@code validate()} 包成了
+	 * {@code MapCodec#validate(...)} ⇒ <b>编解码两个方向都会跑它</b>。默认实现返回
+	 * {@code false}，于是任何 {@code processing_time > 0} 的角磨配方：
+	 * <ul>
+	 *   <li><b>读</b>（游戏加载 {@code data/…/recipe/grinding/*.json}）→ codec 报错 ⇒
+	 *       {@code RecipeManager} 丢掉这条配方（只在日志里留一行）；</li>
+	 *   <li><b>写</b>（datagen 用 {@code StandardProcessingRecipe.Builder#duration}）→
+	 *       {@code DataProvider.saveStable} 的 {@code encodeStart(...).getOrThrow()} 直接抛
+	 *       {@code IllegalStateException}，{@code runData} 整轮失败。</li>
+	 * </ul>
+	 *
+	 * <p><b>这不是"顺手加的功能"，是补一个漏掉的声明</b>：这 9 条配方从写下来那天起就带着
+	 * {@code processingTime}/{@code processing_time} 键（见 {@code 470aa174}），作者显然<b>意图</b>
+	 * 让它们有时长；Create 自己的同类配方（{@code CuttingRecipe}——锯切，形态与本族一模一样：
+	 * 一条配方 + 一个 tick 数）也是覆写成 {@code true} 的。所以缺的是本类的声明，不是那 9 个 JSON 的键。</p>
+	 *
+	 * <p><b>实测证据（配方迁移 批 1，隔离沙箱里跑的 runData）</b>：
+	 * ① 编码侧——{@code GrindingRecipewith id createoreexpansion:grinding/diamond_grinding_wheel
+	 * failed validation: Recipe specified a duration…} ⇒ {@code runData} BUILD FAILED；
+	 * ② 解码侧——沙箱里临时探针把<手写>的 {@code grinding/jade_small_shard.json} 喂给
+	 * {@code CoeRecipeTypes.GRINDING.getSerializer().codec().codec().parse(JsonOps.INSTANCE, json)}
+	 * 打印 {@code ERROR: Recipe specified a duration…}。⇒ 在 {@code 470aa174} 之后、本类补上这个
+	 * 声明之前，这 9 条角磨配方<b>在游戏里根本不存在</b>（会被 RecipeManager 丢弃）。</p>
+	 *
+	 * <p><b>它对玩法没有别的影响</b>：本模组全仓没有任何地方读
+	 * {@code ProcessingRecipe#getProcessingDuration()}（{@code grep -r ProcessingDuration} 只命中
+	 * 注释），Create 侧读它的四处（锯/搅拌机/石磨/粉碎轮）都不可能拿到 {@code GrindingRecipe}
+	 * ——角磨床是自家的 {@code PowerAngleGrinderBlockEntity}。所以这个覆写只是让"配方能被加载"，
+	 * 时长本身仍然是惰性数据（与 {@code 470aa174} 之前"键写错 ⇒ 解析成 0"的净效果一致：
+	 * 配方在、时长不被读）。</p>
+	 */
+	@Override
+	protected boolean canSpecifyDuration() {
+		return true;
+	}
+
 	// ========== 序列加工（IAssemblyRecipe） ==========
 
 	@Override

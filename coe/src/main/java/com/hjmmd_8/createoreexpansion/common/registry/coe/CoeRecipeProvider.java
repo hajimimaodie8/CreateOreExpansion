@@ -24,10 +24,27 @@ import net.neoforged.neoforge.common.conditions.ICondition;
  * <p><b>为什么生成顺序要紧</b>：配方落盘的文件名带条目名（互不覆盖），但 {@code runData} 的
  * 产物清单（{@code src/generated}）是要逐条目比对的——保持调用顺序就是保持产物的<b>集合与顺序</b>
  * 都不变，这是本轮"产物零变化"的硬指标之一。</p>
+ *
+ * <p><b>配方迁移 批 1（手写 → 生成器）：本类还转发另外两族。</b>
+ * {@link CoeGrindingRecipeProvider}（角磨 9 条）与 {@link CoeLightningBlockRecipeProvider}
+ * （方块雷击 1 条）原先手写在 {@code coe/src/main/resources}，本批起由生成器产出，
+ * 并由本方法在末尾（拆磨 61 条之后）转发——<b>拆磨那 61 条之间的相对顺序一字未动</b>。</p>
+ *
+ * <p><b>为什么转发挂在这里、而不是根工程的 {@code buildRecipes}</b>：层的归属由
+ * {@code LayerRecipeRouter} 在<b>调用点</b>绑定，而根工程的调用点已经把
+ * {@code CoeRecipeProvider.generate} 收到的 {@code RecipeOutput} 包成了「本层 coe」的
+ * （{@code bind(output, "coe")}）。所以只要跟着<b>同一个 output</b> 往下写，落点自然是
+ * {@code coe/src/generated/resources}——根工程那一行调用<b>不用改</b>（红线：根 {@code src} 不动）。
+ * 反过来说：<b>本类里这两个 generate 必须用参数里的 output，绝不能自己另造一个
+ * {@code RecipeOutput}</b>，否则会绕过绑层、产物落进根工程的 generated 目录
+ * （{@code check-module-selfsufficiency} 的 F1 立刻红）。</p>
  */
 public final class CoeRecipeProvider {
 
-    /** 本层的全部拆磨配方，调用顺序与拆分前的 {@code buildRecipes} 逐字相同。 */
+    /**
+     * 本层的配方生成入口：拆磨 61 条（调用顺序与拆分前的 {@code buildRecipes} 逐字相同），
+     * 末尾再转发配方迁移 批 1 的两族（角磨 9 + 方块雷击 1，见类注释）。
+     */
     public static void generate(RecipeOutput output) {
         // ========== 原版装备/武器拆磨（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
         dismantleSet(output, Items.DIAMOND, "diamond",
@@ -54,6 +71,13 @@ public final class CoeRecipeProvider {
             CoeItems.STELLARSTONE_SWORD.get(), CoeItems.STELLARSTONE_PICKAXE.get(), CoeItems.STELLARSTONE_AXE.get(), CoeItems.STELLARSTONE_SHOVEL.get(), CoeItems.STELLARSTONE_HOE.get());
         dismantleTools(output, CoeItems.THUNDERITE_INGOT.get(), "thunderite",
             CoeItems.THUNDERITE_SWORD.get(), CoeItems.THUNDERITE_PICKAXE.get(), CoeItems.THUNDERITE_AXE.get(), CoeItems.THUNDERITE_SHOVEL.get(), CoeItems.THUNDERITE_HOE.get());
+
+        // ========== 配方迁移 批 1：角磨 9 条 + 方块雷击 1 条（原手写，现由生成器产出） ==========
+        // 顺序说明：这两组追加在 61 条拆磨<b>之后</b>，所以拆磨内部的相对顺序与拆分前逐字相同；
+        // 这两组之间、以及它们与拆磨之间没有顺序契约（每条一个文件、互不覆盖）。
+        // 用参数里的 output（= 根调用点已绑好层 "coe" 的那个），见类注释。
+        CoeGrindingRecipeProvider.generate(output);
+        CoeLightningBlockRecipeProvider.generate(output);
     }
 
     /** 一套材料：5 工具 + 4 装备的拆磨配方 */

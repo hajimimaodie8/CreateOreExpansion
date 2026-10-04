@@ -5,10 +5,10 @@
       "item": "create:brass_block"
     }
   ],
+  "processing_time": 200,
   "results": [
     {
       "id": "createoreexpansion:brass_grinding_wheel"
     }
-  ],
-  "processing_time": 200
+  ]
 }

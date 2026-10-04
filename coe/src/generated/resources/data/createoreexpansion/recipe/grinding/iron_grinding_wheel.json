@@ -5,10 +5,10 @@
       "item": "minecraft:iron_block"
     }
   ],
+  "processing_time": 200,
   "results": [
     {
       "id": "createoreexpansion:iron_grinding_wheel"
     }
-  ],
-  "processing_time": 200
+  ]
 }
