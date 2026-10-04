@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.context.factory;
 
-import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
 import com.leaf.skiller.foundation.skill.config.SkillContextFactory;
@@ -14,6 +13,7 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import org.jetbrains.annotations.Nullable;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.integration.skiller.SkillerRegistryKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 
 /**
@@ -43,7 +43,8 @@ public class ExcavationContextFactory implements SkillContextFactory<ExcavationS
             ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "excavation_context");
 
     /** 该工厂在 {@code skiller:skill_context_factory} 注册表中的键（W4 注册技能条目时用作 {@code ItemSkillRegistration} 的 factoryKey）。 */
-    public static final ResourceKey<SkillContextFactory<ExcavationSkillContext>> KEY = createKey();
+    public static final ResourceKey<SkillContextFactory<ExcavationSkillContext>> KEY =
+            SkillerRegistryKeys.contextFactory(ID);
 
     /** extraData 约定键：破坏的方块坐标 */
     public static final String KEY_POS = "pos";
@@ -114,13 +115,5 @@ public class ExcavationContextFactory implements SkillContextFactory<ExcavationS
         } catch (RuntimeException e) {
             return null;
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ResourceKey<SkillContextFactory<ExcavationSkillContext>> createKey() {
-        // SkillerRegistries.CONTEXT_FACTORY 是 ResourceKey<Registry<SkillContextFactory<?>>>，
-        // 这里把它收窄到本工厂自己的泛型实参（同一把注册表键，仅泛型不同）。
-        return (ResourceKey<SkillContextFactory<ExcavationSkillContext>>) (ResourceKey<?>)
-                ResourceKey.create(SkillerRegistries.CONTEXT_FACTORY, ID);
     }
 }

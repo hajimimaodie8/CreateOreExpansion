@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.context.factory;
 
-import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
 import com.leaf.skiller.foundation.skill.config.SkillContextFactory;
@@ -9,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import org.jetbrains.annotations.Nullable;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.integration.skiller.SkillerRegistryKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
 
 /**
@@ -28,7 +28,8 @@ public class HitContextFactory implements SkillContextFactory<HitSkillContext> {
             ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "hit_context");
 
     /** 该工厂在 {@code skiller:skill_context_factory} 注册表中的键（注册技能条目时用作 factoryKey）。 */
-    public static final ResourceKey<SkillContextFactory<HitSkillContext>> KEY = createKey();
+    public static final ResourceKey<SkillContextFactory<HitSkillContext>> KEY =
+            SkillerRegistryKeys.contextFactory(ID);
 
     @Override
     @Nullable
@@ -56,13 +57,5 @@ public class HitContextFactory implements SkillContextFactory<HitSkillContext> {
     @Nullable
     public HitSkillContext createDefault(SkillContextEnvironment env, int level) {
         return create(env, null);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ResourceKey<SkillContextFactory<HitSkillContext>> createKey() {
-        // SkillerRegistries.CONTEXT_FACTORY 是 ResourceKey<Registry<SkillContextFactory<?>>>，
-        // 这里收窄到本工厂自己的泛型实参（同一把注册表键，仅泛型不同）。
-        return (ResourceKey<SkillContextFactory<HitSkillContext>>) (ResourceKey<?>)
-                ResourceKey.create(SkillerRegistries.CONTEXT_FACTORY, ID);
     }
 }

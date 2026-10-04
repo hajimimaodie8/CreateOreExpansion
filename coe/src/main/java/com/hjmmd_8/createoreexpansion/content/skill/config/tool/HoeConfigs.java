@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.tool;
 
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
+
 /**
  * 锄头（耕作）技能 —— 统一配置类（作用范围 / 催熟概率 / 收割额外掉落概率 / 能量 集中修改点）。
  *
@@ -63,12 +65,6 @@ public final class HoeConfigs {
 
     /** 耕作按等级取配置（Lv1~5） */
     public static Level level(int level) {
-        return switch (level) {
-            case 1 -> LEVEL_1;
-            case 2 -> LEVEL_2;
-            case 3 -> LEVEL_3;
-            case 4 -> LEVEL_4;
-            default -> LEVEL_5;
-        };
+        return SkillLevelTables.pick5(level, LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5);
     }
 }

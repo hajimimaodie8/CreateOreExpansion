@@ -5,8 +5,8 @@ import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.skill.config.tool.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.integration.skiller.SkillerRegistryKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.CoeSkillSupport;
-import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.strategy.SkillStrategy;
 import net.minecraft.core.BlockPos;
@@ -47,7 +47,7 @@ public class CoeAreaAoeStrategy implements SkillStrategy<BlockPos, ExcavationSki
             ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "area_aoe");
 
     /** 该策略在 {@code skiller:skill_strategy} 注册表中的键（技能用 {@code getStrategy()} 引用它）。 */
-    public static final ResourceKey<SkillStrategy<?, ?>> KEY = createKey();
+    public static final ResourceKey<SkillStrategy<?, ?>> KEY = SkillerRegistryKeys.strategy(ID);
 
     /** 客户端预览渲染器 id（W5 注册；本轮先给稳定 id，预览仍由旧渲染器提供）。 */
     public static final ResourceLocation RENDERER_ID =
@@ -154,11 +154,5 @@ public class CoeAreaAoeStrategy implements SkillStrategy<BlockPos, ExcavationSki
     private static BlockHitResult pick(Player player) {
         HitResult hit = player.pick(PICK_DISTANCE, 0.0F, false);
         return hit instanceof BlockHitResult blockHit ? blockHit : null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ResourceKey<SkillStrategy<?, ?>> createKey() {
-        return (ResourceKey<SkillStrategy<?, ?>>) (ResourceKey<?>)
-                ResourceKey.create(SkillerRegistries.STRATEGY, ID);
     }
 }

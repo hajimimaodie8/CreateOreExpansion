@@ -9,7 +9,6 @@ import com.hjmmd_8.createoreexpansion.compat.jei.animation.AnimatedPowerAngleGri
 import com.simibubi.create.compat.jei.category.CreateRecipeCategory;
 import com.simibubi.create.content.kinetics.crusher.AbstractCrushingRecipe;
 import com.simibubi.create.content.processing.recipe.ProcessingOutput;
-import com.simibubi.create.foundation.gui.AllGuiTextures;
 
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
@@ -54,10 +53,7 @@ public class AdvancedGrindingCategory extends CreateRecipeCategory<AbstractCrush
 
 	@Override
 	public void draw(AbstractCrushingRecipe recipe, IRecipeSlotsView iRecipeSlotsView, GuiGraphics graphics, double mouseX, double mouseY) {
-		AllGuiTextures.JEI_DOWN_ARROW.render(graphics, 70, 6);
-		AllGuiTextures.JEI_SHADOW.render(graphics, 72 - 17, 42 + 13);
-
-		grinder.draw(graphics, 72, 42);
+		GrinderCategoryBackground.render(graphics, grinder);
 	}
 
 }

@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
+
 /**
  * <b>绝境守护</b>（宝石套 · 槽位 1，基准等级 1）的分级数值 —— 与 {@link FallGuardConfigs}
  * 同形，是这条技能<b>唯一</b>的数值真源（被动触发与主动分段都读这里）。
@@ -73,11 +75,7 @@ public final class LastStandConfigs {
 
     /** 按等级取配置（与 {@code FallGuardConfigs#config(int)} 同名同形）。 */
     public static Config config(int level) {
-        return switch (Math.max(1, Math.min(MAX_LEVEL, level))) {
-            case 1 -> LEVEL_1;
-            case 2 -> LEVEL_2;
-            default -> LEVEL_3;
-        };
+        return SkillLevelTables.pick3Clamped(level, MAX_LEVEL, LEVEL_1, LEVEL_2, LEVEL_3);
     }
 
     /**

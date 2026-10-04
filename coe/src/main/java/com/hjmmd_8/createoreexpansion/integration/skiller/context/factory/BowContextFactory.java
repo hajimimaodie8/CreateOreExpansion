@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.context.factory;
 
-import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
 import com.leaf.skiller.foundation.skill.config.SkillContextFactory;
@@ -10,6 +9,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.integration.skiller.SkillerRegistryKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowShootSkillContext;
 
 /**
@@ -30,7 +30,8 @@ public class BowContextFactory implements SkillContextFactory<BowShootSkillConte
             ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "bow_context");
 
     /** 该工厂在 {@code skiller:skill_context_factory} 注册表中的键（注册技能条目时用作 factoryKey）。 */
-    public static final ResourceKey<SkillContextFactory<BowShootSkillContext>> KEY = createKey();
+    public static final ResourceKey<SkillContextFactory<BowShootSkillContext>> KEY =
+            SkillerRegistryKeys.contextFactory(ID);
 
     /** extraData 约定键：本次射击所用的弓 */
     public static final String KEY_BOW = "bow";
@@ -61,13 +62,5 @@ public class BowContextFactory implements SkillContextFactory<BowShootSkillConte
     @Nullable
     public BowShootSkillContext createDefault(SkillContextEnvironment env, int level) {
         return create(env, null);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ResourceKey<SkillContextFactory<BowShootSkillContext>> createKey() {
-        // SkillerRegistries.CONTEXT_FACTORY 是 ResourceKey<Registry<SkillContextFactory<?>>>，
-        // 这里收窄到本工厂自己的泛型实参（同一把注册表键，仅泛型不同）。
-        return (ResourceKey<SkillContextFactory<BowShootSkillContext>>) (ResourceKey<?>)
-                ResourceKey.create(SkillerRegistries.CONTEXT_FACTORY, ID);
     }
 }

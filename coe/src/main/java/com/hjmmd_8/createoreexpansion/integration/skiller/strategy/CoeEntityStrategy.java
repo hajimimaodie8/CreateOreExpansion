@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 
+import com.hjmmd_8.createoreexpansion.integration.skiller.SkillerRegistryKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
-import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.strategy.SkillStrategy;
 import net.minecraft.resources.ResourceKey;
@@ -32,7 +32,7 @@ public class CoeEntityStrategy implements SkillStrategy<Entity, HitSkillContext>
             ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "entity_strategy");
 
     /** 该策略在 {@code skiller:skill_strategy} 注册表中的键。 */
-    public static final ResourceKey<SkillStrategy<?, ?>> KEY = createKey();
+    public static final ResourceKey<SkillStrategy<?, ?>> KEY = SkillerRegistryKeys.strategy(ID);
 
     /** 与方块描边区分开的渲染器 id（客户端注册同名渲染器）。 */
     public static final ResourceLocation RENDERER_ID =
@@ -52,11 +52,5 @@ public class CoeEntityStrategy implements SkillStrategy<Entity, HitSkillContext>
     @Override
     public ResourceLocation getRendererId() {
         return RENDERER_ID;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ResourceKey<SkillStrategy<?, ?>> createKey() {
-        return (ResourceKey<SkillStrategy<?, ?>>) (ResourceKey<?>)
-                ResourceKey.create(SkillerRegistries.STRATEGY, ID);
     }
 }

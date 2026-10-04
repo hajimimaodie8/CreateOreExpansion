@@ -3,8 +3,8 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 import com.hjmmd_8.createoreexpansion.content.skill.config.tool.FellingConfig;
 import com.hjmmd_8.createoreexpansion.foundation.util.world.BlockSearch;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
+import com.hjmmd_8.createoreexpansion.integration.skiller.SkillerRegistryKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.CoeSkillSupport;
-import com.leaf.skiller.api.registry.SkillerRegistries;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.strategy.SkillStrategy;
 import net.minecraft.core.BlockPos;
@@ -40,7 +40,7 @@ public class CoeFellingStrategy implements SkillStrategy<BlockPos, ExcavationSki
             ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, "felling");
 
     /** 该策略在 {@code skiller:skill_strategy} 注册表中的键（技能用 {@code getStrategy()} 引用它）。 */
-    public static final ResourceKey<SkillStrategy<?, ?>> KEY = createKey();
+    public static final ResourceKey<SkillStrategy<?, ?>> KEY = SkillerRegistryKeys.strategy(ID);
 
     /** 客户端预览渲染器 id——与 {@link CoeAreaAoeStrategy} <b>同一个</b>（都是方块描边预览）。 */
     public static final ResourceLocation RENDERER_ID = CoeAreaAoeStrategy.RENDERER_ID;
@@ -100,11 +100,5 @@ public class CoeFellingStrategy implements SkillStrategy<BlockPos, ExcavationSki
         FellingConfig snapshot = new FellingConfig(0, 1, FellingConfig.BlockPredicate.IS_LOG, 0, 0.0F, 0.0F, 0);
         snapshot.loadFromNbt(nbt);
         return snapshot;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ResourceKey<SkillStrategy<?, ?>> createKey() {
-        return (ResourceKey<SkillStrategy<?, ?>>) (ResourceKey<?>)
-                ResourceKey.create(SkillerRegistries.STRATEGY, ID);
     }
 }

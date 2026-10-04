@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.tool;
 
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
+
 /**
  * 伐树（斧类连锁砍树）技能 —— 统一配置类（搜索范围 / 方块上限 / 砍伐对象 / 能量 / 速度衰减 集中修改点）。
  *
@@ -74,12 +76,6 @@ public final class FellingConfigs {
 
     /** 伐树按等级取配置（Lv1~5） */
     public static Level level(int level) {
-        return switch (level) {
-            case 1 -> LEVEL_1;
-            case 2 -> LEVEL_2;
-            case 3 -> LEVEL_3;
-            case 4 -> LEVEL_4;
-            default -> LEVEL_5;
-        };
+        return SkillLevelTables.pick5(level, LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5);
     }
 }

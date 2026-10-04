@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
+
 /**
  * <b>虚衡坠护</b>（翠玉套 · 槽位 1）技能 —— 统一配置类（概率 / 长按上限 / 耗能 / 冷却的集中修改点）。
  *
@@ -51,10 +53,6 @@ public final class FallGuardConfigs {
      * @param level 技能等级（&lt;= 0 或超界时钳到 1~{@link #MAX_LEVEL}）
      */
     public static Config config(int level) {
-        return switch (Math.max(1, Math.min(MAX_LEVEL, level))) {
-            case 1 -> LEVEL_1;
-            case 2 -> LEVEL_2;
-            default -> LEVEL_3;
-        };
+        return SkillLevelTables.pick3Clamped(level, MAX_LEVEL, LEVEL_1, LEVEL_2, LEVEL_3);
     }
 }

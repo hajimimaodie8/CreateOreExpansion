@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 /**
@@ -117,11 +118,7 @@ public final class StarShockConfigs {
 
     /** 按等级取配置（与其它四条装备技能的 {@code config(int)} 同名同形）。 */
     public static Config config(int level) {
-        return switch (Math.max(1, Math.min(MAX_LEVEL, level))) {
-            case 1 -> LEVEL_1;
-            case 2 -> LEVEL_2;
-            default -> LEVEL_3;
-        };
+        return SkillLevelTables.pick3Clamped(level, MAX_LEVEL, LEVEL_1, LEVEL_2, LEVEL_3);
     }
 
     /**

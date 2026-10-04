@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.tool;
 
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
@@ -46,24 +47,12 @@ public final class SkillAoeConfigs {
 
     /** 开岩按等级取配置（Lv1~5） */
     public static Level breakRockLevel(int level) {
-        return switch (level) {
-            case 1 -> BREAK_ROCK_1;
-            case 2 -> BREAK_ROCK_2;
-            case 3 -> BREAK_ROCK_3;
-            case 4 -> BREAK_ROCK_4;
-            default -> BREAK_ROCK_5;
-        };
+        return SkillLevelTables.pick5(level, BREAK_ROCK_1, BREAK_ROCK_2, BREAK_ROCK_3, BREAK_ROCK_4, BREAK_ROCK_5);
     }
 
     /** 引渠按等级取配置（Lv1~5） */
     public static Level channelLevel(int level) {
-        return switch (level) {
-            case 1 -> CHANNEL_1;
-            case 2 -> CHANNEL_2;
-            case 3 -> CHANNEL_3;
-            case 4 -> CHANNEL_4;
-            default -> CHANNEL_5;
-        };
+        return SkillLevelTables.pick5(level, CHANNEL_1, CHANNEL_2, CHANNEL_3, CHANNEL_4, CHANNEL_5);
     }
 
     /** 平场按等级取配置（Lv1~3） */

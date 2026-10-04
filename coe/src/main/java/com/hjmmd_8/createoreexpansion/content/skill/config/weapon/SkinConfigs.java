@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.weapon;
 
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
+
 /**
  * 剥取（剑类额外掉落）技能 —— 统一配置类（掉落概率 / 掉落数量分布 / 能量 / 冷却 集中修改点）。
  *
@@ -68,12 +70,6 @@ public final class SkinConfigs {
 
     /** 剥取按等级取配置（Lv1~5） */
     public static Level level(int level) {
-        return switch (level) {
-            case 1 -> LEVEL_1;
-            case 2 -> LEVEL_2;
-            case 3 -> LEVEL_3;
-            case 4 -> LEVEL_4;
-            default -> LEVEL_5;
-        };
+        return SkillLevelTables.pick5(level, LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5);
     }
 }

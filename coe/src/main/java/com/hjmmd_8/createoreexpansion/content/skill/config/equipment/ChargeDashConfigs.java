@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
+
 /**
  * <b>蓄能疾骋</b>（装备技能槽位 2）的分级数值 —— 与 {@link FallGuardConfigs} 同形，是这条技能唯一的数值真源。
  *
@@ -47,11 +49,7 @@ public final class ChargeDashConfigs {
 
     /** 按等级取配置（与 {@code FallGuardConfigs#config(int)} 同名同形）。 */
     public static Config config(int level) {
-        return switch (Math.max(1, Math.min(MAX_LEVEL, level))) {
-            case 1 -> LEVEL_1;
-            case 2 -> LEVEL_2;
-            default -> LEVEL_3;
-        };
+        return SkillLevelTables.pick3Clamped(level, MAX_LEVEL, LEVEL_1, LEVEL_2, LEVEL_3);
     }
 
     /**
