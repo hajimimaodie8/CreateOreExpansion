@@ -24,7 +24,10 @@ import org.joml.Vector3f;
  * {@link ChargedPositiveEffect} / {@link ChargedNegativeEffect}（配色、常驻粒子、扣血节奏）、
  * {@code common.registry.coe.CoeEffects}（注册）、{@code ChargeApi}（等级换算 / 爆炸 / 中和冷却）
  * 与 {@code ChargeResidues} + {@code ChargeResidueData}（批 7 的残留：寿命 / 等级 / 载体名 /
- * 稀疏粒子）。<b>只剩「生物受场」那一组（批 8）还没有读取方</b>——各条注释里写明它属于哪一批。</p>
+ * 稀疏粒子）。<b>批 8 已把最后那一组（生物受场）也接上</b>：{@code EntityFieldBridge} /
+ * {@code EntityFieldHandler}（受力缩放 <b>0.05</b>、两个限幅、格↔tick 换算）与接口
+ * {@code FieldedEntity}（它的默认方法读 {@link #NEUTRAL_FIELD_STRENGTH_SCALE}）
+ * ⇒ 本表现在<b>每一组常量都有读取方</b>，没有"只声明不引用"的残留。</p>
  *
  * <p><b>自定义 {@code DamageType}：作者先否决、同日后改判为「按需求原文建」</b>
  * （2026-10-03，批 6 执行期间）。需求 §六 #4 原文就建议新建一个（便于区分与免疫），
@@ -366,6 +369,42 @@ public final class ChargeConfigs {
 	 * 8 格/秒 已经明显能推动/偏转，但仍远低于坠落终速，不会把人甩出世界。</p>
 	 */
 	public static final double LIVING_FIELD_MAX_SPEED = 8.0D;
+
+	/**
+	 * <b>受场强度的中性默认值</b>：{@code 1.0}（原强度、不缩放）—— 它是
+	 * {@code FieldedEntity#fieldStrengthScale()} 这个<b>默认方法</b>的返回值
+	 * （coe-charge 批 8；那个方法本身住在 {@code content.energyfield} 的接口里）。
+	 *
+	 * <p><b>为什么是 1.0 而不是 0</b>（执行会话 2026-10-04 按代码现状定，依据逐条如下）：
+	 * <ol>
+	 *   <li><b>代码现状就是 1.0</b>：批 8 之前唯一的场应用实现
+	 *       {@code EnergyFields#applyFields} 在它的两处 {@code field.apply(..)} 调用点上
+	 *       传的是字面量 {@code 1.0}（真实/结构两条分支各一处）⇒ "既有实现者的强度"从来就是 1.0；</li>
+	 *   <li><b>加默认值必须是纯新增</b>：默认方法对所有既有实现者（今天只有波实体
+	 *       {@code AbstractChargerWaveEntity}）生效，返回 1.0 ⇒ 它<b>一个字节的行为都不变</b>；
+	 *       若返回 0，则所有既有实现者的场作用会<b>当场静默失效</b>（不报错、关卡全绿、只有实机才看得出），
+	 *       那是改玩法而不是"加一个默认方法"；</li>
+	 *   <li><b>生物不走这个默认值</b>：带电生物的那条链（{@code EntityFieldBridge} 的窄句柄）
+	 *       <b>覆写</b>本方法并返回 {@link #LIVING_FIELD_STRENGTH_SCALE} ⇒ 中性默认值与
+	 *       "生物受场要缩小到 0.05" 两件事互不干扰，各自只有一个读取方。</li>
+	 * </ol>
+	 */
+	public static final double NEUTRAL_FIELD_STRENGTH_SCALE = 1.0D;
+
+	/**
+	 * 格/秒 → 格/tick 的换算因数：<b>{@code 1 / }{@link #TICKS_PER_SECOND}</b>。
+	 *
+	 * <p><b>为什么这个换算也要进数值真源</b>：{@code FieldedEntity} 契约里的速度一律是
+	 * <b>格/秒</b>（波那侧一直如此，{@code EnergyField#apply} 的加速度项也按"每 tick 增量 = 强度/20"
+	 * 的格/秒口径定义），而 {@code Entity#setDeltaMovement} 吃的是<b>格/tick</b>
+	 * ⇒ 生物受场桥来回各换一次。把"除以 20"这一步收在这里，桥的两个方向就都只按名引用：
+	 * 去程 {@code getDeltaMovement().scale(TICKS_PER_SECOND)}、回程
+	 * {@code scale(perTickFactor())} —— 调用点因此<b>不需要</b>写 {@code 1.0 / 20} 这类字面量
+	 * （那个文件里出现任何数值都会被关卡当作"数值没走真源"）。</p>
+	 */
+	public static double perTickFactor() {
+		return 1.0D / TICKS_PER_SECOND;
+	}
 
 	// ==================================================================================
 	// 七、表现：配色与粒子（批 1 就接；需求 §3.8 / §0.2）

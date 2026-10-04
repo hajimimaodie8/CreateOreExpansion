@@ -159,6 +159,14 @@ public final class EnergyFields {
 	 * 优先用<b>该结构自身的场</b>（plot 本地坐标/方向，结构随位姿运动自然跟随）；
 	 * 否则用所在主世界维度的场。结构↔真实场互不可见（控制器只在同侧配对产场）。</p>
 	 *
+	 * <p><b>★ 强度缩放由实体自己给（coe-charge 批 8）</b>：两处 {@code field.apply(..)} 的
+	 * 第三个实参从<b>字面量 1.0</b> 改读 {@link FieldedEntity#fieldStrengthScale()}。
+	 * 对既有实现者（波实体）这是<b>行为零变化</b>——它的默认方法返回的正是
+	 * {@code ChargeConfigs.NEUTRAL_FIELD_STRENGTH_SCALE} = 1.0，与批 8 之前写死的那一个数相同；
+	 * 受场的生物则由 {@code EntityFieldBridge} 的窄句柄覆写成 0.05（需求 §六 #9「比波小」）。
+	 * ⚠ 这里刻意<b>不</b>判断"是不是生物"：缩放是实体自己的属性，本方法只负责"问一次"，
+	 * 免得场系统里出现第二条"谁该被缩多少"的口径。</p>
+	 *
 	 * @param entity 带电实体（实现 {@link FieldedEntity}）
 	 * @param level  实体所在世界
 	 * @return 修正后的速度（格/秒，世界坐标）；无场或实体不带电则返回原速度
@@ -169,6 +177,7 @@ public final class EnergyFields {
 			return entity.fieldVelocity();
 		Vec3 pos = entity.fieldPosition();
 		Vec3 vel = entity.fieldVelocity();
+		double scale = entity.fieldStrengthScale();
 
 		// 1) 物理结构（sub-level）：波在主世界飞行，无需"压到结构实体方块"——对每个含场的
 		//    结构把波的世界坐标反算成本地坐标，落入该结构任一本地场区域即作用（结构场随位姿运动）。
@@ -187,7 +196,7 @@ public final class EnergyFields {
 						if (field.contains(local)) {
 							hitAny = true;
 							localVel = localVel == null ? bridge.toLocalDir(hit, vel) : localVel;
-							localVel = field.apply(localVel, charge, 1.0);
+							localVel = field.apply(localVel, charge, scale);
 						}
 					}
 					if (hitAny)
@@ -206,7 +215,7 @@ public final class EnergyFields {
 			return vel;
 		for (EnergyField field : fields) {
 			if (field.contains(pos)) {
-				vel = field.apply(vel, charge, 1.0);
+				vel = field.apply(vel, charge, scale);
 			}
 		}
 		return vel;
