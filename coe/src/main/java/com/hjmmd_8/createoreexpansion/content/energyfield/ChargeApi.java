@@ -55,8 +55,14 @@ import net.minecraft.world.phys.AABB;
  * <b>绝不破坏地形</b>；参与中和的每一方<b>两种</b>电荷效果都被移除；并按
  * {@link ChargeConfigs#NEUTRALIZE_COOLDOWN_TICKS} 双方各记一笔账
  * （防同一对贴身时每 tick 反复爆——需求没写、但几何上必然发生的洞）。
- * 残留仍是批 7：本类只在中和点留了具名钩子 {@link #leaveResidue}
- * （带 {@code TODO 批 7}，并记一行日志 —— <b>刻意不静默</b>，批 3 的同一课）。</p>
+ * 残留<b>批 7 已落地</b>（需求 §3.5 #6~#9）：中和的最后一件事是在爆炸中心留一条残留
+ * （{@link #leaveResidue} → {@code ChargeResidues#spawn}）。残留的载体（内存表 +
+ * {@code SavedData}，<b>零新注册</b>）、寿命公式、稀疏粒子、接触传染与「同一实体对同一块
+ * 残留只染一次」的账本住在同包的 {@code ChargeResidues} / {@code ChargeResidueData}；
+ * 本类只负责两件与「谁身上带电」直接相关的事：① 把<b>残留给的那笔电打上标记</b>
+ * （{@link #applyResidue}，包级私有 —— 不是对外 API）；② 中和时如果当事人身上那笔电
+ * <b>本身就来自残留</b>，就不再留新残留（{@code fromResidue} 那道闸 —— 少了它，
+ * 残留会靠中和一轮轮自我复制）。</p>
  *
  * <p><b>Holder 身份：为什么本类不需要批 2 那个 {@code is(ResourceKey)} 兜底</b>：
  * {@code ChargeEffectRemovalHandler} 需要它，是因为它在 {@code MobEffectEvent.Remove} 里拿
@@ -301,8 +307,19 @@ public final class ChargeApi {
 	 *   <li><b>记账</b>：双方各写一笔「下一次可中和的时刻」（{@link #stampNeutralization}）；</li>
 	 *   <li><b>范围伤害</b>：立方体内每个生物 {@code L × 2}（{@link #hurtInCube}）；</li>
 	 *   <li><b>粒子</b>：两色混合 + 恰好一次 {@code FLASH}（{@link #sendBurst}）；</li>
-	 *   <li><b>残留钩子</b>：批 7（{@link #leaveResidue}，刻意不静默）。</li>
+	 *   <li><b>残留</b>：{@link #leaveResidue} —— 在中心留下一条残留（批 7），
+	 *       除非这次中和的当事人身上那笔电<b>本身就来自残留</b>
+	 *       （「残留不再生残留」；判据是 {@link #RESIDUE_SOURCE_UNTIL_TAG} 那个标记）。</li>
 	 * </ol>
+	 *
+	 * <p><b>★ 为什么「残留不再生残留」要靠本类打标记</b>（需求 §3.5 的「必须处理的一个设计洞」）：
+	 * 残留会给接触它的生物染电，而染上电的生物一旦遇上相反极就会中和。若中和照旧留残留，
+	 * 链条就是「残留 → 染电 → 中和 → 新残留 → ……」自我复制，几何上永不停止。
+	 * 前两道闸（同一实体对同一块残留只染一次、已带电的跳过）都只挡住「同一块残留重复给电」，
+	 * <b>挡不住「新残留」</b> ⇒ 必须让「因残留而带电」这个事实<b>跟着那笔电走</b>：
+	 * 施加时打上标记（{@link #applyResidue}），中和时读一次
+	 * （{@link #isResidueSourced}），读过就把标记清掉（{@link #clearResidueSource}，
+	 * 免得一笔陈旧的标记把之后一笔<b>正常来源</b>的中和也一并静音）。</p>
 	 *
 	 * @param first          参与中和的第一方（{@code apply} 那条 = 持现极性的当事人；接触那条任一方）
 	 * @param second         第二方；{@code null} = 异极由外部施加，本次只有一方
@@ -315,9 +332,14 @@ public final class ChargeApi {
 			int firstLevel, ChargePolarity secondPolarity, int secondLevel) {
 		int level = Math.min(firstLevel, secondLevel);
 		Center center = centerOf(first, second);
+		// ★ 这笔（这几笔）电是不是「残留给的」——必须在移除效果之前读（第 3 步就在移除），
+		//   而这一步的答案决定最后一步要不要留残留（残留不再生残留）。
+		boolean fromResidue = isResidueSourced(first) || (second != null && isResidueSourced(second));
 		removeCharges(first);
+		clearResidueSource(first);
 		if (second != null) {
 			removeCharges(second);
+			clearResidueSource(second);
 		}
 		stampNeutralization(first);
 		if (second != null) {
@@ -329,7 +351,7 @@ public final class ChargeApi {
 		// 死亡消息取不到攻击者（会落到 death.attack.charge.player 那条兜底上）。
 		hurtInCube(first.level(), second == null ? first : second, center, level);
 		sendBurst(first.level(), center, level);
-		leaveResidue(center, level);
+		leaveResidue(first.level(), center, level, fromResidue);
 		CoeCore.LOGGER.info(
 			"[电荷中和] {}（{} Lv{}）与 {}（{} Lv{}）中和：中心 {}、爆炸等级 Lv{}、立方体边长 {} 格、范围内每个生物扣 {} 点、不破坏地形",
 			first.getName().getString(), firstPolarity, firstLevel,
@@ -522,30 +544,108 @@ public final class ChargeApi {
 	}
 
 	/**
-	 * ★ <b>中和点留电荷残留 —— 批 7 的唯一落地钩子，本批刻意留空</b>（需求 §3.5 #6~#9）。
+	 * ★ <b>中和点留电荷残留（coe-charge 批 7；需求 §3.5 #6~#9）</b>—— 中和爆炸的最后一步。
 	 *
-	 * <p><b>本批它做什么</b>：记一行日志，<b>不生成任何残留</b>。也就是说：今天中和之后
-	 * 那块地方是干净的——没有残留载体、没有残留粒子、没有「接触残留随机染电」。</p>
+	 * <p><b>它做什么</b>：把「在 {@code center} 留下一条残留」这件事交给同包的
+	 * {@code ChargeResidues#spawn}（残留的载体 / 寿命 / 稀疏粒子 / 接触传染 / 防连锁账本
+	 * 全在那两处，本类不重复任何一种口径）。存活的 tick 数、给出去的等级、区域大小、
+	 * 粒子颗数都由 {@code ChargeConfigs} 按名派生 —— 本文件仍然是<b>零数字字符</b>。</p>
 	 *
-	 * <p><b>为什么留一行日志而不是干脆空着</b>：空分支 = 无从判断它有没有被走到
-	 * （批 3 的同一课：静默分支与「没被走到」从外部完全不可区分）。中和点正是批 7 的落点，
-	 * 实机验收时要能一眼看出「这条钩子走到了、只是还没实现」。</p>
+	 * <p>★ <b>「残留不再生残留」这道闸</b>（{@code fromResidue}）：当事人身上那笔电如果是
+	 * 残留给的，这次中和<b>什么都不留</b>（只记一行日志，好让实机验收一眼看出「走到了这条
+	 * 钩子、只是被那道闸拦下」）——理由见 {@code detonate} 的 javadoc。
+	 * 判据在 {@code detonate} 里算好传进来（那时效果还在），本方法只负责分支。</p>
 	 *
-	 * <p><b>批 7 要在这里补什么</b>（参数摆全就是为了那时候不用改调用点）：在 {@code center}
-	 * 生成残留载体、存活 {@link ChargeConfigs#residueLifetimeTicks(int)} tick、稀疏粒子、
-	 * 生物接触残留 ⇒ 随机染电且等级 = {@link ChargeConfigs#residueInflictedLevel(int)}，
-	 * 并处理「同一实体对同一块残留只染一次 + 残留间爆炸最小间隔」的防连锁规则
-	 * （需求 §3.5 的「必须处理的一个设计洞」）。</p>
+	 * <p><b>为什么先判服务端</b>：残留是维度存档里的数据、粒子是服务端权威 ⇒ 只有
+	 * {@code ServerLevel} 才继续（与 {@link #sendBurst} 同一口径）。客户端手里即使拿着
+	 * 一个 {@code Level} 也只是静默返回，不会去碰存档。</p>
 	 *
-	 * @param center 中和点（{@link #detonate} 算出的爆炸中心）
-	 * @param level  爆炸等级 {@code L}（残留的寿命与给的等级都从它派生）
+	 * @param world       中和发生的世界（{@code detonate} 的当事人所在维度）
+	 * @param center      中和点（{@code detonate} 算出的爆炸中心）
+	 * @param level       爆炸等级 {@code L}（残留的寿命、给的等级、区域、粒子都从它派生）
+	 * @param fromResidue 这次中和的当事人身上是否带着「这笔电来自残留」的标记
 	 */
-	private static void leaveResidue(Center center, int level) {
-		// TODO 批 7（电荷残留，需求 §3.5 #6~#9）：清单见方法 javadoc；本批只留这个具名钩子，
-		//   并在这里记一行日志（刻意不静默）。
-		//   ⚠ 落地时同时改掉关卡里「残留仍是钩子」那条断言（check-armor-sets.ps1 中和爆炸节）。
-		CoeCore.LOGGER.info("[电荷中和] 中和点 {}（爆炸等级 Lv{}）已记账：电荷残留属于后续批次，本批不生成残留、不放残留粒子",
-			center, level);
+	private static void leaveResidue(Level world, Center center, int level, boolean fromResidue) {
+		if (!(world instanceof ServerLevel server)) {
+			return; // 残留是维度存档里的数据（服务端权威，与粒子的口径一致）
+		}
+		if (fromResidue) {
+			// ★ 残留不再生残留：这笔电本来就是残留给的 ⇒ 这次中和不再留新残留，
+			//   否则「残留 → 染电 → 中和 → 新残留」会一轮轮自我复制（需求 §3.5 的设计洞）。
+			CoeCore.LOGGER.info("[电荷残留] 中和点 {}（爆炸等级 Lv{}）的当事人身上那笔电来自残留：按「残留不再生残留」不再留下残留",
+				center, level);
+			return;
+		}
+		ChargeResidues.spawn(server, center.x(), center.y(), center.z(), level);
+	}
+
+	/**
+	 * <b>「这笔电来自残留」的标记</b>所住的实体持久数据键（{@link #applyResidue} 写、
+	 * {@link #isResidueSourced} 读、{@link #clearResidueSource} 清）。
+	 *
+	 * <p>带命名空间前缀（{@code coe_}）的理由与 {@link #NEUTRALIZE_UNTIL_TAG} 完全相同
+	 * （实体的持久数据是所有模组共用的一块 NBT）。存的是<b>到期时刻</b>而不是一个布尔值：
+	 * 残留给的电本身就有寿命（{@code ChargeConfigs.durationTicks(..)}），标记与那笔电
+	 * <b>同时过期</b>，于是「效果还在但标记已过期」不会发生，也就不需要任何清理钩子。</p>
+	 */
+	private static final String RESIDUE_SOURCE_UNTIL_TAG = "coe_charge_residue_until";
+
+	/**
+	 * ★ <b>残留染电（coe-charge 批 7）：与公开的 {@link #apply} 只差最后一件事 ——
+	 * 给这笔电打上「来自残留」的标记</b>。
+	 *
+	 * <p><b>为什么是包级私有、不是第六个公开方法</b>：本类的对外承诺是<b>恰好那五个</b>
+	 * 静态方法（需求 §3.6 的形状，第三方模组按那张表编程）。残留是本模组自己的内部机制，
+	 * 外面没有第二个调用者 ⇒ 它只能走包级私有（与 {@link #checkContact} 同一档），
+	 * 关卡里有负向断言钉着「{@code public static} 恰好五个」。</p>
+	 *
+	 * <p><b>为什么单独一个入口而不是在调用点自己写两行</b>：标记必须与「真的加上了电」
+	 * 严格同步 —— 免疫（{@code canBeAffected} 为 false）时 {@link #apply} 返回 false、
+	 * 什么都没加，此时<b>不能</b>打标记（打了的话，一次没染上的尝试会让这个实体之后
+	 * 一次正常来源的中和也不留残留）。放在一处，这个同步就只有一种写法。</p>
+	 *
+	 * <p>施加的语义（同极合并 / 异极中和）<b>完全沿用</b> {@link #apply} —— 不另写一份。
+	 * ⚠ 调用点（残留载体）已经先问过 {@link #hasCharge}，所以这里的 {@code apply}
+	 * 只会走「身上没有电」那一条分支，不会因为异极而当场中和。</p>
+	 *
+	 * @param entity   目标生物（{@code null} ⇒ 返回 false）
+	 * @param polarity 残留自己的极性（在残留生成时抽定，需求 §3.5 #8 的「随机」）
+	 * @param level    残留给的等级（{@code ChargeConfigs.residueInflictedLevel(L)}）
+	 * @return 与 {@link #apply} 同义：这次调用之后实体是否真的带上了这笔电
+	 */
+	static boolean applyResidue(LivingEntity entity, ChargePolarity polarity, int level) {
+		if (entity == null || polarity == null) {
+			return false;
+		}
+		int inflictedLevel = ChargeConfigs.clampLevel(level);
+		if (!apply(entity, polarity, inflictedLevel, ChargeConfigs.durationTicks(inflictedLevel))) {
+			return false;
+		}
+		entity.getPersistentData().putLong(RESIDUE_SOURCE_UNTIL_TAG,
+			entity.level().getGameTime() + ChargeConfigs.durationTicks(inflictedLevel));
+		return true;
+	}
+
+	/**
+	 * 这个实体身上那笔电是不是<b>残留给的</b>（{@link #applyResidue} 写、这里读，同一个键）。
+	 *
+	 * <p>比的是「当前时刻 &lt; 标记的到期时刻」——与 {@link #neutralizationOnCooldown} 同一形状：
+	 * 没打过标记的实体读出 {@code 0} ⇒ 恒为 false（「不是残留给的」），
+	 * 刚开服那几个 tick 不会被误判。</p>
+	 */
+	private static boolean isResidueSourced(LivingEntity entity) {
+		return entity.level().getGameTime() < entity.getPersistentData().getLong(RESIDUE_SOURCE_UNTIL_TAG);
+	}
+
+	/**
+	 * 清掉「这笔电来自残留」的标记（中和读完标记之后立刻调，双方各一次）。
+	 *
+	 * <p><b>为什么必须清</b>：不清的话，一笔来自残留的电在它自己的寿命里会一直让
+	 * <b>之后每一次</b>中和都不留残留 —— 包括那些当事人早已换成「雷击 / 线圈 / 带电波」
+	 * 正常来源的中和。清掉之后，标记与效果<b>同时结束</b>：中和移除了效果，标记也一起走。</p>
+	 */
+	private static void clearResidueSource(LivingEntity entity) {
+		entity.getPersistentData().remove(RESIDUE_SOURCE_UNTIL_TAG);
 	}
 
 	/** 该极性对应的注册项（两个 {@code DeferredHolder} 都在 {@code :coe}，永远在场）。 */

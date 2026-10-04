@@ -20,10 +20,11 @@ import org.joml.Vector3f;
  * （开工需求 {@code 20261003-1750_coe-charge_charge-debuffs.md}）、「作者 2026-10-03 定」
  * （作者裁定 / 理解确认里转述的裁定）、「执行会话 2026-10-03 定」（文档留给执行会话定的值）。</p>
  *
- * <p><b>批 1 只落常量、不接调用点</b>：本类此刻的读取方只有
- * {@link ChargedPositiveEffect} / {@link ChargedNegativeEffect}（配色与常驻粒子）与
- * {@code common.registry.coe.CoeEffects}（注册）。爆炸 / 残留 / 四条途径 / 生物受场那几组
- * 常量是给批 4~8 备好的同一份真源，<b>此刻没有读取方</b>——各条注释里写明它属于哪一批。</p>
+ * <p><b>批 1 只落常量、不接调用点</b>（此后逐批接上）：本类此刻的读取方是
+ * {@link ChargedPositiveEffect} / {@link ChargedNegativeEffect}（配色、常驻粒子、扣血节奏）、
+ * {@code common.registry.coe.CoeEffects}（注册）、{@code ChargeApi}（等级换算 / 爆炸 / 中和冷却）
+ * 与 {@code ChargeResidues} + {@code ChargeResidueData}（批 7 的残留：寿命 / 等级 / 载体名 /
+ * 稀疏粒子）。<b>只剩「生物受场」那一组（批 8）还没有读取方</b>——各条注释里写明它属于哪一批。</p>
  *
  * <p><b>自定义 {@code DamageType}：作者先否决、同日后改判为「按需求原文建」</b>
  * （2026-10-03，批 6 执行期间）。需求 §六 #4 原文就建议新建一个（便于区分与免疫），
@@ -222,7 +223,7 @@ public final class ChargeConfigs {
 	public static final int NEUTRALIZE_INVULNERABLE_TIME = 0;
 
 	// ==================================================================================
-	// 四、电荷残留（批 7 接）
+	// 四、电荷残留（批 7 已接：寿命 / 等级在下面，载体名与稀疏粒子在「四之二」）
 	// ==================================================================================
 
 	/**
@@ -250,6 +251,58 @@ public final class ChargeConfigs {
 	 */
 	public static int residueInflictedLevel(int explosionLevel) {
 		return Math.max(MIN_LEVEL, explosionLevel - 1);
+	}
+
+	/**
+	 * ★ <b>残留的持久化载体名（{@code SavedData} 的 id）</b>：
+	 * {@code createoreexpansion_charge_residues}。
+	 *
+	 * <p><b>为什么这个字符串住在本表</b>：它是一把<b>存档键</b>（与配置键 / 语言键 / 数据包路径
+	 * 同一类红线 —— 改掉就等于把老存档里的残留整片丢掉），所以与数值一样<b>只许有一处声明</b>，
+	 * 调用点按名引用（关卡钉着「声明 + 恰好一处使用」）。</p>
+	 *
+	 * <p><b>老存档（根本没有这个文件）的行为 = 无残留</b>：维度数据存储拿这张表时，
+	 * 文件不存在就<b>直接调工厂的构造器</b>（得到一张空表），{@code load} 只在文件存在时才被调用；
+	 * 而 {@code load} 读的是一个 {@code getList(..)}（缺键返回空列表，不抛）
+	 * ⇒ 老存档进游戏后残留数恒为 0，<b>不报错、不需要任何迁移代码</b>。
+	 * 关卡里有断言同时钉住这两半（键名 + 缺失即空表）。</p>
+	 *
+	 * <p><b>⚠ 零新注册</b>：{@code SavedData} 是<b>逐维度的存档附件</b>，不占任何
+	 * {@code Registries} 条目、不需要 {@code DeferredRegister}、不进数据包
+	 * —— 本批因此<b>一个注册项都没有新增</b>（关卡有负向断言）。</p>
+	 */
+	public static final String RESIDUE_DATA_NAME = "createoreexpansion_charge_residues";
+
+	/**
+	 * 残留稀疏粒子的发射间隔（tick）：<b>10</b>（= 半秒一次）。
+	 *
+	 * <p>需求 §3.5 #7：残留「同样用爆炸式粒子，但<b>更稀疏</b>」⇒ 爆炸是「一次性一大把」，
+	 * 残留是「存活期内连续、每次一小把」。间隔取 10 tick：{@link #residueLifetimeTicks(int)}
+	 * 的 114~136 tick 寿命里，一条残留发 11~13 次。</p>
+	 */
+	public static final int RESIDUE_PARTICLE_INTERVAL_TICKS = 10;
+
+	/**
+	 * 残留每次发射的<b>每种颜色</b>粒子颗数基数：<b>3</b>。
+	 *
+	 * <p>对照爆炸的 {@link #NEUTRALIZE_PARTICLE_BASE} = 30（两色各发一份）⇒ 每次发射的
+	 * 密度只有爆炸的十分之一，「稀疏」由此成立。</p>
+	 */
+	public static final int RESIDUE_PARTICLE_BASE = 3;
+
+	/** 残留每次发射的<b>每级增量</b>：<b>1</b>（爆炸是 {@link #NEUTRALIZE_PARTICLE_PER_LEVEL} = 20）。 */
+	public static final int RESIDUE_PARTICLE_PER_LEVEL = 1;
+
+	/**
+	 * 一条残留在<b>一次发射</b>里的主粒子颗数（<b>每种颜色</b>）
+	 * = {@link #RESIDUE_PARTICLE_BASE} + 等级 × {@link #RESIDUE_PARTICLE_PER_LEVEL}。
+	 *
+	 * <p>⚠ 残留<b>不发 {@code FLASH}</b>：那个粒子的口径是 {@link #NEUTRALIZE_FLASH_COUNT}
+	 * 「一次中和恰好一颗」（需求 §3.8 原话「⚠ 单次，别每 tick 刷」）—— 残留每 10 tick 发一次，
+	 * 跟着刷 FLASH 就是把那条口径反过来做。</p>
+	 */
+	public static int residueParticleCount(int explosionLevel) {
+		return RESIDUE_PARTICLE_BASE + explosionLevel * RESIDUE_PARTICLE_PER_LEVEL;
 	}
 
 	// ==================================================================================
