@@ -8,6 +8,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageType;
 
 import org.joml.Vector3f;
@@ -314,6 +315,56 @@ public final class ChargeConfigs {
 
 	/** 被雷电击中给的等级：<b>1</b>（需求 §3.2 #1 / §六 #3：三条随机极性途径里雷电取 1）。 */
 	public static final int LIGHTNING_LEVEL = 1;
+
+	// ----------------------------------------------------------------------------------
+	// 五之二、雷魔素命中生物（作者 2026-10-04 统一标准；弓技能批 3「元矢自生」期间下达）
+	//
+	// 作者原话：「雷魔素攻击生物之后，会随机给生物附着一种电荷，附着时间为 5 秒，附着的那个
+	// buff 等级从 1~3 随机。」⇒ 三条口径各自只有一个常量，**都不走**上面那套按等级的公式：
+	//   · 时长 = 固定 5 秒（≠ durationTicks(等级)，那条公式仍服务另外四条获得途径，一字未动）；
+	//   · 等级 = 闭区间 [1, 3] 的**纯随机**整数（≠ 继承波级，也 ≠ 按弓的档位等级）；
+	//   · 极性 = 随机（由 ChargeApi.applyRandom 掷硬币，不在本表）。
+	// 施加面唯一：content.energyfield.charge.LightningEssenceHitCharge#applyOnHit（它只调
+	// ChargeApi.applyRandom，本表的两个上下界与时长按名引用 ⇒ 调用点零字面量）。
+	// ----------------------------------------------------------------------------------
+
+	/**
+	 * ★ <b>雷魔素命中生物时，这笔电荷的附着时长（tick）：5 秒 = 100 tick</b>
+	 * （作者 2026-10-04 统一标准，原话「附着时间为 5 秒」）。
+	 *
+	 * <p>⚠ <b>它与 {@link #durationTicks(int)} 无关</b>：那条公式（{@code 100 tick × 等级}）
+	 * 是另外四条获得途径的「按等级给时长」口径，仍然一字未动。这里是<b>固定 5 秒</b>——
+	 * 不管这次随机到的是 1 级还是 3 级，附着时长都恰好是 5 秒。</p>
+	 *
+	 * <p>算式写成 {@code 5 × }{@link #TICKS_PER_SECOND}（本表唯一一处「秒 → tick」的换算因数）：
+	 * 改那一个因数，本常量与残留寿命一起动。</p>
+	 */
+	public static final int LIGHTNING_ESSENCE_CHARGE_TICKS = 5 * TICKS_PER_SECOND;
+
+	/** 雷魔素命中生物时这笔电荷的等级<b>下限</b>：<b>1</b>（作者原话「等级从 1~3 随机」）。【作者 2026-10-04 定】 */
+	public static final int LIGHTNING_ESSENCE_CHARGE_MIN_LEVEL = 1;
+
+	/** 雷魔素命中生物时这笔电荷的等级<b>上限</b>：<b>3</b>（同一句话；⚠ 不是波级上限 {@link #MAX_LEVEL} = 5）。【作者 2026-10-04 定】 */
+	public static final int LIGHTNING_ESSENCE_CHARGE_MAX_LEVEL = 3;
+
+	/**
+	 * 雷魔素命中生物时<b>随机抽一个电荷等级</b>（闭区间
+	 * {@code [}{@link #LIGHTNING_ESSENCE_CHARGE_MIN_LEVEL}{@code , }
+	 * {@link #LIGHTNING_ESSENCE_CHARGE_MAX_LEVEL}{@code ]} 上的均匀整数）。
+	 *
+	 * <p>作者的口径是「1~3 <b>随机</b>」⇒ 这里既不继承波级、也不按弓的档位等级抽；
+	 * 上下界只住本表 ⇒ 调用点（{@code LightningEssenceHitCharge#applyOnHit}）零字面量。</p>
+	 *
+	 * <p>随机源由调用点传：与 {@link ChargeApi#applyRandom} 同一口径，用<b>实体自己的</b>
+	 * {@code RandomSource}（不 {@code new Random()} ⇒ 同一种子下可复现）。</p>
+	 *
+	 * @param random 调用方实体自己的随机源
+	 * @return {@code [1, 3]} 上的均匀随机等级
+	 */
+	public static int randomLightningEssenceLevel(RandomSource random) {
+		return Mth.randomBetweenInclusive(random, LIGHTNING_ESSENCE_CHARGE_MIN_LEVEL,
+			LIGHTNING_ESSENCE_CHARGE_MAX_LEVEL);
+	}
 
 	/** 靠近特斯拉线圈给的等级：<b>1</b>（需求 §3.2 #3 / §六 #3）。 */
 	public static final int TESLA_COIL_LEVEL = 1;

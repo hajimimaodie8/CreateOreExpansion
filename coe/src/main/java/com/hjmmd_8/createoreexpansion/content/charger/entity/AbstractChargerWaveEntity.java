@@ -1102,6 +1102,17 @@ public abstract class AbstractChargerWaveEntity extends Entity
 					getWaveLevel(),
 					com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs.durationTicks(getWaveLevel()));
 			}
+			// ★ 2026-10-04（弓技能批 3「元矢自生」，作者当日下达的<b>统一标准</b>）：
+			// 「雷魔素攻击生物之后，会随机给生物附着一种电荷，附着时间为 5 秒，附着的那个 buff
+			// 等级从 1~3 随机」⇒ 这条标准<b>不只服务元矢自生</b>：凡"带雷魔素的攻击波命中生物"
+			// 都算，所以施加点就落在这一处"波命中生物"的路径上（与上面那条"目标就是玩家"的
+			// 魔素分支<b>并列而不重叠</b>），元矢自生只是"借用同一条路径"。
+			// 它刻意放在玩家分支<b>之外</b> ⇒ 生物才吃得到；也刻意**只**放雷过闸：另外七种魔素
+			// 对生物尚无裁定，未带雷魔素的波打中生物时这句什么都不做（与改造前逐字相同）。
+			// ⚠ 玩家那一侧的口径没变：雷魔素打中玩家仍走旧路径、不上电荷（作者已知并接受这条
+			//   中转期的不一致，见 WaveEssenceEffects 类注释 (a)）。
+			// 施加面仍是"魔素层 ⇒ 电荷层 ChargeApi"两级（本类不认电荷、不构造效果实例、不写数字）。
+			WaveEssenceEffects.applyOnWaveCreatureHit(this, target);
 			ChargerWaveFx.burst(level(), position(), trailStyle(), renderColor);
 			discard();
 			return;

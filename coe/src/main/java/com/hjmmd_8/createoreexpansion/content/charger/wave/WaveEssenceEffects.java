@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.wave;
 
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.LightningEssenceHitCharge;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 
 import net.minecraft.core.particles.BlockParticleOption;
@@ -13,6 +14,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Blocks;
 
@@ -21,11 +24,14 @@ import net.minecraft.world.level.block.Blocks;
  *
  * <p><b>作者原话与本类的逐条对应</b>（"不同的魔素打中玩家最好要造成相应的 buff 效果"）：</p>
  * <ul>
- *   <li>(a) <b>雷</b>：<b>刻意留空</b>——作者明说"先不要进行任何效果设置，因为之后我要加一个
+ *   <li>(a) <b>雷</b>：<b>玩家那一支刻意留空</b>——作者明说"先不要进行任何效果设置，因为之后我要加一个
  *       带正电和带负电的 buff"，故 {@code case LIGHTNING} 里只有一行 {@code TODO} 注释 + 直接返回，
- *       <b>连日志都不打</b>（它没有任何效果可报）。
- *       电荷本体的施加面 = {@code content.energyfield.ChargeApi}（coe-charge 批 5 起四条获得途径
- *       都调它）；本臂仍然<b>刻意不调</b>它 —— 本方法只收 {@link Player}，而电荷要玩家与生物都能获得；</li>
+ *       <b>连日志都不打</b>（它没有任何效果可报）。⚠ <b>生物那一支现在有内容了</b>（作者 2026-10-04
+ *       统一标准：「雷魔素攻击生物之后，会随机给生物附着一种电荷，附着时间为 5 秒，附着的那个 buff
+ *       等级从 1~3 随机」）⇒ 生物那一支的 {@code case LIGHTNING} 施放随机电荷，实现住在
+ *       {@code content.energyfield.charge.LightningEssenceHitCharge}（"怎么施加"归电荷层，
+ *       "哪一支魔素做这件事"留在本层）。这条<b>刻意的双口径</b>是作者认可的中转状态：
+ *       <b>玩家</b>被雷魔素波命中仍走旧路径（本 case 空白 ⇒ 不上电荷），<b>生物</b>按本标准上电荷；</li>
  *   <li>(b) <b>水</b>：窒息音效（原版溺水受伤声） + 气泡/水花粒子 + <b>额外伤害</b>；</li>
  *   <li>(c) <b>火</b>：灼烧（原版点燃）；</li>
  *   <li>(d) <b>冰</b>："细雪冰冻"——原版 {@code setTicksFrozen}（冰凉覆盖层 + 细雪的减速）
@@ -37,9 +43,25 @@ import net.minecraft.world.level.block.Blocks;
  *   <li>(h) <b>毒</b>：原版中毒。</li>
  * </ul>
  *
- * <p><b>只对玩家生效</b>（作者原话"打中<b>玩家</b>"）：调用点在
+ * <p><b>两支入口，互不重叠</b>（2026-10-04 弓技能批 3 起）：</p>
+ * <ul>
+ *   <li>{@link #applyOnPlayerHit(AbstractChargerWaveEntity, Player)} —— <b>波打中玩家</b>
+ *       （2026-10-03 需求 coe-ess 批 6 的那一支，调用点在波实体
+ *       {@code if (target instanceof Player wearer)} 分支里；签名与八支正文一个字未动）；</li>
+ *   <li>{@link #applyEssenceOnCreatureHit(Entity, LivingEntity, WaveTrailStyle)} —— <b>魔素打中生物</b>
+ *       （本批新增，与玩家那一支一一对应的八支；两个调用者：① "元矢自生"打出的魔法箭命中生物，
+ *       ② 波实体命中生物那一处的 {@link #applyOnWaveCreatureHit}）。</li>
+ * </ul>
+ *
+ * <p><b>生物那一支为什么八支齐备、而波那一处只走雷</b>：作者 2026-10-04 的统一标准只写了雷
+ * （「雷魔素攻击生物之后…」），另外七支对生物<b>没有</b>裁定 ⇒
+ * {@link #applyOnWaveCreatureHit} 只放 {@code LIGHTNING} 过闸，波打中生物时的水/火/冰/风/地/毒/异
+ * 仍与改造前<b>逐字相同</b>（什么都不做）；而"元矢自生"的作者裁定是
+ * 「等效于一枚带魔素的攻击波打中该生物」+「魔素随机取 8 种之一」⇒ 它走完整的八支。</p>
+ *
+ * <p><b>只对玩家生效</b>（作者原话"打中<b>玩家</b>"）：原玩家那一条调用点在
  * {@link AbstractChargerWaveEntity} 命中处理的 {@code if (target instanceof Player wearer)} 分支里，
- * 本类的方法签名也只收 {@link Player} ——<b>生物不吃这些效果</b>（生物照旧只吃波级伤害）。</p>
+ * 该方法的签名也只收 {@link Player} ——<b>它自己仍然只服务玩家</b>。</p>
  *
  * <p><b>免疫走既有通道、不另写一套</b>：三种 MobEffect（缓慢 / 中毒 / 嬗乱）一律经原版
  * {@link net.minecraft.world.entity.LivingEntity#addEffect(MobEffectInstance)} 施加 ⇒ NeoForge 的
@@ -268,40 +290,152 @@ public final class WaveEssenceEffects {
 			}
 		}
 		WaveDiag.trace(
-			"魔素命中玩家：{} 级波携带 {} 魔素打中 {}，已施加该魔素的玩家效果（只对玩家生效，生物不吃这些效果）",
+			"魔素命中玩家：{} 级波携带 {} 魔素打中 {}，已施加该魔素的玩家效果（玩家这一支只服务玩家；生物那一支见 applyEssenceOnCreatureHit）",
 			wave.getWaveLevel(), essence.name(), player.getName()
 				.getString());
 	}
 
 	/**
-	 * <b>额外伤害</b>（水 2 点 / 地 1 点）——<b>必须先清掉本次波的伤害刚开启的无敌帧</b>。
+	 * 按魔素分派（<b>生物那一支</b>，2026-10-04 弓技能批 3 新增）——与玩家那一支一一对应的八支。
+	 *
+	 * <p><b>谁走这里</b>：① {@code JadeTopazBowEventHandler}（"元矢自生"打出的魔法箭带着魔素命中
+	 * 生物）；② {@link #applyOnWaveCreatureHit}（带雷魔素的波命中生物，作者 2026-10-04 统一标准）。</p>
+	 *
+	 * <p>三道闸，与玩家那一支同形：目标不是空 ⇒ 目标<b>不是玩家</b>（玩家那一支有它自己的入口，
+	 * 两支互不重叠）⇒ 服务端。魔素为 {@code null} 直接返回（机器波 / 未赋魔素的波逐字不变）。</p>
+	 *
+	 * <p>⚠ 八支的正文与玩家那一支<b>逐条对应</b>（同一批数值常量、同一批音效/粒子），差别只在两点：
+	 * 一是作用于 {@link LivingEntity}（玩家那一支的形参是 {@link Player}），二是
+	 * {@code case LIGHTNING} <b>有内容</b>（随机电荷，见类注释 (a)）。数值仍然只住本文件顶部那一块，
+	 * 本方法一个新数字都不写。</p>
+	 *
+	 * @param source 这一击的来源实体（波打中生物时是波、箭打中生物时是箭）——水/地的额外伤害
+	 *               按它的 {@code indirectMagic(source, null)} 结算，与玩家那一支同一种伤害类型
+	 * @param target 被魔素打中的生物（<b>非玩家</b>；玩家请走 {@link #applyOnPlayerHit}）
+	 * @param essence 这一击携带的魔素（{@code null} ⇒ 什么都不做）
+	 */
+	public static void applyEssenceOnCreatureHit(Entity source, LivingEntity target, WaveTrailStyle essence) {
+		if (source == null || target == null || essence == null) {
+			return;
+		}
+		if (target instanceof Player) {
+			// 玩家那一支的唯一入口是 applyOnPlayerHit（形参就是 Player）：两支不许互相顶替，
+			// 否则"玩家吃哪八支、生物吃哪八支"就不再是两处可分别断言的事实。
+			return;
+		}
+		if (!(target.level() instanceof ServerLevel server)) {
+			return;
+		}
+		switch (essence) {
+			case WATER -> {
+				hurtThroughIFrames(source, target, WATER_EXTRA_DAMAGE);
+				playAtHit(server, target, SoundEvents.PLAYER_HURT_DROWN);
+				puffAtHit(server, target, ParticleTypes.SPLASH);
+				puffAtHit(server, target, ParticleTypes.BUBBLE);
+			}
+			case FIRE -> {
+				target.igniteForSeconds(FIRE_IGNITE_SECONDS);
+				puffAtHit(server, target, ParticleTypes.FLAME);
+			}
+			case ICE -> {
+				target.setTicksFrozen(ICE_FROZEN_TICKS);
+				target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN,
+					ICE_SLOW_TICKS, ICE_SLOW_AMPLIFIER));
+				playAtHit(server, target, SoundEvents.PLAYER_HURT_FREEZE);
+				puffAtHit(server, target, ParticleTypes.SNOWFLAKE);
+			}
+			case WIND -> {
+				target.push(WIND_LAUNCH_SIDE, WIND_LAUNCH_UP, WIND_LAUNCH_SIDE);
+				playAtHit(server, target, SoundEvents.BREEZE_WHIRL);
+				puffAtHit(server, target, ParticleTypes.SMALL_GUST);
+			}
+			case EARTH -> {
+				hurtThroughIFrames(source, target, EARTH_EXTRA_DAMAGE);
+				playAtHit(server, target, SoundEvents.PLAYER_HURT_SWEET_BERRY_BUSH);
+				puffAtHit(server, target, CACTUS_PRICK_PARTICLE);
+			}
+			case POISON -> {
+				target.addEffect(new MobEffectInstance(MobEffects.POISON,
+					POISON_DURATION_TICKS, POISON_AMPLIFIER));
+				puffAtHit(server, target, ParticleTypes.ITEM_SLIME);
+			}
+			case ARCANE -> {
+				target.addEffect(new MobEffectInstance(TransmutationEffects.TRANSMUTATION_DISORDER,
+					ARCANE_DISORDER_TICKS, ARCANE_DISORDER_AMPLIFIER));
+				puffAtHit(server, target, ParticleTypes.END_ROD);
+			}
+			case LIGHTNING -> {
+				// 作者 2026-10-04 统一标准：随机极性 / 1~3 随机等级 / 固定 5 秒。
+				// "怎么施加"归电荷层（ChargeApi 的那一个类里），本层只回答"雷这一支做什么"。
+				LightningEssenceHitCharge.applyOnHit(target);
+			}
+			default -> {
+				// NORMAL / MECHANICAL / DAMAGE 是波型风格、不是魔素：与玩家那一支同样什么都不做。
+				return;
+			}
+		}
+		WaveDiag.trace(
+			"魔素命中生物：{} 魔素打中 {}（来源 {}），已施加该魔素的生物效果（雷那一支按作者统一标准给随机电荷）",
+			essence.name(), target.getName()
+				.getString(),
+			source.getName()
+				.getString());
+	}
+
+	/**
+	 * <b>带雷魔素的波命中生物</b>——作者 2026-10-04 统一标准的落地口
+	 * （原话「雷魔素攻击生物之后，会随机给生物附着一种电荷…」；唯一调用点是波实体命中处理的
+	 * "命中生物"那一处，与玩家那一支的调用点<b>并列而不重叠</b>）。
+	 *
+	 * <p>它只放 {@code LIGHTNING} 过闸：作者这条统一标准写的是<b>雷</b>，另外七种魔素对生物尚无裁定
+	 * ⇒ 未带雷魔素的波打中生物时，本方法第一句就返回，波的行为与改造前<b>逐字相同</b>
+	 * （这条闸门就是"不越权改玩法"的那道边界）。真正的八支分派委托给
+	 * {@link #applyEssenceOnCreatureHit}（唯一实现，箭那一支走同一个方法 ⇒ 两条来源同一份效果）。</p>
+	 *
+	 * @param wave   打出这一击的波（读它的魔素）
+	 * @param target 被击中的生物
+	 */
+	public static void applyOnWaveCreatureHit(AbstractChargerWaveEntity wave, LivingEntity target) {
+		if (wave == null || target == null) {
+			return;
+		}
+		if (wave.getEssence() != WaveTrailStyle.LIGHTNING) {
+			return;
+		}
+		applyEssenceOnCreatureHit(wave, target, WaveTrailStyle.LIGHTNING);
+	}
+
+	/**
+	 * <b>额外伤害</b>（水 2 点 / 地 1 点）——<b>必须先清掉本次命中刚开启的无敌帧</b>。
 	 *
 	 * <p>为什么非清不可（不清就是静默无效）：原版 {@code LivingEntity#hurt} 在
 	 * {@code invulnerableTime > 10} 时走"只结算比上一击更大的部分"那条路 ——
-	 * {@code amount <= lastHurt} 直接 {@code return false}。而波自己的伤害就在<b>本 tick 刚刚</b>
-	 * 结算完（{@code getDamage()} = 4/6/8/10/12，且把 {@code invulnerableTime} 置为 20），
-	 * 于是"额外 2 点"会整段被吃掉、玩家一点都不多掉血，而且没有任何报错。
-	 * 清帧后立刻 {@code hurt} ⇒ 这一 tick 的无敌帧由<b>本次额外伤害</b>重新开启（20 tick 的保护窗口
-	 * 长度不变），总伤害 = 波级伤害 + 额外伤害。</p>
+	 * {@code amount <= lastHurt} 直接 {@code return false}。而这一击自己的伤害就在<b>本 tick 刚刚</b>
+	 * 结算完（波级波是 {@code getDamage()} = 4/6/8/10/12、"元矢自生"的箭是箭自身的伤害，
+	 * 两者都把 {@code invulnerableTime} 置为 20），于是"额外 2 点"会整段被吃掉、目标一点都不多掉血，
+	 * 而且没有任何报错。清帧后立刻 {@code hurt} ⇒ 这一 tick 的无敌帧由<b>本次额外伤害</b>重新开启
+	 * （20 tick 的保护窗口长度不变），总伤害 = 原来那一击 + 额外伤害。</p>
 	 *
 	 * <p>伤害走 {@code indirectMagic}（与波自身那一击同一个伤害类型口径）⇒ 照常过护甲 / 附魔 /
-	 * 吸收 / 创造模式的 {@code abilities.invulnerable}（创造玩家照样不掉血）。</p>
+	 * 吸收 / 创造模式的 {@code abilities.invulnerable}（创造玩家照样不掉血）。
+	 * 攻击者刻意与波那一支<b>逐字同形</b>（第三参传 {@code null}）：两支的额外伤害在这一点上
+	 * 没有第二种口径。</p>
 	 */
-	private static void hurtThroughIFrames(AbstractChargerWaveEntity wave, Player player, float extraDamage) {
-		player.invulnerableTime = 0;
-		player.hurt(player.damageSources()
-			.indirectMagic(wave, null), extraDamage);
+	private static void hurtThroughIFrames(Entity source, LivingEntity target, float extraDamage) {
+		target.invulnerableTime = 0;
+		target.hurt(target.damageSources()
+			.indirectMagic(source, null), extraDamage);
 	}
 
 	/** 命中处的一声原版音效（音量/音高/音源分类都是具名常量）。 */
-	private static void playAtHit(ServerLevel server, Player player, SoundEvent sound) {
-		server.playSound(null, player.getX(), player.getY(), player.getZ(), sound, HIT_SOUND_SOURCE,
+	private static void playAtHit(ServerLevel server, LivingEntity target, SoundEvent sound) {
+		server.playSound(null, target.getX(), target.getY(), target.getZ(), sound, HIT_SOUND_SOURCE,
 			HIT_SOUND_VOLUME, HIT_SOUND_PITCH);
 	}
 
-	/** 命中处的一簇原版粒子（位置取玩家胸口高度；颗数/散布/速度都是具名常量）。 */
-	private static void puffAtHit(ServerLevel server, Player player, ParticleOptions particle) {
-		server.sendParticles(particle, player.getX(), player.getY() + HIT_PARTICLE_HEIGHT, player.getZ(),
+	/** 命中处的一簇原版粒子（位置取目标胸口高度；颗数/散布/速度都是具名常量）。 */
+	private static void puffAtHit(ServerLevel server, LivingEntity target, ParticleOptions particle) {
+		server.sendParticles(particle, target.getX(), target.getY() + HIT_PARTICLE_HEIGHT, target.getZ(),
 			HIT_PARTICLE_COUNT, HIT_PARTICLE_SPREAD, HIT_PARTICLE_SPREAD, HIT_PARTICLE_SPREAD,
 			HIT_PARTICLE_SPEED);
 	}

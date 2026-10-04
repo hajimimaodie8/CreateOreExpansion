@@ -3,10 +3,13 @@ package com.hjmmd_8.createoreexpansion.foundation;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
+import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveEssenceEffects;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowHitEffects;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.BowMetaArrowTrait;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowDisarmConfig;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 
 import net.minecraft.resources.ResourceLocation;
@@ -29,7 +32,10 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  * <ul>
  *     <li>读取箭上携带的技能标记（发射时写入），命中生物实体后分发到对应效果；</li>
  *     <li>本模组四把弓射出的箭（箭上有 {@link JadeTopazBowItem#TAG_SOURCE_BOW} 来源标记）命中时
- *         滚动一次基础概率效果（凋零/缓慢/转化紊乱+缴械）。</li>
+ *         滚动一次基础概率效果（凋零/缓慢/转化紊乱+缴械）；</li>
+ *     <li>被动技能「元矢自生」（2026-10-04 批 3）：箭上带着魔素标记
+ *         （{@link JadeTopazBowItem#TAG_META_ESSENCE}，只有"无箭射击"会写）时，把它交给魔素层
+ *         "对生物"的那一支（{@code WaveEssenceEffects#applyEssenceOnCreatureHit}）。</li>
  * </ul>
  *
  * <p><b>基础效果的生效范围（2026-10-03 弓技能批 1 第 5 条）</b>：原先"任何玩家的任何箭"都会滚
@@ -78,6 +84,11 @@ public class JadeTopazBowEventHandler {
 		// 基础概率效果（普通箭与技能箭均触发）
 		applyBaseEffects(player, target);
 
+		// 被动技能「元矢自生」（2026-10-04 弓技能批 3）：这一发箭若带着魔素（只有本模组四把弓的
+		// "无箭射击"会写 TAG_META_ESSENCE），命中生物时等效于"一枚带魔素的攻击波打中该生物"。
+		// 它与上面那条基础概率效果、下面那条技能分发都互不影响（三个标记各读各的）。
+		applyMetaArrowEssence(arrow, target);
+
 		// 技能效果分发：按箭上携带的技能 id 与等级（一技能多等级，等级决定效果数值）
 		String skillId = arrow.getPersistentData().getString(JadeTopazBowItem.TAG_SKILL);
 		if (skillId.isEmpty())
@@ -96,6 +107,41 @@ public class JadeTopazBowEventHandler {
 			if (config != null)
 				BowHitEffects.applyDisarm(player, target, config);
 		}
+	}
+
+	/**
+	 * <b>被动技能「元矢自生」的命中段</b>（2026-10-04 弓技能批 3）：箭上带着
+	 * {@link JadeTopazBowItem#TAG_META_ESSENCE} ⇒ 把那种魔素交给魔素层"对生物"的那一支
+	 * （{@code WaveEssenceEffects#applyEssenceOnCreatureHit}：八支与"打中玩家"那一支一一对应，
+	 * 其中雷那一支按作者 2026-10-04 的统一标准给随机电荷）。
+	 *
+	 * <p>三道判据，顺序即优先级：</p>
+	 * <ol>
+	 *   <li><b>箭上没有魔素标记 ⇒ 什么都不做</b>：原版弓 / 别家模组的弓 / 本模组弓的普通射击
+	 *       （有箭）与一切没中签的无箭射击都走这一支 —— 与改造前逐字相同；</li>
+	 *   <li><b>标记认不出来 ⇒ 什么都不做</b>：走 {@link BowMetaArrowTrait#essenceByName} 的容错解析
+	 *       （不 {@code valueOf}：箭上的字符串是存档里跟着实体走的 NBT，未知值只能读成"没有"，
+	 *       不许在命中处理里抛异常）；</li>
+	 *   <li><b>玩家目标 ⇒ 什么都不做</b>：这一支是"魔素打中<b>生物</b>"，判据在魔素层
+	 *       （{@code applyEssenceOnCreatureHit} 第一句就把 {@link Player} 挡掉，玩家那一侧有它
+	 *       自己的入口 {@code applyOnPlayerHit}）—— 本处理器不重复写这条判据。</li>
+	 * </ol>
+	 *
+	 * <p>⚠ 生效范围：标记只由 {@link JadeTopazBowItem#shootProjectile} 写（"无箭射击"那条路），
+	 * 而本方法所在的事件处理器在它<b>之前</b>已经过了 {@link JadeTopazBowItem#isFromOurBow} 那道
+	 * 来源闸门 ⇒ 非本模组弓的箭连这里都到不了（复用同一条判据，不另立第二套）。</p>
+	 */
+	private static void applyMetaArrowEssence(Arrow arrow, LivingEntity target) {
+		String essence = arrow.getPersistentData()
+			.getString(JadeTopazBowItem.TAG_META_ESSENCE);
+		if (essence.isEmpty()) {
+			return;
+		}
+		WaveTrailStyle style = BowMetaArrowTrait.essenceByName(essence);
+		if (style == null) {
+			return;
+		}
+		WaveEssenceEffects.applyEssenceOnCreatureHit(arrow, target, style);
 	}
 
 	/** 按技能 id 与等级取该等级的实际配置（一技能多等级；未知技能/无配置返回 null） */

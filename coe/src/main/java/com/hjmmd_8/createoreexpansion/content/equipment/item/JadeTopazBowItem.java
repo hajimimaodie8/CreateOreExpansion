@@ -70,6 +70,14 @@ import net.neoforged.neoforge.event.EventHooks;
  * （把基础概率效果收窄到本模组四把弓，见 {@link #isFromOurBow}）；
  * ② 技能冷却的载体边界 {@link BowTier#perSkillCooldown()}（翠玉按物品记、三把继承弓按技能记）。</p>
  *
+ * <p><b>2026-10-04 弓技能批 3（被动技能「元矢自生」）</b>：<b>无箭射击</b>时（就是下面
+ * {@link #NO_ARROW_COST} 那条"耗能造一支魔法箭"的既有路），按<b>该弓的档位起始等级</b>
+ * （{@link BowTier#baseSkillLevel()}）掷一次骰子：中签给这一发箭附上<b>八种魔素里随机的一种</b>
+ * （{@link BowMetaArrowTrait}），命中生物时等效于"一枚带魔素的攻击波打中该生物"。它
+ * <b>被动、不占键位、不扣能、无冷却</b>，也<b>没有</b>技能条目/语言键/注册项 ⇒
+ * {@code AllSkills} 里那两条弓技能与翠玉之弓的四行注册链一个字未动。
+ * 载体是 {@link #TAG_META_ESSENCE}（弓上暂存 ⇒ {@link #shootProjectile} 搬到箭上）。</p>
+ *
  * <p><b>P3p</b>：实现 {@link EnergyGradientTool} —— 共享库（core）的能量门面/能量 tooltip
  * 不能再 {@code instanceof JadeTopazBowItem}（库不 import 层），改判这个零方法标记契约；
  * 判定结果对现有物品逐个相同。</p>
@@ -98,6 +106,26 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 * 且两段式（松手写标记 / 命中读标记）一个字没动。</p>
 	 */
 	public static final String TAG_SOURCE_BOW = "jade_topaz_source_bow";
+
+	/**
+	 * <b>弓 / 箭上的"这一发带着哪种魔素"标记（枚举名）</b>—— 被动技能「元矢自生」的载体
+	 * （2026-10-04 弓技能批 3）。
+	 *
+	 * <p>同一个键名在两个对象上各用一次，形状照 {@link #TAG_SKILL}（同一个
+	 * {@code persistentData}/{@code CUSTOM_DATA} 上的一个字符串键：发射时写、命中时读）：</p>
+	 * <ul>
+	 *   <li><b>写（弓）</b>：{@link #prepareProjectiles} 的"无箭射击"分支里中签时写在弓的
+	 *       {@code CUSTOM_DATA} 上（<b>一次性暂存</b>，只有这一条路会写）；</li>
+	 *   <li><b>搬（弓 → 箭）</b>：{@link #shootProjectile} 把它搬到箭的 {@code persistentData} 上，
+	 *       <b>搬走即在弓上清掉</b>（绝不留到下一发）；</li>
+	 *   <li><b>读（箭）</b>：{@code JadeTopazBowEventHandler} 命中时读回来，交给魔素层"对生物"的
+	 *       那一支施加（{@code WaveEssenceEffects#applyEssenceOnCreatureHit}）。</li>
+	 * </ul>
+	 *
+	 * <p>它<b>不是</b>技能标记：不参与技能分发、也不影响 {@link #isFromOurBow} 那条生效范围闸门。
+	 * 它只可能由本模组四把弓的"无箭射击"写上 ⇒ 原版弓 / 别家模组的弓射出的箭永远没有这个键。</p>
+	 */
+	public static final String TAG_META_ESSENCE = "jade_topaz_meta_essence";
 
 	/** 无箭时发射魔法箭消耗的能量 */
 	public static final int NO_ARROW_COST = 10;
@@ -176,12 +204,15 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		}
 
 		// 锁定本次射击的技能键位（-1=无技能；0=键一凋零诅咒；1=键二缴械风暴）
-		// 同时清除上一箭遗留的技能标记（防止普通箭误带技能）
+		// 同时清除上一箭遗留的技能标记（防止普通箭误带技能），以及上一发"元矢自生"可能遗留的
+		// 魔素标记（客户端不发射 ⇒ 那支箭没被搬走时标记会留在弓上，这里是同一道防泄漏闸门：
+		// 新的一次拉弓一律从"没有魔素"开始）。
 		stack.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
 				data -> data.update(tag -> {
 					tag.putInt("PendingSkillSlot", detectSkillSlot());
 					tag.remove(TAG_SKILL);
 					tag.remove(TAG_SKILL_LEVEL);
+					tag.remove(TAG_META_ESSENCE);
 				}));
 		player.startUsingItem(hand);
 		return InteractionResultHolder.consume(stack);
@@ -264,12 +295,38 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 			// 消耗提示（护目镜限定，与技能消耗统一格式：凝能佩行/工具行，佩用佩色、弓用黄→绿渐变）
 			ToolEnergy.sendRemainingEnergyWithMedallion(player, bow,
 				IMedallion.findBoundMedallion(player, bow));
+			// ★ 被动技能「元矢自生」（2026-10-04 弓技能批 3）：补给照旧，之后按<b>该弓的档位起始等级</b>
+			// 掷一次骰子 —— 中签就给这一发魔法箭附一种随机魔素（不额外扣能、无冷却）。
+			// ⚠ 抽取点只有这一处：有箭的普通射击根本走不到这个分支 ⇒ 那条路一个字未变。
+			rollMetaArrowEssence(bow, player);
 			ItemStack magicArrow = Items.ARROW.getDefaultInstance();
 			magicArrow.set(DataComponents.INTANGIBLE_PROJECTILE, Unit.INSTANCE);
 			return List.of(magicArrow);
 		}
 
 		return List.of();
+	}
+
+	/**
+	 * <b>「元矢自生」唯一一处掷骰子 + 写标记</b>（被动技能，2026-10-04 弓技能批 3）：
+	 * 按 {@link BowTier#baseSkillLevel()}（翠玉 1 / 宝石 2 / 星界 3 / 雷鸣 3）取概率
+	 * （10% / 20% / 30%，表与夹取都住在 {@link BowMetaArrowTrait}），中签则从八种魔素里等概率抽
+	 * 一种、把<b>枚举名</b>写进弓的 {@link #TAG_META_ESSENCE}（发射时由
+	 * {@link #shootProjectile} 搬到箭上）。
+	 *
+	 * <p>等级刻意取<b>档位起始等级</b>而不取 {@link #effectiveSkillLevel(ItemStack)}：
+	 * 后者会读附魔（技艺提升）⇒ 玩家的附魔会改变这个被动，而作者给的是"该弓的档位起始等级"
+	 * （一个按弓固定的量，四把弓各自 10%/20%/30%/30%）。理由全文见 {@link BowMetaArrowTrait} 类注释。</p>
+	 */
+	private void rollMetaArrowEssence(ItemStack bow, Player player) {
+		int level = tier.baseSkillLevel();
+		if (!BowMetaArrowTrait.procs(level, player.getRandom())) {
+			return;
+		}
+		String essence = BowMetaArrowTrait.randomEssence(player.getRandom())
+			.name();
+		bow.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
+			data -> data.update(tag -> tag.putString(TAG_META_ESSENCE, essence)));
 	}
 
 	/** 检测本次射击请求的技能键位：键一=0（凋零诅咒）、键二=1（缴械风暴）、无= -1 */
@@ -293,6 +350,10 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 			arrow.getPersistentData().putString(TAG_SOURCE_BOW,
 					BuiltInRegistries.ITEM.getKey(this).toString());
 
+			// 「元矢自生」（2026-10-04 批 3）：这一发箭若带着魔素（只有"无箭射击"会写上弓），
+			// 在这里把标记搬到箭上并在弓上清掉 —— 与来源标记一样是"发射时写、命中时读"。
+			stampMetaArrowEssence(player, arrow);
+
 			// 从弓读取本次射击携带的技能与等级（技能类 release 时写入）；无标记则普通箭
 			String skill = getSkill(player.getUseItem());
 			boolean skillB = "bow_disarm".equals(lastPathOf(skill));
@@ -303,6 +364,38 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 			arrow.getPersistentData().putString(TAG_SKILL, skill);
 			arrow.getPersistentData().putInt(TAG_SKILL_LEVEL, getSkillLevel(player.getUseItem()));
 		}
+	}
+
+	/**
+	 * <b>把这发箭抽到的魔素从弓上搬到箭上</b>（「元矢自生」的发射段，2026-10-04 弓技能批 3）。
+	 *
+	 * <p>两段式（写标记 / 读标记）与 {@link #TAG_SKILL} 完全同形，而且<b>搬走即在弓上清掉</b>：
+	 * 弓上那个标记是"一次性暂存"，留着就会让下一发（哪怕是有箭的普通箭）误带魔素 ——
+	 * 那是本批最容易静默发生的一种坏法（没有报错、只有效果偶尔出现在不该出现的箭上）。</p>
+	 *
+	 * <p>读的是 {@code player.getUseItem()}（与同一段里读技能标记同一个来源）：{@code shoot}
+	 * 就发生在 {@code releaseUsing} 期间，此刻"正在使用的物品"还是这把弓。</p>
+	 */
+	private static void stampMetaArrowEssence(Player player, Arrow arrow) {
+		ItemStack bow = player.getUseItem();
+		String essence = getMetaEssence(bow);
+		if (essence.isEmpty()) {
+			return; // 无标记 = 普通箭（没中签 / 有箭射击 / 非本模组弓）
+		}
+		arrow.getPersistentData()
+			.putString(TAG_META_ESSENCE, essence);
+		bow.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
+			data -> data.update(tag -> tag.remove(TAG_META_ESSENCE)));
+	}
+
+	/**
+	 * 读弓（或箭）上暂存的"元矢魔素"枚举名；没有标记时返回空串
+	 * （形态照 {@link #getSkill(ItemStack)}，判据就是"空串 = 没有"）。
+	 */
+	public static String getMetaEssence(ItemStack stack) {
+		return stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+			.copyTag()
+			.getString(TAG_META_ESSENCE);
 	}
 
 	/** 提取技能 id 的最后一段（如 "createoreexpansion:bow_disarm" → "bow_disarm"） */
