@@ -10,3 +10,20 @@ src/generated/**/*.json text eol=lf
 coe/src/generated/**/*.json text eol=lf
 cews/src/generated/**/*.json text eol=lf
 transmutation/src/generated/**/*.json text eol=lf
+# COE batch 6 (2026-10-04): line-ending root fix.  core.autocrlf=true alone leaves the text
+# sources below unnormalised, so a fresh clone checks them out as CRLF, and every gate regex
+# that anchors an end of line with "$" then goes FALSE-RED.  Measured on a fresh worktree:
+#   - tools/check-armor-sets.ps1 section 29f "boomerang-family-helper" (boomerang\($ matched 0)
+#   - tools/check-module-selfsufficiency.ps1 [[mods]] / [[mixins]] readers (a "`n" split keeps
+#     the CR, and "(?:\s*#.*)?$" then matches no line at all)
+# The regexes themselves now tolerate \r? as well (belt and braces); these rules keep the
+# working tree LF in the first place.  *.json here subsumes the generated-json rules above.
+# DELIBERATELY NOT COVERED: *.bat / *.ps1 / *.cmd (must stay CRLF, and they are local-only
+# anyway) and every binary (e.g. textures *.png) -- forcing "text" on a binary would corrupt
+# it on checkout.
+*.java text eol=lf
+*.gradle text eol=lf
+*.json text eol=lf
+*.mcmeta text eol=lf
+*.toml text eol=lf
+*.cfg text eol=lf
