@@ -5,16 +5,15 @@
       "item": "createoreexpansion:stellarstone_small_shard"
     }
   ],
+  "processing_time": 100,
   "results": [
     {
-      "id": "createoreexpansion:stellarstone_nugget",
-      "count": 3
+      "count": 3,
+      "id": "createoreexpansion:stellarstone_nugget"
     },
     {
-      "id": "createoreexpansion:stellarstone_nugget",
       "chance": 0.5,
-      "count": 1
+      "id": "createoreexpansion:stellarstone_nugget"
     }
-  ],
-  "processing_time": 100
+  ]
 }

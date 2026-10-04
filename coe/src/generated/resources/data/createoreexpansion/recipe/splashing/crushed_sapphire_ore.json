@@ -26,7 +26,7 @@
       "id": "minecraft:gold_nugget"
     },
     {
-      "chance": 0.50,
+      "chance": 0.5,
       "id": "minecraft:netherite_scrap"
     }
   ]

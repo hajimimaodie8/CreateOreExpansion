@@ -5,16 +5,15 @@
       "item": "createoreexpansion:sapphire_small_shard"
     }
   ],
+  "processing_time": 100,
   "results": [
     {
-      "id": "createoreexpansion:sapphire_nugget",
-      "count": 3
+      "count": 3,
+      "id": "createoreexpansion:sapphire_nugget"
     },
     {
-      "id": "createoreexpansion:sapphire_nugget",
       "chance": 0.5,
-      "count": 1
+      "id": "createoreexpansion:sapphire_nugget"
     }
-  ],
-  "processing_time": 100
+  ]
 }

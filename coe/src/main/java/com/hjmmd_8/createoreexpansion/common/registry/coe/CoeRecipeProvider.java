@@ -30,6 +30,16 @@ import net.neoforged.neoforge.common.conditions.ICondition;
  * （方块雷击 1 条）原先手写在 {@code coe/src/main/resources}，本批起由生成器产出，
  * 并由本方法在末尾（拆磨 61 条之后）转发——<b>拆磨那 61 条之间的相对顺序一字未动</b>。</p>
  *
+ * <p><b>配方迁移 批 2：再转发 Create 标准类型的四族，共 29 条</b>（{@link CoePressingRecipeProvider}
+ * 4 + {@link CoeSplashingRecipeProvider} 4 + {@link CoeCuttingRecipeProvider} 8 +
+ * {@link CoeCrushingRecipeProvider} 13），同样追加在末尾、同样用参数里的 output。
+ * <b>⚠ 批 1 的教训</b>：批 0 把驼峰 {@code processingTime} 改成 {@code processing_time} 之后，
+ * 凡是"有 {@code processing_time} 键、但该配方类型没覆写
+ * {@code canSpecifyDuration()} 返回 true"的配方都会被 {@code ProcessingRecipe#validate()}
+ * 整条丢弃（编解码两个方向都跑这句）。所以迁移每一族前，必须先核实该类型的
+ * {@code canSpecifyDuration()}：pressing / splashing 是<b>默认 false</b>（不许写时长），
+ * cutting / crushing 覆写为 <b>true</b>（必须写，分别 100 与 350/400/450）。</p>
+ *
  * <p><b>为什么转发挂在这里、而不是根工程的 {@code buildRecipes}</b>：层的归属由
  * {@code LayerRecipeRouter} 在<b>调用点</b>绑定，而根工程的调用点已经把
  * {@code CoeRecipeProvider.generate} 收到的 {@code RecipeOutput} 包成了「本层 coe」的
@@ -43,7 +53,8 @@ public final class CoeRecipeProvider {
 
     /**
      * 本层的配方生成入口：拆磨 61 条（调用顺序与拆分前的 {@code buildRecipes} 逐字相同），
-     * 末尾再转发配方迁移 批 1 的两族（角磨 9 + 方块雷击 1，见类注释）。
+     * 末尾再转发配方迁移两批的六族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
+     * 锯切 8 + 粉碎 13，见类注释）。
      */
     public static void generate(RecipeOutput output) {
         // ========== 原版装备/武器拆磨（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
@@ -78,6 +89,17 @@ public final class CoeRecipeProvider {
         // 用参数里的 output（= 根调用点已绑好层 "coe" 的那个），见类注释。
         CoeGrindingRecipeProvider.generate(output);
         CoeLightningBlockRecipeProvider.generate(output);
+
+        // ========== 配方迁移 批 2：Create 标准类型四族 29 条（原手写，现由生成器产出） ==========
+        // 压片 4 + 洗涤 4 + 锯切 8 + 粉碎 13 = 29 条。同样追加在批 1 两族之后，四族之间
+        // 也没有顺序契约（每条一个文件、互不覆盖）。
+        // ⚠ "该类型允不允许时长"逐族不同（批 1 的教训）：pressing / splashing 的注册类没有覆写
+        // canSpecifyDuration() ⇒ 绝不能写 duration；cutting / crushing 覆写了 true ⇒ 必须写
+        // （分别是 100 与 350/400/450）。逐族结论写在各自类的 javadoc 里。
+        CoePressingRecipeProvider.generate(output);
+        CoeSplashingRecipeProvider.generate(output);
+        CoeCuttingRecipeProvider.generate(output);
+        CoeCrushingRecipeProvider.generate(output);
     }
 
     /** 一套材料：5 工具 + 4 装备的拆磨配方 */

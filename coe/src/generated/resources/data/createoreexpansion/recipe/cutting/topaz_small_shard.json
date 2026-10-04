@@ -5,16 +5,15 @@
       "item": "createoreexpansion:topaz_small_shard"
     }
   ],
+  "processing_time": 100,
   "results": [
     {
-      "id": "createoreexpansion:topaz_nugget",
-      "count": 3
+      "count": 3,
+      "id": "createoreexpansion:topaz_nugget"
     },
     {
-      "id": "createoreexpansion:topaz_nugget",
       "chance": 0.5,
-      "count": 1
+      "id": "createoreexpansion:topaz_nugget"
     }
-  ],
-  "processing_time": 100
+  ]
 }

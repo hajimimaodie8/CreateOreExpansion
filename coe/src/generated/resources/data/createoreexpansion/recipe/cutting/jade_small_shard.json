@@ -5,16 +5,15 @@
       "item": "createoreexpansion:jade_small_shard"
     }
   ],
+  "processing_time": 100,
   "results": [
     {
-      "id": "createoreexpansion:jade_nugget",
-      "count": 3
+      "count": 3,
+      "id": "createoreexpansion:jade_nugget"
     },
     {
-      "id": "createoreexpansion:jade_nugget",
       "chance": 0.5,
-      "count": 1
+      "id": "createoreexpansion:jade_nugget"
     }
-  ],
-  "processing_time": 100
+  ]
 }
