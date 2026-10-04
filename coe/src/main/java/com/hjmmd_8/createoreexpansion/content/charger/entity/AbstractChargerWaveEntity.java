@@ -58,6 +58,21 @@ import org.jetbrains.annotations.Nullable;
  *   <li>{@link WaveContraptionCollisions} = Create contraption 碰撞协调。</li>
  * </ul>
  *
+ * <p><b>本类的形状（2026-10-06 行为零变化拆分）</b>：本类保留<b>公开/受保护形状与全部公开实现</b>
+ * ——{@code tick()} 的每 tick 阶段序列与命中链、{@code remove()} 的三条收尾、NBT 两侧、
+ * {@code FieldedEntity} 六个覆写、四十余条访问器（{@code WaveAccess} 门面的取值面）一个字未动；
+ * 按职责域拆出的同包类只做搬运（宿主仍是这些状态的<b>唯一持有者</b>，只把被读写的字段由
+ * {@code private} 放宽到包级私有）：</p>
+ * <ul>
+ *   <li>{@link WaveOrbitElement} —— 环绕波要素（位置改写 + 出生/心跳诊断 + 环面几何粒子）；</li>
+ *   <li>{@link WaveCollision} —— 波波碰撞（同批豁免 → 范围爆炸 → 相互湮灭）。</li>
+ * </ul>
+ * <p><b>刻意没搬的两处</b>（"按职责域拆、不按行数硬拆"）：命中附加效果要素（{@code applyHitEffect}
+ * 只有 6 行实现，它的 3 个字段与那道闸门仍与宿主共处一地）与能量场接口（{@code FieldedEntity}
+ * 的六个覆写就是本类对外的运行期契约，搬出去只会多六条转发壳）。</p>
+ * <p>构造期一个字未动：两个构造器只碰参数与原始类型字段，没有调用任何被搬出去的 helper
+ * （见 {@code setPos} 覆写的构造期约束说明）。</p>
+ *
  * <p>通用行为（模板方法）：服务端飞行、命中判定（生物伤害/掉落物加工/置物台加工/撞墙消散）、
  * 粒子拖尾与命中绽放、加工完成音效；客户端在消散时补充球面均匀扩散绽放。</p>
  *
@@ -69,7 +84,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p><b>2026-10-02 新增：两个「通用、可选、默认关闭」的波要素</b>（作者裁定：「能量波是由好几个
  * 要素定义的」⇒ 给既有波<b>加要素</b>符合口径，另造实体才违反）：<b>环绕波要素</b>
- * （anchorWaveUuid / orbitRadius / orbitAngularSpeed / orbitPhase，见 {@link #applyOrbitElement()}）
+ * （anchorWaveUuid / orbitRadius / orbitAngularSpeed / orbitPhase，见 {@link WaveOrbitElement#tick}）
  * 与<b>命中附加效果要素</b>（hitEffect / hitEffectDuration / hitEffectAmplifier，见
  * {@link #applyHitEffect(LivingEntity)}）。两者<b>不设时</b>字段就是 {@code null} / {@code 0}、
  * 分支第一句直接返回 ⇒ 机器波 / 变器波 / 一切既有波的行为与改造前逐字相同；
@@ -92,8 +107,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/** 最大飞行距离（格）：超过即消散，与寿命上限互为兜底。 */
 	protected static final double MAX_TRAVEL_DISTANCE = 64.0;
 
-	private int waveLevel;
-	private Vec3 movement = Vec3.ZERO;
+	int waveLevel;
+	Vec3 movement = Vec3.ZERO;
 
 	/**
 	 * 速度修正值（格/秒，可正可负）：由波速调节器按转速分档叠加施加。
@@ -116,7 +131,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private Vec3 spawnPos;
 
 	/** 已与另一波碰撞（防同 tick 双方各触发一次爆炸）。 */
-	private boolean collided;
+	boolean collided;
 
 	/** 上一 tick 是否处于任意能量场内（诊断日志：只记状态翻转，避免刷屏）。仅服务端使用，不存 NBT。 */
 	private boolean wasInsideField;
@@ -168,7 +183,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 目标色：正常 = 当前等级色；待升级（boostRemaining &gt; 0）时提前变为下一等级色，
 	 * 使波穿出调级器后颜色即开始过渡，而非延迟结束瞬间跳变。
 	 */
-	private Vec3 renderColor;
+	Vec3 renderColor;
 
 	/**
 	 * 能量波核心加工逻辑（独立抽取至 {@link ChargerWaveProcessor}）：
@@ -328,7 +343,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * <b>环绕波要素</b>之一：<b>锚点实体</b> UUID（{@code null} = <b>不环绕</b>，即默认关闭）。
 	 *
 	 * <p>设了它以后，本波每 tick 的位置被改写成「锚点位置 + r × (u·cosθ + v·sinθ)」
-	 * （见 {@link #applyOrbitElement()}）；锚点不存在/已消散时本波<b>立刻 discard</b>，
+	 * （见 {@link WaveOrbitElement#tick}）；锚点不存在/已消散时本波<b>立刻 discard</b>，
 	 * 不留孤立波。要求：发射方在设本要素的同时<b>必须</b>把"同一批"的批次号一并继承
 	 * （{@link #setFiringBatch(int)}）——环绕波出生点与锚点重合（相距 0），飞起来后 0.8 格半径
 	 * 在斜相位（两轴分量 0.566）也落进对方命中盒（按轴判据 0.6），不同批就是"第一圈就互相湮灭"。</p>
@@ -342,19 +357,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 走的仍是同一条路径、同一行取值 ⇒ 行为逐字不变。</p>
 	 */
 	@Nullable
-	private UUID orbitAnchorUuid;
+	UUID orbitAnchorUuid;
 
 	/** 环绕波要素：环绕半径（格）；{@code 0} = 关闭（默认）。 */
-	private double orbitRadius;
-
-	/**
-	 * <b>环绕波心跳日志的节流刻度</b>（每几 tick 一行位置行）：20 tick = 1 秒一行。
-	 *
-	 * <p>环绕波寿命上限与主波同为 {@value #MAX_LIFETIME_TICKS} tick ⇒ 单枚最多 10 行心跳，
-	 * 量级与"发生了多少事"成正比（与 {@link WaveDiag} 的 trace 通道口径一致）；
-	 * 取 20 而不是更小，是为了在"证明真的在绕"与"不刷屏"之间取平衡。</p>
-	 */
-	private static final int ORBIT_HEARTBEAT_TICKS = 20;
+	double orbitRadius;
 
 	/**
 	 * <b>"父波已经没了"标记</b>（只有环绕波会被置位）：{@link #tick()} 里查出父波取不到/已消散后置位，
@@ -368,23 +374,23 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private boolean orbitAnchorLost;
 
 	/** 环绕波要素：角速度（<b>弧度/tick</b>，1 圈/秒 = 2π/20）；{@code 0} = 关闭（默认）。 */
-	private double orbitAngularSpeed;
+	double orbitAngularSpeed;
 
 	/**
 	 * 环绕波要素：初始相位（弧度）。{@code 0} = 出生时位于基向量 u 的正方向一侧（默认）。
 	 * 刻意用 {@code tickCount} 当时间基（θ = 相位 + 角速度 × 已存活 tick）⇒ 不需要额外字段，
 	 * 也不受读档/重载影响。
 	 */
-	private double orbitPhase;
+	double orbitPhase;
 
 	/**
 	 * 本 tick 的<b>当前相位</b>（弧度；只有环绕波有意义）——粒子侧拿它把"环面留痕桩"铺在
 	 * 波此刻所在的那一圈上，使"它绕到哪儿了"一眼可读。
 	 *
 	 * <p>刻意不在粒子侧重算 {@code 相位 + 角速度 × tickCount}：那会让"位置公式"与"粒子公式"
-	 * 变成两处真源（改一处忘一处就漂移）。这里只有一个写入点（{@link #applyOrbitElement()}）。</p>
+	 * 变成两处真源（改一处忘一处就漂移）。这里只有一个写入点（{@link WaveOrbitElement#tick}）。</p>
 	 */
-	private double orbitCurrentPhase;
+	double orbitCurrentPhase;
 
 	/**
 	 * 本 tick 的<b>父波位置</b>（只有环绕波有意义；父波取不到时为 {@code null}）。
@@ -394,10 +400,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 真的在绕"的机器可判证据。</p>
 	 */
 	@Nullable
-	private Vec3 orbitAnchorPos;
+	Vec3 orbitAnchorPos;
 
 	/**
-	 * 本 tick 用来铺环的<b>环平面法向</b>（只有环绕波有意义）= {@link #applyOrbitElement()} 里
+	 * 本 tick 用来铺环的<b>环平面法向</b>（只有环绕波有意义）= {@link WaveOrbitElement#tick} 里
 	 * <b>实际使用</b>的那个方向（父波的运动方向，取不到才回落到自身方向）。
 	 *
 	 * <p>为什么不能由粒子侧直接读 {@code movement}：位置改写用的是<b>父波</b>的方向，而能量场可以把
@@ -406,7 +412,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 粒子侧只读这个值 ⇒ 圈与轨道必然共面。</p>
 	 */
 	@Nullable
-	private Vec3 orbitRingNormal;
+	Vec3 orbitRingNormal;
 
 	/**
 	 * <b>命中附加效果要素</b>：命中生物时追加施加的药水效果（{@code null} = <b>不做事</b>，
@@ -766,88 +772,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
-	 * <b>环绕波要素</b>（可选、默认关闭，见 {@link #orbitAnchorUuid}）：把自身位置改写成
-	 * <b>{@code 锚点位置 + r × (u·cosθ + v·sinθ)}</b>。
-	 *
-	 * <p><b>2026-10-02 批 4（作者裁定 D9 = A）</b>：本文档原先逐字写的是"父波"——
-	 * 锚点判据已从 {@code instanceof AbstractChargerWaveEntity} 放宽成
-	 * {@code anchor != null && anchor.isAlive()}（见 {@link OrbitAnchor}），
-	 * 锚点可以是<b>任何实体</b>（回旋镖的环绕技能就是拿镖当锚点）。
-	 * 下文的"父波"一律读作"锚点"；对既有调用方（星芒嬗震传的是父波）两者是同一个对象，
-	 * 取值与判据<b>逐字不变</b>。</p>
-	 *
-	 * <h2>坐标基（环平面垂直于锚点运动方向）</h2>
-	 * <p>取锚点运动方向 {@code d}（{@link OrbitAnchor#orbitDirection()}；单位向量），
-	 * 再取一个与本方向不平行的参考轴
-	 * {@code reference}（{@code |d.y| > 0.9} 时用 +X，否则用 +Y——避免叉乘退化），
-	 * 然后</p>
-	 * <pre>
-	 *   u = normalize(reference × d)      // 垂直于 d 的平面基之一
-	 *   v = normalize(d × u)              // 与 u、d 都垂直（u × v = d，右手系）
-	 * </pre>
-	 * <p>于是 {@code u}、{@code v} 张成的平面<b>垂直于运动方向</b>，圆周点落在"以锚点为圆心、
-	 * 垂直于飞行方向的环"上：θ = 0 时在 {@code u} 正方向一侧，θ 增大时按 u→v 方向旋转。
-	 * 时间基用 {@code tickCount}（θ = 初始相位 + 角速度 × 已存活 tick）⇒ 不额外占字段。</p>
-	 *
-	 * <h2>默认关闭与两个边界</h2>
-	 * <ul>
-	 *   <li>要素未设（{@code orbitAnchorUuid == null}）⇒ <b>第一句就返回 true</b>，位置一个字不改
-	 *       ——机器波 / 变器波 / 一切既有波的行为与改造前逐字相同；</li>
-	 *   <li>客户端 / Ponder 场景（不是 {@link ServerLevel}）⇒ 不动位置（客户端位置由服务端同步，
-	 *       客户端 tick 本来就在移动之前 return）；</li>
-	 *   <li>锚点取不到或已消散（{@code isAlive() == false}）⇒ 返回 {@code false}，
-	 *       调用方<b>立刻 {@code discard()}</b> ⇒ "锚点消散 ⇒ 环绕波一起收尾"只有这一条实现，
-	 *       不再叠第二层机制，也不会留下孤立波（对镖同样成立：镖 {@code discard()} 后
-	 *       环绕波下一 tick 自己收尾）。</li>
-	 * </ul>
-	 *
-	 * @return {@code false} = 锚点已不存在，调用方必须 discard 自己
-	 */
-	private boolean applyOrbitElement() {
-		if (this.orbitAnchorUuid == null) {
-			return true;
-		}
-		if (!(level() instanceof ServerLevel server)) {
-			return true;
-		}
-		Entity anchor = server.getEntity(this.orbitAnchorUuid);
-		// ★ 批 4（作者裁定 D9 = A）：锚点判据从"必须是另一枚波"放宽成"是个活着的实体"——
-		// 回旋镖的环绕技能要拿**那枚镖**当锚点，而镖是 Projectile、不是波；旧判据会让环绕波
-		// 出生即死（第一 tick 就查不到"父波"）。既有调用方（星芒嬗震）传的仍是波 ⇒ 走的还是
-		// 下面同一条路径，行为逐字不变。
-		if (anchor == null || !anchor.isAlive()) {
-			return false;
-		}
-		// ★ "取运动方向"抽成契约（OrbitAnchor#orbitDirection）：波 = getMovement()（与改造前
-		// 逐字同源）、镖 = getDeltaMovement()。非 OrbitAnchor 的实体回落到原版速度向量。
-		Vec3 dir = orbitDirectionOf(anchor);
-		if (dir.lengthSqr() < 1.0E-9D) {
-			dir = movement;
-		}
-		if (dir.lengthSqr() < 1.0E-9D) {
-			dir = new Vec3(0.0D, 0.0D, 1.0D);
-		}
-		dir = dir.normalize();
-		Vec3[] axes = orbitPlaneAxes(dir);
-		Vec3 u = axes[0];
-		Vec3 v = axes[1];
-		double theta = orbitPhase + orbitAngularSpeed * (double) tickCount;
-		Vec3 anchorPos = anchor.position();
-		Vec3 offset = u.scale(orbitRadius * Math.cos(theta)).add(v.scale(orbitRadius * Math.sin(theta)));
-		setPos(anchorPos.add(offset));
-		// 只记三个原始事实，供粒子/日志用（见三个字段的说明）；位置公式本身仍只有上面这一处。
-		this.orbitCurrentPhase = theta;
-		this.orbitAnchorPos = anchorPos;
-		this.orbitRingNormal = dir;
-		logOrbitDiag(anchorPos);
-		return true;
-	}
-
-	/**
 	 * <b>环绕波锚点契约（{@link OrbitAnchor}）的"取运动方向"实现 —— 波这一侧</b>
 	 * （2026-10-02 批 4；作者裁定 D9 = A）。
 	 *
-	 * <p>实现体<b>只有一行</b>，而且就是改造前 {@code applyOrbitElement()} 里那一行
+	 * <p>实现体<b>只有一行</b>，而且就是改造前 {@code WaveOrbitElement#tick} 里那一行
 	 * （{@code Vec3 dir = parent.getMovement();}）—— 所以"波当锚点"的环平面法向与改造前
 	 * <b>逐字相同</b>（这是"既有波行为不变"最直接的一条证据）。</p>
 	 *
@@ -866,7 +794,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 锚点实现了 {@link OrbitAnchor} 就问它（波 / 镖各一处实现），
 	 * 否则回落到原版速度向量（任何实体的通用运动方向）。
 	 *
-	 * <p><b>为什么抽成静态方法而不是把三元表达式写进 {@link #applyOrbitElement()}</b>：
+	 * <p><b>为什么抽成静态方法而不是把三元表达式写进 {@link WaveOrbitElement#tick}</b>：
 	 * 关卡要能钉住"镖与波各实现一次"，而不是钉住某一个调用点的写法。</p>
 	 */
 	public static Vec3 orbitDirectionOf(Entity anchor) {
@@ -874,45 +802,6 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			return orbitAnchor.orbitDirection();
 		}
 		return anchor.getDeltaMovement();
-	}
-
-	/**
-	 * 两位小数、<b>与区域设置无关</b>的格式化（日志要机器可比对：某些区域会把小数点写成逗号）。
-	 */
-	private static String fmt2(double value) {
-		return String.format(java.util.Locale.ROOT, "%.2f", value);
-	}
-
-	/**
-	 * <b>环绕波的诊断行（调试可见性；作者 2026-10-02：「现在尝试添加调试行，我来进行测试有没有环绕波生成」）</b>。
-	 *
-	 * <p>三条时刻线，全部走 {@link WaveDiag#trace}（AGENTS 红线：波相关日志的唯一出口），
-	 * <b>不新建第二套日志前缀</b>：</p>
-	 * <ol>
-	 *   <li><b>出生</b>（{@code tickCount == 1}）：父波 UUID、批次、半径、角速度（弧度/tick 与圈/秒）、
-	 *       初始相位 —— 一眼能判"它到底生成了没有、按什么参数绕"；</li>
-	 *   <li><b>位置心跳</b>（每 20 tick 一行，节流）：当前 tick、自身坐标、父波坐标、
-	 *       <b>距父波距离</b>（恒等于半径 ⇒ 这就是"r≈0.8 真的在绕"的机器可判证据）、批次；</li>
-	 *   <li><b>消散</b>：见 {@link #remove(RemovalReason)}（所有移除路径的唯一汇合点）。</li>
-	 * </ol>
-	 *
-	 * <p>节流刻度刻意与"同批次豁免碰撞"那行（{@code tickCount % 20}）取同一拍：
-	 * 一次发射的环绕波与并排主波在同一 tick 打日志，读起来能对齐。</p>
-	 */
-	private void logOrbitDiag(Vec3 anchorPos) {
-		if (tickCount == 1) {
-			WaveDiag.trace(
-				"环绕波出生：{} 级波（{}），父波 UUID {}，批次 {}（继承父波），半径 {} 格、角速度 {} 弧度/tick（{} 圈/秒）、起始相位 {}；位置 = 父波位置 + r×(u·cosθ + v·sinθ) 逐 tick 改写",
-				waveLevel, WaveLevels.glyph(waveLevel), orbitAnchorUuid, getFiringBatch(),
-				fmt2(orbitRadius), fmt2(orbitAngularSpeed),
-				fmt2(orbitAngularSpeed * 20.0D / (Math.PI * 2.0D)),
-				fmt2(orbitPhase));
-		} else if (tickCount % ORBIT_HEARTBEAT_TICKS == 0) {
-			WaveDiag.trace(
-				"环绕波心跳：tick {}，自身 {}，父波 {}，距父波 {} 格（恒 = 半径 {} 格），批次 {}",
-				tickCount, position(), anchorPos, fmt2(position().distanceTo(anchorPos)),
-				fmt2(orbitRadius), getFiringBatch());
-		}
 	}
 
 	/**
@@ -925,7 +814,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 *   v = normalize(d × u)
 	 * </pre>
 	 *
-	 * <p><b>为什么抽成一处</b>：位置改写（{@link #applyOrbitElement()}）与粒子侧
+	 * <p><b>为什么抽成一处</b>：位置改写（{@link WaveOrbitElement#tick}）与粒子侧
 	 * （"环面留痕桩"必须铺在同一个环平面上）都要用这两个基向量；复制成两份的那一刻起，
 	 * 改了一处忘另一处就会让粒子圈与真实轨道错开。</p>
 	 */
@@ -937,54 +826,6 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		Vec3 u = reference.cross(dir).normalize();
 		Vec3 v = dir.cross(u).normalize();
 		return new Vec3[] { u, v };
-	}
-
-	/**
-	 * <b>几何专属层的粒子</b>：只有"这枚波在环绕"这件事能产生的那两簇
-	 * （2026-10-03 需求 coe-ess §3.4 的 B 层；只在服务端调用，唯一调用点是 {@link #tick()} 里
-	 * {@code isOrbiting()} 的那条分支）。
-	 *
-	 * <p><b>本方法刻意只画几何</b>——环绕波的<b>风格粒子</b>（主体尘埃 + 该魔素的点缀，包括
-	 * "异"那套 END_ROD / 青焰）已并入风格层，与主波走同一个
-	 * {@link ChargerWaveFx#sendTrail} 调用。留在这里的两件东西都依赖环平面：
-	 * <b>环面留痕桩</b>（{@link ChargerWaveFx#sendOrbitMarks}）与<b>出生整圈标记</b>
-	 * （{@link ChargerWaveFx#burstOrbitSpawn}）。它们<b>不随魔素变</b>，也不进任何风格档案 ——
-	 * 主波没有环平面，把桩点塞进"异"档案会在平飞路径上画出一圈没有意义的点。</p>
-	 *
-	 * <p>注意本方法<b>只负责粒子</b>：调用点不等价于 {@code return}，环绕波照样往下走命中判定、
-	 * 方块碰撞、波波碰撞与寿命/收尾分支 —— 观感与机制在这里是分开的两件事。</p>
-	 *
-	 * <p>三个时刻各来一簇（作者 2026-10-02 要求："出生、命中、父波消散一起收尾"三处都要能感知
-	 * 它存在过）：</p>
-	 * <ol>
-	 *   <li><b>出生</b>（{@code tickCount == 1}，实体刚被放进世界的第一 tick）：在父波位置炸一簇
-	 *       {@link ChargerWaveFx#burstOrbitSpawn}，并把整圈轨道一次标出来 —— 玩家发射后立刻能
-	 *       看到主波周围多了一个环；</li>
-	 *   <li><b>每 tick</b>：每逢 {@link ChargerWaveFx#ORBIT_MARK_INTERVAL_TICKS} 补一圈环面留痕桩
-	 *       （{@link ChargerWaveFx#sendOrbitMarks}）；</li>
-	 *   <li><b>命中与消散</b>：命中走既有的命中链（{@code hitEffect → ChargerWaveFx.burst →
-	 *       discard}，用的是环绕波自己的波级色与其 {@link #trailStyle()}）；其余任何移除路径
-	 *       （父波没了、寿命与行程上限）在 {@link #remove} 里补最后一簇 —— 见那里。</li>
-	 * </ol>
-	 */
-	private void emitOrbitGeometry(ServerLevel server) {
-		Vec3 anchorPos = this.orbitAnchorPos;
-		if (anchorPos == null) {
-			// 本 tick 还没成功改写位置（理论上不会发生：位置改写就在本 tick 移动段里）——
-			// 保守退化：这一 tick 不画任何几何粒子（宁可不画，也不画出错位的圈）。
-			return;
-		}
-		// 环平面法向取"位置改写实际用的那个"（见 orbitRingNormal 的说明）：父波方向被能量场掰弯时，
-		// 粒子圈必须跟着同一套几何，才不会画出一个与真实轨道不平行的环。
-		Vec3 normal = orbitRingNormal != null ? orbitRingNormal : movement;
-		Vec3[] axes = orbitPlaneAxes(normal);
-		// 出生簇：实体加入世界后的第一 tick（tickCount 在 super.tick() 里 +1，故首 tick 读作 1）
-		if (tickCount == 1) {
-			ChargerWaveFx.burstOrbitSpawn(server, anchorPos, renderColor, axes[0], axes[1], orbitRadius,
-				orbitCurrentPhase);
-		}
-		ChargerWaveFx.sendOrbitMarks(server, position(), axes[0], axes[1],
-			orbitRadius, orbitCurrentPhase, tickCount % ChargerWaveFx.ORBIT_MARK_INTERVAL_TICKS == 0);
 	}
 
 	/**
@@ -1048,7 +889,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 本 tick 的最终位置就是圆周点，命中/粒子/诊断全部按它算。
 		selfPropelled = true;
 		setPos(position().add(step));
-		boolean anchorAlive = applyOrbitElement();
+		boolean anchorAlive = WaveOrbitElement.applyOrbitElement(this);
 		selfPropelled = false;
 		// 父波已消散/取不到 ⇒ 自己立刻收尾（"主波消散 ⇒ 环绕波一起收尾"就靠这一条，不加第二层机制）
 		if (!anchorAlive) {
@@ -1147,7 +988,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		//      环绕波原来那套粒子内容（12/0.62 + END_ROD + 青焰）已整份搬进
 		//      WaveTrailStyle.ARCANE 的档案，于是主波用"异"魔素时逐字节等于它。
 		//   ② 几何专属层（只有"这枚波在环绕"才有，与魔素无关）：环面留痕桩 + 出生整圈标记，
-		//      见下面的 isOrbiting() 分支与 emitOrbitGeometry。
+		//      见下面的 isOrbiting() 分支与 WaveOrbitElement.emitGeometry。
 		//
 		// 为什么<b>只</b>跳过/叠加粒子而不提前 return：后面的命中判定/方块碰撞/波波碰撞/收尾分支
 		// 对环绕波仍然有意义（它照样会撞上生物、撞上父波、寿命到点），提前 return 等于顺手
@@ -1174,7 +1015,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 刻意放在风格层<b>之后</b>、且<b>不</b>写成风格层的 else ——两段是叠加关系，
 		// 环绕波既吃自己魔素的风格粒子，又额外吃这一层几何粒子。
 		if (isOrbiting() && level() instanceof ServerLevel orbitServer) {
-			emitOrbitGeometry(orbitServer);
+			WaveOrbitElement.emitOrbitGeometry(this, orbitServer);
 		}
 
 		// Ponder 场景：无真实方块/实体碰撞，飞一段距离后自动消散（remove 时客户端球面绽放）
@@ -1185,12 +1026,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		}
 
 		// 命中生物/掉落物：单次实体查询（复用同一 AABB，避免两次 getEntitiesOfClass 遍历开销）。
-		// 波波碰撞优先：两个能量波相遇 → 相互湮灭，触发范围爆炸（见 handleWaveCollision）。
+		// 波波碰撞优先：两个能量波相遇 → 相互湮灭，触发范围爆炸（见 WaveCollision.resolve）。
 		AABB hitBox = getBoundingBox().inflate(0.4);
 		List<AbstractChargerWaveEntity> waves = level().getEntitiesOfClass(AbstractChargerWaveEntity.class,
 			hitBox, w -> w != this && w.isAlive() && !w.collided);
 		if (!waves.isEmpty()) {
-			handleWaveCollision(waves.get(0));
+			WaveCollision.handleWaveCollision(this, waves.get(0));
 			return;
 		}
 
@@ -1367,7 +1208,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * <p>调用时机：波即将因撞墙而绽放消散之前，只在此处调用一次。</p>
 	 */
 	public void onSolidBlockHit(BlockPos pos) {
-		// 环绕波要素未设 ⇒ 与改造前逐字相同（第一道闸；见 applyOrbitElement 的同形守卫）。
+		// 环绕波要素未设 ⇒ 与改造前逐字相同（第一道闸；见 WaveOrbitElement.tick 的同形守卫）。
 		if (this.orbitAnchorUuid == null || pos == null) {
 			return;
 		}
@@ -1378,71 +1219,6 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (anchor instanceof OrbitAnchor orbitAnchor) {
 			orbitAnchor.orbitMineBlock(pos);
 		}
-	}
-
-	/**
-	 * 波波碰撞：两个能量波相遇时相互湮灭，在相遇点触发范围能量爆炸。
-	 *
-	 * <p>爆炸特性：</p>
-	 * <ul>
-	 *   <li><b>爆炸等级</b> = 两个波等级的较小值（min）；</li>
-	 *   <li><b>爆炸范围</b> = 以碰撞点为中心、半径 = 爆炸等级的水平正方形区域
-	 *       （半径 1 → 3×3，半径 2 → 5×5，半径 3 → 7×7），不破坏地形；</li>
-	 *   <li><b>区域内生物</b>：受到该等级波撞击生物的等量伤害（α 4 / β 6 / γ 8）；</li>
-	 *   <li><b>区域内掉落物 / 置物台物品</b>：按爆炸等级直接执行充能加工（复用
-	 *       {@link ChargerWaveProcessor}，含能量工具充能与普通物品配方转化）；</li>
-	 *   <li><b>粒子</b>：比撞墙绽放（30 个）更密集的爆炸扩散粒子。</li>
-	 * </ul>
-	 *
-	 * @param other 碰撞的另一个波
-	 */
-	private void handleWaveCollision(AbstractChargerWaveEntity other) {
-		// ================== 同批豁免（用户 2026-10-02 星界轮，需求 §3.3(f)） ==================
-		// 两侧触发点都用得着这一条，理由见下面"两侧触发点"那段注释：
-		//   ① 主动侧：本波在自己的 tick 里查到命中盒内还有一只波（tick() 里的 waves.get(0)）并调用本方法；
-		//   ② 被动侧：本波自己的 tick 也跑了同一段查询，于是它同样会调用本方法（由 collided 标记防重）。
-		// 判据放在**本方法最开头**：只要两波同批 ⇒ 双方都直接 return ——
-		// 不触发 triggerBoom、不记 waveDiag、不置 collided、不 discard。于是无论"谁先跑到"，
-		// 结果都是"谁都不爆"（这正是"双向"的含义：豁免不是靠某一侧的特判，而是两波共用的同一个入口）。
-		// ⚠ 豁免范围**只有**同批次：批次号 0（机器波、别人的波）不参与，见 sameFiringBatch 的说明。
-		if (sameFiringBatch(this, other)) {
-			// 诊断日志：豁免不是"没撞上"，而是"撞上了但按同批跳过"——出事时这一行能直接区分两者。
-			// 节流：并排飞的多枚波彼此一直在命中盒里，若每 tick 打一行会把事件流日志刷爆。
-			if (tickCount % 20 == 0) {
-				WaveDiag.trace("波波碰撞豁免（同一次发射，批次 {}）：{} 级 × {} 级 相遇但互不爆炸、互不湮灭",
-					getFiringBatch(), WaveLevels.glyph(waveLevel), WaveLevels.glyph(other.waveLevel));
-			}
-			return;
-		}
-		// =====================================================================================
-
-		int boomLevel = Math.min(waveLevel, other.waveLevel);
-		// 碰撞点取两波中心中点
-		Vec3 center = position().add(other.position()).scale(0.5);
-
-		// 1. 范围爆炸：粒子 + 音效 + 区域效果
-		ChargerWaveFx.triggerBoom(level(), this, center, trailStyle(), renderColor,
-			other.renderColor, boomLevel);
-
-		// 轨迹日志（事件流：一次碰撞一行）：用户口径是"任意两列波（不管波级）撞上就必须有影响"，
-		// 这一行把"到底撞没撞上、按哪一级结算"写进日志——出事时能直接分辨"没撞上"与"撞上了没效果"。
-		// 粒子数走 ChargerWaveFx.boomParticleCount（唯一算式），日志里的数与真实发出的数必然一致。
-		WaveDiag.trace(
-			"波波碰撞：{} 级 × {} 级（波型 {} × {}）→ 爆炸等级 {}：半径 {} 格范围伤害 {}、范围内掉落物/置物台按该级加工、粒子 {} 颗、不破坏地形",
-			WaveLevels.glyph(waveLevel), WaveLevels.glyph(other.waveLevel), getWaveType()
-				.id()
-				.getPath(),
-			other.getWaveType()
-				.id()
-				.getPath(),
-			WaveLevels.glyph(boomLevel), boomLevel, (int) WaveLevels.damage(boomLevel),
-			ChargerWaveFx.boomParticleCount(boomLevel));
-
-		// 2. 两波相互湮灭（标记防对方同 tick 重复触发）
-		this.collided = true;
-		other.collided = true;
-		other.discard();
-		discard();
 	}
 
 	@Override
@@ -1464,7 +1240,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			} else {
 				ChargerWaveFx.burst(orbitServer, position(), trailStyle(), renderColor);
 			}
-			// 收尾诊断行（与出生/心跳同一条通道，见 logOrbitDiag）：作者只靠日志判
+			// 收尾诊断行（与出生/心跳同一条通道，见 WaveOrbitElement.logDiag）：作者只靠日志判
 			// "生成了没有、是不是立刻没了、为什么没的"。三种原因一眼可分：
 			//   · 父波消散 ⇒ 主波消散带走了它（正常收尾，唯一实现）；
 			//   · 出生即收尾 ⇒ 它生成了却在第一 tick 就没了（最容易被误判成"没生成"）；
@@ -1476,7 +1252,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 					: "自身消散（命中 / 寿命 / 行程上限）");
 			WaveDiag.trace("环绕波消散：{}；父波 UUID {}，批次 {}，波级 {}，半径 {} 格，已存活 {} tick",
 				why, orbitAnchorUuid, getFiringBatch(), WaveLevels.glyph(waveLevel),
-				fmt2(orbitRadius), tickCount);
+				WaveOrbitElement.fmt2(orbitRadius), tickCount);
 		}
 		super.remove(reason);
 	}

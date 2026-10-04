@@ -3,18 +3,14 @@ package com.hjmmd_8.createoreexpansion.content.charger.craft;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.common.recipe.RecipeAutomation;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults.DebugLog;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxRef;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.EnergyDraw;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidRef;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.family.WaveRecipeFamilies;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
-import com.simibubi.create.content.processing.basin.BasinBlockEntity;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
-import com.simibubi.create.content.processing.recipe.ProcessingOutput;
 import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 
@@ -23,7 +19,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
@@ -37,10 +32,22 @@ import net.neoforged.neoforge.items.IItemHandler;
  * {@link Candidate}（三类资源引用由 {@link WaveAuxResolver} 解析，产物推导交给
  * {@link WaveCraftResults}）。</p>
  *
- * <p><b>检索面</b>：{@link #allWaveRecipes}（Create {@code RecipeFinder} + 缓存）内的
+ * <p><b>检索面</b>：{@link WaveRecipeSearch#allWaveRecipes}（Create {@code RecipeFinder} + 缓存）内的
  * ProcessingRecipe 族与 {@link WaveRecipeFamilies} 登记的非 ProcessingRecipe 族；闪电类
- * （{@link #isLightningRecipe}）不入全库，交由"波在命中点引雷 → 闪电落地统一加工"承担
+ * （{@link WaveRecipeSearch#isLightningRecipe}）不入全库，交由"波在命中点引雷 → 闪电落地统一加工"承担
  * （引雷本体仍留在实体 {@code StellarWaveEntity#summonLightningAt}）。</p>
+ *
+ * <p><b>本类的形状（2026-10-06 行为零变化拆分）</b>：本类保留<b>逐条门槛的编排</b>
+ * （{@link #collect} 的类型门/族分派/近似配方摘要与 {@link #evalCandidate} 的七道门槛），
+ * 按职责域拆出的同包类只做搬运：</p>
+ * <ul>
+ *   <li>{@link WaveRecipeSearch} —— 全库检索面与配方类型门（专属缓存键 + RecipeFinder 谓词 +
+ *       LIGHTNING 排除 + 携带类型白名单）；</li>
+ *   <li>{@link WaveMaterialMatch} —— 材料匹配（BasinRecipe 手工判定 → 单槽 → 双槽 → 机器上下文兜底）；</li>
+ *   <li>{@link WaveBasinFilter} —— 工作盆配方过滤器闸门（命中盆才生效，判定不掷随机）。</li>
+ * </ul>
+ * <p>本类仍不持世界引用、无静态状态（检索缓存键随 {@link WaveRecipeSearch} 一起搬走，
+ * 身份仍是同一个私有新对象）。</p>
  *
  * <p><b>状态经 {@link Context} 注入</b>：世界 / 辅料解析器 / 变器携带状态（热档、波源、
  * 配方类型集、载荷三件套）与两个诊断日志出口全部由实体侧现场打包传入——本类不持世界引用、
@@ -172,11 +179,11 @@ public final class WaveCandidateEvaluator {
 		// ProcessingRecipe 族，如拆解要靠三级角磨轮才带得动）。
 		// 兼容开关：AllConfig.waveRequireCarriedType = false 时回到旧的全库行为。
 		java.util.Set<ResourceLocation> allowedTypeIds = ctx.allowedTypeIds;
-		for (RecipeHolder<?> holder : allWaveRecipes(ctx)) {
+		for (RecipeHolder<?> holder : WaveRecipeSearch.allWaveRecipes(ctx)) {
 			if (RecipeAutomation.shouldIgnoreInAutomation(holder))
 				continue;
 			Recipe<?> candidateRecipe = holder.value();
-			if (!isTypeAllowed(candidateRecipe, allowedTypeIds)) {
+			if (!WaveRecipeSearch.isTypeAllowed(candidateRecipe, allowedTypeIds)) {
 				noteNearMiss(nearMiss, candidateRecipe, input,
 					"类型未携带（本波只带了 " + allowedTypeIds.size() + " 种）");
 				ctx.debug.log("淘汰 {} [{}]：配方类型不在波携带范围内（携带 {} 种）", holder.id(),
@@ -218,10 +225,10 @@ public final class WaveCandidateEvaluator {
 		}
 		// 工作盆配方过滤器（用户 2026 要求）：命中方块是带配方过滤器的工作盆时，只加工过滤器
 		// 允许产出的配方——不再对"可做的其它配方"随机串烧（如 铁锭 → 压板/辊棍混出）。
-		FilteringBehaviour recipeFilter = recipeFilterAt(ctx, around);
+		FilteringBehaviour recipeFilter = WaveBasinFilter.recipeFilterAt(ctx, around);
 		if (recipeFilter != null) {
 			int before = candidates.size();
-			candidates.removeIf(c -> !recipeOutputAllowed(ctx, recipeFilter, c, input, handler, around));
+			candidates.removeIf(c -> !WaveBasinFilter.recipeOutputAllowed(ctx, recipeFilter, c, input, handler, around));
 			if (before > 0 && candidates.isEmpty())
 				ctx.trace.log("工作盆过滤器把 {} 的 {} 条候选全部挡掉（只有过滤器列出的产物才放行）", input.getItem(), before);
 		}
@@ -271,110 +278,6 @@ public final class WaveCandidateEvaluator {
 			return sb.length() == 0 ? "0 mB" : sb.toString();
 		} catch (Throwable ignored) {
 			return "?";
-		}
-	}
-
-	// ================= 工作盆配方过滤器（用户 2026 要求） =================
-
-	/**
-	 * 命中方块是否为<b>工作盆（Basin）</b>：是则返回其配方过滤器（{@code getFilter()}），
-	 * 否则返回 null = 不做配方过滤（掉落物/置物台等维持全库行为）。
-	 */
-	private static FilteringBehaviour recipeFilterAt(Context ctx, BlockPos pos) {
-		if (pos == null || ctx.level.isClientSide)
-			return null;
-		if (ctx.level.getBlockEntity(pos) instanceof BasinBlockEntity basin)
-			return basin.getFilter();
-		return null;
-	}
-
-	/**
-	 * 配方产物是否被工作盆配方过滤器放行（语义对齐 Create {@code BasinRecipe.match}）。
-	 *
-	 * <p><b>Create 真机的口径（去混淆源码实证）</b>：{@code BasinRecipe.match} 只测
-	 * {@code filter.test(recipe.getResultItem(registryAccess()))}——即<b>声明的首个结果</b>，
-	 * <b>不摇随机</b>（权重产物只按声明值参与判定）；仅当该配方<b>没有物品产物</b>而只有流体产物时，
-	 * 改测第一个流体产物。本方法主路径与之一致。</p>
-	 *
-	 * <p><b>2026-09-14 修复：判定不再"现场摇一次随机"</b>。旧实现在声明产物没命中时会调
-	 * {@code WaveCraftResults.compute} 试算真实产物，而那条路径内部是
-	 * {@code RecipeApplier.applyRecipeOn → pr.rollResults(outputs, level.random)}——<b>当场掷一次</b>；
-	 * 执行时又掷一次（不同一次随机）。于是"设了过滤器"的机器表现为<b>好时坏时</b>（掷中就被挡、
-	 * 掷不中就放行）。现在改为测<b>声明产物全集</b>（{@code getRollableResults()} 的 {@code getStack()}，
-	 * 取声明值、不摇随机）：只要"这种配方<b>可能</b>产出玩家要的东西"就放行——判定与执行因此
-	 * 解耦且确定，同一状态永远同一结论。</p>
-	 *
-	 * <p>「产物推导」族（变形升级 / 锻造融合：声明产物为空且<b>不是</b> {@code ProcessingRecipe}）
-	 * 仍按与执行时同一套推导试算再测：这类配方的产物由输入决定、不含权重抽样，所以不会引入随机。</p>
-	 *
-	 * <p>判定异常按放行处理，避免过滤器干扰让波无故停摆。</p>
-	 *
-	 * @param input 命中物品（产物推导需要"主料"参与，如锻造融合的模板/盔甲/材料三件套）
-	 * @param handler 命中容器（推导产物时解析辅料真实物品用；掉落物路径传 null）
-	 * @param around 命中点（透传给非 ProcessingRecipe 族）
-	 */
-	private static boolean recipeOutputAllowed(Context ctx, FilteringBehaviour filter, Candidate candidate, ItemStack input,
-		IItemHandler handler, BlockPos around) {
-		if (filter == null)
-			return true;
-		Recipe<?> recipe = candidate.recipe;
-		try {
-			// ① 声明的首个产物（与 Create BasinRecipe.match 同款，确定性）
-			ItemStack declared = recipe.getResultItem(ctx.level.registryAccess());
-			if (filterAllows(filter, declared))
-				return true;
-			// ② 声明产物全集（确定性；覆盖权重随机产物）：只要有一种可能的产出被放行就算通过。
-			//    注意用 getStack() 而不是 rollOutput(random)——判定不掷随机，见上方 javadoc。
-			if (recipe instanceof ProcessingRecipe<?, ?> pr) {
-				for (ProcessingOutput output : pr.getRollableResults())
-					if (output != null && filterAllows(filter, output.getStack()))
-						return true;
-				// ③ 流体产物（Create 只在"无物品产物"时才看流体；这里放宽为"物品都没匹配上就再看流体"）
-				if (!pr.getFluidResults()
-					.isEmpty()) {
-					FluidStack fluid = pr.getFluidResults()
-						.get(0);
-					if (!fluid.isEmpty() && filter.test(fluid))
-						return true;
-				}
-			} else if (input != null && !input.isEmpty()) {
-				// ④「产物推导」族（声明为空、且不是 ProcessingRecipe：变形升级 / 锻造融合）：
-				//    用与执行时同一套推导算出真实产物再测。这类配方产物由输入决定、无权重抽样。
-				//    旧实现对本分支不加类型限制，导致带权重产物的 ProcessingRecipe 也走这里而被摇了一次。
-				ItemStack probe = input.copy();
-				probe.setCount(1);
-				List<ItemStack> derived = WaveCraftResults.compute(craftResultsContext(ctx), candidate, probe, handler,
-					around);
-				if (derived != null)
-					for (ItemStack out : derived)
-						if (filterAllows(filter, out))
-							return true;
-			}
-		} catch (Throwable ignored) {
-			return true; // 异常保守放行
-		}
-		ctx.trace.log("工作盆过滤器挡掉候选 {} [{}]：其声明产物都不在过滤器内（若确需该产物，请把它加进过滤器，"
-			+ "或把过滤器切到白名单/关闭“匹配数据”）", candidate.id, WaveCraftResults.typeKeyString(recipe));
-		return false; // 过滤器非空但配方产物不在其中 → 不可执行
-	}
-
-	/**
-	 * 过滤器是否放行该产物：先按原样测，再按<b>裸物品</b>（清空数据组件）测一次。
-	 *
-	 * <p>后者是必需的：过滤器是用来挑"做哪个产物"的，不应因为产出物带有伤害/附魔等组件就判不匹配
-	 * ——升级类配方的产物会<b>继承被改造物的组件</b>（如钻石剑的附魔/耐久 → 下界合金剑），
-	 * 若玩家过滤器里放的是干净的下界合金剑、且列表过滤器开着"匹配数据"，原样测必然失败。</p>
-	 */
-	private static boolean filterAllows(FilteringBehaviour filter, ItemStack stack) {
-		if (stack == null || stack.isEmpty())
-			return false;
-		try {
-			if (filter.test(stack))
-				return true;
-			ItemStack bare = new ItemStack(stack.getItem());
-			return !ItemStack.isSameItemSameComponents(bare, stack) && filter.test(bare);
-		} catch (Throwable ignored) {
-			return true; // 判定异常：保守放行，别让过滤器把波卡死
 		}
 	}
 
@@ -477,7 +380,7 @@ public final class WaveCandidateEvaluator {
 				energyRequired, ctx.payloadEnergy);
 			return null;
 		}
-		if (!matches(ctx, recipe, input, auxes, handler)) {
+		if (!WaveMaterialMatch.matches(ctx, recipe, input, auxes, handler)) {
 			ctx.debug.log("淘汰 {} [{}]：材料不匹配（主料 {}）", id, WaveCraftResults.typeKeyString(recipe), input.getItem());
 			return null;
 		}
@@ -491,196 +394,4 @@ public final class WaveCandidateEvaluator {
 		return new Candidate(id, recipe, List.copyOf(auxes), List.copyOf(fluidRefs), List.copyOf(energies), familyOwner);
 	}
 
-	// ================= 材料匹配（含机器上下文兜底） =================
-
-	/**
-	 * 判定配方是否命中当前物品（兼容 Create 6.0.10 各配方输入类型）。
-	 *
-	 * <p>Create 6.0.x 起不同配方类要求的 {@link RecipeInput} 子类不一致：
-	 * <ul>
-	 *   <li>{@code SingleRecipeInput} 型——压机 Pressing / 鼓风机 Splashing / Haunting
-	 *       （{@code StandardProcessingRecipe<SingleRecipeInput>}）；</li>
-	 *   <li>{@code RecipeWrapper} 型——锯 Cutting / 物品应用 ItemApplication、
-	 *       Vintage 卷绕 Coiling / 车床 Turning（可带第二槽 = 辅料）；</li>
-	 *   <li>{@code RecipeInput} 型——粉碎轮 Crushing / 石磨 Milling、杵锤 Hammering。</li>
-	 * </ul>
-	 * 若按 {@code Recipe<RecipeInput>} 统一强转调用,`SingleRecipeInput` 型配方的桥接
-	 * {@code matches(RecipeInput)} 内部会 {@code checkcast SingleRecipeInput}——传
-	 * {@code RecipeWrapper} 即抛 ClassCastException,导致压片等永久匹配失败（波"穿过"物品）。
-	 * 故先以单槽 {@code SingleRecipeInput} 试,失败（类型不符或确实不匹配）再回退
-	 * 双槽 {@code RecipeWrapper}（槽0=主料、槽1=可选辅料）。</p>
-	 *
-	 * <p><b>机器上下文配方兜底（③a，2026-09 通用化）</b>：Create 6 中另有一族"机器上下文"
-	 * ProcessingRecipe（非 BasinRecipe 子类）的 {@code matches(RecipeInput)} <b>恒返回 false</b>
-	 * ——真实匹配走绑定机器实体（如 Vintage 杵锤 {@code HammeringRecipe.matches} 字节码即
-	 * {@code iconst_0; ireturn}，真实判定在静态 {@code HammeringRecipe.match(HelveBlockEntity,…)}，
-	 * 依赖机器实体上的砧座/锤击数上下文）。变体波没有机器实体上下文，故在<b>标准两种输入类型
-	 * 判定均失败之后</b>再做一次手工材料判定（主料命中 ingredient[0]、其余 ingredient 逐条对应
-	 * 已确认的辅料——辅料可来自波载荷或命中容器其它槽），否则这类配方永远无法远程执行。</p>
-	 *
-	 * <p><b>为何不再按"类型 id 白名单"限定</b>：此前仅放行 {@code vintageimprovements:hammering}，
-	 * 于是"任何 mod 的 matches 恒 false 机器上下文配方"都要逐个加白名单才能用。现在改为
-	 * <b>通用兜底</b>——只要配方是 ProcessingRecipe 且两种标准判定都失败，就按材料手工判定，
-	 * 未来任何 mod 的同类配方自动可用（无需登记）。</p>
-	 *
-	 * <p><b>为何该兜底安全（不会误命中普通配方）</b>：判定顺序决定了它是"最后手段"——
-	 * <ol>
-	 *   <li>BasinRecipe 已在上方单独手工判定；</li>
-	 *   <li>普通单输入配方（压机/喷洗/闹鬼）走 {@code SingleRecipeInput} 一定成功，
-	 *       根本不会走到兜底；</li>
-	 *   <li>普通双/三输入配方（卷绕/车削/物品应用/变形升级）走 {@code RecipeWrapper} 成功，
-	 *       也不会走到兜底；</li>
-	 *   <li>只有"标准 matches 恒 false"的机器上下文族才会落到此处，而此时仍要求
-	 *       {@code ingredients[0].test(input)} 成立、且其余 ingredient 逐条有对应辅料
-	 *       （可来自波载荷或命中容器其它槽；辅料在 {@link #evalCandidate} 中已先行确认）。
-	 *       也就是说，材料不符的普通配方在 {@code ingredients[0].test} 这一步就会失败，
-	 *       绝不会被兜底误放行；</li>
-	 *   <li>兜底不放宽任何其它门槛：流体输入数/辅料齐备/流体量/电量/机器环境（加热、压弯头、
-	 *       鼓风机媒介）仍由 {@link #evalCandidate} 与 {@link WaveEnvironmentChecks#satisfied} 先行把关。</li>
-	 * </ol>
-	 */
-	private static boolean matches(Context ctx, Recipe<?> recipe, ItemStack input, List<AuxRef> auxes,
-		IItemHandler handler) {
-		// BasinRecipe 系（工作盆/真空室等机器上下文配方，如 Vintage 加压/抽真空）：
-		// Create 6 的 BasinRecipe.matches() 恒返回 false（真实匹配走机器静态 match，
-		// 绑定 BasinBlockEntity 的过滤器/加热状态）。变体波是"远程能量执行器"，没有
-		// 机器实体上下文——这里按配方自身材料需求手工判定（忽略机器过滤器与热需求，
-		// 波自带加工能量），否则真空室配方永远无法远程执行。
-		if (recipe instanceof com.simibubi.create.content.processing.basin.BasinRecipe basin) {
-			return genericIngredientsMatch(ctx, basin, input, auxes, handler);
-		}
-		// 先单槽：主流单输入配方（压机/喷洗/闹鬼…）的输入类型
-		net.minecraft.world.item.crafting.SingleRecipeInput single =
-			new net.minecraft.world.item.crafting.SingleRecipeInput(input);
-		if (matchesQuietly(ctx, recipe, single))
-			return true;
-		// 回退多槽：RecipeWrapper 型配方（含 2~3 输入需辅料槽者；AutoSmithing/AutoUpgrade 的
-		// matches(RecipeWrapper) 只校验槽 0，辅料齐备性由 evalCandidate 的 findAux 先行确认）；
-		// 单槽型配方传此会 CCE → 静默 false。槽数 = 1 主料 + 辅料数（至少 2，兼容旧双槽形状）；
-		// 槽 1..n 填<b>按来源解析出的辅料真实物品副本</b>（载荷 / 命中容器槽皆可），
-		// 用<b>临时</b> ItemStackHandler 装配——绝不对命中容器做 setStackInSlot（避免改动物品）。
-		net.neoforged.neoforge.items.ItemStackHandler handlerProbe =
-			new net.neoforged.neoforge.items.ItemStackHandler(Math.max(2, 1 + auxes.size()));
-		handlerProbe.setStackInSlot(0, input);
-		for (int k = 0; k < auxes.size(); k++) {
-			ItemStack aux = ctx.aux.resolveAux(auxes.get(k), handler);
-			if (!aux.isEmpty())
-				handlerProbe.setStackInSlot(k + 1, aux.copy());
-		}
-		net.neoforged.neoforge.items.wrapper.RecipeWrapper wrapper =
-			new net.neoforged.neoforge.items.wrapper.RecipeWrapper(handlerProbe);
-		if (matchesQuietly(ctx, recipe, wrapper))
-			return true;
-		// 两种标准输入类型都判定失败 → 通用兜底：机器上下文配方族（matches 恒 false）按材料手工判定
-		if (!(recipe instanceof ProcessingRecipe<?, ?>))
-			return false; // 本引擎只执行 ProcessingRecipe 族；非该族一律不兜底
-		return genericIngredientsMatch(ctx, recipe, input, auxes, handler);
-	}
-
-	/**
-	 * 手工材料判定（机器上下文兜底 + BasinRecipe 共用）：主料 = 命中物品须命中
-	 * {@code ingredients[0]}；其余 ingredient 逐条对应 {@link #evalCandidate} 已确认的辅料引用
-	 * （{@code auxes.get(k)} ↔ {@code ingredients.get(k+1)}，按 ingredient 升序压缩存储），
-	 * 并按来源解析出真实物品<b>再验一次</b>（防"确认后被消耗/槽位变化"）；
-	 * 流体/电量/环境门槛由调用方先行检查。
-	 *
-	 * @param handler 命中容器（解析 CONTAINER 来源辅料用；掉落物路径传 null）
-	 */
-	private static boolean genericIngredientsMatch(Context ctx, Recipe<?> recipe, ItemStack input, List<AuxRef> auxes,
-		IItemHandler handler) {
-		var ingredients = recipe.getIngredients();
-		if (ingredients.isEmpty())
-			return false;
-		if (!ingredients.get(0)
-			.test(input))
-			return false;
-		for (int i = 1; i < ingredients.size(); i++) {
-			int slot = i - 1;
-			if (auxes == null || slot >= auxes.size())
-				return false; // 辅料数不足：该 ingredient 无料可对应
-			ItemStack stack = ctx.aux.resolveAux(auxes.get(slot), handler);
-			if (stack.isEmpty() || !ingredients.get(i)
-				.test(stack))
-				return false;
-		}
-		return true;
-	}
-
-	/** 静默调配方 matches：输入类型不符（CCE）或桥接异常按"不匹配"处理，不向调用方抛。 */
-	@SuppressWarnings("unchecked")
-	private static boolean matchesQuietly(Context ctx, Recipe<?> recipe, net.minecraft.world.item.crafting.RecipeInput input) {
-		try {
-			return ((Recipe<net.minecraft.world.item.crafting.RecipeInput>) recipe).matches(input, ctx.level);
-		} catch (ClassCastException ignored) {
-			return false; // 输入类型与配方要求不符（如给 SingleRecipeInput 型配方传了双槽包装）
-		} catch (Throwable ignored) {
-			return false; // 个别配方桥接异常：当作不匹配
-		}
-	}
-
-	// ================= 全库检索与类型门 =================
-
-	/**
-	 * 全库检索的<b>专属缓存键</b>（本模组唯一持有者）。
-	 *
-	 * <p><b>为什么不用 {@code RecipeFinder.class} 之类"看起来唯一"的现成对象</b>：Create 的
-	 * {@code RecipeFinder.CACHED_SEARCHES} 是一个<b>进程级全局</b> Guava 缓存，命中条件<b>只有 key</b>——
-	 * 既不比较 {@code level} 也不比较谓词（源码注释原文："using the same object instance as the cacheKey
-	 * will retrieve the cached result from the first search"）。所以只要另一个模组也拿
-	 * {@code RecipeFinder.class}（一个谁都写得出、且语义上很自然的字面量）当 key，两边就会互相拿到
-	 * 对方的配方表，且症状是"某类配方莫名不加工"，极难排查。这里用一个<b>本类私有的新对象</b>做键：
-	 * 身份唯一（{@code Object} 用 == 语义），外部不可能撞上，也不需要靠"别人不会这么写"来保证正确性。</p>
-	 *
-	 * <p>（本仓另一处 {@code PowerAngleGrinderBlockEntity} 按 {@code typeInfo} 对象作键，同样唯一；
-	 * 数据包重载时 Create 自己的 {@code LISTENER} 会 {@code invalidateAll()}，故缓存不会跨数据包陈旧。）</p>
-	 */
-	private static final Object WAVE_RECIPE_CACHE_KEY = new Object();
-
-	/** 当前世界全部"<b>波可执行</b>"配方（RecipeFinder 带缓存；数据包重载后自动失效重查）。
-	 *  范围 = Create ProcessingRecipe 族（主路径全库管线）∪ {@link WaveRecipeFamilies} 登记的非
-	 *  ProcessingRecipe 族（拆解等）；仍排除本 mod 闪电类——闪电加工不走全库命中，
-	 *  只能由"波在命中点引雷 → 本模组闪电落地统一加工"承担（见 {@code StellarWaveEntity#summonLightningAt}）。
-	 *
-	 *  <p>缓存键见 {@link #WAVE_RECIPE_CACHE_KEY}（私有新对象 = 身份唯一，不与任何外部调用方冲突）；
-	 *  谓词固定，故同一会话内每个 key 只会构建一次缓存。</p> */
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private static List<RecipeHolder<?>> allWaveRecipes(Context ctx) {
-		try {
-			return (List) com.simibubi.create.foundation.recipe.RecipeFinder.get(WAVE_RECIPE_CACHE_KEY, ctx.level,
-				r -> r.value() instanceof Recipe<?> recipe
-					&& WaveRecipeFamilies.isExecutable(recipe)
-					&& !isLightningRecipe(r));
-		} catch (Throwable ignored) {
-			return List.of();
-		}
-	}
-
-	/** LIGHTNING / LIGHTNING_BLOCK 类型判定（专属机制，不入全库）。 */
-	private static boolean isLightningRecipe(RecipeHolder<?> holder) {
-		if (!(holder.value() instanceof Recipe<?> r))
-			return false;
-		RecipeType<?> t = r.getType();
-		return t == CoeRecipeTypes.LIGHTNING.getType() || t == CoeRecipeTypes.LIGHTNING_BLOCK.getType();
-	}
-
-	/**
-	 * 配方类型门：该配方是否属于波携带到的类型。
-	 *
-	 * <p>{@link AllConfig#waveRequireCarriedType} 为 false 时恒放行（旧全库行为）。
-	 * 类型 id 由 {@link WaveCraftResults#typeKeyOf(Recipe)} 取注册表键，因此"同类型不同 mod 的配方"
-	 * 共用一次携带（与展示口径一致）。</p>
-	 */
-	private static boolean isTypeAllowed(Recipe<?> recipe, java.util.Set<ResourceLocation> allowedTypeIds) {
-		if (!AllConfig.waveRequireCarriedType)
-			return true; // 兼容开关：关闭时回到全库检索
-		ResourceLocation key = WaveCraftResults.typeKeyOf(recipe);
-		return key != null && allowedTypeIds.contains(key);
-	}
-
-	// ================= 接线 =================
-
-	/** 产物推导上下文（世界 + 辅料解析器 + 诊断日志出口）：与实体侧 {@code craftResultsContext()} 同构。 */
-	private static WaveCraftResults.Context craftResultsContext(Context ctx) {
-		return new WaveCraftResults.Context(ctx.level, ctx.aux, ctx.debug);
-	}
 }

@@ -17,14 +17,11 @@ import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveEnvironmentChecks;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
-import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadRelease;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.BorrowedChargingSource;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
-import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
-import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 import net.minecraft.core.BlockPos;
@@ -67,17 +64,29 @@ import net.neoforged.neoforge.items.IItemHandler;
  *       命中物品 → 批量测属性 → 恰 1 种直行 / 多种随机 → "主料 + 0~8 辅料 + 0~2 流体"执行
  *       → 产物继续可续链。</li>
  * </ul>
+ *
+ * <p><b>本类的形状（2026-10-06 行为零变化拆分）</b>：本类保留<b>公开/受保护形状与全部公开实现</b>
+ * （变器写入的能力快照、命中链、方块槽与掉落物两条编排入口、NBT、{@code WaveCraftExecutor} /
+ * {@code WaveCraftConsumption} 两个 Host 契约、载荷的只读出口），按职责域拆出的同包类只做搬运
+ * （宿主仍是这些状态的<b>唯一持有者</b>，四个新类只读/写它放宽到包级私有的那几个字段）：</p>
+ * <ul>
+ *   <li>{@link WaveBorrowedCharging} —— 借用充能（外部条件放行：变器半径内的应力充能器代为加工）；</li>
+ *   <li>{@link WaveCarriedTypes} —— 携带的加工能力展开成可执行的配方类型集合与转速档；</li>
+ *   <li>{@link WaveChildSplit} —— 分裂时的"物质均摊"算术（载荷物品／流体／电量／链式次数）；</li>
+ *   <li>{@link WavePayloadDisposal} —— 载荷来源表与剩余载荷释放（含 {@code finally} 兜底清理）。</li>
+ * </ul>
+ * <p>构造期（两个构造器）一个字未动，也没有调用任何被搬出去的 helper。</p>
  */
 public class StellarWaveEntity extends AbstractChargerWaveEntity implements WaveCraftConsumption.Host, WaveCraftExecutor.Host {
 
 	/** 变器赋予的加工机属性（方块 id 快照）；可为空 = 波未携带加工属性（退化为普通波）。 */
-	private List<ResourceLocation> attributes = new ArrayList<>();
+	List<ResourceLocation> attributes = new ArrayList<>();
 
 	/**
 	 * 变器按扫描时机器<b>实时状态</b>解析出的"当前应执行配方类型"快照
 	 * （状态相关机器如 Vintage 真空室按 mode 只带 PRESSURIZING 或 VACUUMIZING 一套）。
 	 */
-	private List<IRecipeTypeInfo> recipeTypes = new ArrayList<>();
+	List<IRecipeTypeInfo> recipeTypes = new ArrayList<>();
 
 	/**
 	 * 变器携带的<b>加热档位</b>快照（扫描半径内最高热档的烈焰燃烧室；NONE = 未携带加热）。
@@ -103,7 +112,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * （见 {@code compat.vintageimprovements.VintageRecipeSpeed}），本类排序时按同一口径
 	 * 让匹配波转速档的配方排前面。它是<b>优先级而非硬门槛</b>（与 Vintage 行为一致）。</p>
 	 */
-	private float carriedRpm;
+	float carriedRpm;
 
 	/**
 	 * 变器当时的<b>读取半径</b>（1~3 格；穿波瞬间写入）。
@@ -112,7 +121,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * 扫描周围的容器/储罐/储能，把物品/流体/电量补进载荷，<b>补料范围与变器本身的读取范围一致</b>
 	 * （见 {@link #refillPayloadAround(BlockPos)}）。</p>
 	 */
-	private int carriedScanRadius = 1;
+	int carriedScanRadius = 1;
 
 	/** 上次"就地补料"的 tick（节流，避免掉落物链上每 tick 全扫一遍）。 */
 	private int lastRefillTick = -100;
@@ -124,13 +133,13 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	private int chainLeft;
 
 	/** 携带辅料物品：总个数 ≤5、种类 ≤5（每种一个条目，count 可 >1 以便"64 铁锭取 5"）。 */
-	private List<ItemStack> payloadItems = new ArrayList<>();
+	List<ItemStack> payloadItems = new ArrayList<>();
 
 	/** 携带流体（≤500 mB；无 = EMPTY）——流体输入的<b>兜底</b>来源：命中容器自身流体槽优先。 */
-	private FluidStack payloadFluid = FluidStack.EMPTY;
+	FluidStack payloadFluid = FluidStack.EMPTY;
 
 	/** 携带电量（FE；特斯拉线圈类全抽/余电回填用）。 */
-	private int payloadEnergy;
+	int payloadEnergy;
 
 	/**
 	 * 载荷的<b>取料来源方块位置</b>（去重、按取料先后；越靠后 = 越新的来源）。
@@ -140,10 +149,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * <b>还回这些容器</b>，而不是丢在消散点——消散点常常就在波刚加工过的工作盆上方，
 	 * 掉落物会被工作盆吸进去（用户 2026-09 实测反馈："携带的物品也会被同时转移到工作盆里面去"）。</p>
 	 */
-	private List<BlockPos> payloadSources = new ArrayList<>();
-
-	/** 记忆的来源方块上限（超出后丢弃最旧的）。 */
-	private static final int MAX_PAYLOAD_SOURCES = 16;
+	List<BlockPos> payloadSources = new ArrayList<>();
 
 	/**
 	 * <b>最近一次被加工过的方块</b>（工作盆/置物台等）：余料处置
@@ -153,17 +159,17 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * <p>2026-09-11 用户口径："用不完的余料在击中目标方块之后，不返回原来的箱子，
 	 * 而是保存在击中方块周围、变器所对应范围之内的最近的可保存容器中"。</p>
 	 */
-	private BlockPos lastProcessedBlock;
+	BlockPos lastProcessedBlock;
 
 	/**
 	 * 本次命中是否已经引了一道雷（{@link #summonLightningAt} 成功时置位）。
 	 *
 	 * <p>用途：那道雷的"闪电落地统一加工"会就地处理它负责的配方类型（CC&amp;A charging 等），
-	 * 所以本波要把这些类型从自己的类型门里摘掉（见 {@link #allowedTypeIds()}），
+	 * 所以本波要把这些类型从自己的类型门里摘掉（见 {@link WaveCarriedTypes#allowedIds(StellarWaveEntity)}），
 	 * 否则同一件物品会被执行两遍。每次命中处理开始时复位（见 {@code handleItemInventoryBlock} /
 	 * {@code tryCraft}）。</p>
 	 */
-	private boolean strikeOwnsTypes;
+	boolean strikeOwnsTypes;
 
 	/** 携带强化避雷针"释放机会"（1 次 = 可执行一次 LIGHTNING 类加工；波本身不引雷）。 */
 	private int rodCharges;
@@ -175,7 +181,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * 逐条淘汰诊断日志（本类唯一入口，实现见 {@link WaveDiag#debug}）：默认关闭，
 	 * 量级与配方库规模成正比，排查"命中物品为何不加工 / 走了哪条配方"时才打开。
 	 */
-	private static void craftDebug(String msg, Object... args) {
+	static void craftDebug(String msg, Object... args) {
 		WaveDiag.debug(msg, args);
 	}
 
@@ -188,7 +194,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * 于是"是没匹配上、还是匹配上了却选了别的配方"一眼可辨。
 	 * 开关与日志前缀现在只有 {@link WaveDiag} 一处（穿波转换、场点燃等跨类事件也写同一本账）。</p>
 	 */
-	private static void craftTrace(String msg, Object... args) {
+	static void craftTrace(String msg, Object... args) {
 		WaveDiag.trace(msg, args);
 	}
 
@@ -200,9 +206,9 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * <p><b>为什么要有这个字段</b>：解析要扫一遍方块，而波每 tick 都在飞且每 tick 都可能命中——
 	 * 若在命中处理里对每件掉落物、每次方块命中各扫一遍，同一 tick 的同一批命中会重复付出扫描成本。
 	 * 所以本字段只做<b>单次命中生命周期内的复用</b>：见
-	 * {@link #borrowedChargingSource()}（每个 tick 至多解析一次）。</p>
+	 * {@link WaveBorrowedCharging#resolve(StellarWaveEntity)}（每个 tick 至多解析一次）。</p>
 	 */
-	private BorrowedChargingSource borrowedSource;
+	BorrowedChargingSource borrowedSource;
 
 	/**
 	 * {@link #borrowedSource} 对应的 tick（{@code -1} = 本 tick 还没解析过）。
@@ -220,79 +226,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * <p><b>不落盘、不同步</b>：这两个字段都是纯运行态，{@code addAdditionalSaveData} /
 	 * {@code defineSynchedData} 里都没有它们（借用充能是每命中的瞬时外部条件）。</p>
 	 */
-	private int borrowedSourceTick = -1;
-
-	/**
-	 * 取本次命中的借来的充能源（<b>本类唯一的借用判定入口</b>：判定与取值全部委托
-	 * {@link BorrowedChargingSource#resolve}，实体侧不做任何等级比较或方块扫描）。
-	 */
-	private BorrowedChargingSource borrowedChargingSource() {
-		if (borrowedSourceTick != tickCount) {
-			borrowedSourceTick = tickCount;
-			borrowedSource = BorrowedChargingSource.resolve(level(), waveOrigin, Math.max(1, carriedScanRadius));
-		}
-		return borrowedSource;
-	}
-
-	/**
-	 * <b>借用充能（掉落物路径）</b>：全能波自身没有充能加工，但变器读取半径内若有星辉石应力充能器，
-	 * 就用<b>那台充能器的发射等级</b>执行一次 charging 配方加工。
-	 *
-	 * <p><b>语义（必须守住）</b>：这是"外部条件放行"，不是"本性改变"——
-	 * <b>不改变波型</b>（仍是 {@link WaveTypes#OMNI}），也<b>不让
-	 * {@link WaveType#allowsChargingProcessing()} 的返回值变化</b>（那个方法回答"这是什么波"，
-	 * 而借用回答"波此刻恰好站在谁旁边"）。因此这里只在<b>调用点</b>判断"有没有可借的充能源"，
-	 * 从不把结果写回波型或任何持久状态。</p>
-	 *
-	 * <p><b>为什么加工逻辑一行都不抄</b>：充能加工的实现是 {@link ChargerWaveProcessor}
-	 * （普通波那套：配方匹配 → 充能/消耗输入 → 产出），这里只是"借来等级 → 造一个处理器"，
-	 * 见 {@link BorrowedChargingSource#processor(Level)}。</p>
-	 *
-	 * <p><b>命中即消散</b>：借用走的是普通波语义——命中掉落物即绽放消散
-	 * （掉落物会被加工掉的充能行为，与普通波完全一致；变体波自己的远程加工路径不受影响，
-	 * 见 {@link #onItemHit}）。</p>
-	 *
-	 * @return 是否真的完成了一次充能加工（false = 无充能源 / 无匹配配方 → 本次命中不消耗波）
-	 */
-	private boolean tryBorrowedItemCharging(ItemEntity item) {
-		// 本性闸门 + 可借来源（每 tick 至多解析一次）先判，再谈加工：
-		// 普通波自己就能充能，不需要借（也不该借）；攻击波既不充能也不加工。
-		if (getWaveType().allowsChargingProcessing())
-			return false;
-		BorrowedChargingSource source = borrowedChargingSource();
-		if (source == null || !source.processor(level())
-			.processItemEntity(item))
-			return false;
-		craftTrace("借用充能（掉落物）：波源 {} 半径 {} 内的充能器 [{}] 发射等级 {} → 命中 {} 完成充能加工",
-			waveOrigin, Math.max(1, carriedScanRadius), source.pos(), source.waveLevel(),
-			item.getItem()
-				.getItem());
-		ChargerWaveFx.burst(level(), position(), trailStyle(), getRenderColor());
-		discard();
-		return true;
-	}
-
-	/**
-	 * <b>借用充能（方块物品槽路径）</b>：与 {@link #tryBorrowedItemCharging(ItemEntity)} 同一口径，
-	 * 只是把槽内物品交给处理器（{@link ChargerWaveProcessor#processBlockHandler}）。
-	 *
-	 * <p><b>返回 {@code false} 的语义与普通波一致</b>：无论是"没有可借的充能源"还是"借到了但槽里
-	 * 没有匹配的 charging 配方"，都交给基类默认路径处理（基类的本性闸门会挡住它自己的充能加工），
-	 * 调用方 {@code WaveHitResolver} 随后按撞墙让波绽放消散——这就是普通波命中置物台的既有行为。</p>
-	 *
-	 * @return true = 已用借来的波级完成一次充能加工（调用方不再走默认路径）
-	 */
-	private boolean tryBorrowedBlockCharging(IItemHandler handler, BlockPos pos) {
-		if (getWaveType().allowsChargingProcessing())
-			return false;
-		BorrowedChargingSource source = borrowedChargingSource();
-		if (source == null || !source.processor(level())
-			.processBlockHandler(handler, pos))
-			return false;
-		craftTrace("借用充能（方块槽）：波源 {} 半径 {} 内的充能器 [{}] 发射等级 {} → 命中 {} 完成充能加工",
-			waveOrigin, Math.max(1, carriedScanRadius), source.pos(), source.waveLevel(), pos);
-		return true;
-	}
+	int borrowedSourceTick = -1;
 
 	/** 配方类型 id 字符串（诊断日志用；取不到返回 {@code "?"}）。实现见 {@link WaveCraftResults#typeKeyString}。 */
 	private static String typeKeyString(Recipe<?> recipe) {
@@ -332,7 +266,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * 把烈焰人摆在变器旁边是最自然的摆法；只认目标方块邻域会让人明明点了火却被告知
 	 * "没有检测到加热条件"（用户 2026-09 实测反馈）。</p>
 	 */
-	private BlockPos waveOrigin;
+	BlockPos waveOrigin;
 
 	/** 设定加工机属性快照（变器转换时调用）。 */
 	public void setAttributes(List<ResourceLocation> machineIds) {
@@ -362,11 +296,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	/** 变器携带的加工转速（RPM；0 = 未携带）。 */
 	public float getCarriedRpm() {
 		return carriedRpm;
-	}
-
-	/** 波当前转速档（Vintage 口径：0 停转 / 1 低 / 2 中 / 3 高；未装 Vintage 返回 0 = 无档位概念）。 */
-	private int waveSpeedMode() {
-		return WaveMachineIntegrationPoints.speedModeFor(carriedRpm);
 	}
 
 	/** 设定变器当时的读取半径（穿波瞬间由变器写入；供"命中后就地补料"用）。 */
@@ -408,7 +337,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 			return; // 节流：连续命中不重复扫全场
 		lastRefillTick = tickCount;
 		// 排除口径与"余料入库"共用（见 payloadGatherSkip）：命中点自身 / 工作盆 / 动能机器内部库存
-		java.util.function.Predicate<BlockPos> skip = payloadGatherSkip(center);
+		java.util.function.Predicate<BlockPos> skip = WavePayloadDisposal.gatherSkip(this, center);
 		try {
 			int beforeItems = WavePayloadGather.totalItems(payloadItems);
 			int beforeFluid = payloadFluid.getAmount();
@@ -427,7 +356,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 			if (energyRoom != 0)
 				payloadEnergy += WavePayloadGather.gatherEnergy(level(), center, carriedScanRadius, taken, false, skip,
 					energyRoom);
-			rememberPayloadSources(taken);
+			WavePayloadDisposal.rememberSources(this, taken);
 			int gotItems = WavePayloadGather.totalItems(payloadItems) - beforeItems;
 			int gotFluid = payloadFluid.getAmount() - beforeFluid;
 			int gotEnergy = payloadEnergy - beforeEnergy;
@@ -437,19 +366,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		} catch (Throwable ignored) {
 			// 补料异常：不打断本次命中处理（载荷保持原样）
 		}
-	}
-
-	/** 记住本批取料来源（去重、越靠后越新、上限 {@link #MAX_PAYLOAD_SOURCES}）。 */
-	private void rememberPayloadSources(List<BlockPos> taken) {
-		if (taken == null || taken.isEmpty())
-			return;
-		for (BlockPos pos : taken) {
-			BlockPos p = pos.immutable();
-			payloadSources.remove(p);
-			payloadSources.add(p);
-		}
-		while (payloadSources.size() > MAX_PAYLOAD_SOURCES)
-			payloadSources.remove(0);
 	}
 
 	/** 设定链式剩余次数（默认 = 波等级）。 */
@@ -470,7 +386,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		this.payloadFluid = fluid == null || fluid.isEmpty() ? FluidStack.EMPTY : fluid.copy();
 		this.payloadEnergy = Math.max(0, energy);
 		if (sources != null)
-			rememberPayloadSources(sources);
+			WavePayloadDisposal.rememberSources(this, sources);
 	}
 
 	/** 设定避雷针释放机会数（变器转换时已真正抽取避雷针储层）。 */
@@ -489,12 +405,12 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	}
 
 	/**
-	 * 当前"实际可执行"的配方类型全集（只读快照，= {@link #activeRecipeTypes()}）：
+	 * 当前"实际可执行"的配方类型全集（只读快照，= {@link WaveCarriedTypes#active(StellarWaveEntity)}）：
 	 * 携带的扫描类型（缺省按属性展开）＋ 载荷电量带来的额外类型。
 	 * 供外部只读使用——星辉波变器在穿波瞬间以此记录"最近波携带的可加工属性"。
 	 */
 	public List<IRecipeTypeInfo> getActiveRecipeTypes() {
-		return List.copyOf(activeRecipeTypes());
+		return List.copyOf(WaveCarriedTypes.activeRecipeTypes(this));
 	}
 
 	/**
@@ -558,38 +474,10 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		if (level().isClientSide)
 			return;
 		for (ItemEntity item : items)
-			if (tryBorrowedItemCharging(item))
+			if (WaveBorrowedCharging.tryBorrowedItemCharging(this, item))
 				return;
 		// ③ 两者都无：退化到普通波行为（基类的波型闸门会挡住它自己的充能加工）
 		super.onItemHit(items);
-	}
-
-	/**
-	 * 当前应执行的配方类型：优先扫描快照（含机器实时状态选择）；旧波无快照则按机器 id
-	 * 展开静态档案。携带电量的波（{@code payloadEnergy > 0}）额外补入 CC&amp;A charging
-	 * 等耗电配方类型（"飞行特斯拉线圈"角色，见 compat 联动）——各类配方条目的电量需求
-	 * 仍由逐条候选检测另行门控（见 {@link #tryCraft}）。
-	 */
-	private List<IRecipeTypeInfo> activeRecipeTypes() {
-		List<IRecipeTypeInfo> types = new ArrayList<>();
-		if (!recipeTypes.isEmpty()) {
-			types.addAll(recipeTypes);
-		} else {
-			for (ResourceLocation machineId : attributes)
-				for (IRecipeTypeInfo t : WaveMachineIntegrationPoints.typesFor(machineId))
-					if (!types.contains(t))
-						types.add(t);
-		}
-		if (payloadEnergy > 0) {
-			try {
-				for (IRecipeTypeInfo extra : WaveMachineIntegrationPoints.energyExtraRecipeTypes(true))
-					if (!types.contains(extra))
-						types.add(extra);
-			} catch (Throwable ignored) {
-				// CC&amp;A 缺失等异常：不追加额外类型
-			}
-		}
-		return types;
 	}
 
 	/** 单次加工尝试（掉落物路径）：全库检索候选，选 1 条执行；返回是否成功加工。编排见 `WaveCraftExecutor`。 */
@@ -638,7 +526,8 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 */
 	public WaveCandidateEvaluator.Context candidateContext() {
 		return new WaveCandidateEvaluator.Context(level(), auxResolver(), carriedHeat, waveOrigin,
-			(msg, args) -> craftDebug(msg, args), (msg, args) -> craftTrace(msg, args), allowedTypeIds(),
+			(msg, args) -> craftDebug(msg, args), (msg, args) -> craftTrace(msg, args),
+			WaveCarriedTypes.allowedTypeIds(this),
 			payloadItems, payloadFluid, payloadEnergy);
 	}
 
@@ -693,35 +582,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	// 已随"加工编排"一族搬入 WaveCraftExecutor。
 
 	/**
-	 * 波当前"携带到的"配方类型 id 集合（= 配方类型门的白名单）。
-	 *
-	 * <p>来源：{@link #activeRecipeTypes()}——变器扫描半径内机器能力快照（含状态选择器裁剪）
-	 * ＋ 载荷电量带来的额外类型（如 CC&amp;A 充电）。空集合 = 该波没有任何加工能力
-	 * （退化波，根本不会走到候选检索）。</p>
-	 */
-	private java.util.Set<ResourceLocation> allowedTypeIds() {
-		java.util.Set<ResourceLocation> ids = new java.util.HashSet<>();
-		try {
-			for (IRecipeTypeInfo type : activeRecipeTypes()) {
-				if (type != null && type.getId() != null)
-					ids.add(type.getId());
-			}
-		} catch (Throwable ignored) {
-			// 类型表读取异常：返回空表（保守：本 tick 不执行任何配方，而不是放行全库）
-		}
-		// 本次命中已经引了一道雷 → 闪电落地统一加工负责的配方类型（CC&A charging 等）从本波
-		// 的类型门里摘掉：同一件物品只由"雷"加工一遍，不再由波再来一遍（用户 2026-09 指出的重复执行）。
-		if (strikeOwnsTypes) {
-			try {
-				ids.removeAll(WaveMachineIntegrationPoints.strikeHandledTypeIds());
-			} catch (Throwable ignored) {
-				// 排除失败：按不排除处理（宁可留旧行为，也不要因异常吃掉整张类型表）
-			}
-		}
-		return ids;
-	}
-
-	/**
 	 * 配方类型门：该配方是否属于波携带到的类型。
 	 *
 	 * <p>{@link AllConfig#waveRequireCarriedType} 为 false 时恒放行（旧全库行为）。
@@ -765,7 +625,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		// 借用失败（无可借来源 / 槽内无匹配 charging 配方）→ 返回 false，维持"撞墙消散"。
 		// 链数不受影响：走到这里时编排要么一步没加工（槽内无一可加工），要么根本没进加工循环
 		// （无携带能力时 Executor 直接把本方法交回基类实现，见 WaveCraftExecutor#handleInventoryBlock）。
-		if (tryBorrowedBlockCharging(handler, pos))
+		if (WaveBorrowedCharging.tryBorrowedBlockCharging(this, handler, pos))
 			return true;
 		// 无借用来源（或借了也不匹配）时，与改动前完全一致：按普通波行为收尾（基类的波型闸门
 		// 会挡住它自己的充能加工，本波不重复做任何加工）
@@ -907,12 +767,14 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	/** 挑选本次要执行的候选（排序策略见 {@link WaveCandidateOrdering#pick}）。 */
 	public Candidate pickCandidate(List<Candidate> candidates, ItemStack input, Candidate preferred) {
-		return WaveCandidateOrdering.pick(candidates, preferred, rememberedRecipeId(input), waveSpeedMode());
+		return WaveCandidateOrdering.pick(candidates, preferred, rememberedRecipeId(input),
+			WaveCarriedTypes.waveSpeedMode(this));
 	}
 
 	/** 候选排序（排序策略见 {@link WaveCandidateOrdering#order}）。 */
 	public List<Candidate> orderCandidates(List<Candidate> candidates, ItemStack input, Candidate preferred) {
-		return WaveCandidateOrdering.order(candidates, preferred, rememberedRecipeId(input), waveSpeedMode());
+		return WaveCandidateOrdering.order(candidates, preferred, rememberedRecipeId(input),
+			WaveCarriedTypes.waveSpeedMode(this));
 	}
 
 	/** 成功加工后记录该输入种类的配方锁（供后续同种输入复用）。 */
@@ -944,7 +806,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		if (!payloadReleased) {
 			payloadReleased = true;
 			try {
-				releasePayload();
+				WavePayloadDisposal.release(this);
 			} catch (Throwable t) {
 				// 同 remove()：第三方能力异常不得打断消散流程（2026-09 审计修复）
 				craftDebug("载荷释放异常（余料未能全部处置）：{}", t);
@@ -954,41 +816,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		discard();
 	}
 
-	// ================= 载荷释放（实现见 payload/WavePayloadRelease） =================
-
-	/**
-	 * 剩余载荷释放（链尽消散 / 撞墙 / 寿命耗尽等任何消散路径共用）：把运行态打包成一次请求交给
-	 * {@link WavePayloadRelease}，并在<b>任何情况下</b>清空载荷状态（{@code finally}）。
-	 *
-	 * <p>口径（三种模式）、排除口径（绝不进工作盆/加工机）、异常隔离都在那个类里，见其类注释
-	 * 与设计文档 §11.1。这里只做"取值 + 打包 + 兜底清理"。</p>
-	 */
-	private void releasePayload() {
-		if (level().isClientSide)
-			return;
-		try {
-			WavePayloadRelease.release(new WavePayloadRelease.Request(level(), AllConfig.wavePayloadRelease,
-				position(), payloadItems, payloadFluid, payloadEnergy, payloadSources,
-				lastProcessedBlock != null ? lastProcessedBlock : blockPosition(),
-				Math.max(1, carriedScanRadius)));
-		} catch (Throwable t) {
-			// 第三方容器/储能的能力实现抛异常：绝不把异常从实体移除流程抛到服务端 tick
-			// （2026-09 审计修复）。余料按"这次没放进去"处理。
-			craftDebug("载荷释放异常（余料未能全部处置）：{}", t);
-		} finally {
-			payloadItems.clear();
-			payloadFluid = FluidStack.EMPTY;
-			payloadEnergy = 0;
-			payloadSources.clear();
-			lastProcessedBlock = null;
-		}
-	}
-
-	/**
-	 * "取料 / 余料入库 / 退还原箱"共用的排除口径：不打正在加工的那个方块（{@code center}）的主意；
-	 * 工作盆、目录登记的加工机（含注液器/物品排放器这类<b>非动能</b>机）与动能方块一律不算可存目标。
-	 * 判定实现收敛在 {@link WavePayloadRelease#isStoreTarget}（变器扫描与波侧同源）。
-	 */
 	/** 辅料解析器：按当前载荷现场构造（载荷列表按引用读取，故列表内容变化立即可见）。 */
 	public WaveAuxResolver auxResolver() {
 		return new WaveAuxResolver(level(), payloadItems, payloadFluid, payloadEnergy);
@@ -1029,15 +856,12 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		this.payloadEnergy = energy;
 	}
 
-	private java.util.function.Predicate<BlockPos> payloadGatherSkip(BlockPos center) {
-		return pos -> pos.equals(center) || !WavePayloadRelease.isStoreTarget(level(), pos);
-	}
 	@Override
 	public void remove(RemovalReason reason) {
 		if (reason == RemovalReason.DISCARDED && !level().isClientSide && !payloadReleased) {
 			payloadReleased = true;
 			try {
-				releasePayload(); // 寿命/撞墙等任何消散：剩余载荷也要落地
+				WavePayloadDisposal.release(this); // 寿命/撞墙等任何消散：剩余载荷也要落地
 			} catch (Throwable t) {
 				// 第三方容器/储能的能力实现抛异常时，绝不把异常从实体移除流程里抛出去
 				// （2026-09 审计修复：否则会从 tick 冒到服务端 tick）。余料按"这次没放进去"处理。
@@ -1076,74 +900,26 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		child.carriedScanRadius = carriedScanRadius;
 		int n = Math.max(1, total);
 		int i = Math.max(0, Math.min(index, n - 1));
-		child.payloadItems = splitItems(payloadItems, i, n);
-		int fluidAmount = splitShare(payloadFluid.isEmpty() ? 0 : payloadFluid.getAmount(), i, n);
+		child.payloadItems = WaveChildSplit.splitItems(payloadItems, i, n);
+		int fluidAmount = WaveChildSplit.splitShare(payloadFluid.isEmpty() ? 0 : payloadFluid.getAmount(), i, n);
 		child.payloadFluid = fluidAmount <= 0 ? FluidStack.EMPTY : payloadFluid.copyWithAmount(fluidAmount);
-		child.payloadEnergy = splitShare(payloadEnergy, i, n);
+		child.payloadEnergy = WaveChildSplit.splitShare(payloadEnergy, i, n);
 		child.payloadSources = new ArrayList<>(payloadSources);
 		child.rodCharges = i == 0 ? rodCharges : 0; // 引雷次数不可分割
-		child.chainLeft = splitShare(chainLeft, i, n);
+		child.chainLeft = WaveChildSplit.splitShare(chainLeft, i, n);
 		return child;
 	}
 
 	/**
 	 * <b>分裂时"载荷已分发"标记</b>（基类钩子 {@code onPayloadDistributedToChildren} 的覆写）。
 	 *
-	 * <p>母波分裂后会被 {@code discard()}，而 {@code remove(DISCARDED)} 会调 {@link #releasePayload()} ——
+	 * <p>母波分裂后会被 {@code discard()}，而 {@code remove(DISCARDED)} 会调 {@link WavePayloadDisposal#release} ——
 	 * 若不标记，母波会把<b>整份</b>载荷（子波拿到的只是份额）再释放回容器一次，等于凭空多出一份。
 	 * 标为"已处置"后，母波消散时不再重复释放。</p>
 	 */
 	@Override
 	protected void onPayloadDistributedToChildren() {
 		payloadReleased = true;
-	}
-
-	/** n 等份中的第 i 份（余数优先给靠前的子波）：{@code share(5,1,2) == 2}、{@code share(5,0,2) == 3}。 */
-	private static int splitShare(int amount, int index, int total) {
-		if (amount <= 0)
-			return 0;
-		if (total <= 1)
-			return amount;
-		int base = amount / total;
-		return base + (index < amount % total ? 1 : 0);
-	}
-
-	/**
-	 * 载荷物品按"<b>每个子波拿到尽量不同的种类、数量尽量均匀</b>"发放（2026-09 用户口径）。
-	 *
-	 * <p><b>做法：把载荷摊平成"每件一个位置"的序列，子波 i 取所有 {@code 位置 % 子波数 == i}</b>
-	 * （同一物料的若干件在序列里连续，于是被轮转着分给不同子波）。四条性质：</p>
-	 * <ol>
-	 *   <li><b>绝不凭空制造 / 丢失</b>：每件物品只落进一个子波，各子波之和恒等于母波原量；</li>
-	 *   <li><b>种类最大化分散</b>：相邻物品总是分给不同子波，所以"每种各 1 件"时各子波拿到的是
-	 *       <b>互不相同</b>的种类。旧实现按"每种数量等分 + 余数给靠前的子波"，会让<b>第 0 个子波
-	 *       独吞全部种类、其余子波空手</b>（每种 count=1 时余数全落在 index 0）；</li>
-	 *   <li><b>数量最均匀</b>：任一子波的件数与平均值的差不超过 1 件；</li>
-	 *   <li><b>确定性</b>：每个子波各自调用都能独立算出自己那一份，无需在子波间共享状态
-	 *       （分裂是"逐个开口调用 createChildWave"，没有统一的分发时机）。</li>
-	 * </ol>
-	 *
-	 * <p>同一物料件数大于子波数时（例如 A×5、2 个子波）无法做到"种类互不相同"，此时退化为
-	 * "该物料在各子波间尽量均匀"（3 / 2），仍有界且守恒。</p>
-	 */
-	private static List<ItemStack> splitItems(List<ItemStack> items, int index, int total) {
-		int n = Math.max(1, total);
-		int me = Math.max(0, Math.min(index, n - 1));
-		List<ItemStack> out = new ArrayList<>(items.size());
-		int position = 0; // 摊平后的位置游标：第 p 件对应"第 p 个位置"
-		for (ItemStack stack : items) {
-			if (stack == null || stack.isEmpty())
-				continue;
-			int count = stack.getCount();
-			int take = 0;
-			for (int p = 0; p < count; p++)
-				if ((position + p) % n == me)
-					take++;
-			position += count;
-			if (take > 0)
-				out.add(stack.copyWithCount(take));
-		}
-		return out;
 	}
 
 	// ========== NBT（属性集随波实体保存/恢复；载荷为运行态，不落盘） ==========
@@ -1202,18 +978,11 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 			ResourceLocation tid = ResourceLocation.tryParse(typeList.getString(i));
 			if (tid == null)
 				continue;
-			IRecipeTypeInfo info = recipeTypeById(tid);
+			IRecipeTypeInfo info = WaveCarriedTypes.recipeTypeById(tid);
 			if (info != null)
 				recipeTypes.add(info);
 		}
 		waveOrigin = tag.contains("WaveOrigin") ? BlockPos.of(tag.getLong("WaveOrigin")) : null;
 	}
 
-	/** 按注册表 id 找回配方类型档案（读档恢复用；找不到的类型跳过，不影响其它字段）。 */
-	private static IRecipeTypeInfo recipeTypeById(ResourceLocation id) {
-		for (IRecipeTypeInfo type : WaveMachineIntegrationPoints.allRecipeTypes())
-			if (type != null && id.equals(type.getId()))
-				return type;
-		return null;
-	}
 }
