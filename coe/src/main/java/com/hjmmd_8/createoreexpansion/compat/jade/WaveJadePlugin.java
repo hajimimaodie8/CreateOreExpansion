@@ -4,6 +4,7 @@ import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAccess;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
@@ -134,15 +135,15 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 
 		// 波情① 波速（格/秒）：含波速调节器叠加修正与能量场加速/偏转后的真实速率
 		tooltip.add(GoggleUtil.indented(Component
-			.translatable("createoreexpansion.jade.wave_speed", String.format("%.1f", wave.getWaveSpeed()))
+			.translatable("createoreexpansion.jade.wave_speed", String.format("%.1f", WaveAccess.speedPerSecond(wave)))
 			.withStyle(ChatFormatting.GRAY)));
 
 		// 波情② 波级：只显示希腊字母（α/β/γ/ε/ω）——符号的唯一实现在 WaveLevels#glyph，
 		// 本类不写等级 switch；文字颜色随波种（渲染颜色 RGB 转十六进制）
 		tooltip.add(GoggleUtil.indented(Component
-			.translatable("createoreexpansion.jade.wave_level", WaveLevels.displayName(wave.getWaveLevel()))
+			.translatable("createoreexpansion.jade.wave_level", WaveLevels.displayName(WaveAccess.level(wave)))
 			.withStyle(ChatFormatting.WHITE)
-			.withStyle(style -> style.withColor(colorOf(wave.getWaveRenderColor())))));
+			.withStyle(style -> style.withColor(colorOf(WaveAccess.levelColor(wave))))));
 
 		// 波情③ 波载荷：概要行 + 缩进一级的明细行。
 		// 载荷（辅料物品/流体/电量/避雷针机会/加热/转速）是变器在服务端转换波时附加的
@@ -186,7 +187,7 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 		// 波情④ 波型：普通波/全能波/攻击波——名字查 WaveType#displayName()（词条
 		// createoreexpansion.wave_type.<path>，缺词条回退 path），本类不对波型 id 写 switch
 		tooltip.add(GoggleUtil.indented(Component
-			.translatable("createoreexpansion.jade.wave_type", wave.getWaveType()
+			.translatable("createoreexpansion.jade.wave_type", WaveAccess.type(wave)
 				.displayName())
 			.withStyle(ChatFormatting.GRAY)));
 
@@ -194,7 +195,7 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 		// 取值 = AbstractChargerWaveEntity#getRemainingLifetime()（寿命上限 − 已存活 tick），
 		// 与查询仪的读数同一个取值点，两处不会对不上。Jade 每帧重建本行 → 数字是动态的。
 		// 注意它是"时间"寿命：波还会因飞满 MAX_TRAVEL_DISTANCE 提前消散，那个距离上限不折算进来。
-		double remaining = wave.getRemainingLifetime() / 20.0d;
+		double remaining = WaveAccess.remainingLifetimeTicks(wave) / 20.0d;
 		tooltip.add(GoggleUtil.indented(Component
 			.translatable("createoreexpansion.jade.wave_lifetime", String.format("%.1f", remaining))
 			.withStyle(ChatFormatting.GRAY)));
@@ -223,7 +224,7 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 
 		// 可加工配方类型（变体波的能力清单，逐条译名；与波变器护目镜"最近波可加工"同表，
 		// 见 RecipeTypeNames）；空则不加
-		if (wave instanceof StellarWaveEntity && serverData != null) {
+		if (WaveAccess.isVariantWave(wave) && serverData != null) {
 			ListTag types = serverData.getList(RECIPE_TYPES_KEY, Tag.TAG_STRING);
 			if (!types.isEmpty()) {
 				tooltip.add(GoggleUtil.indented(Component.translatable("createoreexpansion.jade.stellar_wave_can_process")
@@ -240,7 +241,7 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 		}
 
 		// 电荷状态（能量场作用前提）：正电荷 / 负电荷 / 未带电
-		var charge = wave.getChargePolarity();
+		var charge = WaveAccess.charge(wave);
 		MutableComponent chargeLine = charge == null
 			? Component.translatable("createoreexpansion.jade.wave_charge_none")
 			: Component.translatable("createoreexpansion.jade.wave_charge",
@@ -260,13 +261,13 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 	 */
 	@Override
 	public void appendServerData(CompoundTag data, EntityAccessor accessor) {
-		if (!(accessor.getEntity() instanceof StellarWaveEntity stellar))
+		if (!(accessor.getEntity() instanceof AbstractChargerWaveEntity wave) || !WaveAccess.isVariantWave(wave))
 			return;
 
 		// ===== 可加工配方类型（波实际可执行全集，含状态选择与电量额外类型） =====
 		try {
 			ListTag types = new ListTag();
-			for (var type : stellar.getActiveRecipeTypes()) {
+			for (var type : WaveAccess.activeRecipeTypes(wave)) {
 				if (type == null || type.getId() == null)
 					continue;
 				String id = type.getId().toString();
@@ -281,7 +282,7 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 
 		CompoundTag payload = new CompoundTag();
 		ListTag items = new ListTag();
-		for (ItemStack stack : stellar.getPayloadItems()) {
+		for (ItemStack stack : WaveAccess.payloadItems(wave)) {
 			if (stack.isEmpty() || stack.getItem() == Items.AIR)
 				continue;
 			CompoundTag entry = new CompoundTag();
@@ -293,22 +294,22 @@ public class WaveJadePlugin implements IWailaPlugin, IEntityComponentProvider, I
 		if (!items.isEmpty())
 			payload.put(KEY_ITEMS, items);
 
-		var fluid = stellar.getPayloadFluid();
+		var fluid = WaveAccess.payloadFluid(wave);
 		if (!fluid.isEmpty()) {
 			payload.putString(KEY_FLUID, BuiltInRegistries.FLUID.getKey(fluid.getFluid())
 				.toString());
 			payload.putInt(KEY_FLUID_AMOUNT, fluid.getAmount());
 		}
-		if (stellar.getPayloadEnergy() > 0)
-			payload.putInt(KEY_ENERGY, stellar.getPayloadEnergy());
-		if (stellar.getRodCharges() > 0)
-			payload.putInt(KEY_RODS, stellar.getRodCharges());
+		if (WaveAccess.payloadEnergy(wave) > 0)
+			payload.putInt(KEY_ENERGY, WaveAccess.payloadEnergy(wave));
+		if (WaveAccess.rodCharges(wave) > 0)
+			payload.putInt(KEY_RODS, WaveAccess.rodCharges(wave));
 		// 变器携带的加热档位（热源不是动能机器，客户端实体读不到：同样经服务端通道下发）
-		if (stellar.getCarriedHeat() != BlazeBurnerBlock.HeatLevel.NONE)
-			payload.putInt(KEY_HEAT, stellar.getCarriedHeat().ordinal());
+		if (WaveAccess.carriedHeat(wave) != BlazeBurnerBlock.HeatLevel.NONE)
+			payload.putInt(KEY_HEAT, WaveAccess.carriedHeat(wave).ordinal());
 		// 变器携带的加工转速（Vintage 抛光 speed_limits 转速档判定用；0 = 未携带，不显示）
-		if (stellar.getCarriedRpm() > 0f)
-			payload.putFloat(KEY_RPM, stellar.getCarriedRpm());
+		if (WaveAccess.carriedRpm(wave) > 0f)
+			payload.putFloat(KEY_RPM, WaveAccess.carriedRpm(wave));
 
 		if (!payload.isEmpty())
 			data.put(PAYLOAD_KEY, payload);
