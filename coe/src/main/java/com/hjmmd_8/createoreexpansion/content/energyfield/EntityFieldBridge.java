@@ -21,7 +21,13 @@ import net.minecraft.world.phys.Vec3;
  *       —— ⚠ <b>不另写一套公式</b>（需求 §5.3 陷阱 10）：加速场/偏转场、正负号、结构场适配
  *       全部在那一条路上，本类只提供一个 {@link FieldedEntity} 句柄；</li>
  *   <li><b>限幅 + 写回</b>：单 tick 增量上限 → 水平速度上限 → {@code setDeltaMovement}
- *       （位移通道<b>只有这一个</b>：不加属性修饰符、不碰 {@code Attributes}）。</li>
+ *       （位移通道<b>只有这一个</b>：不加属性修饰符、不碰 {@code Attributes}）；
+ *       <b>只有真的改了位移才写</b>（没改就一个字节都不写，也因此不会走第 6 步）；</li>
+ *   <li>★ <b>让客户端的玩家收得到这一笔</b>（2026-10-04 修「带电玩家在场里一动不动」）：
+ *       命中 {@code instanceof Player} 时置 {@code hurtMarked = true} —— <b>原版击退形状</b>
+ *       （{@code Entity#markHurt()} 干的就是这一件事，消费者是
+ *       {@code ServerEntity#sendChanges()} 尾部的 {@code ClientboundSetEntityMotionPacket}）。
+ *       逐条理由见 {@link #tick(LivingEntity)} 的 javadoc。</li>
  * </ol>
  *
  * <h2>为什么是「静态门面 + 安全值」这个形状（照 {@link ChargeApi} / {@code WaveAccess}）</h2>
@@ -47,6 +53,27 @@ import net.minecraft.world.phys.Vec3;
  * {@link LivingFieldHandle#fieldVelocity()} / {@link LivingFieldHandle#setFieldVelocity(Vec3)}
  * 两个方向上各换算一次，换算本身按名取自 {@link ChargeConfigs}。两个限幅因此都在
  * <b>格/秒</b> 这个单位上判定（与 {@code ChargeConfigs} 里那两条 javadoc 的措辞一致）。</p>
+ *
+ * <h2>★ 玩家为什么必须额外做两件事（2026-10-04 修「带电玩家不偏转」）</h2>
+ * <p>AI 生物与玩家走的<b>不是同一条权威链</b>，所以"写进 {@code setDeltaMovement}"对前者有效、
+ * 对后者<b>等于什么都没做</b>。逐条（全部读原版源码定位，见 {@link #tick(LivingEntity)}）：</p>
+ * <ol>
+ *   <li><b>读</b>：服务端玩家的 {@code getDeltaMovement()} <b>不是</b>他在动的速度。玩家的位置
+ *       由客户端上报（{@code ServerGamePacketListenerImpl#handleMovePlayer} → {@code absMoveTo}，
+ *       全程<b>不</b>把客户端速度写回服务端）⇒ 服务端这一侧只有它自己的惯性（摩擦力衰减到
+ *       水平 ≈ 0）。偏转场是 {@code q·v×B}（旋转 <b>现行速度向量</b>），拿 ≈0 去转还是 ≈0
+ *       —— <b>恒等变换</b>，玩家在偏转场里连"被改了位移"都不会发生。⇒ 速度必须取
+ *       {@code Entity#getKnownMovement()}（原版那句"这个实体被知道的运动"：玩家 = 客户端
+ *       上报的位移，其余实体 = 它自己的 {@code getDeltaMovement()}，见句柄）。</li>
+ *   <li><b>写</b>：服务端写玩家的 {@code setDeltaMovement} <b>客户端收不到</b>（客户端自己
+ *       跑 travel，且每 tick 用位置包把服务端位置覆盖回它的）⇒ 按<b>原版击退形状</b>置
+ *       {@code hurtMarked = true}：{@code ServerEntity#sendChanges()} 尾部会把这一笔发成
+ *       {@code ClientboundSetEntityMotionPacket}，客户端 {@code lerpMotion} =
+ *       {@code setDeltaMovement}，它才会照这一笔移动。</li>
+ * </ol>
+ * <p><b>两条都只在真的改了位移时做</b>：位移没变（场没覆盖这一点 / 增量被夹成 0 / 偏转场里
+ * 静止的实体）⇒ {@code setDeltaMovement} 都不调，{@code hurtMarked} 也就不置 ——
+ * 免得"带电但站在场外"的玩家每 tick 白挨一个位移包。</p>
  *
  * <h2>代价</h2>
  * <p>每只生物每 tick 只有：两次 {@code hasEffect}（{@code HashMap} 命中，在
@@ -79,8 +106,26 @@ public final class EntityFieldBridge {
 	 *   <li>不带电：{@link ChargeApi#hasCharge(LivingEntity)} 为假 —— 这是绝大多数实体走的路径；</li>
 	 *   <li>水里 / 飞行：见 {@link #skipsField(LivingEntity)}（需求 §六 #9 的裁定）；</li>
 	 *   <li>所在维度此刻没有任何场：{@link EnergyFields#applyFields} 原速返回，
-	 *       本方法随后把同样的速度写回去（幂等，无可见副作用）。</li>
+	 *       修正后的速度与受场前<b>逐位相同</b> ⇒ 本方法这一 tick <b>连
+	 *       {@code setDeltaMovement} 都不调</b>（幂等，无可见副作用，也不会标记位移包）。</li>
 	 * </ul>
+	 *
+	 * <p><b>★ 写回通道（2026-10-04 修「带电玩家不偏转」，两件事缺一不可）</b>：</p>
+	 * <ol>
+	 *   <li><b>只有真的改了位移才写回</b>：{@code clampSpeed(clampStep(before, after))}
+	 *       与 {@code before} 相等时（场没覆盖这一点 / 偏转场里静止的实体）整段跳过 ——
+	 *       写回同一个值既是白做功，也会把下面那个位移包标记连带置上；</li>
+	 *   <li><b>玩家（含创造模式玩家，不飞行时）另置 {@code hurtMarked = true}</b>：
+	 *       玩家位移是<b>客户端权威</b>（原版 {@code ServerGamePacketListenerImpl#handleMovePlayer}
+	 *       只把位置 {@code absMoveTo} 回来，从不把客户端速度写回服务端）⇒ 服务端这一笔
+	 *       {@code setDeltaMovement} 客户端永远收不到，表现就是"带电玩家在场里一动不动"。
+	 *       置 {@code hurtMarked}（{@code Entity#markHurt()} 的同一个字段 = <b>原版击退形状</b>）
+	 *       之后，{@code ServerEntity#sendChanges()} 尾部会 {@code broadcastAndSend(new
+	 *       ClientboundSetEntityMotionPacket(entity))}（对 {@code ServerPlayer} 直接发给本人
+	 *       连接），客户端 {@code lerpMotion} → {@code setDeltaMovement} 才会照它移动。
+	 *       <b>不按模式分叉</b>：创造玩家只要不在飞行就走同一条链（需求原文「创造模式受力」），
+	 *       唯一被读的能力字段是 {@link #skipsField(LivingEntity)} 里的 {@code abilities.flying}。</li>
+	 * </ol>
 	 *
 	 * @param entity 本 tick 走到检查的那只生物（可能不带电、可能 {@code null}）
 	 * @return 是否真的把这只生物送进了场作用（{@code false} = 被上面任一条闸门挡下）
@@ -98,7 +143,17 @@ public final class EntityFieldBridge {
 		LivingFieldHandle handle = new LivingFieldHandle(entity);
 		Vec3 before = handle.fieldVelocity();
 		Vec3 after = EnergyFields.applyFields(entity.level(), handle);
-		handle.setFieldVelocity(clampSpeed(clampStep(before, after)));
+		Vec3 clamped = clampSpeed(clampStep(before, after));
+		if (!clamped.equals(before)) {
+			// 真的改了位移才写回；没改就一个字节都不写（也因此不会把下面的位移包标记置上）。
+			handle.setFieldVelocity(clamped);
+			if (entity instanceof Player player) {
+				// 原版击退形状：玩家位移客户端权威，服务端写速度必须同时标记，客户端才收得到
+				// （ServerEntity#sendChanges → ClientboundSetEntityMotionPacket）。
+				// 这里刻意不按游戏模式分叉：创造玩家不飞行时走同一条链。
+				player.hurtMarked = true;
+			}
+		}
 		return true;
 	}
 
@@ -117,7 +172,12 @@ public final class EntityFieldBridge {
 	 *
 	 * <p><b>只判这三条</b>（「创造飞行」被点名，就老实读那个 {@code Abilities} 字段）。
 	 * 没有把"创造模式的玩家"整体排除：创造玩家<b>不飞</b>的时候照常受场（需求只让"飞行"跳过），
-	 * 这一点记在批 8 的交付说明里，免得后人以为漏了一条。</p>
+	 * 这一点记在批 8 的交付说明里，免得后人以为漏了一条。
+	 * ★ <b>2026-10-04 作者裁定加严</b>：创造模式玩家<b>也必须受力</b> ——
+	 * 「不飞时与生存玩家完全同链（同样被推动/减速），飞行时不受力」。
+	 * ⇒ 本文件<b>不得</b>出现任何按游戏模式的分叉（{@code isCreative()} /
+	 * {@code abilities.instabuild} / {@code GameType} / {@code isSpectator} 一个都不许有），
+	 * 唯一允许读的能力字段就是下面这一条 {@code flying}（关卡有负向断言守着）。</p>
 	 *
 	 * @param entity 已经确认"活着 + 服务端 + 带电"的生物
 	 * @return {@code true} = 这一 tick 跳过（水里 / 鞘翅 / 飞行中）
@@ -183,8 +243,28 @@ public final class EntityFieldBridge {
 	 * 外面看不到、也不会有人拿它去当第二套契约。
 	 *
 	 * <p>三个取值口的对应关系：位置 = {@code position()}（与场区域判定同一个坐标空间）、
-	 * 速度 = {@code getDeltaMovement()}（<b>格/tick → 格/秒</b>，按名换算）、
+	 * 速度 = {@code getKnownMovement()}（<b>格/tick → 格/秒</b>，按名换算）、
 	 * 电荷 = {@link ChargeApi#polarityOf(LivingEntity)}（门面的判据，本类不自己查效果）。</p>
+	 *
+	 * <p>★ <b>为什么速度取 {@code getKnownMovement()} 而不是 {@code getDeltaMovement()}</b>
+	 * （2026-10-04 修「带电玩家不偏转」的那一半，读原版源码定位）：
+	 * {@code Entity#getKnownMovement()} 是原版自己那句「这个实体<b>被知道的</b>运动」——
+	 * 对 {@code ServerPlayer} 它返回 {@code lastKnownClientMovement}
+	 * （{@code ServerGamePacketListenerImpl#handleMovePlayer} 每次收到位置包就
+	 * {@code setKnownMovement(本次位移)}），对其它实体它<b>逐字返回</b>
+	 * {@code getDeltaMovement()}（见 {@code Entity#getKnownMovement} 与
+	 * {@code ServerPlayer#getKnownMovement}）。⇒</p>
+	 * <ul>
+	 *   <li><b>AI 生物行为一字不变</b>：它们的 {@code getKnownMovement()} 就是
+	 *       {@code getDeltaMovement()}，与批 8 完全等价（只有"被玩家驾驶的载具"会改取驾驶员的
+	 *       运动量——那正是原版对这个访问器的定义，也与"载具按驾驶员的意思动"一致）；</li>
+	 *   <li><b>玩家不再拿服务端惯性当速度</b>：服务端玩家的 {@code getDeltaMovement()} 只有它
+	 *       自己的摩擦力衰减（水平 ≈ 0），偏转场（{@code q·v×B}，旋转<b>现行速度</b>）拿它转
+	 *       出来还是 0 ⇒ 修之前玩家在偏转场里是<b>恒等变换</b>，修之后转的是他真实在动的速度。</li>
+	 * </ul>
+	 * <p>⚠ 这个访问器是<b>原版公开 API</b>（{@code Entity#getKnownMovement()}），不是本批新造的
+	 * 通道，也不需要任何新数值：写回仍走 {@code setDeltaMovement}，格子↔秒的换算仍按名取自
+	 * {@link ChargeConfigs}。</p>
 	 *
 	 * <p>★ <b>{@link #fieldStrengthScale()} 的覆写是本批需求的那一条</b>：带电生物一律
 	 * {@link ChargeConfigs#LIVING_FIELD_STRENGTH_SCALE}（0.05 = 波那侧的 1/20，需求 §六 #9
@@ -215,7 +295,9 @@ public final class EntityFieldBridge {
 
 		@Override
 		public Vec3 fieldVelocity() {
-			return entity.getDeltaMovement()
+			// ★ 玩家取"客户端上报的运动"（getKnownMovement），其余实体与批 8 逐字等价
+			//   （它们这个访问器就是 getDeltaMovement）—— 理由见本类 javadoc 与句柄注释。
+			return entity.getKnownMovement()
 				.scale(ChargeConfigs.TICKS_PER_SECOND);
 		}
 
