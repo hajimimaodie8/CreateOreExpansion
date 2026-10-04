@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.foundation.util;
 
-import com.hjmmd_8.createoreexpansion.foundation.util.AreaUtil;
+import com.hjmmd_8.createoreexpansion.foundation.util.world.AreaUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;

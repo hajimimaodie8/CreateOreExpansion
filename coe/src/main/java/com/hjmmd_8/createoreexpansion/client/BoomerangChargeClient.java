@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
-import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.BoomerangItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangItem;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 

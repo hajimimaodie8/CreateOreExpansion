@@ -2,9 +2,9 @@ package com.hjmmd_8.createoreexpansion.content.equipment.armor.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
-import com.hjmmd_8.createoreexpansion.content.skill.config.LastStandConfigs;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillFx;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
+import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.LastStandConfigs;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;

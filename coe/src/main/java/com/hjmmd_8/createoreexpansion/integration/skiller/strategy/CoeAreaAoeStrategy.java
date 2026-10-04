@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
-import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.tool.AreaAoeConfig;
 import com.hjmmd_8.createoreexpansion.foundation.util.DualDirection;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.CoeSkillSupport;

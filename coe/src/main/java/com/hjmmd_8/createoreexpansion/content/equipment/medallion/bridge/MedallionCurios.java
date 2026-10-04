@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.medallion.bridge;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.BaseStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.item.BaseStressMedallionItem;
 
 import com.tterrag.registrate.util.nullness.NonNullFunction;
 import net.minecraft.world.entity.player.Player;

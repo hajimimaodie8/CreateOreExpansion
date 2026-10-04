@@ -13,6 +13,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangTier;
 
 /**
  * <b>回旋镖的命中判定：射线取近 + 命中之后的两条处理</b>（2026-10-03 行为零变化拆分，从

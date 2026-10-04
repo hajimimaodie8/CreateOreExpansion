@@ -5,7 +5,6 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.AuxRef;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.EnergyDraw;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveResources.FluidRef;
-import com.hjmmd_8.createoreexpansion.content.charger.craft.family.WaveRecipeFamilies;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;

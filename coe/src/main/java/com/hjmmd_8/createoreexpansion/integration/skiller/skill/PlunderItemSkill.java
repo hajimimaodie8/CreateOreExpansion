@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
 import com.hjmmd_8.createoreexpansion.content.skill.LootDisposition;
-import com.hjmmd_8.createoreexpansion.content.skill.config.PlunderConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.PlunderConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeEntityStrategy;
 import com.leaf.skiller.foundation.Consumable;

@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
-import com.hjmmd_8.createoreexpansion.content.skill.config.BowCurseConfig;
-import com.hjmmd_8.createoreexpansion.content.skill.config.BowDisarmConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowCurseConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowDisarmConfig;
 
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;

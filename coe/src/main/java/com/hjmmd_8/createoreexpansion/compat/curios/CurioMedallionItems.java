@@ -1,11 +1,11 @@
 package com.hjmmd_8.createoreexpansion.compat.curios;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.JadeStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.NetheriteStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.SapphireStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.StellarstoneStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.ThunderiteStressMedallionItem;
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.TopazStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.item.JadeStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.item.NetheriteStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.item.SapphireStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.item.StellarstoneStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.item.ThunderiteStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.item.TopazStressMedallionItem;
 
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;

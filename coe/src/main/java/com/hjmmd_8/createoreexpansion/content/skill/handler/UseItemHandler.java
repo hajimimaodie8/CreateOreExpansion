@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.BoomerangItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;

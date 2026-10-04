@@ -4,7 +4,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
 
 import net.minecraft.core.BlockPos;

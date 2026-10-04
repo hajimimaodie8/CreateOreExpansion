@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 import java.util.LinkedHashMap;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
 import com.leaf.skiller.AllSkillInstanceFactories;
 import com.leaf.skiller.api.registry.SkillerBuiltInRegistries;
 import com.leaf.skiller.foundation.SkillData;
@@ -22,6 +22,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 
 import org.jetbrains.annotations.Nullable;
+import com.hjmmd_8.createoreexpansion.integration.skiller.resource.CoeArmorEnergyResource;
 
 /**
  * <b>装备（四套盔甲）技能来源</b>：把"玩家当前完整穿着的那一套"的技能交给 Skiller 内核。

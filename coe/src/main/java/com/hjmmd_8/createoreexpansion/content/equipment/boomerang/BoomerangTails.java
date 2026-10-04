@@ -11,6 +11,7 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangItem;
 
 /**
  * <b>回旋镖的收尾：三条尾路径 + 一次耐久结算 + 交还</b>（2026-10-03 行为零变化拆分，

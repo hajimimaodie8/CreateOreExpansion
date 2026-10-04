@@ -4,6 +4,7 @@ import org.joml.Vector3f;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangCurveConfigs;
 
 /**
  * <b>回旋镖的飞行段</b>（2026-10-03 行为零变化拆分，从 {@code AbstractBoomerangEntity} 逐字搬出）。

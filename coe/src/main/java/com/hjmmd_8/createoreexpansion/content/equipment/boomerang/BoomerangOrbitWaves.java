@@ -7,6 +7,8 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangSkillConfigs;
 
 /**
  * <b>回旋镖的环绕技能</b>（2026-10-03 行为零变化拆分，从 {@code AbstractBoomerangEntity} 逐字搬出）。

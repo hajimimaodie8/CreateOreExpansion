@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
 import com.simibubi.create.content.kinetics.KineticNetwork;
 import com.simibubi.create.content.kinetics.base.GeneratingKineticBlockEntity;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;

@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
-import com.hjmmd_8.createoreexpansion.content.skill.config.AreaAoeConfig;
-import com.hjmmd_8.createoreexpansion.foundation.util.BlockBreaker;
+import com.hjmmd_8.createoreexpansion.content.skill.config.tool.AreaAoeConfig;
+import com.hjmmd_8.createoreexpansion.foundation.util.world.BlockBreaker;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.strategy.CoeAreaAoeStrategy;
 import com.leaf.skiller.foundation.Consumable;

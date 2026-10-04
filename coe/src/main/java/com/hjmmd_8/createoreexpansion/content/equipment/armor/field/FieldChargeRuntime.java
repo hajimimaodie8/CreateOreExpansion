@@ -11,11 +11,11 @@ import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillFx;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.RotationAxis;
-import com.hjmmd_8.createoreexpansion.content.skill.config.FieldChargeConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.FieldChargeConfigs;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

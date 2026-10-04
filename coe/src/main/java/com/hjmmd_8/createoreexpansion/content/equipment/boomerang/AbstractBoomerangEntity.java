@@ -18,6 +18,7 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangTier;
 
 // 2026-10-03/04 行为零变化拆分（COE 层整改 第 1 批，两轮）：本文件只保留"实体本身"——
 // 身份（类型 + 档位）、状态字段、同步数据、公开 API、以及必须由实体类声明的覆写。

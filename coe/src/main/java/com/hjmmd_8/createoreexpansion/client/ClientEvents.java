@@ -1,8 +1,8 @@
 package com.hjmmd_8.createoreexpansion.client;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllDataComponents;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergyTooltipHandler;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillTooltipHandler;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.tooltip.ArmorEnergyTooltipHandler;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.tooltip.ArmorSkillTooltipHandler;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.handler.MedallionEffectHandler;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.EnergyTooltipHandler;

@@ -15,7 +15,6 @@ import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateEvaluat
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateOrdering;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveEnvironmentChecks;
-import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadRelease;

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import com.hjmmd_8.createoreexpansion.content.lightning.recipe.LightningInput;
 
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public final class LightningEventHandler {

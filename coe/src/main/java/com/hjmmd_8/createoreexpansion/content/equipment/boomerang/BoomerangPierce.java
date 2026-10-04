@@ -1,4 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangSkillConfigs;
 
 /**
  * <b>穿刺技能：穿透额度的惰性初始化 + 命中之后"要不要掉头"的唯一判定</b>

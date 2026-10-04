@@ -2,10 +2,9 @@ package com.hjmmd_8.createoreexpansion.content.equipment.armor.handler;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.handler.LastStandHandler;
-import com.hjmmd_8.createoreexpansion.content.skill.config.FallGuardConfigs;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillFx;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
+import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.FallGuardConfigs;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;

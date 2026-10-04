@@ -1,7 +1,6 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
-import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.leaf.skiller.foundation.context.SkillContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;

@@ -2,15 +2,15 @@ package com.hjmmd_8.createoreexpansion.integration.skiller;
 
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.factory.BowContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowShootSkillContext;
-import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.factory.ExcavationContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
-import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.factory.HitContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
-import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.factory.UseItemContextFactory;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.UseItemSkillContext;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillRuntime;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BloodPactItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.EquipmentSkillStub;
@@ -32,6 +32,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
+import com.hjmmd_8.createoreexpansion.integration.skiller.resource.CoeArmorEnergyResource;
+import com.hjmmd_8.createoreexpansion.integration.skiller.resource.CoeToolEnergyResource;
 
 /**
  * Skiller 内核接线入口（mod 事件总线）。

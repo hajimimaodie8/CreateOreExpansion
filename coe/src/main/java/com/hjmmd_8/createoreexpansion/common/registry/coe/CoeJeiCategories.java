@@ -5,8 +5,8 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningBlockCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.LightningCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.base.CreateRecipeCategory;
-import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
-import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
+import com.hjmmd_8.createoreexpansion.content.lightning.recipe.LightningBlockRecipe;
+import com.hjmmd_8.createoreexpansion.content.lightning.recipe.LightningRecipe;
 
 import net.minecraft.world.level.block.Blocks;
 

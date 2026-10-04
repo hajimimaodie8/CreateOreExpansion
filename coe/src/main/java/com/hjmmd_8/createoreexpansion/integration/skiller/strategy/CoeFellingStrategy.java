@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.strategy;
 
-import com.hjmmd_8.createoreexpansion.content.skill.config.FellingConfig;
-import com.hjmmd_8.createoreexpansion.foundation.util.BlockSearch;
+import com.hjmmd_8.createoreexpansion.content.skill.config.tool.FellingConfig;
+import com.hjmmd_8.createoreexpansion.foundation.util.world.BlockSearch;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.ExcavationSkillContext;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.CoeSkillSupport;
 import com.leaf.skiller.api.registry.SkillerRegistries;

@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.client;
 
-import com.hjmmd_8.createoreexpansion.integration.skiller.SkillSettingsPayload;
+import com.hjmmd_8.createoreexpansion.integration.skiller.settings.SkillSettingsPayload;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;

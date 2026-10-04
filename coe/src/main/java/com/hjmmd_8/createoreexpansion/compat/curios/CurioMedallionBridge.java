@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.compat.curios;
 
-import com.hjmmd_8.createoreexpansion.content.equipment.medallion.BaseStressMedallionItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.medallion.item.BaseStressMedallionItem;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.bridge.MedallionCurios;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.bridge.MedallionCuriosBridge;
 

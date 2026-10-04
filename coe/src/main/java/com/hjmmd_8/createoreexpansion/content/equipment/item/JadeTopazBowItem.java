@@ -1,21 +1,15 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
-import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
-import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowContextFactory;
+import com.hjmmd_8.createoreexpansion.integration.skiller.context.factory.BowContextFactory;
 import com.leaf.skiller.foundation.skill.config.SkillContextEnvironment;
 import net.minecraft.server.level.ServerPlayer;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergyColors;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergyColors;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
 import com.hjmmd_8.createoreexpansion.common.energy.EnergyGradientTool;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergy;
-import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolSkillCooldown;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillsComponent;
 
 import java.awt.Color;
 import java.util.List;

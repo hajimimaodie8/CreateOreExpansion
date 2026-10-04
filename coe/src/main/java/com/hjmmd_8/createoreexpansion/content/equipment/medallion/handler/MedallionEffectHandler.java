@@ -5,7 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.transmutation.Transmutatio
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationFluids;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;

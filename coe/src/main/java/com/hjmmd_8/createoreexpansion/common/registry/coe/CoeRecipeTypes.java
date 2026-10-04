@@ -3,12 +3,11 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 import com.hjmmd_8.createoreexpansion.common.registry.LayerRecipeType;
 import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities;
 import com.hjmmd_8.createoreexpansion.common.registry.WaveRecipeCapabilities.LayerOrder;
-import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationRecipeTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
-import com.hjmmd_8.createoreexpansion.content.lightning.LightningBlockRecipe;
-import com.hjmmd_8.createoreexpansion.content.lightning.LightningRecipe;
+import com.hjmmd_8.createoreexpansion.content.lightning.recipe.LightningBlockRecipe;
+import com.hjmmd_8.createoreexpansion.content.lightning.recipe.LightningRecipe;
 import com.hjmmd_8.createoreexpansion.content.transmuting.AllTransmutingRecipe;
 
 /**

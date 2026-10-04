@@ -23,6 +23,8 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;
+import com.hjmmd_8.createoreexpansion.content.lightning.recipe.LightningInput;
+import com.hjmmd_8.createoreexpansion.content.lightning.recipe.LightningRecipe;
 
 /**
  * 闪电的<b>落点加工服务</b>：收集落点周围的全部输入来源、循环匹配闪电配方、结算产物并分发。

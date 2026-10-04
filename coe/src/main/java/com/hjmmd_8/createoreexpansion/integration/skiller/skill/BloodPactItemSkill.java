@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.PerSkillCooldown;
-import com.hjmmd_8.createoreexpansion.content.skill.config.BloodPactConfig;
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BloodPactConfig;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.HitSkillContext;
 import com.leaf.skiller.foundation.Consumable;
 import com.leaf.skiller.foundation.skill.ISkillInstance;

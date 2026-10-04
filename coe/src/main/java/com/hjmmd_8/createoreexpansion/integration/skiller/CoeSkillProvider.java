@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
@@ -24,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.hjmmd_8.createoreexpansion.integration.skiller.resource.CoeToolEnergyResource;
 
 /**
  * 旧技能组件 → Skiller 技能组件的桥（{@link SkillProvider} 实现）。
