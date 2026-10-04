@@ -1,521 +1,168 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.boomerang;
 
-import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.OrbitAnchor;
-import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
-import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.joml.Vector3f;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.Container;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.RandomizableContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.ExperienceOrb;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.projectile.Projectile;
-import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.ChestBlock;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.ChestType;
-import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+// 2026-10-03/04 行为零变化拆分（COE 层整改 第 1 批，两轮）：本文件只保留"实体本身"——
+// 身份（类型 + 档位）、状态字段、同步数据、公开 API、以及必须由实体类声明的覆写。
+// 职责各自住在同包：飞行 + 飞行数值 BoomerangFlight／每 tick 编排 BoomerangTick／
+// 命中判定 BoomerangImpact／穿刺额度与掉头 BoomerangPierce／破坏方块 BoomerangMining／
+// 开箱取物 BoomerangContainerLoot／环绕波 BoomerangOrbitWaves／吸附 BoomerangPickup／
+// 收尾结算 BoomerangTails／主人看护 BoomerangOwnerWatch／存档 BoomerangEntitySaveData。
+// 搬运一律逐字：只改 `this.x` → `host.x`、给被搬走的方法加宿主参数、必要时收窄可见性。
 /**
  * <b>回旋镖实体基类</b>（四把镖共用：投掷 → 去程 → 回程 → 捡物 → 挖方块）。
  *
  * <h2>一、为什么是 {@link Projectile}，不是我们的波实体</h2>
- * <p>波实体（{@code AbstractChargerWaveEntity}）{@code extends Entity}，语义是"能量波"——由五要素定义、
- * 与波口/载荷/加工绑定。镖是<b>投射物</b>：它属于某个玩家、能被拾回、掉落归属要走原版。
- * 所以这里<b>直接继承 {@link Projectile}</b>（于是白拿三件事：owner 的标准持久化、
- * {@code leftOwner} 的射出保护、{@code lerpRotation} 的朝向平滑）。</p>
+ * <p>波实体（{@code AbstractChargerWaveEntity}）语义是"能量波"——由五要素定义、与波口/载荷/加工绑定；
+ * 镖是<b>投射物</b>（属于某个玩家、能被拾回、掉落归属走原版）。所以<b>直接继承 {@link Projectile}</b>：
+ * 白拿 owner 的标准持久化、{@code leftOwner} 的射出保护、{@code lerpRotation} 的朝向平滑。</p>
  *
- * <h2>二、照抄 Quark Pickarang/Flamerang 的四段，并修掉它的三个 bug</h2>
+ * <h2>二、照抄 Quark 的四段，并修掉它的三个 bug</h2>
  * <ol>
- *   <li><b>去程</b>：{@link #checkImpact()} 先射线查实体（{@link ProjectileUtil#getEntityHitResult}，
- *       AABB 用 {@code getBoundingBox().expandTowards(速度).inflate(1)}），再查方块
- *       （{@code level().clip(COLLIDER, Fluid.NONE)}）；命中方块 ⇒ 尝试挖掉 + 立刻转回程。
- *       交替循环上限 {@link #MAX_IMPACT_LOOPS}（超了写日志，不崩、不死循环）。
- *       <b>另外每 tick 判一次"飞太远"</b>：离主人超过该档的收回距离
- *       （{@link BoomerangTier#returnDistance()}）就<b>立刻掉头</b> —— 作者 2026-10-02 报的
- *       "扔远了会自动消失"就是缺这一条，执行处 {@link #outboundRangeExceeded}。</li>
- *   <li><b>位移</b>：手写 {@code setPos(pos + 速度)}，<b>不用</b> {@code move()}/{@code lerpMotion}；
- *       阻力陆地 {@value #AIR_DRAG} / 水中 {@value #WATER_DRAG}；朝向由速度反算并 lerp 平滑
- *       （{@code Projectile#updateRotation}，原版的 atan2 + lerp，不重写一遍）。</li>
- *   <li><b>回程</b>：{@code noPhysics = true} + 朝 {@code owner.position() + (0,1,0)} 归一化转向，
- *       速度 {@value #RETURN_SPEED}（+ 效率加成，本模组恒 0）；抵达判定见
- *       {@link #RETURN_ARRIVE_SQR} 的注释。</li>
- *   <li><b>挖方块</b>：把镖<b>临时塞进</b> {@code player.getInventory().selected} +
- *       {@code setItemInHand(MAIN_HAND)} → 复刻原版挖掘进度 → 与该档的 maxHardness 比 →
- *       {@code player.gameMode.destroyBlock(pos)}（<b>唯一破坏入口</b>：权限/时运/掉落归属全交给原版）
- *       → {@code finally} 还原。掉落就是世界里普通的 {@link ItemEntity}，镖<b>不存</b>内部库存。</li>
+ *   <li><b>去程</b>：实体射线 + 方块射线取近 ⇒ 命中方块就挖掉并立刻转回程；交替循环上限
+ *       {@link #MAX_IMPACT_LOOPS}。见 {@link BoomerangImpact}。</li>
+ *   <li><b>位移</b>：手写 {@code setPos(pos + 速度)}，<b>不用</b> {@code move()}/{@code lerpMotion}。见 {@link BoomerangFlight}。</li>
+ *   <li><b>回程</b>：{@code noPhysics = true} + 朝主人头顶转向；抵达阈值
+ *       {@link BoomerangFlight#RETURN_ARRIVE_SQR}（读法与偏差理由写在那一处）。</li>
+ *   <li><b>挖方块</b>：临时换主手 → 复刻原版挖掘进度 → 原版 {@code destroyBlock}（<b>唯一破坏入口</b>：
+ *       权限/时运/掉落归属全交给原版）→ {@code finally} 还原。见 {@link BoomerangMining}。</li>
  * </ol>
- *
- * <p><b>修掉的三个 Quark bug</b>（需求 8）：</p>
- * <ul>
- *   <li><b>a. 存档</b>：{@link #readAdditionalSaveData}/{@link #addAdditionalSaveData} <b>必须调
- *       {@code super}</b> —— owner 的标准持久化就在 {@code Projectile} 里
- *       （{@code Owner} UUID + {@code LeftOwner}）。少这一行，区块重载后 owner 解析不到，
- *       镖在第一个 tick 就走"主人没了"的兜底掉在地上。<b>并且没有自己另存一份 owner</b>。</li>
- *   <li><b>b. 回程超时</b>：Quark 把超时写在<b>去程</b>分支里，玩家持续远离时它永远追不上、
- *       永不消散还穿墙。这里回程有<b>自己的寿命</b> {@link #MAX_RETURN_TICKS}（外加去程上限
- *       {@link #MAX_OUTBOUND_TICKS}，防止"打不到任何方块"时永远飞下去）。超时后
- *       <b>就地落地</b>（{@code spawnAtLocation}）再消散 —— 宁可掉在远处，也不让物品蒸发。
- *       <b>与"距离判据"的分工（作者 2026-10-02）</b>：去程正常结束靠<b>距离</b>
- *       （离主人超过该档收回距离 ⇒ 掉头，玩家可预期），时间上限只是<b>兜底</b>。</li>
- *   <li><b>c. 属性修饰符不泄漏</b>：Quark 在命中时两次 {@code addTransientAttributeModifiers}。
- *       这里<b>一处都没有</b>（挖掘走原版 {@code destroyBlock}，伤害走 {@code hurt}，
- *       全程不碰 {@code AttributeMap}）。</li>
- * </ul>
+ * <p><b>三个 Quark bug</b>（需求 8）：a. 两个存档钩子<b>必须调 {@code super}</b>（owner 的标准持久化在
+ * {@code Projectile} 里）且没有另存一份 owner，见 {@link BoomerangEntitySaveData}；b. 回程有<b>自己的寿命</b>
+ * {@link #MAX_RETURN_TICKS}（去程另有 {@link #MAX_OUTBOUND_TICKS}），距离是主判据、时间是兜底，
+ * 见 {@link BoomerangTick#tick(AbstractBoomerangEntity)}；c. <b>属性修饰符一处都不加</b>
+ * （挖掘走 {@code destroyBlock}、伤害走 {@code hurt}，全程不碰 {@code AttributeMap}）。</p>
  *
  * <h2>三、同步与存档（需求 11）</h2>
- * <ul>
- *   <li>{@link #DATA_STACK}（{@code ITEM_STACK}）——渲染器要画它，客户端必须拿得到；
- *       同时它也是"交还给玩家"的那一份（能量已在投掷/挖掘时扣掉）。</li>
- *   <li>{@link #DATA_RETURNING}（{@code BOOLEAN}）——客户端 tick 也要走回程分支（否则回程只能
- *       靠每 {@code updateInterval} tick 一次的位置包，看起来一顿一顿）。</li>
- *   <li>NBT：{@code liveTime} / {@code returnTicks} / {@code hitCount} / {@code slot} / 投掷原点
- *       （{@code ThrowOriginX/Y/Z}，见 {@link #recordThrowOrigin}）/ 镖本身。
- *       {@code entitiesHit} <b>只在内存</b>（它只用来防止同一次飞行里重复打同一只怪）。</li>
- * </ul>
+ * <p>{@link #DATA_STACK} 渲染与交还共用（客户端必须拿得到）；{@link #DATA_RETURNING} 让客户端 tick 也走
+ * 回程分支（否则只靠每 {@code updateInterval} tick 一次的位置包，回程一顿一顿）；花瓣三件套
+ * {@link #DATA_PETAL} / {@link #DATA_PETAL_ORIGIN} / {@link #DATA_PETAL_ANGLE} 让两端各算同一条曲线。
+ * NBT 键与读写口径全在 {@link BoomerangEntitySaveData}；{@code entitiesHit} <b>只在内存</b>
+ * （只用来防止同一次飞行里重复打同一只怪）。</p>
  *
  * <h2>四、构造期陷阱（AGENTS.md 第 4 条）</h2>
- * <p>{@code Entity} 的构造器会调 {@code defineSynchedData} / {@code setPos} 等可覆写方法，
- * 而字段初始化器在<b>之后</b>才跑。因此 {@link #defineSynchedData} 与 {@link #tier()} 都不许碰
- * 对象字段：{@code defineSynchedData} 只用静态成员与参数，{@link #tier()} 由子类返回枚举常量。
- * 本类<b>不覆写</b> {@code setPos}/{@code getBoundingBox}/{@code defineSynchedData} 以外的构造期方法。</p>
- *
- * <h2>五、批 2（2026-10-02）：两种飞行模式 · 花瓣曲线 · 耐久只累计、回程一次结算</h2>
- *
- * <p><b>a. 点按 = 逐字沿用现状（直线）</b>。去程仍是"实体射线 + 方块射线取近者 ⇒ 命中方块即
- * {@link #setReturning}、命中生物只伤不回头（靠 {@code entitiesHit} 去重）"，主判据仍是
- * {@link #outboundRangeExceeded}。<b>这一支一个字都没改</b>（需求 §3.2 / §5.3 陷阱 #6）。</p>
- *
- * <p><b>b. 长按 = 花瓣曲线</b>（需求 §3.4；数学与常数全在 {@link BoomerangCurveConfigs}）。
- * 分支在 {@link #tickOutbound()} 的第一行：{@code isPetalFlight() ⇒ tickPetal()}。
- * 曲线用<b>弧长参数化</b>推进（{@code Δs = v(s)/L_total}，每 tick 一次），
- * <b>s 走到 1 才 {@code setReturning(true)}</b>（"必须飞完一瓣才能返回"）；
- * 花瓣段<b>不受</b>距离判据约束（否则主人一挪步就会把花瓣从中间掐断），只剩
- * {@link #MAX_OUTBOUND_TICKS} 兜底。
- * <br>⚠ <b>批 3 修正 2</b>：花瓣段<b>也要</b>走命中判定（{@link #tickPetal} 调
- * {@link #checkImpact()} 这一处，与点按共用），所以长按同样能伤生物、挖方块、吃穿刺额度；
- * 但"必须飞完一瓣才能返回"是硬优先级 ⇒ 花瓣段<b>永不</b>因命中而提前掉头
- * （{@link #onHitBlock} / {@link #onHitEntity} 里的 {@code isPetalFlight()} 分支）。</p>
- *
- * <p>曲线的锚点是<b>出手那一刻的位置</b>（{@link #startPetalFlight} 由物品传入，
- * 走同步数据 {@link #DATA_PETAL_ORIGIN} 所以客户端也能自己算出同一条曲线），
- * 基准角 ψ 是出手那一刻玩家水平朝向的数学角 ⇒ 与需求 §3.4.3 的
- * {@code x = P.x + r(φ)·cos(ψ+φ)} 逐字同形。⚠ 需求把 {@code P} 写成"玩家位置"这个常量：
- * 出手之后玩家再走动，花瓣<b>不会</b>跟着平移（想改成跟随主人只需在 {@link #tickPetal}
- * 里把锚点换成主人的当前位置，一行）。</p>
- *
- * <p><b>c. 耐久：飞行期间只累计、不写回</b>（需求 §3.8，本类最容易做错的一处）。
- * 损耗累计在 {@link #flightWear} 上：投掷那次由物品给（点按 −2 / 长按 −5，
- * {@link BoomerangTier#throwWear(boolean)}），此后每命中一个生物 / 每挖掉一个方块各
- * {@code +}{@link BoomerangTier#WEAR_PER_HIT}。<b>整段飞行里一次都不碰物品的 {@code DAMAGE}</b>
- * （逐次写回会把耐久提前打到 0，正是 §3.8 禁止的"当场归零"）。</p>
- *
- * <p><b>d. 结算只有一处</b>（裁定 D14）：{@link #collect}（交还）/
- * {@link #returnTimedOut}（回程超时）/ {@link #ownerGone}（主人失效）三条尾路径
- * <b>全部只调</b> {@link #finishFlight(boolean)}，由它调 {@link #settleWear(ItemStack)}：
- * 累计 &lt; 剩余 ⇒ 扣一次写回（活下来的镖恒有 ≥ 1 点耐久，绝不留下 0 耐久物品）；
- * 累计 ≥ 剩余 ⇒ <b>爆掉</b>（播放 {@code ITEM_BREAK} + <b>不 {@code spawnAtLocation}</b>，
- * 物品就此消失）。<b>爆掉时乘客/并入物照样先交给玩家</b>（需求 §六 推断值 #5，
- * "不给会白丢一次挖掘收益"），拿不到玩家时照旧落地、绝不销毁。冷却不受爆掉影响：
- * 冷却是在投掷那一刻就上好的（{@code BoomerangItem#releaseUsing}）。</p>
- *
- * <h2>六、批 3（2026-10-02）：穿刺技能（需求 §3.5 / §3.6 的"镖本身"那一半）</h2>
- * <p>四把镖都带 {@code createoreexpansion:pierce}（基准等级 1/2/3/3、钳到 5），
- * 不需要开关、点按与长按都生效。额度<b>每次投掷各一份</b>：实体是每次投掷新建的，
- * 账记在 {@link #pierceMobsLeft} / {@link #pierceBlocksLeft} 上，由
- * {@link #ensurePierceQuota()} 从镖的栈现读等级算一次（{@link BoomerangSkillConfigs}
- * 的 {@code 3L} / {@code 5L}）。三条规则：</p>
- * <ol>
- *   <li><b>额度用完即掉头</b>（需求 §3.5 的原话，= 回到"碰到就回"的行为）：生物额度用完的那一次
- *       命中、方块额度用完的那一次挖掘，都会 {@code setReturning(true)}；</li>
- *   <li><b>"飞完一瓣"优先</b>（需求 §3.2 + 批 3 裁定）：花瓣段只吃额度、<b>绝不</b>提前掉头
- *       ——两个 {@code isPetalFlight()} 分支就是这条优先级的落点，关卡 §29n-2 钉着它；</li>
- *   <li><b>穿透破坏照样扣耐久</b>（需求 §六 推断值 #4）：命中生物 / 挖掉方块各
- *       −{@link BoomerangTier#WEAR_PER_HIT}，走的仍是批 2 的"只累计、回程一次结算"。</li>
- * </ol>
- * <p>⚠ <b>撞上挖不动的方块不掉额度但会掉头</b>（点按段）：{@link #mineBlock} 的三关
- * （硬度 / 挖掘等级 / 原版进度）没过 ⇒ 不消耗额度、也不穿墙（批 1/2 的"撞墙即回"照旧）。
- * 花瓣段则穿过（曲线是固定路径，与批 2 的花瓣段行为一致）。</p>
- *
- * <h2>七、批 4（2026-10-02）：环绕技能（需求 §3.6 / §3.7）</h2>
- * <p>投掷时挂上 <b>L 枚环绕波</b>（L = 有效技能等级，1..5），锚点就是<b>这枚镖</b>：
- * 镖实现 {@link OrbitAnchor}（契约由作者裁定 D9 = A 放宽："锚点不必是波"），
- * 于是既有的环绕波要素（半径 / 角速度 / 相位 / 垂面几何 / "锚点没了就收尾"）
- * <b>一个字都不用改</b>就服务了回旋镖。要点：</p>
- * <ul>
- *   <li><b>数量 = L</b>（{@code BoomerangSkillConfigs#orbitCount}）；
- *       <b>半径 1.5</b>、<b>角速度 1 圈/秒</b>、基相位 0、第 i 枚相位 {@code 2π·i/L}
- *       （均匀铺满一圈，否则 L 枚会重合成一枚）；</li>
- *   <li><b>平面 = 镖运动方向的垂面</b>（{@link #orbitDirection()} = {@code getDeltaMovement()}，
- *       既有几何负责把它变成两个基向量）；</li>
- *   <li><b>同批豁免</b>：L 枚共用一个<b>负数</b>批次号（见 {@link #nextOrbitBatch()}）——
- *       镖不是波、没有批次号，所以这里自造一个来源；负数是为了与星芒嬗震的<b>正数</b>序列
- *       永不相等（否则两组批次可能撞号 ⇒ 两枚本该湮灭的波互相豁免）。机器波仍是批次 0
- *       （= "不属于任何批次"）⇒ 长期口径不变；</li>
- *   <li><b>伤害 2×L</b>：走 {@code ChargerWaveEntity} 的"自定义伤害"要素（波形仍是既有实体、
- *       仍是 ATTACK 波型），<b>撞生物 ⇒ 该枚消失</b>（既有波的命中语义，不需要新代码）；</li>
- *   <li><b>撞方块 ⇒ 挖掉 + 该枚消失</b>：{@link #orbitMineBlock(BlockPos)} 直接复用
- *       {@link #mineBlock}（同一条 {@code maxHardness} / {@code miningLevel} / 原版进度判定，
- *       同样 −1 耐久）；掉落物与经验由原版生成在世界里，靠镖既有的回程吸附
- *       （{@link #pickUpItems()}）带走、{@link #finishFlight(boolean)} 交给玩家（零新机制）；</li>
- *   <li><b>收尾</b>：镖 {@code discard()} 后环绕波下一 tick 自己收尾（既有
- *       "锚点没了即 discard"语义）；</li>
- *   <li><b>消耗 15×L</b>：与模式消耗、穿刺 20×L 相加在 {@code BoomerangItem#throwCost} 同一处。</li>
- * </ul>
- *
- * <h2>八、批 6（2026-10-03）：吸附只有一处 —— 两种模式都经过它（作者报的 bug）</h2>
- * <p><b>作者原话</b>：「点按直线收回，掉落物什么的，带回自己，但是<b>长按并不能</b>。长按的话，
- * <b>掉落物都存在原地，经验也没有回</b>。」</p>
- *
- * <p><b>真因（几何，不是拾取码本身）</b>：{@link #pickUpItems()} 一直只有一处实现，但它的
- * <b>唯一调用点</b>被关在 {@code DATA_RETURNING} 分支里（回程才吸附）。点按之所以"看起来正常"，
- * 是因为点按的去程是一条直线、回程是<b>原路返回</b>，回程那几 tick 正好一路掠过掉落点；
- * 而长按的花瓣曲线两端都收敛到出手点 P（{@code r(±Δθ/2) = 0}，见 {@link BoomerangCurveConfigs}）
- * ⇒ 花瓣走完那一刻镖已经<b>回到主人身上</b>，回程只剩不到一 tick 就 {@code collect}
- * （距离 &lt; {@link #RETURN_ARRIVE_SQR}）⇒ 花瓣弧上挖出来的掉落物与经验<b>一个都没机会上船</b>。</p>
- *
- * <p><b>修法（唯一实现 + 唯一调用点，两模式共用）</b>：把吸附从"回程专属"抬成
- * <b>每服务端 tick 一次、去程与回程都经过</b>的那一处（见 {@link #tick()} 末尾），
- * 并且去程那一支<b>不再早退</b>（旧的 {@code else if (tickOutbound()) { return; }} 会连吸附一起跳过）。
- * 于是花瓣弧上"镖飞过掉落点"的那些 tick 就能直接吸走，与点按走的是同一条路径、
- * 同一份 {@link #pickUpItems()}／{@link #canCarry(Entity)}（关卡 §29r 钉着"只有一处实现、
- * 两模式都经过它、花瓣段不得绕过"）。</p>
- *
- * <p><b>连带必须补的一道闸门</b>：{@link #canHitEntity(Entity)} —— 乘客的骑乘位就在镖身上，
- * 而 {@code ProjectileUtil} 的候选只排除载具自己、不排除乘客；吸附一旦在去程也跑，
- * "镖带着战利品飞"就是常态，不拦的话镖会在下一个 tick 把自己的掉落物当敌人打死
- * （{@code ItemEntity} 5 点血 vs 镖 6~12 点 {@code indirectMagic}）。</p>
- *
- * <p><b>顺带堵掉的一条旧缝</b>：旧写法在 {@code collect → finishFlight → discard} 之后还会再扫一次
- * 吸附（同一 tick、实体已 {@code discard}），那一窗口里上船的掉落物会挂到一个<b>已被移除、
- * 再也不会 tick</b> 的载具上。现在那一处有 {@code !isRemoved()} 守卫。</p>
- *
- * <h2>九、批 7（2026-10-03）：开箱取物 —— 撞到容器方块就把它搬空（作者需求）</h2>
- * <p><b>作者要求</b>：野外探险时，镖应该能"<b>把箱子里面的所有物品都戴到自己身上，多出来的物品
- * 变成掉落物，掉落在自己旁边</b>"（Quark 没有这个功能）。</p>
- *
- * <p><b>触发</b>：{@link #containerAt(BlockPos)} 非空 —— 即去程命中判定
- * （{@link #checkImpact()} → {@link #onHitBlock(BlockPos)}）撞到的那个方块是容器。
- * <b>点按与长按共用这一条</b>（两种模式的命中判定本来就是同一处，批 3 起就是）。</p>
- *
- * <p><b>容器怎么判（唯一判据处 {@link #containerAt(BlockPos)}，三道闸门）</b>：</p>
- * <ol>
- *   <li><b>机器闸门</b>（{@link #NEVER_TOUCH_NAMESPACES}）：Create 的机器与本模组自己的机器
- *       （充能器等）一律<b>连碰都不碰</b> —— 作者明确要求"不动我们自己的机器"。按<b>注册命名空间</b>判，
- *       绝不 import 可选模组的类（AGENTS.md 红线）；
- *   <br>⚠ 实测口径：Create 全仓<b>只有</b> {@code foundation.blockEntity.ItemHandlerContainer}
- *       一个类实现原版 {@code Container}，而它不是任何一种方块实体；本模组全仓 0 个
- *       ⇒ 下面第 ③ 道闸门<i>今天已经</i>把机器全挡掉了，这道命名空间闸门是<b>冗余的防御</b>；</li>
- *   <li><b>大箱子合并</b>：{@code ChestBlock#getContainer(..., true)} —— 箱子/陷阱箱走原版合并器，
- *       两半<b>一起</b>取（{@code ChestBlockEntity} 只暴露自己那一半）；</li>
- *   <li><b>方块容器</b>：方块实体 {@code instanceof Container}
- *       （木桶 / 潜影盒 / 漏斗 / 发射器 / 投掷器 / 熔炉 / 烟熏炉 / 高炉 / 酿造台 / 合成器 …，
- *       以及别的模组实现了 {@code Container} 的方块）。
- *       <br>⚠ <b>末影箱天然不在内</b>（{@code EnderChestBlockEntity} 只 implements
- *       {@code LidBlockEntity}，本仓从 MC 源码核对过）。</li>
- * </ol>
- *
- * <p><b>物品怎么搬（{@link #lootContainer(Container)} + {@link #carry(ItemStack)}，零新机制）</b>：
- * 逐槽 {@code removeItemNoUpdate} 全取 ⇒ 每份物品生成一个<b>既有</b> {@link ItemEntity} 再
- * {@code startRiding(this)} 上船 —— 与 {@link #pickUpItems()} 走的是<b>同一条承载路径</b>
- * （原版乘客链 + {@link #canCarry(Entity)}）。<b>不吃穿刺额度</b>（作者默认值，见报告）。</p>
- *
- * <p><b>溢出去哪</b>：掉落物本来就是乘客 ⇒ 回到玩家手里时走的仍是
- * {@link #finishFlight(boolean)} → {@link #handPassengersToPlayer(Player)}
- * （{@code stopRiding} + 清拾取延迟 + {@code playerTouch}）。
- * {@code ItemEntity#playerTouch} 只在 {@code inventory.add(...)} 成功时才消失 ⇒
- * <b>装得下进背包、装不下的留在原地 = 玩家旁边</b>（镖是贴到主人身上才交还的），
- * <b>绝不会掉回箱子那儿</b>；镖爆掉时也照样先交给玩家（批 2 的既有语义）。</p>
- *
- * <h2>十、批 7 第二轮（2026-10-03 同日改口径）：主动填表 → 取空 → 连箱子方块一起挖走</h2>
- * <p><b>作者第二轮要求（三条）</b>：① 战利品箱子是"玩家主动打开箱子那一瞬间"才刷出物品的，
- * 所以镖必须<b>自己主动刷新箱子里的物品</b>；② 把箱子的物品<b>连带被挖掘掉掉落的箱子本身</b>
- * 都吸回来；③ 若玩家装了"不同玩家打开箱子时刷新的物品互相独立"的特殊战利品箱子模组，
- * 那就<b>不要把箱子挖掉</b>（只取物）。</p>
- *
- * <p><b>改动一：取物前主动填一次战利品表（以投掷者本人为玩家）</b>
- * —— {@link #unpackLootTables(BlockPos, Player)}（大箱子两半都填，源码依据全在它的注释里）。
- * ⚠ 顺带更正本功能上一轮的一条<b>错误判断</b>：批 7 的注释写"带 LootTable 的容器此刻还是空的、
- * 镖什么都取不到"——<b>不精确</b>。1.21.1 里 {@code RandomizableContainerBlockEntity#removeItemNoUpdate}
- * /{@code getItem}/{@code isEmpty} <b>各自</b>都会先调 {@code unpackLootTable(null)}
- * （{@code mcsrc-all/.../RandomizableContainerBlockEntity.java:49-88}），所以旧代码其实取得到东西；
- * 真正的问题是<b>填表用的是 {@code null} 玩家</b>（没有幸运值、没有 {@code THIS_ENTITY}、
- * 也不触发 {@code GENERATE_LOOT}）⇒ 拿到的<b>不是"他那一份"</b>。本轮的改动因此是
- * "把隐式的、没玩家的填表换成显式的、按投掷者填"，而不是"从取不到变成取得到"。</p>
- *
- * <p><b>改动二：取空之后把容器方块本身也挖掉</b>
- * —— 走<b>既有唯一挖掘入口</b> {@link #mineBlock(BlockPos)}（临时换主手 + {@code gameMode.destroyBlock}
- * + {@code finally} 还原），掉落的箱子方块由既有吸附（{@link #pickUpItems()}，
- * 每个服务端 tick 一次、就在同一 tick 的末尾）带走 ⇒ 与掉落物同一条链。</p>
- * <ul>
- *   <li><b>顺序铁律"先取空、再挖"</b>：反过来的话，{@code ChestBlock#onRemove} →
- *       {@code Containers.dropContentsOnDestroy}（{@code mcsrc-all/net/minecraft/world/Containers.java:51-58}）
- *       会把<b>还在容器里</b>的东西全撒到地上；而且那条路走的是 {@code getItem(...)}，
- *       对还没填过表的容器又会{@code unpackLootTable(null)} —— 等于把战利品<b>按"没有玩家"</b>roll 一遍，
- *       直接推翻改动一。取空的容器再被破坏时 {@code dropContents} 只会拿到 27 个空槽。</li>
- *   <li><b>挖不动就不挖</b>（硬度/挖掘等级没过、权限不允许）：物品<b>已经取走了</b>，方块留在原地 ——
- *       如实报告这个组合行为，不额外补偿。</li>
- *   <li><b>大箱子只挖命中的那一半</b>：{@link #mineBlock(BlockPos)} 只作用在镖撞到的那个坐标上，
- *       另一半会由原版 {@code updateShape} 变回单箱（内容已被一起取空）⇒ 世界上剩一个空箱子。
- *       要不要"两半都挖掉"需求没写，取最小偏差（见报告）。</li>
- * </ul>
- *
- * <p><b>改动三：每玩家战利品模组的容器 ⇒ 只取不挖</b>
- * —— {@link #PER_PLAYER_LOOT_NAMESPACES}（{@code lootr}）+ 唯一判据 {@link #perPlayerLoot(BlockPos)}；
- * 这类容器照旧取物（投掷者自己那份），但 {@code onHitBlock} 里那道
- * {@code if (!perPlayerLoot(pos)) { destroyed = mineBlock(pos); }} 让它<b>绝不</b>被挖掉。
- * ⚠ <b>语义变更留档</b>：批 7 那张表把 {@code lootr} 与机器并列、含义是"完全不碰"，
- * 现在拆成两张表（{@link #NEVER_TOUCH_NAMESPACES} = 完全不碰的机器 /
- * {@link #PER_PLAYER_LOOT_NAMESPACES} = 只取不挖），旧名 {@code NEVER_LOOT_NAMESPACES} 已删。
- * 判据只读方块注册命名空间（一个字符串，绝不 import 可选模组类）；它的脆弱性与扩展方式
- * 逐条写在 {@link #PER_PLAYER_LOOT_NAMESPACES} 的注释里。</p>
- *
- * <p><b>改动四：同一次命中只记一次耐久</b>
- * —— 取物 −1 与"挖掉一个方块 −1"不再各记一笔（作者裁定"不重复扣"）：{@code mineBlock} 负责
- * "真的挖掉了"那一笔，{@link #onHitBlock(BlockPos)} 只在 {@code took && !destroyed}
- * （取到了、却没挖掉：挖不动，或命中每玩家战利品模组）时补记取物那一笔。</p>
- *
- * <h2>十一、批 4（2026-10-03 第二轮需求 §3.3）：十字挖掘 —— 星界 / 雷鸣的固有特性</h2>
- * <p>作者裁定：十字挖掘是<b>星界镖 / 雷鸣镖的固有特性</b>（<b>不占技能槽</b> ⇒
- * "回旋镖只有两个技能"仍然成立），翠玉 / 宝石没有；平面 = <b>垂直于飞行方向</b>的平面，
- * 形状 = 中心 1 格 + 该平面内 4 个正交方向各 1 格 = <b>5 格</b>（臂长 1、不随等级变）。</p>
- * <p>落地只有两处：判据 {@link BoomerangTier#crossMine()}（穷尽 {@code switch (this)}、
- * <b>无 {@code default}</b> ⇒ 枚举改名或加档<b>编译就不过</b>；也不是第 12 个构造参数 ——
- * 那 11 项被关卡逐位钉住）+ helper {@link #mineCross(BlockPos)}（垂面法向 = {@code |d|}
- * 最大的世界轴、并列固定序 x→y→z；5 格<b>每一格</b>都走既有唯一破坏入口
- * {@link #mineBlock(BlockPos)} ⇒ 每格各扣 1 耐久（共 −5）、挖不动由它自己跳过且不记账；
- * <b>不吃能量</b>；方块穿透额度仍只扣 1 份；邻格是容器就跳过 —— <b>不挖也不开箱</b>；
- * 零向量退化为单格，<b>不引"上一次有效方向"字段</b>）。
- * 调用点只有 {@link #onHitBlock(BlockPos)} 的普通支一处 —— <b>容器支一字未动</b>。</p>
+ * <p>{@code Entity} 的构造器会调 {@code defineSynchedData} / {@code setPos} 等可覆写方法，而字段初始化器
+ * 在<b>之后</b>才跑。因此 {@link #defineSynchedData} 与 {@link #tier()} 都不许碰对象字段：前者只用静态成员
+ * 与参数，后者由子类返回枚举常量。本类<b>不覆写</b>
+ * {@code setPos}/{@code getBoundingBox}/{@code defineSynchedData} 以外的构造期方法。</p>
  */
+
 public abstract class AbstractBoomerangEntity extends Projectile implements OrbitAnchor {
 
 	/** 渲染与交还都用的那一份镖（同步数据；写入只有 {@link #setItemStack} 一处）。 */
-	private static final EntityDataAccessor<ItemStack> DATA_STACK =
+	static final EntityDataAccessor<ItemStack> DATA_STACK =
 		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.ITEM_STACK);
 
 	/** 是否处于回程段（同步数据：客户端 tick 也读它）。 */
-	private static final EntityDataAccessor<Boolean> DATA_RETURNING =
+	static final EntityDataAccessor<Boolean> DATA_RETURNING =
 		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.BOOLEAN);
 
-	/**
-	 * <b>本次飞行是不是长按（花瓣曲线）</b>（同步数据）。
-	 *
-	 * <p>客户端也必须知道：去程的位移在两端各自算（{@link #tickPetal}），而位置包每
-	 * {@code updateInterval} 才来一次（实体类型上的 10 tick）——只靠位置包会让花瓣一顿一顿。
-	 * 所以曲线本身走"两端用同一组常数现算"，由本标志 + {@link #DATA_PETAL_ORIGIN} +
-	 * {@link #DATA_PETAL_ANGLE} 三个同步值一起决定它长什么样。</p>
-	 */
-	private static final EntityDataAccessor<Boolean> DATA_PETAL =
+	/** <b>本次飞行是不是长按（花瓣曲线）</b>（同步数据；客户端要跟着算，见 {@link BoomerangFlight#tickPetal(AbstractBoomerangEntity)}）。 */
+	static final EntityDataAccessor<Boolean> DATA_PETAL =
 		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.BOOLEAN);
 
-	/**
-	 * 花瓣曲线的<b>锚点 P</b>（同步数据；出手那一刻镖的出生点 = 玩家眼睛下方 0.1 格）。
-	 *
-	 * <p>用 {@code VECTOR3} 而不是"让客户端自己记出生点"：客户端的那一份位置是位置包给的，
-	 * 与出生点之间可能有若干 tick 的误差；锚点直接抄服务端的值，两端才会画出同一条曲线。</p>
-	 */
-	private static final EntityDataAccessor<Vector3f> DATA_PETAL_ORIGIN =
+	/** 花瓣曲线的<b>锚点 P</b>（同步数据；出手那一刻镖的出生点）。抄服务端的值，两端才画出同一条曲线。 */
+	static final EntityDataAccessor<Vector3f> DATA_PETAL_ORIGIN =
 		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.VECTOR3);
 
-	/**
-	 * 花瓣曲线的<b>基准角 ψ</b>（同步数据；弧度，= {@code atan2(出手时朝向.z, 出手时朝向.x)}）。
-	 *
-	 * <p>存"数学角"而不是玩家 yaw：需求 §3.4.3 的公式是 {@code r·cos(ψ+φ)} / {@code r·sin(ψ+φ)}
-	 * （x/z 平面上的数学极角），而 MC 的 yaw 是以 +Z 为 0、绕 -Y 转的另一套约定——
-	 * 在这里换算一次，实体里就不会再出现"那到底是哪个角"的歧义。</p>
-	 */
-	private static final EntityDataAccessor<Float> DATA_PETAL_ANGLE =
+	/** 花瓣曲线的<b>基准角 ψ</b>（同步数据；弧度）。存"数学角"而不是玩家 yaw，换算口径见 {@link BoomerangCurveConfigs}。 */
+	static final EntityDataAccessor<Float> DATA_PETAL_ANGLE =
 		SynchedEntityData.defineId(AbstractBoomerangEntity.class, EntityDataSerializers.FLOAT);
 
 	/** 去程单 tick 内"实体 ⇄ 方块"交替判定的循环上限（需求 2；超了写日志，不崩）。 */
 	public static final int MAX_IMPACT_LOOPS = 100;
+
 	/**
 	 * 去程寿命上限（tick）：<b>兜底判据</b>。
 	 *
-	 * <p>去程的正常结束是<b>距离</b>：离主人超过该档的收回距离（{@link BoomerangTier#returnDistance()}，
-	 * 5/10/15/20 格）就立刻掉头，见 {@link #outboundRangeExceeded}。这一条时间上限只负责
-	 * "距离判据万一失效"（例如主人始终贴身跟着、镖贴身绕圈那种极端）时也<b>绝不永远飞下去</b>。</p>
+	 * <p>去程的正常结束是<b>距离</b>（{@link BoomerangFlight#outboundRangeExceeded(AbstractBoomerangEntity, Entity)}）；
+	 * 这一条只负责"距离判据万一失效"（主人始终贴身跟着那种极端）时也<b>绝不永远飞下去</b>。</p>
 	 */
 	public static final int MAX_OUTBOUND_TICKS = 200;
-	/** 回程寿命上限（tick）：Quark bug b 的修复处，超了就落地消散。 */
+
+	/** 回程寿命上限（tick）：Quark bug b 的修复处，超了就交还玩家（见 {@link BoomerangTails#returnTimedOut(AbstractBoomerangEntity)}）。 */
 	public static final int MAX_RETURN_TICKS = 300;
-	/** 回程速度。 */
-	public static final double RETURN_SPEED = 0.7D;
-	/** 回程速度的效率加成系数（Quark 用 Efficiency 附魔等级；本模组第一批没有附魔通道 ⇒ 恒 0）。 */
-	public static final double RETURN_SPEED_PER_EFFICIENCY = 0.325D;
-	/**
-	 * 抵达判定阈值 —— <b>「与主人的距离²」</b>（3.25 = 1.8²）。
-	 *
-	 * <p>需求原文写的是 {@code motion.lengthSqr() < 3.25}。逐字照抄会坏：回程速度恒为
-	 * {@value #RETURN_SPEED} ⇒ {@code |motion|² = 0.49 < 3.25} 恒成立，镖会在<b>第一个回程 tick
-	 * 就判定"已到达"</b>（捡不到路上的东西、也回不到玩家手上）。因此按同一组常数的几何含义读作
-	 * "离主人还剩多远"（平方比较，省一次开方）。</p>
-	 */
-	public static final double RETURN_ARRIVE_SQR = 3.25D;
-	/** 抵达判定的效率加成系数（同上，恒 0）。 */
-	public static final double RETURN_ARRIVE_SQR_PER_EFFICIENCY = 0.25D;
-	/** 本模组第一批的效率加成恒 0（没有附魔通道；留着是为了让公式与 Quark 逐字对应）。 */
-	public static final double RETURN_EFFICIENCY = 0.0D;
-	/** 陆地阻力。 */
-	public static final double AIR_DRAG = 0.99D;
-	/** 水中阻力。 */
-	public static final double WATER_DRAG = 0.8D;
+
 	/** 吸附扫描半径（以自身碰撞盒外扩）—— 去程与回程共用（批 6 起不再只是回程捡物）。 */
 	public static final double PICKUP_RADIUS = 2.0D;
+
 	/** 捡到的掉落物上船后的拾取延迟（tick）——防止它刚贴上就被路过的玩家顺手吸走。 */
 	public static final int PICKUP_DELAY = 5;
+
 	/** 乘客的骑乘位再下移这么多（需求 4）。 */
 	public static final double PASSENGER_OFFSET_Y = 0.4D;
 
-	/**
-	 * <b>"飞行方向已经退化成一个点"的判据</b>（{@code |d|²} 的下限；批 4 十字挖掘的零向量兜底）。
-	 *
-	 * <p>数值与 {@link #checkImpact()} 第一行的"位移太小直接返回"<b>逐字相同</b>
-	 * （那里写的是字面量 {@code 1.0E-7D}）：命中判定本身就拒绝零位移，所以从
-	 * {@link #checkImpact()} 那条路进来的十字挖掘<b>到不了</b>"零向量"这一支。
-	 * 但 {@link #mineCross(BlockPos)} 是个独立入口（将来别处也能调），这里再判一次，
-	 * 绝不拿一个零向量去定"垂面轴"（{@code normalize()} 会出 NaN）。</p>
-	 */
-	private static final double DEGENERATE_DIRECTION_SQR = 1.0E-7D;
+	/** <b>"飞行方向退化成一个点"的判据</b>（{@code |d|²} 下限；批 4 十字挖掘的零向量兜底）。值与 {@link BoomerangImpact#checkImpact(AbstractBoomerangEntity)} 第一行的字面量逐字相同；再判一次是为了 {@link BoomerangMining#mineCross(AbstractBoomerangEntity, BlockPos)} 这个独立入口不拿零向量去定垂面轴（{@code normalize()} 会出 NaN）。 */
+	static final double DEGENERATE_DIRECTION_SQR = 1.0E-7D;
 
-	/**
-	 * <b>主人"被传送走了"的判据阈值</b>（格²；作者 2026-10-02 第三次裁定第 4 条）。
-	 *
-	 * <p>判据 = <b>主人一 tick 内的位置跳变</b>超过 {@code 16} 格（{@code 16² = 256}）：
-	 * 玩家任何正常移动都在 4 格/tick 以内（自由落体终端速度 3.92 格/tick 就是上限，
-	 * 冲刺 0.28 / 鞘翅+烟花约 3.5）⇒ 16 格留了 4 倍余量；而传送（{@code /tp}、传送门换维度、
-	 * 死亡重生、末影珍珠 ≥ 20 格）必然远超它。</p>
-	 *
-	 * <p>为什么不用"与主人的距离绝对值"：主人正常跑位/飞行也能在 300 tick 的回程寿命里
-	 * 拉开上百格（回程只有 0.7 格/tick），那样会把"正常拉开距离"误判成传送；
-	 * 而"一 tick 跳变"是传送的<b>充分</b>特征（没有正常移动能做到）。</p>
-	 */
+	/** <b>主人"被传送走了"的判据阈值</b>（格²；= 一 tick 跳变 16 格）。取值理由随判据一起在 {@link BoomerangOwnerWatch}。 */
 	public static final double OWNER_TELEPORT_JUMP_SQR = 16.0D * 16.0D;
 
 	/** 存活 tick（去程 + 回程；进 NBT）。 */
-	private int liveTime;
+	int liveTime;
 	/** 回程段已飞 tick（进 NBT —— 超时判定要能跨存档继续数）。 */
-	private int returnTicks;
+	int returnTicks;
 	/** 本次飞行命中生物的只数（进 NBT；第二批技能的"穿刺"要用）。 */
-	private int hitCount;
+	int hitCount;
 	/** 投掷时记下的背包槽位：回程交还优先还回这一格（进 NBT）。 */
-	private int slot;
-	/**
-	 * 投掷原点（进 NBT —— 区块重载后不丢）。
-	 *
-	 * <p>当下<b>只作为备用基准</b>：收回距离按"与主人的距离"算（作者 2026-10-02 裁定）。
-	 * 想改成按原点算，只改 {@link #outboundRangeExceeded} 里那一行。</p>
-	 */
-	private double originX;
-	private double originY;
-	private double originZ;
+	int slot;
+	/** 投掷原点（进 NBT —— 区块重载后不丢）；当下<b>只作备用基准</b>，改基准只改 {@link BoomerangFlight#outboundRangeExceeded(AbstractBoomerangEntity, Entity)} 那一行。 */
+	double originX;
+	double originY;
+	double originZ;
 	/** 投掷原点是否已记录（服务端第一条去程 tick 置位，重载时由 NBT 键的存在与否恢复）。 */
-	private boolean originRecorded;
+	boolean originRecorded;
 	/** 本次飞行已经打过的实体 id（<b>只在内存</b>，防止同一只怪被同一把镖反复打）。 */
-	private final Set<Integer> entitiesHit = new HashSet<>();
-	/**
-	 * <b>本次飞行累计的耐久损耗</b>（进 NBT；需求 §3.8 的"只累计、不写回"就落在这个字段上）。
-	 *
-	 * <p>投掷那一次由 {@code BoomerangItem} 给（点按 −2 / 长按 −5），此后每命中一个生物 / 每挖掉
-	 * 一个方块各 +{@link BoomerangTier#WEAR_PER_HIT}。<b>整段飞行不碰物品的 {@code DAMAGE}</b>——
-	 * 逐次写回会把耐久提前打到 0，那正是需求 §3.8 禁止的"当场归零"；
-	 * 唯一一次写回在 {@link #settleWear(ItemStack)}。</p>
-	 *
-	 * <p>进 NBT 的理由与 {@link #returnTicks} 同一条：跨区块重载不许把账抹掉，
-	 * 否则"飞出去一趟把耐久欠账躲掉"就成了可行策略。</p>
-	 */
-	private int flightWear;
-	/**
-	 * 花瓣曲线的<b>归一化弧长进度 s</b>（0 = 刚出手、1 = 走完一瓣；只在内存 + NBT）。
-	 *
-	 * <p>不进同步数据：两端从 0 开始、每 tick 各推进一次（推进公式只依赖
-	 * {@link BoomerangCurveConfigs} 的常数与 R），所以它天然同步；
-	 * 进 NBT 则是为了区块重载后不从头再飞一瓣。</p>
-	 */
-	private double petalProgress;
+	final Set<Integer> entitiesHit = new HashSet<>();
+	/** <b>本次飞行累计的耐久损耗</b>（进 NBT；投掷 −2/−5、每命中一只生物 / 挖掉一个方块各 +{@link BoomerangTier#WEAR_PER_HIT}）。整段飞行<b>不碰物品的 {@code DAMAGE}</b>，唯一一次写回与判爆在 {@link BoomerangTails#settleWear(AbstractBoomerangEntity, ItemStack)}。 */
+	int flightWear;
+	/** 花瓣曲线的<b>归一化弧长进度 s</b>（0 = 刚出手、1 = 走完一瓣；只在内存 + NBT）。不进同步数据：两端从 0 开始、每 tick 各推进一次，天然同步。 */
+	double petalProgress;
 
 	// ── 主人瞬移检测（作者 2026-10-02 第三次裁定第 4 条；只在服务端维护，不进 NBT） ──
-	// 为什么要它：主人被 /tp 或传送门扔到极远处时，镖既追不上也"回不到手里"，只能
-	// 飞满 MAX_RETURN_TICKS 再收尾。这里改为**一 tick 内主人位置跳变超过阈值就当场收尾**，
-	// 并把镖交还玩家（见 teleportRecover / finishFlight(false)）。上一 tick 的位置只用于
-	// 算跳变，重载后从"当前点"重新起算（一 tick 的判据不需要跨存档）。
-	/** 主人上一 tick 的 X（服务端）。 */
-	private double lastOwnerX;
-	/** 主人上一 tick 的 Y（服务端）。 */
-	private double lastOwnerY;
-	/** 主人上一 tick 的 Z（服务端）。 */
-	private double lastOwnerZ;
+	// 判据、阈值理由与收尾都在 BoomerangOwnerWatch；重载后从"当前点"重新起算
+	// （一 tick 的判据不需要跨存档），所以这里只有"上一 tick 的位置"这四个字段。
+	/** 主人上一 tick 的位置（服务端）。 */
+	double lastOwnerX;
+	double lastOwnerY;
+	double lastOwnerZ;
 	/** 上一 tick 的主人位置是否已记录（第一 tick 只记不比，免得把出生点当成"跳变"）。 */
-	private boolean lastOwnerTracked;
+	boolean lastOwnerTracked;
 
-	/**
-	 * <b>本次投掷还剩多少"生物穿透额度"</b>（需求 §3.5；批 3）。{@code -1} = 尚未初始化。
-	 *
-	 * <p>额度 = {@code 3 × 有效技能等级}，由 {@link #ensurePierceQuota()} 从
-	 * {@link #getItemStack()} 现读一次（同时也把方块额度算出来）。<b>它是"每次投掷一份"的账</b>：
-	 * 实体是每次投掷新建的对象 ⇒ 天然"每次投掷独立重置"，绝不会跨投掷累计
-	 * （那就是把额度记在物品上了，需求明确排除）。</p>
-	 */
+	/** <b>本次投掷还剩多少"生物穿透额度"</b>（需求 §3.5；批 3）。{@code -1} = 尚未初始化。额度 = {@code 3 × 有效技能等级}，由 {@link BoomerangPierce#ensurePierceQuota(AbstractBoomerangEntity)} 现读一次；实体每次投掷新建 ⇒ 天然"每次投掷各一份"。 */
 	private int pierceMobsLeft = -1;
+
 	/** 还剩多少"方块穿透额度"（{@code 5 × 有效技能等级}）；{@code -1} = 尚未初始化。见 {@link #pierceMobsLeft}。 */
 	private int pierceBlocksLeft = -1;
 
 	// ================= 技能携带标记（作者 2026-10-02 第二次裁定） =================
 	//
-	// 裁定原文（要点）：穿刺与环绕**不是主动释放的技能**，而是"**按住技能键时，该次投掷自带
-	// 的效果**"——与装备技能同一种东西（按住才生效的被动效果），**没有任何"释放"动作**：
-	//   · 按住技能键 + 右键投掷 ⇒ 这一发自带该效果；
-	//   · 不按技能键 + 右键投掷 ⇒ 这一发什么都不带（也不扣 20L / 15L）；
-	//   · 投掷本身永远是右键；技能键只是"这次投掷带不带这个效果"的开关。
-	// 因此**不走** CoeSkillRelease / 内核释放路径、**没有**冷却、没有主动触发：这里只有
-	// 两个"这次投掷带不带"的布尔值，由 BoomerangItem#releaseUsing 在投掷那一刻读技能键写一次。
-	//
-	// ⚠ 这与批 3/批 4 的旧口径相反（旧："不需要开关、只要投掷就生效"）——旧口径已被作者
-	// 2026-10-02 的第二次裁定**推翻**，本类与 BoomerangItem 的注释都把它写下来了（本仓规则：
-	// 口径被推翻要写明，不许静默删除）。
+	// 裁定原文（要点）：穿刺与环绕**不是主动释放的技能**，而是"**按住技能键时该次投掷自带
+	// 的效果**"，**没有任何"释放"动作**：按住键一/二 + 右键投掷 ⇒ 这一发自带该效果；
+	// 不按 ⇒ 什么都不带（也不扣 20L / 15L）；投掷本身永远是右键，技能键只是"带不带"的开关。
+	// 因此**不走** CoeSkillRelease / 内核释放路径、**没有**冷却、没有主动触发：这里只有两个
+	// 布尔值，由 BoomerangItem#releaseUsing 在投掷那一刻读技能键写一次。
+	// ⚠ 这与批 3/批 4 的旧口径相反（旧："不需要开关、只要投掷就生效"），旧口径已被作者
+	// 2026-10-02 的第二次裁定**推翻**（本仓规则：口径被推翻要写明，不许静默删除）。
 
-	/**
-	 * <b>本次投掷是否携带穿刺技能</b>（= 投掷那一刻按住了键一；见类注释与
-	 * {@code BoomerangItem#skillKeyHeld}）。
-	 *
-	 * <p>它只决定一件事：{@link #ensurePierceQuota()} 里"技能来源"那一份要不要算。
-	 * 它<b>不</b>是本实体自己读的键（那样每次命中都读一次，与"投掷那一刻决定"的自相矛盾），
-	 * 也不是内建额度（长按自带的那 1 只 / 1 个与它无关，见
-	 * {@code BoomerangSkillConfigs#BUILTIN_PIERCE_MOBS_ON_HOLD}）。</p>
-	 */
+	/** <b>本次投掷是否携带穿刺技能</b>（= 投掷那一刻按住了键一）。只决定 {@link BoomerangPierce#ensurePierceQuota(AbstractBoomerangEntity)} 里"技能来源"那一份要不要算；<b>不</b>是命中时现读的键，也不是内建额度。 */
 	private boolean pierceSkillCarried;
 
 	/** <b>本次投掷是否携带环绕技能</b>（= 投掷那一刻按住了键二；只决定投掷时生不生成环绕波）。 */
@@ -539,56 +186,55 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 
 	// ================= 穿刺技能（2026-10-02 批 3；需求 §3.5） =================
 
-	/**
-	 * <b>初始化本次投掷的穿透额度</b>（只在第一次需要时算一次）。
-	 *
-	 * <p>等级走 {@link BoomerangItem#effectiveSkillLevel(ItemStack, int)}（与物品侧<b>同一个</b>
-	 * 读取点）——基准等级取本档 {@link BoomerangTier#baseSkillLevel()}，叠技艺提升 / 技艺回溯后
-	 * 钳到 5。额度本身来自 {@link BoomerangSkillConfigs}（{@code 3L} 与 {@code 5L}）。</p>
-	 *
-	 * <p>为什么<b>惰性</b>初始化而不是在投掷时写：实体在被投掷的那一刻已经把镖的栈同步进来了
-	 * （{@code setItemStack} 在 {@code addFreshEntity} 之前），但"这一趟到底有没有用到穿透"
-	 * 只有第一次命中才知道；惰性初始化让"没打过任何东西的一趟"完全不碰这套账，
-	 * 也让跨区块重载（{@code -1} 与已用的剩余额度都进 NBT）与之一致。</p>
-	 */
-	private void ensurePierceQuota() {
-		if (this.pierceMobsLeft >= 0) {
-			return;
-		}
-		// 额度只有一个来源：**穿刺技能**（投掷那一刻按住键一，作者 2026-10-02 第二次裁定）。
-		// 「长按自带 1 / 1」那个暂定值已被第三次裁定废除（花瓣段不吃任何额度，见
-		// BoomerangSkillConfigs 里那一段留档）⇒ 没携带技能时额度恒 0，判定自然退化成
-		// "碰到即回"（点按段）。
-		if (this.pierceSkillCarried) {
-			int level = BoomerangItem.effectiveSkillLevel(getItemStack(), tier().baseSkillLevel());
-			this.pierceMobsLeft = BoomerangSkillConfigs.pierceMobQuota(level);
-			this.pierceBlocksLeft = BoomerangSkillConfigs.pierceBlockQuota(level);
-		} else {
-			this.pierceMobsLeft = 0;
-			this.pierceBlocksLeft = 0;
-		}
-	}
-
 	/** 本次投掷剩余的<b>生物</b>穿透额度（初始化后；只读给关卡/调试用）。 */
 	public int getPierceMobsLeft() {
-		ensurePierceQuota();
+		BoomerangPierce.ensurePierceQuota(this);
 		return this.pierceMobsLeft;
 	}
 
 	/** 本次投掷剩余的<b>方块</b>穿透额度（初始化后；只读给关卡/调试用）。 */
 	public int getPierceBlocksLeft() {
-		ensurePierceQuota();
+		BoomerangPierce.ensurePierceQuota(this);
 		return this.pierceBlocksLeft;
+	}
+
+	// ================= 穿刺额度的包级读写点（2026-10-03 拆分 glue） =================
+	//
+	// 这两个额度字段**仍然 private**（关卡 §29n-2 用字面量 'private int pierceMobsLeft = -1' 钉着
+	// "额度是实体状态、每次投掷各一份、不许挪到物品上"）。搬出去的 BoomerangPierce / BoomerangImpact
+	// 需要读写它们，于是这里放四个一行包级访问器——**没有**把字段改成 public，也没有把额度搬到别处。
+
+	int pierceMobsLeft() {
+		return this.pierceMobsLeft;
+	}
+
+	void setPierceMobsLeft(int value) {
+		this.pierceMobsLeft = value;
+	}
+
+	int pierceBlocksLeft() {
+		return this.pierceBlocksLeft;
+	}
+
+	void setPierceBlocksLeft(int value) {
+		this.pierceBlocksLeft = value;
+	}
+
+	/** 技能携带标记的包级写点（同上：字段仍 private；投掷路径唯一的写入点仍是 setCarriedSkills）。 */
+	void setPierceSkillCarried(boolean carried) {
+		this.pierceSkillCarried = carried;
+	}
+
+	void setOrbitSkillCarried(boolean carried) {
+		this.orbitSkillCarried = carried;
 	}
 
 	// ================= 技能携带标记（作者 2026-10-02 第二次裁定） =================
 
 	/**
 	 * <b>写入"这一发带不带那两个效果"</b>（投掷那一刻<b>唯一</b>一处写入口，由
-	 * {@code BoomerangItem#releaseUsing} 调用）。
-	 *
-	 * <p>为什么在实体上而不是物品上：与穿刺额度同理 —— <b>一次投掷一个实体</b>，
-	 * 记在实体上天然"每次投掷各一份"，绝不会跨投掷累计（记在栈上就会）。</p>
+	 * {@code BoomerangItem#releaseUsing} 调用）。记在实体上而不是物品上：一次投掷一个实体，
+	 * 天然"每次投掷各一份"（记在栈上就会跨投掷累计）。
 	 *
 	 * @param pierceSkill 投掷那一刻是否按住键一（穿刺）
 	 * @param orbitSkill  投掷那一刻是否按住键二（环绕）
@@ -598,7 +244,7 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		this.orbitSkillCarried = orbitSkill;
 	}
 
-	/** 本次投掷是否携带穿刺技能（决定 {@link #ensurePierceQuota()} 里"技能来源"那一份）。 */
+	/** 本次投掷是否携带穿刺技能（决定 {@link BoomerangPierce#ensurePierceQuota(AbstractBoomerangEntity)} 里"技能来源"那一份）。 */
 	public boolean isPierceSkillCarried() {
 		return this.pierceSkillCarried;
 	}
@@ -611,69 +257,9 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	// ================= 环绕技能（2026-10-02 批 4；需求 §3.6 / §3.7） =================
 
 	/**
-	 * <b>环绕波的魔素抽签池</b>（2026-10-03 需求 coe-boom2 批 3 §3.1）：每枚环绕波<b>各自</b>
-	 * 从这 <b>8 种全部</b>魔素里随机抽一种（水/火/地/风/冰/雷/毒/异）。
-	 *
-	 * <p><b>为什么是 8 种（含"异"）</b>：星芒嬗震那边排除 {@code ARCANE}，是因为它的<b>主波已经
-	 * 固定占了"异"</b>（见 {@code StarShockRuntime#ORBIT_ESSENCE_POOL} 那个 7 值池）。
-	 * 回旋镖这一侧<b>没有"主波占掉一个魔素"这回事</b>（镖本身不是波、不设魔素）⇒
-	 * 没有理由排除任何一种，8 种全在池里。</p>
-	 *
-	 * <p><b>名单只有这一份</b>：{@link #spawnOrbitWaves} 那一次掷骰直接按本数组取，顺序照
-	 * {@code WaveTrailStyle} 的<b>声明序</b>排，便于与枚举逐字对照。关卡
-	 * {@code boomerang-orbit-essence-pool} 正向钉"这 8 个就是枚举的全部 8 个魔素、顺序一致"，
-	 * 反向钉"本文件里每个魔素名只出现一次"；另一条
-	 * {@code boomerang-orbit-essence-invariant} 把本池与星芒嬗震的 7 值池对照：
-	 * <b>并集 = 8、交集 = 7</b>（两个池各自只有一份）。</p>
-	 *
-	 * <p><b>不去重、不排除连续相同</b>（与星芒嬗震同口径）：同一次投掷的 L 枚可以互不相同、
-	 * 也可以连着抽到同一种；结果只由那一次掷骰决定，池里没有任何状态。</p>
-	 */
-	private static final WaveTrailStyle[] ORBIT_ESSENCE_POOL = {
-		WaveTrailStyle.WATER, WaveTrailStyle.FIRE, WaveTrailStyle.EARTH, WaveTrailStyle.WIND,
-		WaveTrailStyle.ICE, WaveTrailStyle.LIGHTNING, WaveTrailStyle.POISON, WaveTrailStyle.ARCANE
-	};
-
-	/**
-	 * <b>环绕波批次号计数器</b>（服务端权威、进程内自减 ⇒ 分配出来的批次号<b>恒为负数</b>）。
-	 *
-	 * <p><b>为什么自造一个来源</b>：豁免判据 {@code sameFiringBatch} 比较的是"两枚波是不是
-	 * 同一次发射"，而<b>镖不是波、根本没有批次号</b>（唯一既有的分配器
-	 * {@code StarShockRuntime#nextBatch()} 是星界套的私有实现，本项目口径也不让回旋镖依赖它）。
-	 * 所以这里造一个只用给"这一次投掷的 L 枚环绕波"的号，让它们<b>彼此不湮灭</b>。</p>
-	 *
-	 * <p><b>为什么是负数（与"批次 0"和星芒嬗震都不撞号）</b>：{@code sameFiringBatch} 要求
-	 * 双方都非 0 且相等，而<b>机器波恒为 0</b>（"不属于任何批次"）⇒ 负数天然不等于 0；
-	 * 星芒嬗震的序列是<b>正数</b>（{@code BATCH_SEQUENCE++}，从 1 起）⇒
-	 * 两个来源的值域不相交，永远不可能出现"一次星界技能发射与一次回旋镖投掷撞号"，
-	 * 也就不会出现"两枚本应互相湮灭的波互相豁免"（长期口径：任意两波相交即爆炸湮灭）。</p>
-	 *
-	 * <p>位宽 32 位、只在同一次投掷内部比较 ⇒ 与既有批次号同一种"进程内短标识"口径。</p>
-	 */
-	private static int ORBIT_BATCH_SEQUENCE = 0;
-
-	/**
-	 * 分配一个<b>环绕波批次号</b>（{@link #ORBIT_BATCH_SEQUENCE}；<b>恒 &lt; 0</b> ⇒ 恒非 0）。
-	 *
-	 * <p>回绕兜底：{@code int} 减到 {@code Integer.MIN_VALUE} 再减会变成正数
-	 * （= 可能与星芒嬗震的序列撞号），所以到 0 就绕回 {@code -1}。正常游戏里不可能发生，
-	 * 但"绕回正数"这条路径正是必须堵掉的（它与"批次号 0"是同一类静默失效）。</p>
-	 */
-	private static synchronized int nextOrbitBatch() {
-		ORBIT_BATCH_SEQUENCE--;
-		if (ORBIT_BATCH_SEQUENCE >= 0) {
-			ORBIT_BATCH_SEQUENCE = -1;
-		}
-		return ORBIT_BATCH_SEQUENCE;
-	}
-
-	/**
 	 * <b>环绕波锚点契约（{@link OrbitAnchor}）的"取运动方向"实现 —— 镖这一侧</b>
-	 * （作者裁定 D9 = A）：镖的手写位移就写在原版速度字段上
-	 * （点按的 {@code shootFromRotation} / 花瓣段的 {@code setDeltaMovement(target - position)}，
-	 * 见 {@link #tickOutbound()} / {@link #tickPetal()}），所以"镖的运动方向"就是
-	 * {@code getDeltaMovement()}。环绕波的环平面<b>垂直于它</b> ⇒ 与需求 §3.6 第 2 条
-	 * "环绕运动轨迹 = 回旋镖当前运动轨迹的垂面"逐字同形。</p>
+	 * （作者裁定 D9 = A）：镖的位移就写在原版速度字段上，所以"镖的运动方向"就是
+	 * {@code getDeltaMovement()}；环平面<b>垂直于它</b> ⇒ 与需求 §3.6 第 2 条逐字同形。
 	 */
 	@Override
 	public Vec3 orbitDirection() {
@@ -682,150 +268,28 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 
 	/**
 	 * <b>环绕波撞到普通方块时的回调</b>（{@link OrbitAnchor#orbitMineBlock(BlockPos)} 的镖侧实现）：
-	 * 直接复用 {@link #mineBlock(BlockPos)} —— 同一条判定链（硬度 ≥ 0、≤ 本档
-	 * {@code maxHardness}、不在本档 {@code INCORRECT_FOR_*_TOOL}、原版挖掘进度
-	 * {@code digSpeed/(hardness*i)} 达标），同一条唯一破坏入口
-	 * （{@code player.gameMode.destroyBlock}），以及同一条耐久记账
-	 * （挖掉 ⇒ {@code addFlightWear(WEAR_PER_HIT)}，<b>挖不动不计</b>）。</p>
+	 * 直接复用 {@link BoomerangMining#mineBlock(AbstractBoomerangEntity, BlockPos)}（同一条判定链、
+	 * 唯一破坏入口与耐久记账）。
 	 *
-	 * <p><b>挖不动 ⇒ 什么都不做</b>（返回 {@code false}），环绕波照旧按"撞墙"消散 ——
-	 * 需求 §3.6 只写了"碰方块 ⇒ 挖掘并使其消失"，没写"挖不动怎么办"；
-	 * 这里取最小偏差的读法：<b>不挖、但该枚照样消失</b>（撞上方块就是碰撞），
-	 * 与既有波的撞墙语义一致。见报告 §⑥。</p>
+	 * <p><b>挖不动 ⇒ 什么都不做</b>（返回 {@code false}），该枚照旧按"撞墙"消散 —— 需求 §3.6 没写
+	 * "挖不动怎么办"，这里取最小偏差的读法：<b>不挖、但该枚照样消失</b>。见报告 §⑥。</p>
 	 */
 	@Override
 	public boolean orbitMineBlock(BlockPos pos) {
-		return mineBlock(pos);
+		return BoomerangMining.mineBlock(this, pos);
 	}
 
 	/**
 	 * ★ <b>投掷时挂上环绕技能：生成 L 枚环绕波</b>（需求 §3.6；批 4 的唯一生成处）。
 	 *
-	 * <p>由 {@code BoomerangItem#releaseUsing} 在镖<b>已入世界之后</b>调用一次
-	 * （点按与长按<b>都</b>调 —— 需求 §六 推断值 #9：技能不需要开关、两种模式都生效）。</p>
+	 * <p>实现整体在 {@link BoomerangOrbitWaves#spawnOrbitWaves(AbstractBoomerangEntity, ItemStack, Vec3)}；
+	 * 本方法保留原公开签名（投掷侧唯一入口），只做一行转发。</p>
 	 *
-	 * <p>每一枚都是<b>既有波实体</b>（{@code ChargerWaveEntity}，与充能器/星芒嬗震同一种），
-	 * 只设三个要素：</p>
-	 * <ol>
-	 *   <li><b>波型 = ATTACK</b>（{@code trySetWaveType}）：既有命中链里"造成伤害"那一支的
-	 *       门槛就是 {@code getWaveType().dealsDamage()}，不设它环绕波就只是个观光粒子；</li>
-	 *   <li><b>自定义伤害 = 2 × 等级</b>（{@code ChargerWaveEntity#setCustomDamage}）——
-	 *       正是作者裁定 D9(A) 的"伤害可覆写"，<b>不</b>另写一套波级表；</li>
-	 *   <li><b>环绕要素</b>（{@code setOrbitAnchor}）：锚点 = 这枚镖的 UUID、半径 1.5、
-	 *       角速度 1 圈/秒、相位 {@code 基相位 + 2π·i/L}（均匀铺满一圈）。</li>
-	 * </ol>
-	 * <p>外加<b>同一个批次号</b>（同一次投掷的 L 枚彼此不湮灭；见 {@link #nextOrbitBatch()}）。</p>
-	 *
-	 * <p>⚠ <b>不新增实体类型 / 贴图 / 模型 / 渲染器</b>：用的是既有 {@code charger_wave}，
-	 * 视觉仍走既有的环绕波粒子（关卡守着这一条）。</p>
-	 *
-	 * @param stack     投掷的那一把镖（读取有效技能等级：基准等级取本档 + 技艺提升/回溯，钳 1..5）
-	 * @param flightDir 出手方向（点按 = 镖刚拿到的速度向量；长按 = 投掷那一刻的准心方向，
-	 *                  因为花瓣段第一 tick 还没有位移）——它同时是环绕波的出生朝向，
-	 *                  而每 tick 的环平面法向仍从锚点<b>实时</b>取（镖转弯时环跟着转）
+	 * @param stack     投掷的那一把镖（等级 = 本档基准 + 技艺提升/回溯，钳 1..5）
+	 * @param flightDir 出手方向；同时是环绕波的出生朝向（每 tick 的环平面法向仍从锚点<b>实时</b>取）
 	 */
 	public void spawnOrbitWaves(ItemStack stack, Vec3 flightDir) {
-		// ★ 第一道门：**这次投掷必须携带环绕技能**（投掷那一刻按住了键二；作者 2026-10-02
-		// 第二次裁定）。不按技能键 ⇒ 一枚都不生成。判据是投掷时写在实体上的标记，
-		// **不是**这里现读按键（"投掷那一刻读一次"是唯一口径，见 setCarriedSkills）。
-		if (!this.orbitSkillCarried) {
-			return;
-		}
-		if (!(level() instanceof ServerLevel server)) {
-			return; // 实体由服务端生成（两端各造一枚就成双份）
-		}
-		int level = BoomerangItem.effectiveSkillLevel(stack, tier().baseSkillLevel());
-		int count = BoomerangSkillConfigs.orbitCount(level);
-		float damage = BoomerangSkillConfigs.orbitDamage(level);
-		int batch = nextOrbitBatch();
-		Vec3 dir = flightDir == null ? Vec3.ZERO : flightDir;
-		for (int i = 0; i < count; i++) {
-			// 既有波实体、既有构造（与充能器/星芒嬗震同一个）：
-			// 出生点 = 镖此刻的位置（第一 tick 就会被环绕要素改写到环上）。
-			ChargerWaveEntity orbit = new ChargerWaveEntity(level(), position(), dir,
-				BoomerangSkillConfigs.ORBIT_WAVE_LEVEL);
-			orbit.setFiringBatch(batch); // 同一次投掷的 L 枚共用一个（负数）批次号
-			orbit.trySetWaveType(WaveTypes.ATTACK); // 要素 4：伤害那一支的门槛
-			// 要素 5（2026-10-03 需求 coe-boom2 批 3 §3.1）：魔素 = 8 种里<b>每枚各自随机</b>抽一种
-			// （含"异"——回旋镖这边没有"主波占掉一个魔素"这回事）。
-			// ⚠ <b>必须紧跟在 trySetWaveType(ATTACK) 之后</b>：trySetEssence 对"不造成伤害的波型"
-			// 直接 return false —— <b>静默空操作</b>（不报错、不打日志），顺序反了整批都没有魔素、
-			// 观感退回波型默认（火）。随机源用该波/世界的既有 RandomSource
-			// （{@code level().random}，服务端权威；禁自造随机源：新 Random / Math.random / RandomSource.create）。
-			orbit.trySetEssence(ORBIT_ESSENCE_POOL[level().random.nextInt(ORBIT_ESSENCE_POOL.length)]);
-			// 主人 = <b>投掷玩家本人</b>（2026-10-03 需求 coe-boom2 批 1 §3.2）：本批只<b>赋</b>不<b>排</b>
-			// —— 环绕波会绕着镖飞、离玩家很近（半径 1.5 格），"不伤发射者"要等批 2 改命中谓词。
-			// 取 {@code Projectile#getOwner()}（投掷者），<b>不是镖的 UUID</b>：镖 UUID 已经用作
-			// 环绕锚点（下面 setOrbitAnchor 的 getUUID()），两者语义不同、不能混用。
-			orbit.setOwner(getOwner());
-			orbit.setCustomDamage(damage); // 2 × 等级（既有实体的可选自定义伤害）
-			orbit.setOrbitAnchor(getUUID(), BoomerangSkillConfigs.ORBIT_RADIUS,
-				BoomerangSkillConfigs.ORBIT_ANGULAR_SPEED,
-				BoomerangSkillConfigs.ORBIT_PHASE + Math.PI * 2.0D * (double) i / (double) count);
-			server.addFreshEntity(orbit);
-		}
-	}
-
-	/**
-	 * <b>命中之后"要不要掉头"的唯一判定</b>（生物与方块两条命中路径共用这一处）。
-	 *
-	 * <p>三条判据，顺序固定 —— <b>"飞完一瓣"永远排第一</b>（需求 §3.2 + 批 3 裁定：
-	 * 花瓣段不许因为命中而提前返回，额度用完也不行）：</p>
-	 * <ol>
-	 *   <li>{@code isPetalFlight()} ⇒ 恒 <b>不掉头</b>（花瓣段唯一允许的掉头是"走完 s=1"）；</li>
-	 *   <li>这次命中<b>本来就不允许穿过</b>（{@code mayPierceThrough = false}：撞上挖不动的方块）
-	 *       ⇒ 照旧掉头（批 1/2 的"撞墙即回"）；</li>
-	 *   <li>额度还没用完（{@code quotaLeft > 0}）⇒ 穿过去继续飞；<b>用完 ⇒ 掉头</b>
-	 *       （需求 §3.5："额度用完即掉头（= 回到点按那种碰到就回的行为）"）。</li>
-	 * </ol>
-	 *
-	 * @param quotaLeft        该类额度在本次命中<b>扣减之后</b>的余量
-	 * @param mayPierceThrough {@code false} = 这次命中不允许穿过（挖不动的方块）
-	 * @return {@code true} = 已转入回程（调用方不得再前进）
-	 */
-	private boolean turnAroundIfNotPiercing(int quotaLeft, boolean mayPierceThrough) {
-		if (isPetalFlight()) {
-			// ★ 花瓣段（作者 2026-10-02 第三次裁定）：**近程无限制** —— 沿花瓣轨迹上所有方块都破坏、
-			// 所有生物都伤害，**不吃任何额度**（"长按自带 1/1"那个暂定值当场作废）。
-			// 只有**飞远了**（超出本档"能力范围"）才回到上限规则：那时遇到**超出本档能力**的方块
-			// （挖不动 ⇒ mayPierceThrough == false）就「既不破坏也不伤害，直接返回」。
-			// 近程遇到挖不动的方块 ⇒ **穿过去继续飞完这一瓣**（"无限制"那一句的最小读法；
-			// 需求没写死这一种情形，见报告 §⑥）。
-			if (mayPierceThrough || withinCapabilityRange()) {
-				return false;
-			}
-		} else {
-			// 点按段（逐字沿用批 3 口径）：撞不动（墙）或额度用完 ⇒ 掉头；否则穿过去继续飞。
-			boolean quotaSpent = quotaLeft <= 0;
-			if (mayPierceThrough && !quotaSpent) {
-				return false;
-			}
-		}
-		// ⚠ 全实体只剩这一个 setReturning(true) 在这条规则里（另外三处分别在距离判据、
-		// 去程时间上限、飞完一瓣）——关卡 §29n-4 把"恰好 4 处"钉死，别再复制一份。
-		setReturning(true);
-		return true;
-	}
-
-	/**
-	 * <b>花瓣段专用的"能力范围"判据</b>（作者 2026-10-02 第三次裁定第 3 条）：离主人
-	 * <b>不超过本档"能力范围"</b>（{@link BoomerangTier#capabilityRange()}）⇒ 近程，破坏与伤害无限制。
-	 *
-	 * <p>⚠ <b>阈值是待作者确认的暂定值</b>：现在 {@code capabilityRange() == returnDistance()}
-	 * （5/10/15/20 格）。它是<b>唯一一处</b>取值点 —— 作者回话后只改
-	 * {@code BoomerangTier#capabilityRange()} 那一行，本方法一个字不用动。</p>
-	 *
-	 * <p>参照点与 {@link #outboundRangeExceeded} <b>同一个</b>（{@code owner.position() + (0,1,0)}）：
-	 * 两条距离判据（点按的"飞太远就掉头"与花瓣的"飞远了回到上限"）必须用同一把尺子，
-	 * 否则"多远算远"会有两个答案。</p>
-	 */
-	private boolean withinCapabilityRange() {
-		Entity owner = getOwner();
-		if (owner == null) {
-			return false; // 拿不到主人 ⇒ 按"超出"处理（保守：不再无限制破坏）
-		}
-		int limit = tier().capabilityRange();
-		return position().distanceToSqr(owner.position().add(0.0D, 1.0D, 0.0D)) <= (double) limit * limit;
+		BoomerangOrbitWaves.spawnOrbitWaves(this, stack, flightDir);
 	}
 
 	// ================= 同步数据读写 =================
@@ -844,11 +308,8 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 	}
 
 	/**
-	 * 切换去程/回程（唯一入口）。
-	 *
-	 * <p>切到回程时同时做两件事：{@code noPhysics = true}（穿墙回手——<b>但必须有回程寿命，
-	 * 见 {@link #MAX_RETURN_TICKS}，否则就是 Quark 那个"永远穿墙追不上"的 bug</b>）
-	 * 与回程计时归零。</p>
+	 * 切换去程/回程（唯一入口）。切到回程时同时做两件事：{@code noPhysics = true}（穿墙回手——<b>但必须有
+	 * 回程寿命 {@link #MAX_RETURN_TICKS}，否则就是 Quark 那个"永远穿墙追不上"的 bug</b>）与回程计时归零。
 	 */
 	public void setReturning(boolean returning) {
 		if (returning && !this.entityData.get(DATA_RETURNING)) {
@@ -875,11 +336,11 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 
 	/**
 	 * <b>把本次飞行标记成长按（花瓣曲线）</b>并记下曲线锚点与基准角 —— <b>唯一入口</b>，
-	 * 由 {@code BoomerangItem#releaseUsing} 在长按投掷时调用（服务端）。
+	 * 由 {@code BoomerangItem#releaseUsing} 在长按投掷时调用（服务端）。曲线本身（弧长参数化推进）
+	 * 在 {@link BoomerangFlight#tickPetal(AbstractBoomerangEntity)}；这里只写同步数据与进度归零。
 	 *
 	 * @param origin    曲线锚点 {@code P}（= 镖的出生点：玩家眼睛下方 0.1 格）
-	 * @param baseAngle 基准角 ψ（弧度）—— 出手那一刻水平朝向的<b>数学角</b>
-	 *                  {@code atan2(朝向.z, 朝向.x)}，与需求 §3.4.3 的极坐标公式同源
+	 * @param baseAngle 基准角 ψ（弧度）= 出手那一刻水平朝向的<b>数学角</b> {@code atan2(朝向.z, 朝向.x)}
 	 */
 	public void startPetalFlight(Vec3 origin, double baseAngle) {
 		this.entityData.set(DATA_PETAL, true);
@@ -893,17 +354,12 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		return this.entityData.get(DATA_PETAL);
 	}
 
-	/** 本次飞行累计的耐久损耗（需求 §3.8 的账；只在 {@link #settleWear(ItemStack)} 一次写回）。 */
+	/** 本次飞行累计的耐久损耗（需求 §3.8 的账；只在 {@link BoomerangTails#settleWear(AbstractBoomerangEntity, ItemStack)} 一次写回）。 */
 	public int getFlightWear() {
 		return flightWear;
 	}
 
-	/**
-	 * 往本次飞行的耐久账上记一笔（投掷 −2/−5、每命中一个生物 / 每挖掉一个方块各 −1）。
-	 *
-	 * <p><b>只记账</b>：不碰物品、不判爆。判爆与写回都在 {@link #settleWear(ItemStack)}。
-	 * 非正数直接忽略（调用点不必自己判）。</p>
-	 */
+	/** 往本次飞行的耐久账上记一笔。<b>只记账</b>：不碰物品、不判爆（那两件都在 {@link BoomerangTails#settleWear(AbstractBoomerangEntity, ItemStack)}）；非正数直接忽略。 */
 	public void addFlightWear(int amount) {
 		if (amount > 0) {
 			this.flightWear += amount;
@@ -912,811 +368,38 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 
 	// ================= tick 骨架 =================
 
+	/**
+	 * <b>每 tick 的唯一入口</b>：{@code super.tick()} 必须留在这里 —— {@code Projectile} 在那里补
+	 * {@code gameEvent(射出了)} 与 {@code leftOwner}（射出保护），{@code Entity} 在那里补 {@code baseTick}。
+	 * 其后的<b>阶段序列</b>（主人兜底 → 主人瞬移 → 去程/回程 → 唯一吸附点）逐字搬进了
+	 * {@link BoomerangTick#tick(AbstractBoomerangEntity)}，顺序与每一步的理由都在那里。
+	 */
 	@Override
 	public void tick() {
-		// super 一定要调：Projectile 在这里补 gameEvent(射出了) 与 leftOwner（射出保护），
-		// Entity 在这里补 baseTick（火焰/传送门/上一 tick 的朝向 xRotO/yRotO —— lerpRotation 靠它）。
 		super.tick();
-		this.liveTime++;
-
-		Entity owner = getOwner();
-		if (!level().isClientSide && (owner == null || !owner.isAlive())) {
-			ownerGone();
-			return;
-		}
-
-		// ★ 主人瞬移兜底（作者 2026-10-02 第三次裁定第 4 条）：/tp、传送门换维度、死亡重生…
-		// 一旦发现（换维度，或一 tick 跳变超过 OWNER_TELEPORT_JUMP_SQR）就**当场收尾**：
-		// 清除实体 + 把镖交还玩家（finishFlight(false)，绝不掉在地上、也不继续飞）。
-		if (!level().isClientSide && owner != null && ownerTeleported(owner)) {
-			teleportRecover();
-			return;
-		}
-
-		if (this.entityData.get(DATA_RETURNING)) {
-			this.noPhysics = true; // 客户端也置上：它只驱动 isInWall 之类的原版分支，与我们的手写位移无关
-			if (!level().isClientSide) {
-				this.returnTicks++;
-				if (this.returnTicks > MAX_RETURN_TICKS) {
-					returnTimedOut();
-					return;
-				}
-			}
-			tickReturning(owner);
-		} else {
-			if (!level().isClientSide && !this.originRecorded) {
-				recordThrowOrigin(); // 投掷原点只在服务端记一次，进 NBT（客户端用不到它）
-			}
-			if (!level().isClientSide && outboundRangeExceeded(owner)) {
-				// 主判据（作者 2026-10-02 报的"扔远了会自动消失"）：飞过本档收回距离 ⇒ 立刻掉头。
-				// 不是消失、也不是掉在地上 —— 交给既有回程段（RETURNING）把镖送回主人手里。
-				setReturning(true);
-			} else if (!level().isClientSide && this.liveTime > MAX_OUTBOUND_TICKS) {
-				// 兜底（分工见 MAX_OUTBOUND_TICKS 的注释）：距离判据万一失效，也不许永远飞下去。
-				setReturning(true);
-			} else {
-				// ⚠ 2026-10-03（批 6，作者报"长按的掉落物/经验没被带回"）：这里**不再早退**。
-				// 旧写法是 `else if (去程那一步) { return; }`，而那一早退唯一的作用就是跳过
-				// 下面的吸附点；"本 tick 不再前进（免得钻进墙里）"已经由去程那一步内部的位移决定。
-				tickOutbound();
-			}
-		}
-
-		// ★★ <b>唯一吸附点</b>（批 6 的修复处，作者报的 bug）：**去程与回程都经过这里**。
-		// 旧写法把它关在 `DATA_RETURNING` 里（只有回程吸附）⇒ 点按（直线去、原路回）看起来正常，
-		// 长按却漏：花瓣的回程是"从花瓣终点直线飞回主人"，而花瓣终点**就是出手点 P**
-		// （r(±Δθ/2) = 0，见 BoomerangCurveConfigs）⇒ 回程几乎没有路程、第一个回程 tick 就
-		// collect（距离 < RETURN_ARRIVE_SQR），花瓣弧上的掉落物与经验永远等不到吸附 ——
-		// 正是作者原话「掉落物都存在原地，经验也没有回」。
-		// 现在两种模式共用这一个点：点按去程也顺手吸（同一条路径、同一份实现，没有第二份）。
-		// `!isRemoved()`：collect → finishFlight → discard 之后旧写法还会再扫一次，
-		// 那一窗口里上船的掉落物会挂到一个已被移除、再也不会 tick 的载具上（顺手堵掉这条旧缝）。
-		if (!level().isClientSide && !isRemoved()) {
-			pickUpItems();
-		}
+		BoomerangTick.tick(this);
 	}
 
 	/**
-	 * 去程：命中判定 + 位移（<b>两端各跑一次</b>）。返回 true 表示"本 tick 已转入回程，别再前进"。
-	 *
-	 * <p><b>第一行就是模式分岔</b>（2026-10-02 批 2）：长按（花瓣曲线）走 {@link #tickPetal()}，
-	 * 点按逐字沿用下面这一支（射线命中 + 阻力位移）。</p>
-	 *
-	 * <p>⚠ <b>批 3 修正</b>：命中判定<b>两种模式共用</b> {@link #checkImpact()} 这一处入口
-	 * （花瓣段由 {@link #tickPetal()} 调它，不再"穿过生物/方块无效果"）——"掉头"与"穿过去"
-	 * 的分歧只在 {@link #onHitBlock} / {@link #onHitEntity} 内部，按
-	 * {@code isPetalFlight()} 与穿刺额度决定（见那两个方法）。这里点按那一支一个字没动。</p>
+	 * <b>转向微桥</b>（2026-10-03 拆分必需，一行）：{@code Projectile#updateRotation()} 是<b>别的包</b>里的
+	 * {@code protected}，同包 helper 调不到它（JLS 6.6.2）；helper 改用本方法 —— 它<b>只</b>转发原方法。
 	 */
-	private boolean tickOutbound() {
-		if (isPetalFlight()) {
-			return tickPetal();
-		}
-		if (!level().isClientSide && checkImpact()) {
-			return true;
-		}
-		Vec3 motion = getDeltaMovement();
-		double drag = isInWater() ? WATER_DRAG : AIR_DRAG;
-		setDeltaMovement(motion.scale(drag));
-		setPos(getX() + motion.x, getY() + motion.y, getZ() + motion.z);
+	void rotateToMotion() {
 		updateRotation();
-		return false;
-	}
-
-	/**
-	 * <b>长按的花瓣曲线飞行</b>（需求 §3.4；数学与常数全在 {@link BoomerangCurveConfigs}）。
-	 *
-	 * <p>每 tick 四步，顺序固定：</p>
-	 * <ol>
-	 *   <li><b>命中判定</b>（<b>服务端</b>）：调<b>与点按同一处</b>的 {@link #checkImpact()}
-	 *       ——花瓣段也要能伤生物、挖方块、吃穿刺额度（2026-10-02 批 3 修正 2；
-	 *       批 2 这里什么都不做，等于"镖穿过生物/方块无效果"）。
-	 *       ⚠ <b>掉头不归它管</b>：{@link #onHitBlock} / {@link #onHitEntity} 内部看到
-	 *       {@code isPetalFlight()} 就不会掉头（"必须飞完一瓣才能返回"优先于"额度用完"），
-	 *       所以这里的返回值被<b>刻意忽略</b>——花瓣段不会因为命中而提前结束；</li>
-	 *   <li><b>推进弧长</b> {@code s += v(s)/L_total}（{@code Δt = 1 tick}；v(s) 关于 s=0.5 对称）；</li>
-	 *   <li>{@code s ≥ 1} ⇒ <b>飞完一瓣</b>，服务端 {@link #setReturning(boolean)} 转回程，本 tick 不再前进
-	 *       （"必须飞完一瓣才能返回"；客户端不写同步值，等服务端那一份推回来）；</li>
-	 *   <li>否则把 {@code s} 反查成 φ（{@link BoomerangCurveConfigs#phiAt}），按
-	 *       {@code P + r(φ)·(cos(ψ+φ), 0, sin(ψ+φ))} 求新位置，位移写进 {@code deltaMovement}
-	 *       并 {@code setPos}（{@code updateRotation} 靠这个位移反算朝向）。</li>
-	 * </ol>
-	 *
-	 * <p>锚点用同步数据里的 {@link #DATA_PETAL_ORIGIN}（<b>不是</b> {@link #originX}）：
-	 * 前者出手时就同步给了客户端，两端才画得出同一条曲线；后者是服务端第一条 tick 记的、
-	 * 给"距离判据改基准"留的后路（见 {@link #outboundRangeExceeded}）。</p>
-	 *
-	 * <p>命中判定必须在<b>位移之前</b>：它用的是"上一 tick 的位移向量"
-	 * （点按那一支的 {@code motion} 也来自 {@code getDeltaMovement()}，同一口径）。
-	 * 出手第一 tick 还没有位移（长按不走 {@code shootFromRotation}）⇒ {@code checkImpact} 里的
-	 * "位移太小直接返回"会把它挡掉，这是预期行为。</p>
-	 */
-	private boolean tickPetal() {
-		if (!level().isClientSide) {
-			// 与点按共用同一处命中入口。返回值（= 是否已转入回程）在这里被刻意忽略：
-			// 花瓣段唯一允许的掉头是"飞完一瓣"（下面那一支），额度用完不掉头。
-			checkImpact();
-		}
-		BoomerangCurveConfigs.Petal petal = BoomerangCurveConfigs.petal(tier().returnDistance());
-		double next = BoomerangCurveConfigs.stepProgress(this.petalProgress, petal);
-		if (next >= 1.0D) {
-			this.petalProgress = 1.0D;
-			if (!level().isClientSide) {
-				setReturning(true); // 一瓣走完 ⇒ 回程（不是消失、也不是掉地上）
-			}
-			return true;
-		}
-		this.petalProgress = next;
-		Vector3f origin = this.entityData.get(DATA_PETAL_ORIGIN);
-		double baseAngle = this.entityData.get(DATA_PETAL_ANGLE);
-		Vec3 target = new Vec3(
-			origin.x() + BoomerangCurveConfigs.offsetX(next, petal.radius(), baseAngle),
-			origin.y(), // 不抬升：整瓣在同一水平面内（需求 §六 推断值 #3）
-			origin.z() + BoomerangCurveConfigs.offsetZ(next, petal.radius(), baseAngle));
-		setDeltaMovement(target.subtract(position()));
-		setPos(target.x, target.y, target.z);
-		updateRotation();
-		return false;
-	}
-
-	/**
-	 * 记下投掷原点（<b>只调一次</b>：服务端第一条去程 tick）。
-	 *
-	 * <p>取"第一条去程 tick 的位置"而不是"投掷那一瞬间的那一点"：实体的出生点<b>就是</b>投掷点
-	 * （{@code BoomerangItem#use} 里的 {@code setPos(player.getX(), player.getEyeY() - 0.1, player.getZ())}），
-	 * 出生到第一次 tick 之间没有任何位移，两者等价 —— 这样<b>不必改物品类</b>，
-	 * 也让"重载后不丢"只靠 NBT 这一处。</p>
-	 */
-	private void recordThrowOrigin() {
-		this.originX = getX();
-		this.originY = getY();
-		this.originZ = getZ();
-		this.originRecorded = true;
-	}
-
-	/**
-	 * 去程"飞太远就掉头"的判据（<b>唯一判据处</b>；作者 2026-10-02 报的"扔远了会自动消失"）。
-	 *
-	 * <p><b>基准 = 与主人的距离</b>（作者裁定）：主人往后退，镖更早回头 —— 这是"收回距离"的
-	 * 直觉读法。基准点取 {@code owner.position() + (0,1,0)}，与回程的目标点（{@link #tickReturning}）
-	 * <b>是同一点</b>，于是"距离² &lt; 3.25 ⇒ 已到家"与"距离 &gt; 该档收回距离 ⇒ 掉头"共用同一参照物。</p>
-	 *
-	 * <p>阈值一律来自 {@link BoomerangTier#returnDistance()}（5/10/15/20 格）——<b>这里不许出现
-	 * 距离字面量</b>。{@code owner} 非空由 {@link #tick()} 顶部的兜底保证（主人没了/死了先走
-	 * {@code ownerGone()}：落地 + 消散，<b>不</b>走这里）。</p>
-	 *
-	 * <p><b>若要改成按投掷原点判</b>（原点已在 {@link #recordThrowOrigin} 记下并进 NBT）：
-	 * 只改下面那一行 {@code distSqr}，换成 {@code position().distanceToSqr(originX, originY, originZ)} 即可。</p>
-	 *
-	 * <p><b>长按（花瓣）不参与这条判据</b>（2026-10-02 批 2）：花瓣的最远点离锚点恰好 R，
-	 * 而锚点是"出手那一刻的主人"——主人但凡挪一步，这条判据就会在花瓣飞到一半时判超距、
-	 * 把"必须飞完一瓣"当场掐断。所以长按直接返回 {@code false}，交给
-	 * {@link #MAX_OUTBOUND_TICKS} 兜底（一瓣 ≈ 70 tick，远在 200 以内）。</p>
-	 */
-	private boolean outboundRangeExceeded(Entity owner) {
-		if (isPetalFlight()) {
-			return false;
-		}
-		int limit = tier().returnDistance();
-		// ⇩ 基准行（要改成按投掷原点判，只改这一行）
-		double distSqr = position().distanceToSqr(owner.position().add(0.0D, 1.0D, 0.0D));
-		return distSqr > (double) limit * limit;
-	}
-
-	/** 回程：朝主人头顶归一化转向 + 位移；抵达就交还。 */
-	private void tickReturning(Entity owner) {
-		if (owner == null) {
-			return; // 客户端可能暂时解析不到主人；服务端的 null 已在 tick() 里走兜底
-		}
-		Vec3 target = owner.position().add(0.0D, 1.0D, 0.0D);
-		Vec3 delta = target.subtract(position());
-		if (delta.lengthSqr() < RETURN_ARRIVE_SQR + RETURN_EFFICIENCY * RETURN_ARRIVE_SQR_PER_EFFICIENCY) {
-			if (!level().isClientSide) {
-				collect(owner);
-			}
-			return;
-		}
-		Vec3 step = delta.normalize().scale(RETURN_SPEED + RETURN_EFFICIENCY * RETURN_SPEED_PER_EFFICIENCY);
-		setDeltaMovement(step);
-		setPos(getX() + step.x, getY() + step.y, getZ() + step.z);
-		updateRotation();
-	}
-
-	// ================= 去程命中判定 =================
-
-	/**
-	 * 去程命中判定（需求 2）：实体射线 + 方块射线，<b>取更近的那一个</b>。
-	 *
-	 * <p>⚠ 与需求原文的差异（我独创的一处）：原文是"先查实体，没实体再查方块"。那样会
-	 * <b>隔着墙打到墙后的生物</b>（Quark 的镖本来不伤害生物，所以它无所谓；我们加了伤害就有关了）。
-	 * 两条射线都做、按距离取近的，才既打得到生物又不穿墙。</p>
-	 *
-	 * <p>循环（"交替"）：打完一只生物后从命中点继续往前查，一 tick 内可以连续穿刺多只，
-	 * 上限 {@link #MAX_IMPACT_LOOPS}；同一只生物靠 {@code entitiesHit} 去重。</p>
-	 *
-	 * <p><b>批 3：这是两种飞行模式共用的唯一命中入口</b>（点按的 {@link #tickOutbound} 与
-	 * 花瓣段的 {@link #tickPetal} 都调它）——"穿过还是掉头""吃不吃额度""花瓣段要不要提前返回"
-	 * 这些分歧全部落在 {@link #onHitBlock} 与 {@link #onHitEntity} 内部，
-	 * 这里<b>没有第二份射线/命中代码</b>（关卡 §29n-4 钉着这一点）。</p>
-	 *
-	 * @return true = 本 tick 别再前进（命中了方块，或某次命中把镖掉头了）
-	 */
-	private boolean checkImpact() {
-		Vec3 motion = getDeltaMovement();
-		if (motion.lengthSqr() < 1.0E-7D) {
-			return false;
-		}
-		Vec3 start = position();
-		for (int loop = 0; loop < MAX_IMPACT_LOOPS; loop++) {
-			Vec3 end = start.add(motion);
-			AABB box = getBoundingBox().expandTowards(motion).inflate(1.0D);
-			EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
-				level(), this, start, end, box, this::canHitEntity);
-			BlockHitResult blockHit = level().clip(
-				new ClipContext(start, end, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
-
-			boolean hasBlock = blockHit.getType() != HitResult.Type.MISS;
-			boolean blockIsCloser = hasBlock && (entityHit == null
-				|| start.distanceToSqr(blockHit.getLocation()) <= start.distanceToSqr(entityHit.getLocation()));
-
-			if (blockIsCloser) {
-				// 命中方块 ⇒ 由 onHitBlock 决定"穿过去（挖掉了且还有额度）"还是"停下（额度用完/挖不动）"。
-				return onHitBlock(blockHit.getBlockPos());
-			}
-			if (entityHit == null) {
-				return false;
-			}
-			if (!onHitEntity(entityHit.getEntity())) {
-				return false; // 已经打过 ⇒ 本 tick 收手（否则同一个命中点会无限重来）
-			}
-			if (isReturning()) {
-				// 这一只把生物额度用完了 ⇒ 掉头（点按段；花瓣段不会置位，见 onHitEntity）
-				return true;
-			}
-			start = entityHit.getLocation();
-		}
-		// 需求 2：超上限"打日志别崩"（不抛、不递归）
-		CoeCore.LOGGER.warn("[回旋镖] 单 tick 命中判定超过 {} 次，结束本次去程判定：{}", MAX_IMPACT_LOOPS, this);
-		return false;
-	}
-
-	/**
-	 * 命中生物：只伤一次、记个数、吃一份穿刺额度。返回 false 表示"这只已经打过了"。
-	 *
-	 * <p>耐久（2026-10-02 批 2：需求 §3.8）：每命中一个生物<b>额外记一笔 −1</b>
-	 * （{@link BoomerangTier#WEAR_PER_HIT}）。<b>只记账</b>——见 {@link #flightWear}：
-	 * 飞行期间一次都不写回物品，回到玩家手里才由 {@link #settleWear(ItemStack)} 一次结算。</p>
-	 *
-	 * <p><b>穿刺额度（批 3，需求 §3.5）</b>：每命中一只生物消耗一份<b>生物额度</b>
-	 * （{@code 3 × 等级}，见 {@link #ensurePierceQuota()}）。额度用完 ⇒ <b>掉头</b>
-	 * （需求："额度用完即掉头"）——但<b>花瓣段除外</b>：{@code isPetalFlight()} 时只消耗额度、
-	 * 绝不掉头（"必须飞完一瓣才能返回"优先）。两条判据都只在下面这一段里。</p>
-	 */
-	private boolean onHitEntity(Entity target) {
-		if (target == getOwner() || !entitiesHit.add(target.getId())) {
-			return false;
-		}
-		// 伤害源：跟能量波同一处口径（indirectMagic(this, null)），**不引 mixin、也不冒充玩家攻击**
-		// （需求 9：要"玩家攻击"语义的话必须先问作者）。
-		target.hurt(damageSources().indirectMagic(this, null), tier().damage());
-		hitCount++;
-		addFlightWear(BoomerangTier.WEAR_PER_HIT);
-		// 需求 §六 推断值 #4：穿透命中同样扣耐久（上面那行已扣）。
-		// ⚠ 这里照旧**无条件**记账（不在命中路径里判花瓣/点按 —— 那条分歧只属于
-		// turnAroundIfNotPiercing 一处，关卡 §29n-4 钉着这条）。花瓣段不读这份额度，
-		// 所以"记了但没用"是零影响（花瓣段的判据是能力范围，见那个 helper）。
-		ensurePierceQuota();
-		this.pierceMobsLeft = Math.max(0, this.pierceMobsLeft - 1);
-		// 额度用完即掉头（生物永远允许"穿过"⇒ mayPierceThrough = true）；
-		// 花瓣段那一支由 turnAroundIfNotPiercing 内部挡掉（近程无限制）。
-		turnAroundIfNotPiercing(this.pierceMobsLeft, true);
-		return true;
-	}
-
-	/**
-	 * 命中方块：能挖就挖（{@link #mineBlock}），然后按模式与额度决定"穿过去还是掉头"
-	 * （2026-10-02 批 3：需求 §3.5）。
-	 *
-	 * <p>本方法只做两件事：<b>尝试挖</b>（{@code destroyed = tier().crossMine() ? mineCross(pos)
-	 * : mineBlock(pos)}，见类注释第十一节）与
-	 * <b>扣额度</b>；"穿过去还是掉头"整条判据交给 {@link #turnAroundIfNotPiercing(int, boolean)}
-	 * 那一处（生物那条路径用的是同一个方法）——于是"花瓣段优先"这条规则<b>在代码里只有一处</b>。</p>
-	 *
-	 * <p>⚠ <b>2026-10-03 批 7 加了前置一支</b>（作者需求：开箱取物），<b>同一天第二轮又改了它的口径</b>
-	 * （见类注释第十节）：若这个方块是容器（{@link #containerAt(BlockPos)} 非空）⇒
-	 * <b>先</b> {@link #unpackLootTables(BlockPos, Player)} 按投掷者填一次战利品表、
-	 * <b>再</b> {@link #lootContainer(Container)} 搬空、<b>最后</b>才
-	 * {@link #mineBlock(BlockPos)} 把容器方块本身也挖走；每一步的先后都有理由（见下方代码注释）。
-	 * 判容器的顺序必须在挖掘<b>之前</b>。</p>
-	 *
-	 * <p>行为对照（四种情形 + 批 4 的第五条附加）：</p>
-	 * <ol>
-	 *   <li><b>容器（点按与长按都会走到）</b>：填表 → 取空 → 挖掉方块本身（挖不动则不挖），
-	 *       但"穿过去还是掉头"照旧按 {@code mayPierceThrough = false} 算
-	 *       ⇒ 点按掉头；花瓣近程穿过去继续飞（判定与"挖不动的方块"共用一处），
-	 *       取到东西才 −1 耐久且<b>整次命中只记一次</b>、不吃方块额度；</li>
-	 *   <li><b>花瓣段</b>：挖掉了就吃一份额度，然后<b>一律不掉头</b>（"必须飞完一瓣才能返回"
-	 *       优先于"额度用完"）；挖不动的方块也穿过——花瓣曲线是固定路径，与批 2 的花瓣段行为一致；</li>
-	 *   <li><b>点按 + 挖不动</b>：{@code mayPierceThrough = false} ⇒ 撞墙，照旧掉头（批 1/2 的行为）；</li>
-	 *   <li><b>点按 + 挖掉了</b>：额度没用完就<b>穿过去继续飞</b>，用完则<b>掉头</b>。</li>
-	 *   <li><b>批 4 附加（只影响星界 / 雷鸣的普通支）</b>：判据 {@link BoomerangTier#crossMine()}
-	 *       为 true 时上面的 {@code mineBlock(pos)} 换成 {@link #mineCross(BlockPos)} ——
-	 *       它多挖垂直面上的 4 个邻格，但<b>返回的仍是中心那一格的结果</b>，
-	 *       所以下面这四条行为（含"额度只扣 1 份"）逐字不变；中心格是容器时走上面那一支，
-	 *       十字<b>不介入</b>（邻格是容器则跳过，不挖也不开箱）。</li>
-	 * </ol>
-	 *
-	 * <p>额度只在<b>真的挖掉</b>时消耗：挖不动的方块不消耗额度（否则"额度被挖不穿的墙吃掉"
-	 * 会让玩家少穿透几个能挖的方块）。</p>
-	 *
-	 * @return {@code true} = 已转入回程（调用方不得再前进）；挖穿且还有额度时是 {@code false}
-	 */
-	private boolean onHitBlock(BlockPos pos) {
-		// ★ 2026-10-03 批 7（作者需求：开箱取物）+ 同日第二轮改口径（见类注释第十节）：
-		// **先判容器、再谈挖掘** —— 顺序不能反：反了就会先把箱子挖掉，而 ChestBlock#onRemove →
-		// Containers.dropContentsOnDestroy 会把里面**还没取走**的东西撒一地（而且那条路会走
-		// getItem(...) → unpackLootTable(null)，等于把战利品表按"没有玩家"roll 一遍）。
-		// 本功能要的是"先按投掷者本人填一次战利品表 ⇒ 取空 ⇒ 再把容器方块本身也挖走"。
-		// 点按与长按都走这一处（两种模式共用 checkImpact()，批 3 起就是同一条命中入口）。
-		Container container = containerAt(pos);
-		if (container != null) {
-			ensurePierceQuota();
-			Player thrower = getOwner() instanceof Player owner ? owner : null;
-			// ★ ① 主动填一次战利品表（**以投掷者本人为玩家**）：1.21.1 只在"玩家打开容器"
-			// 那一刻才 unpackLootTable，镖是隔着老远开箱的，所以这一步必须自己来。
-			unpackLootTables(pos, thrower);
-			// ★ ② 逐槽取空（**取物先于挖掘**：见本方法开头那段顺序依据）。
-			boolean took = lootContainer(container);
-			// ★ ③ 取空之后才轮到"把容器方块本身也挖走"（作者第二轮要求）：走既有唯一挖掘入口
-			// mineBlock(pos) ⇒ 箱子作为方块掉落物生成 ⇒ 由既有吸附带回（与掉落物同一条链）。
-			// ⚠ 每玩家各自战利品表的模组容器**只取不挖**（作者第三轮要求）：见 perPlayerLoot(...)。
-			boolean destroyed = false;
-			if (!perPlayerLoot(pos)) {
-				destroyed = mineBlock(pos);
-			}
-			if (took && !destroyed) {
-				// ★ 耐久**只记一次**（作者 2026-10-03 裁定）：mineBlock 已经为"挖掉了一个方块"
-				// 记过一笔，这里只在**这次没能挖掉**（挖不动 ⇒ 不挖 / 每玩家战利品模组 ⇒ 不挖）
-				// 时补记"取物"那一笔 —— 同一次命中绝不出现两笔。
-				addFlightWear(BoomerangTier.WEAR_PER_HIT);
-			}
-			// 容器对"穿过去还是掉头"这条既有判定而言照旧按"挖不动的方块"算
-			// （mayPierceThrough = false，且不消耗方块额度 —— 批 7 的作者默认值不变）：
-			// 点按 ⇒ 撞到即回；花瓣近程 ⇒ 穿过去继续飞完这一瓣。判定仍然只有 turnAroundIfNotPiercing 一处。
-			return turnAroundIfNotPiercing(this.pierceBlocksLeft, false);
-		}
-		// ★ 批 4（需求 coe-boom2 §3.3）：星界 / 雷鸣镖的**固有特性** —— 十字挖掘。
-		// 判据只有 BoomerangTier#crossMine() 一处；true 就走十字 helper（它内部对**每一格**
-		// 仍是同一个 mineBlock 入口 ⇒ "每格各扣 1 耐久""挖不动就跳过、不记账"两条既有规则
-		// 一个字不改）。下面的额度记账与掉头判定**照旧只按中心这一格的结果**算 ⇒ 额度仍只扣 1 份。
-		// ⚠ 容器支（上面那一支）一个字没动：中心格是容器时走既有开箱取物，十字不介入。
-		boolean destroyed = tier().crossMine() ? mineCross(pos) : mineBlock(pos);
-		// 照旧**无条件**记账（与 onHitEntity 同形，不在命中路径里判模式：那条分歧只在
-		// turnAroundIfNotPiercing 一处）。花瓣段不读这份额度 ⇒ 记了也不影响花瓣行为。
-		ensurePierceQuota();
-		if (destroyed) {
-			this.pierceBlocksLeft = Math.max(0, this.pierceBlocksLeft - 1);
-		}
-		// 唯一一处"要不要掉头"：点按段挖不动 ⇒ 掉头 / 额度用完 ⇒ 掉头 / 挖掉了且还有额度 ⇒ 穿过去；
-		// 花瓣段近程一律不掉头（无限制），飞远了遇挖不动的方块才掉头（见上面那个 helper）。
-		return turnAroundIfNotPiercing(this.pierceBlocksLeft, destroyed);
-	}
-
-	// ================= 挖方块（照搬 Quark 最精妙的那一段） =================
-
-	/**
-	 * 尝试挖掉 {@code pos} 上的方块。
-	 *
-	 * <p>流程（顺序不能改）：</p>
-	 * <ol>
-	 *   <li>门槛：硬度 ≥ 0（基岩之类 -1 直接不动）、硬度 ≤ 该档 maxHardness、不在该档的
-	 *       {@code INCORRECT_FOR_*_TOOL} 标签里（= 挖掘等级，与 {@code AllTiers} 同一判据）；</li>
-	 *   <li>复刻原版挖掘进度 {@code digSpeed / (hardness * i)}，{@code i = 30/100}
-	 *       ——{@code i} 由 {@code player.hasCorrectToolForDrops(state)} 决定，而它读的是
-	 *       <b>主手</b>那一格，所以下面必须先把镖塞进手里；</li>
-	 *   <li>临时把镖塞进 {@code inventory.selected} + {@code setItemInHand(MAIN_HAND)}，
-	 *       {@code player.gameMode.destroyBlock(pos)}；</li>
-	 *   <li>{@code finally} 还原那一格（<b>无论如何</b>都要还原，异常也不能把玩家的物品换掉）。</li>
-	 * </ol>
-	 *
-	 * <p><b>代价（2026-10-02 批 2 改口径）</b>：挖掉一个方块<b>不再扣能量</b>，改记一笔
-	 * <b>−1 耐久</b>（{@link BoomerangTier#WEAR_PER_HIT}）。
-	 * ⚠ 旧的 {@code BoomerangTier#mineCost()}（5/10/15/20 点）已被作者推翻并删除（需求 §3.8 + §3.9），
-	 * 本方法里那一行 {@code ToolEnergy.canAfford/consume} 也随之删掉——能量只花在投掷那一处。
-	 * 与命中生物一样，这里<b>只记账</b>（{@link #flightWear}），不写回物品。</p>
-	 *
-	 * @return true = 真的挖掉了（{@code destroyBlock} 答应）；false = 任一门槛没过或没挖动。
-	 *         <b>批 3 起有返回值</b>：{@link #onHitBlock} 靠它决定"吃不吃穿刺额度、
-	 *         穿过去还是掉头"——挖不动的方块不消耗额度，也仍然把镖拦下来（点按段）。
-	 */
-	private boolean mineBlock(BlockPos pos) {
-		if (!(getOwner() instanceof ServerPlayer player)) {
-			return false;
-		}
-		BlockState state = level().getBlockState(pos);
-		if (state.isAir()) {
-			return false;
-		}
-		float hardness = state.getDestroySpeed(level(), pos);
-		if (hardness < 0.0F) {
-			return false;
-		}
-		BoomerangTier tier = tier();
-		if (hardness > tier.maxHardness()) {
-			return false;
-		}
-		if (state.is(tier.incorrectBlocks())) {
-			return false;
-		}
-		// 原版挖掘进度：一 tick 内进度 ≥ 1 才算挖开（i=30 正确工具 / i=100 用错工具）。
-		// 这里用**位置敏感**的 hasCorrectToolForDrops —— 它就是 NeoForge 的 doPlayerHarvestCheck
-		// （EventHooks.doPlayerHarvestCheck：先取原版单参判定的值，再过 PlayerEvent.HarvestCheck，
-		// 让别的模组有机会否决）。单参那个重载在 NeoForge 里是 @Deprecated。
-		int i = player.hasCorrectToolForDrops(state, level(), pos) ? 30 : 100;
-		if (tier.digSpeed() / (hardness * i) < 1.0F) {
-			return false;
-		}
-		ItemStack stack = getItemStack();
-		if (stack.isEmpty()) {
-			return false; // 没有镖就没有"临时塞进手里"这一步（能量已不再参与挖掘判定）
-		}
-
-		Inventory inventory = player.getInventory();
-		int hotbar = inventory.selected;
-		ItemStack saved = inventory.getItem(hotbar);
-		inventory.setItem(hotbar, stack);
-		player.setItemInHand(InteractionHand.MAIN_HAND, stack);
-		boolean destroyed;
-		try {
-			// 唯一破坏入口：权限 / 时运 / 掉落归属 / 统计全交给原版（我们只负责"能不能挖"这一关）
-			destroyed = player.gameMode.destroyBlock(pos);
-		} finally {
-			inventory.setItem(hotbar, saved);
-			player.setItemInHand(InteractionHand.MAIN_HAND, saved);
-		}
-		if (destroyed) {
-			// 需求 §3.8：挖掉一个方块 ⇒ 额外 −1 耐久。**只记账、不写回**（见 flightWear 的注释）：
-			// 这里绝不能调 BoomerangItem#addWear —— 那正是"耐久被提前打到 0"的那条错路。
-			addFlightWear(BoomerangTier.WEAR_PER_HIT);
-		}
-		return destroyed;
-	}
-
-	// ================= 十字挖掘（2026-10-03 批 4：星界 / 雷鸣的固有特性） =================
-
-	/**
-	 * ★ <b>十字挖掘</b>（需求 coe-boom2 §3.3；作者裁定 = 星界 / 雷鸣的<b>固有特性、不占技能槽</b>）：
-	 * 除命中的那一格之外，再在<b>垂直于飞行方向</b>的平面上多挖 <b>4 个正交邻格</b>
-	 * （臂长 1、不随等级变）⇒ 一共 5 格。
-	 *
-	 * <p><b>平面怎么定（唯一判据处）</b>：垂面的法向取飞行方向 {@code d = getDeltaMovement()}
-	 * （与 {@link #checkImpact()} 用的是同一个向量、与 {@link #orbitDirection()} 同源）
-	 * 里 <b>{@code |d|} 最大的那个世界轴</b>，<b>并列时固定序 x → y → z</b>：</p>
-	 * <ul>
-	 *   <li>轴 <b>X</b>（沿 X 飞）⇒ 平面 YZ ⇒ 中心 + {@code (0,±1,0)} + {@code (0,0,±1)}
-	 *       （水平飞 = 上下 + 前后）；</li>
-	 *   <li>轴 <b>Y</b> ⇒ 平面 XZ ⇒ 中心 + {@code (±1,0,0)} + {@code (0,0,±1)}；</li>
-	 *   <li>轴 <b>Z</b> ⇒ 平面 XY ⇒ 中心 + {@code (±1,0,0)} + {@code (0,±1,0)}。</li>
-	 * </ul>
-	 * <p>⚠ <b>"不是永远水平"</b>：这一支跟着 {@code |d|} 走 —— 45° 斜向下飞时 X 与 Y 并列，
-	 * 固定序把平面定成 <b>YZ（竖直的）</b>；只有 {@code |d_y|} 真正最大（近乎垂直俯冲）时平面才接近
-	 * 水平，而那时它本来就是最接近真垂面的那个离散平面。把平面写死成"水平面"正是这一条的反面。</p>
-	 *
-	 * <p><b>每一格都走既有唯一破坏入口</b> {@link #mineBlock(BlockPos)}（临时换主手 +
-	 * {@code gameMode.destroyBlock} + {@code finally} 还原）：于是"硬度 / 挖掘等级 / 原版进度 /
-	 * 权限 / 时运 / 掉落归属"整条判定一个字不改；<b>挖不动它自己返回 false 且不记账</b>
-	 * （跳过的那格不扣耐久 —— §3.3 第 3 条），<b>挖掉了它自己记一笔 −1</b> ⇒ 5 格各扣 1、共 −5，
-	 * 本方法<b>一笔都不补记</b>（不碰 {@code addFlightWear}）。</p>
-	 *
-	 * <p><b>不消耗能量</b>（§3.3 第 4 条：挖方块早就改扣耐久了）；
-	 * <b>方块穿透额度仍只扣 1 份</b>（额度在 {@code onHitBlock} 那一处按"命中这一格挖没挖掉"记，
-	 * 本方法挖了几格都不参与）。</p>
-	 *
-	 * <p><b>邻格是容器 ⇒ 跳过</b>（不挖、<b>也不开箱</b>）：直接 {@code mineBlock} 会把箱子挖掉，
-	 * 而 {@code ChestBlock#onRemove} → {@code Containers.dropContentsOnDestroy} 会把里面
-	 * <b>还没取走</b>的东西撒一地（这正是批 7/8 花一整节避开的事）。这里问的是最窄的一句
-	 * "这一格装着东西吗"（方块实体 {@code instanceof Container}），<b>不是</b>既有那个
-	 * "能不能开箱取物"的判据 —— 十字不做取物，所以不该去问它（问了就等于在邻格也开箱）。</p>
-	 *
-	 * <p>⚠ <b>零向量兜底</b>（§3.3 的 ⚠）：方向退化时<b>不 normalize、也不引"上一次有效方向"字段</b>
-	 * —— 直接只挖命中的这一格（见 {@link #DEGENERATE_DIRECTION_SQR}）。</p>
-	 *
-	 * <p>⚠ <b>本方法不许自己掉头</b>（{@code setReturning} 全实体恰好 4 处，关卡钉着）；
-	 * 返回值只报<b>中心那一格</b>挖没挖掉，供 {@code onHitBlock} 决定"吃不吃额度、穿过去还是掉头"，
-	 * 与单格时代逐字同形。</p>
-	 *
-	 * @return {@code true} = <b>中心那一格</b>真的挖掉了（邻格挖了几格都不改这个答案）
-	 */
-	private boolean mineCross(BlockPos pos) {
-		Vec3 motion = getDeltaMovement();
-		if (motion.lengthSqr() < DEGENERATE_DIRECTION_SQR) {
-			// 零向量兜底：方向退化成一个点 ⇒ 退化为单格挖掘（不引入"上一次有效方向"字段）。
-			return mineBlock(pos);
-		}
-		double ax = Math.abs(motion.x);
-		double ay = Math.abs(motion.y);
-		double az = Math.abs(motion.z);
-		// 被垂直的轴 = |d| 最大的那个世界轴；并列时固定序 x -> y -> z（先 x、再 y、最后 z）。
-		int axis;
-		if (ax >= ay && ax >= az) {
-			axis = 0;
-		} else if (ay >= az) {
-			axis = 1;
-		} else {
-			axis = 2;
-		}
-		// 平面内 4 个正交邻格（臂长 1，与等级无关）：三条分支各一张表，别处不许再写第二份。
-		BlockPos[] ring = switch (axis) {
-			case 0 -> new BlockPos[] { pos.offset(0, 1, 0), pos.offset(0, -1, 0), pos.offset(0, 0, 1), pos.offset(0, 0, -1) };
-			case 1 -> new BlockPos[] { pos.offset(1, 0, 0), pos.offset(-1, 0, 0), pos.offset(0, 0, 1), pos.offset(0, 0, -1) };
-			default -> new BlockPos[] { pos.offset(1, 0, 0), pos.offset(-1, 0, 0), pos.offset(0, 1, 0), pos.offset(0, -1, 0) };
-		};
-		// 中心格：命中的就是它。走到这里说明它**不是容器**（容器在 onHitBlock 的前置支里就被截走了，
-		// 十字根本不介入）⇒ 直接交给唯一破坏入口。
-		boolean destroyed = mineBlock(pos);
-		for (BlockPos neighbour : ring) {
-			// 邻格是容器 ⇒ 跳过：不挖（内容会撒一地）、也不开箱（十字没有取物这一步）。
-			if (level().getBlockEntity(neighbour) instanceof Container) {
-				continue;
-			}
-			// 挖不动由 mineBlock 自己返回 false 且不记账；挖掉了它自己记一笔 WEAR_PER_HIT。
-			mineBlock(neighbour);
-		}
-		return destroyed;
-	}
-
-	// ================= 开箱取物（2026-10-03 批 7：作者需求，Quark 没有这个功能） =================
-
-	/**
-	 * <b>完全不许碰的方块命名空间</b>（"不抽取、不破坏、什么都不做"；{@link #containerAt(BlockPos)} 的第一道闸门）。
-	 *
-	 * <ul>
-	 *   <li>{@code create} —— Create 的机器方块（作者："不动我们自己的机器"）；</li>
-	 *   <li>{@link CoeCore#REGISTRY_NAMESPACE} —— 本模组自己的机器（充能器等，同一句要求）。</li>
-	 * </ul>
-	 *
-	 * <p>⚠ <b>本表 2026-10-03 第二轮改过名与语义</b>：它原来叫 {@code NEVER_LOOT_NAMESPACES}、
-	 * 里面<b>混着</b> {@code lootr}，含义是"命名空间 ⇒ 完全不碰"。作者第二轮把
-	 * {@code lootr} 这一类单独拎出来（见 {@link #PER_PLAYER_LOOT_NAMESPACES}：取物但<b>不</b>破坏），
-	 * 于是这张表只剩"真的一个字都不碰"的机器命名空间 —— 名字随之改成
-	 * {@code NEVER_TOUCH_NAMESPACES}（旧名留着会让人以为 {@code lootr} 还在里面）。</p>
-	 *
-	 * <p>⚠ <b>当下这是冗余的防御</b>：命名空间为 {@code create} / 本模组的方块实体<b>没有一个</b>
-	 * 实现原版 {@code Container}（Create 全仓只有 {@code foundation.blockEntity.ItemHandlerContainer}
-	 * 一个类实现它、且不是方块实体；本模组 0 个）⇒ 第三道闸门已经挡住它们。留着它是为了让
-	 * "不动我们自己的机器"这条要求在<b>将来某个机器真的实现了 Container 时</b>也自动成立。</p>
-	 */
-	private static final Set<String> NEVER_TOUCH_NAMESPACES =
-		Set.of("create", CoeCore.REGISTRY_NAMESPACE);
-
-	/**
-	 * <b>"每个玩家各自一份战利品"的模组容器命名空间</b>（作者 2026-10-03 第三轮要求：
-	 * 这类容器<b>照旧取物、但绝不挖掉方块</b>）。
-	 *
-	 * <p>为什么不能共用心智：这类模组的容器按"谁打开"给谁现生成一份自己的战利品
-	 * （{@code lootr} 就是），所以它<b>不是</b> {@link #NEVER_TOUCH_NAMESPACES} 那种"完全不碰"
-	 * ——作者明确要求"照旧取物（拿到投掷者自己那份）、但别把箱子挖掉"。</p>
-	 *
-	 * <p><b>判据为什么只有一串命名空间字符串</b>：可选模组的类<b>不许进 {@code content/} 包</b>
-	 * （AGENTS.md 红线；{@code lootr} 连可选依赖都不是），所以这里只能按方块的<b>注册命名空间</b>判。
-	 * <br>⚠ <b>这条判据天生脆弱，如实记下来</b>：</p>
-	 * <ul>
-	 *   <li><b>漏判</b>：某个这类模组若用了别的命名空间、或把容器做成别的形态
-	 *       （不是方块实体 / 不给原版 {@code Container} 接口 / 方块注册在别人的命名空间下，
-	 *       例如整合包用 KubeJS 之类把方块挪到自定义 ns），这里会判不出来 ⇒
-	 *       它会走进"普通容器"那一支（被取空<b>并且</b>被挖掉）；</li>
-	 *   <li><b>误判</b>：命名空间里任何一个普通方块容器只要实现了 {@code Container}，
-	 *       也会被当成"只取不挖"（比破坏它更安全，是刻意选的失败方向）。</li>
-	 * </ul>
-	 * <p><b>将来怎么扩展（只有这一处要动）</b>：往这个集合里加命名空间；
-	 * 若某个模组需要更细的判据（例如同一个命名空间里只有部分方块是"每玩家"），
-	 * 就把判据从"命名空间集合"升级成"一个具名的判据方法"（现在的调用点只有
-	 * {@link #perPlayerLoot(BlockPos)} 一处，改它不影响别处）。</p>
-	 */
-	private static final Set<String> PER_PLAYER_LOOT_NAMESPACES =
-		Set.of("lootr");
-
-	/**
-	 * ★ <b>"这个方块是不是可以开箱取物的容器"的唯一判据处</b>（作者需求 §2；不是就返回 {@code null}）。
-	 *
-	 * <p>三道闸门，顺序固定（口径与实测见类注释第九节）：</p>
-	 * <ol>
-	 *   <li>空方块 / {@link #NEVER_TOUCH_NAMESPACES} 里的命名空间 ⇒ 不是；</li>
-	 *   <li>箱子 / 陷阱箱（{@code instanceof ChestBlock}）⇒ 交给原版
-	 *       {@link ChestBlock#getContainer}
-	 *       （{@code override = true}：镖是飞过去的，不理会"箱子上方被挡"这类开盖条件），
-	 *       于是<b>大箱子两半一起被清空</b>；</li>
-	 *   <li>其余：方块实体 {@code instanceof Container} ⇒ 就是它（木桶 / 潜影盒 / 漏斗 / 发射器 /
-	 *       熔炉 / 酿造台 / 合成器 …，以及别的模组实现了 {@code Container} 的方块）。
-	 *       <br>末影箱天然落空（{@code EnderChestBlockEntity} 不是 {@code Container}）；
-	 *       {@code lootr} 那类"每玩家一份"的容器<b>仍然会被判成容器</b>（要取物），
-	 *       只是随后<b>不挖它</b> —— 见 {@link #perPlayerLoot(BlockPos)}。</li>
-	 * </ol>
-	 *
-	 * <p><b>不上锁判定</b>：{@code BaseContainerBlockEntity#canOpen(Player)} 只有锁判定、没有距离，
-	 * 但它会<b>给玩家发"容器已上锁"提示音与消息</b>（{@code Container#stillValid} 那条路则是
-	 * "玩家离容器 4 格内"，而镖本来就是在远处开箱的，用它等于把整个功能关掉）⇒ 这里两个都不用，
-	 * 代价是<b>上锁的容器也会被搬空</b>（原版生存里没有天然上锁的容器，见报告"我定的部分"）。</p>
-	 *
-	 * @return 该位置的容器（可能是两半合并后的 {@code CompoundContainer}）；不是容器则 {@code null}
-	 */
-	private Container containerAt(BlockPos pos) {
-		BlockState state = level().getBlockState(pos);
-		if (state.isAir()) {
-			return null;
-		}
-		ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-		if (NEVER_TOUCH_NAMESPACES.contains(id.getNamespace())) {
-			return null;
-		}
-		if (state.getBlock() instanceof ChestBlock chest) {
-			return ChestBlock.getContainer(chest, state, level(), pos, true);
-		}
-		BlockEntity blockEntity = level().getBlockEntity(pos);
-		return blockEntity instanceof Container container ? container : null;
-	}
-
-	/**
-	 * ★ <b>"这个容器是不是每玩家各自一份战利品的模组容器"</b>（作者 2026-10-03 第三轮；
-	 * 唯一消费点 = {@link #onHitBlock(BlockPos)} 里"挖不挖"的那一道闸门）。
-	 *
-	 * <p>判据 = 该方块<b>注册命名空间</b>（读的是方块注册表 id、一个纯字符串）落在
-	 * {@link #PER_PLAYER_LOOT_NAMESPACES} 里。这类容器<b>照旧取物</b>（投掷者自己那份），
-	 * 但<b>绝不挖掉方块</b>——它的战利品是"每个玩家一份"，把方块拆了等于毁掉别人的那一份。</p>
-	 *
-	 * <p>⚠ 判据本身为什么脆弱、将来往哪儿扩展：见 {@link #PER_PLAYER_LOOT_NAMESPACES} 的注释。
-	 * 本方法<b>只做判定、绝不破坏</b>（关卡 29s 有一条负向断言钉着"这个判据里没有挖方块"）。</p>
-	 */
-	private boolean perPlayerLoot(BlockPos pos) {
-		BlockState state = level().getBlockState(pos);
-		return PER_PLAYER_LOOT_NAMESPACES.contains(
-			BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace());
-	}
-
-	/**
-	 * ★ <b>主动把战利品表填一次</b>（作者 2026-10-03 第二轮要求；<b>必须早于逐槽取物</b>）。
-	 *
-	 * <p><b>为什么必须存在这一步</b>（1.21.1 源码依据，逐条可查）：</p>
-	 * <ul>
-	 *   <li>{@code RandomizableContainerBlockEntity}（箱子 / 木桶 / 潜影盒 / 发射器 … 的父类）
-	 *       把"填表"这件事推迟到<b>第一次碰槽位</b>：{@code getItem} / {@code removeItemNoUpdate} /
-	 *       {@code isEmpty} 都各自先调一次 {@code this.unpackLootTable(null)}
-	 *       （{@code mcsrc-all/net/minecraft/world/level/block/entity/RandomizableContainerBlockEntity.java:49-88}）；</li>
-	 *   <li>而原版"玩家打开箱子"那一刻走的是 {@code createMenu(...)} →
-	 *       {@code this.unpackLootTable(playerInventory.player)}（同文件 :97-104），
-	 *       <b>只有那一条路带得上玩家</b>；</li>
-	 *   <li>{@code unpackLootTable(Player)} 里，玩家参数决定两件事：
-	 *       {@code withLuck(player.getLuck())} 与 {@code THIS_ENTITY} 这个掉落上下文参数
-	 *       （{@code mcsrc-all/net/minecraft/world/RandomizableContainer.java:81-100}），
-	 *       另外还会给投掷者触发 {@code CriteriaTriggers.GENERATE_LOOT}
-	 *       ——这正是"拿到的是<b>他的</b>那一份战利品"的含义。</li>
-	 * </ul>
-	 *
-	 * <p><b>所以</b>：如果只靠 {@code removeItemNoUpdate} 那条隐式路，填表用的是
-	 * {@code unpackLootTable(null)}（没有玩家、没有幸运值、没有"谁拿的"）。本方法在取物<b>之前</b>
-	 * 显式按 {@code thrower} 填一次，把 {@code lootTable} 字段清掉
-	 * （{@code unpackLootTable} 内部第一步就是 {@code setLootTable(null)}）⇒ 后面的逐槽取物
-	 * 不会再填第二次。</p>
-	 *
-	 * <p><b>大箱子两半都要填</b>：{@link #containerAt(BlockPos)} 拿到的是
-	 * {@code ChestBlock#getContainer(...)} 合并出来的 {@code CompoundContainer}，而
-	 * {@code CompoundContainer} <b>不暴露</b>它的两半（{@code mcsrc-all/net/minecraft/world/CompoundContainer.java}
-	 * 只有 getItem/removeItem 那套转发）⇒ 只能按"另一半在世界里的位置"各自进去填一次
-	 * （另一半的方向 = 原版 {@code ChestBlock#getConnectedDirection(BlockState)}，它对 LEFT/RIGHT
-	 * 两半各自指向对面），否则"大箱子的另一半"会留着一张没填的表，
-	 * 到被挖时才由 {@code dropContents} 用 {@code null} 玩家 roll 出来。</p>
-	 *
-	 * @param thrower 投掷者本人（{@code getOwner()}；拿不到时是 {@code null}，退化成原版隐式行为）
-	 */
-	private void unpackLootTables(BlockPos pos, Player thrower) {
-		unpackLootTableAt(pos, thrower);
-		BlockState state = level().getBlockState(pos);
-		if (state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
-			unpackLootTableAt(pos.relative(ChestBlock.getConnectedDirection(state)), thrower);
-		}
-	}
-
-	/** 单个方块位置上的战利品表填充（{@link #unpackLootTables(BlockPos, Player)} 的逐半实现）。 */
-	private void unpackLootTableAt(BlockPos pos, Player thrower) {
-		if (level().getBlockEntity(pos) instanceof RandomizableContainer container) {
-			container.unpackLootTable(thrower);
-		}
-	}
-
-	/**
-	 * ★ <b>把一个容器搬空</b>（唯一搬运处）：逐槽全取 ⇒ 每份物品上船（{@link #carry(ItemStack)}）。
-	 *
-	 * <p>只做"扫槽 + 取走 + 标脏一次"；{@code removeItemNoUpdate} 逐槽取、最后
-	 * {@code setChanged()} 只标脏一次（{@code removeItem} 会每槽标一次）。
-	 * 战利品表的<b>主动填充不在这里</b>——它是调用方在<b>取物之前</b>做的
-	 * （{@link #unpackLootTables(BlockPos, Player)}）。</p>
-	 *
-	 * <p><b>代价</b>：<b>本方法不记耐久</b>（2026-10-03 第二轮改）：容器事件现在可能既取物又挖方块，
-	 * 耐久统在 {@link #onHitBlock(BlockPos)} 那一处记，<b>同一次命中只记一次</b>
-	 * （挖掉了由 {@code mineBlock} 记，没挖掉才由那一处补记）。<b>不吃穿刺额度</b>：
-	 * 容器走的仍是 {@code turnAroundIfNotPiercing(..., mayPierceThrough = false)} 那条"挖不动的方块"口径。</p>
-	 *
-	 * @return {@code true} = 至少取到了物品（调用方据此决定要不要补记耐久）
-	 */
-	private boolean lootContainer(Container container) {
-		boolean took = false;
-		for (int slot = 0; slot < container.getContainerSize(); slot++) {
-			if (container.getItem(slot).isEmpty()) {
-				continue;
-			}
-			ItemStack taken = container.removeItemNoUpdate(slot);
-			if (taken.isEmpty()) {
-				continue;
-			}
-			carry(taken);
-			took = true;
-		}
-		if (took) {
-			container.setChanged();
-		}
-		return took;
-	}
-
-	/**
-	 * <b>把一份物品挂上本镖</b>（复用既有承载路径的<b>唯一</b>生成点）。
-	 *
-	 * <p>与 {@link #pickUpItems()} 同一条链：既有 {@link ItemEntity} + 原版 {@code startRiding}
-	 * 乘客链 + 同一个 {@link #PICKUP_DELAY} 拾取延迟 ⇒ <b>零新机制</b>（不新增实体类型、贴图、模型、
-	 * 渲染器，也不给镖加内部库存）。生成点取镖当前的位置：万一上船失败，同一 tick 末尾的
-	 * {@link #pickUpItems()} 也会把它吸上来（两处用的是同一个 {@code canCarry}）。</p>
-	 */
-	private void carry(ItemStack stack) {
-		ItemEntity item = new ItemEntity(level(), getX(), getY(), getZ(), stack);
-		level().addFreshEntity(item);
-		item.startRiding(this);
-		item.setPickUpDelay(PICKUP_DELAY);
-	}
-
-	// ================= 吸附（去程与回程共用；批 6 起不再只是"回程捡物"） =================
-
-	/**
-	 * ★ <b>唯一吸附实现</b>：每服务端 tick 扫一次膨胀 {@value #PICKUP_RADIUS} 格的区域，
-	 * 掉落物与经验球上船（{@code startRiding(this)} + 掉落物设拾取延迟 {@value #PICKUP_DELAY}）。
-	 *
-	 * <p>⚠ <b>批 6 起它不再只属于回程</b>：调用点仍然唯一（{@link #tick()} 末尾），
-	 * 但<b>去程（含花瓣段）与回程都经过它</b> —— 那正是「长按的掉落物/经验没被带回」的修复落点
-	 * （见类注释第八节）。这里<b>不许</b>出现第二个调用点、也不许有第二份扫描代码。</p>
-	 */
-	private void pickUpItems() {
-		AABB area = getBoundingBox().inflate(PICKUP_RADIUS);
-		List<Entity> found = level().getEntitiesOfClass(Entity.class, area, e -> canCarry(e) && !e.isPassenger());
-		for (Entity entity : found) {
-			entity.startRiding(this);
-			if (entity instanceof ItemEntity item) {
-				item.setPickUpDelay(PICKUP_DELAY);
-			}
-		}
-	}
-
-	/** 只让掉落物与经验球上船（需求 4）。 */
-	private static boolean canCarry(Entity entity) {
-		return entity instanceof ItemEntity || entity instanceof ExperienceOrb;
 	}
 
 	/** 放行这两类乘客（默认实现只放行 {@code canRide} 的生命体）。 */
 	@Override
 	public boolean canAddPassenger(Entity passenger) {
-		return canCarry(passenger);
+		return BoomerangPickup.canCarry(passenger);
 	}
 
 	/**
-	 * ★ <b>本镖不打自己的乘客</b>（批 6 修 bug 时一并补上的必要闸门）。
+	 * ★ <b>本镖不打自己的乘客</b>（批 6 一并补上的必要闸门）：乘客的骑乘位就在镖身上，而
+	 * {@code ProjectileUtil} 的候选只排除载具自己、不排除乘客 ⇒ 不去掉它，镖下一个 tick 就会把自己的
+	 * 战利品当敌人打（{@code ItemEntity} 只有 5 点血，而伤害是 6~12 点）。
 	 *
-	 * <p><b>为什么必须有</b>：乘客的骑乘位就在镖身上（{@link #getPassengerRidingPosition} 再下移
-	 * {@value #PASSENGER_OFFSET_Y} 格），而 {@link ProjectileUtil#getEntityHitResult} 的候选来自
-	 * {@code level.getEntities(this, box, ...)} —— 那个入口<b>只排除载具自己、不排除乘客</b>
-	 * （{@code Level#getEntities} 的判据是 {@code e != except}）。于是射线起点本来就落在乘客的
-	 * 碰撞盒里（乘客盒膨胀 0.3 后覆盖镖脚下 0.4 格那一带，正好含起点）⇒ 不去掉它，
-	 * 镖飞出去的<b>下一个 tick</b> 就会把自己的战利品当敌人打：{@code ItemEntity} 只有 5 点血，
-	 * 而镖的 {@code indirectMagic} 是 {@link BoomerangTier#damage()} 的 6~12 点 ⇒ <b>掉落物当场被自己销毁</b>。</p>
-	 *
-	 * <p>2026-10-03 之前这条闸门<b>不必要</b>（乘客只在回程上船，而 {@link #checkImpact()} 只在去程跑）；
-	 * 批 6 把吸附抬成"两种模式、每个服务端 tick 都跑"之后它就成了必答题
-	 * （见类注释第八节）。关卡 §29r 钉着这一处。</p>
+	 * <p>为什么批 6 起它才"必须"、以及完整的几何推理，见 {@link BoomerangPickup} 的类注释第八节。</p>
 	 */
 	@Override
 	protected boolean canHitEntity(Entity target) {
@@ -1729,276 +412,17 @@ public abstract class AbstractBoomerangEntity extends Projectile implements Orbi
 		return super.getPassengerRidingPosition(passenger).subtract(0.0D, PASSENGER_OFFSET_Y, 0.0D);
 	}
 
-	// ================= 交还与兜底：三条尾路径 = 同一处结算（裁定 D14） =================
-
-	/**
-	 * 抵达主人 ⇒ 走 {@link #finishFlight(boolean)}（{@code landInWorld = false}：镖交回手里）。
-	 *
-	 * <p>为什么本方法只留一行：需求 §3.8 的批量结算必须<b>三条尾路径共用同一处</b>，
-	 * 否则"跑得比镖快"（回程超时）与"主人没了"（ownerGone）就会绕开结算，玩家可以靠跑位
-	 * 逃避爆掉。语义（乘客 playerTouch 吸收、镖走原槽→背包→掉落三步）仍与批 1 逐字一致。</p>
-	 */
-	private void collect(Entity owner) {
-		finishFlight(false);
-	}
-
-	/** 交还三步（需求 5）：原槽 → 背包 → 掉在地上。 */
-	private void giveToPlayer(Player player, ItemStack stack) {
-		Inventory inventory = player.getInventory();
-		// "原槽" = 投掷时记下的那一格（主手 = 当时的快捷栏格；副手 = 40 号副手格），
-		// 不是"此刻选中的格子"——飞行途中玩家换格子是常事，换过就还错地方了。
-		int slot = this.slot;
-		if (slot >= 0 && slot < inventory.getContainerSize() && inventory.getItem(slot).isEmpty()) {
-			inventory.setItem(slot, stack);
-		} else if (!inventory.add(stack)) {
-			player.drop(stack, false);
-		}
-	}
-
-	/**
-	 * owner 失效兜底（需求 6）：主人没了/死了 ⇒ 先把自己从墙里拔出来，再走
-	 * {@link #finishFlight(boolean)}（{@code landInWorld = true}：镖落在世界上）。
-	 * 宁可掉在墙上，也不让物品随实体一起消失（<b>除非耐久结算判它爆掉</b>）。
-	 */
-	private void ownerGone() {
-		while (isInWall()) {
-			setPos(getX(), getY() + 1.0D, getZ());
-		}
-		finishFlight(true);
-	}
-
-	/**
-	 * 回程超时的收尾（Quark bug b 的修复落点）：就地落地 + 消散。
-	 *
-	 * <p>不写 {@code discard()} 之外的花样：玩家跑得比镖快时，"追不上"的正确结果是
-	 * <b>东西还在世界上</b>（原地掉落），而不是永远穿墙追、永不消散。</p>
-	 *
-	 * <p>⚠ 但<b>耐久结算照样要走</b>（2026-10-02 批 2 / 裁定 D14）：它就是那条"玩家跑得比镖快"
-	 * 的路径，绕开它等于给了一条免费躲避爆掉的捷径。</p>
-	 */
-	private void returnTimedOut() {
-		// ⚠ 2026-10-02 第三次裁定改了这条尾路径的落点：作者要求"**归还给玩家本身**"。
-		// 旧口径（批 1/批 2：就地落地 spawnAtLocation）已作废 —— 现在与"抵达主人"走同一支
-		// finishFlight(false)：镖进原槽 → 背包 → 实在放不下才掉在玩家脚下（giveToPlayer 三步），
-		// 乘客一并交给玩家。耐久结算照旧（绕开它就是免费躲避爆掉的捷径）。
-		CoeCore.LOGGER.debug("[回旋镖] 回程超时（{} tick）⇒ 直接交还玩家：{}", MAX_RETURN_TICKS, this);
-		finishFlight(false);
-	}
-
-	/**
-	 * <b>主人被传送走了的兜底收尾</b>（作者 2026-10-02 第三次裁定第 4 条）。
-	 *
-	 * <p>判据见 {@link #ownerTeleported(Entity)}。收尾走 {@link #finishFlight(boolean)}
-	 * 的 {@code landInWorld = false} 那一支：<b>乘客交给玩家、镖交给玩家</b>（原槽 → 背包 →
-	 * 掉在玩家脚下），然后 {@code discard()}。<b>不掉在地上、不继续飞</b>——这正是作者原话
-	 * 「自动清除该实体，并将回旋镖归还给玩家本身」。</p>
-	 */
-	private void teleportRecover() {
-		CoeCore.LOGGER.debug("[回旋镖] 主人被传送（换维度或一 tick 跳变超 {} 格）⇒ 清除实体并交还玩家：{}",
-			Math.sqrt(OWNER_TELEPORT_JUMP_SQR), this);
-		finishFlight(false);
-	}
-
-	/**
-	 * <b>主人这一 tick 是不是被传送了</b>（判据与理由见 {@link #OWNER_TELEPORT_JUMP_SQR}）。
-	 *
-	 * <p>两种情况算传送：① 主人<b>换了维度</b>（{@code owner.level() != level()}，
-	 * 传送门 / 指令 / 重生都会命中）；② 主人一 tick 内的位置跳变超过阈值。</p>
-	 *
-	 * <p>本方法<b>顺带推进</b>上一 tick 位置（每次调用都记录当前点）⇒ 每个服务端 tick 必须
-	 * 恰好调用一次；调用点在 {@link #tick()} 顶部，owner 兜底之后。</p>
-	 */
-	private boolean ownerTeleported(Entity owner) {
-		if (owner.level() != level()) {
-			return true;
-		}
-		double dx = owner.getX() - this.lastOwnerX;
-		double dy = owner.getY() - this.lastOwnerY;
-		double dz = owner.getZ() - this.lastOwnerZ;
-		boolean tracked = this.lastOwnerTracked;
-		this.lastOwnerX = owner.getX();
-		this.lastOwnerY = owner.getY();
-		this.lastOwnerZ = owner.getZ();
-		this.lastOwnerTracked = true;
-		return tracked && dx * dx + dy * dy + dz * dz > OWNER_TELEPORT_JUMP_SQR;
-	}
-
-	/**
-	 * ★ <b>三条收尾路径的唯一汇合处</b>（{@link #collect} / {@link #returnTimedOut} / {@link #ownerGone}）
-	 * —— 耐久在这里<b>一次</b>结算，乘客与镖本身在这里按同一条口径交付。
-	 *
-	 * <p>顺序固定：<b>先结算耐久</b>（判爆与写回都在 {@link #settleWear(ItemStack)}），
-	 * <b>再交付乘客</b>，最后交付镖本身。</p>
-	 *
-	 * @param landInWorld {@code true} = 镖落在世界上（超时 / 主人没了）；{@code false} = 交还到手里
-	 */
-	private void finishFlight(boolean landInWorld) {
-		ItemStack stack = getItemStack().copy();
-		boolean exploded = settleWear(stack);
-		Player player = getOwner() instanceof Player owner ? owner : null;
-		if (player != null && (exploded || !landInWorld)) {
-			// 交还路径：乘客交给玩家（原有语义：playerTouch 吸收）。
-			// 爆掉：**并入物也必须先交给玩家**（需求 §3.8 第 4 条 + §六 推断值 #5：
-			// "返回时被玩家吸收"，爆掉就不给等于白丢一次挖掘收益）。
-			handPassengersToPlayer(player);
-		} else {
-			// 落地路径（或拿不到玩家）：乘客照旧落地，绝不销毁。
-			dropPassengers();
-		}
-		if (!exploded && !stack.isEmpty()) {
-			if (player == null || landInWorld) {
-				spawnAtLocation(stack, 0.0F);
-			} else {
-				giveToPlayer(player, stack);
-			}
-		}
-		// 爆掉时 stack 被丢弃在这里（**不** spawnAtLocation）：物品就此消失，见 settleWear。
-		discard();
-	}
-
-	/**
-	 * ★ <b>本次飞行的耐久结算 —— 全程唯一一次写回</b>（需求 §3.8；裁定 D14）。
-	 *
-	 * <p>公式：{@code remaining = 耐久上限 − DAMAGE}（= {@code BoomerangItem#getDurability}），
-	 * 与累计损耗 {@link #flightWear} 相比：</p>
-	 * <ul>
-	 *   <li>{@code 累计 < 剩余} ⇒ {@link BoomerangItem#addWear(ItemStack, int)} 写回一次
-	 *       ⇒ 结果恒 <b>≥ 1</b>（不留 0 耐久物品）；</li>
-	 *   <li>{@code 累计 >= 剩余} ⇒ <b>爆掉</b>：播放 {@code ITEM_BREAK} + 返回 {@code true}。
-	 *       调用方负责让物品消失（<b>不</b> {@code spawnAtLocation}）。
-	 *       <br>⚠ 判据取 {@code >=} 而不是需求字面的 {@code >}：需求同一段里还钉着
-	 *       "不要留下一个耐久为 0 的物品"，而 {@code 累计 == 剩余} 恰好会造出那个 0。
-	 *       两条要求在这里只能保一条 ⇒ 保"绝不留 0 耐久"（活着的镖恒有 ≥ 1 点），
-	 *       偏差只有"恰好扣完"这一个点，见报告 §⑥ 与待作者确认清单。</li>
-	 * </ul>
-	 *
-	 * @return {@code true} = 镖因耐久不足爆掉（物品必须消失）
-	 */
-	private boolean settleWear(ItemStack stack) {
-		if (this.flightWear <= 0 || stack.isEmpty() || !(stack.getItem() instanceof BoomerangItem boomerang)) {
-			return false; // 没磨损 / 不是本模组的镖（老存档兜底）：原样交还
-		}
-		int remaining = boomerang.getDurability(stack);
-		if (this.flightWear >= remaining) {
-			level().playSound(null, getX(), getY(), getZ(), SoundEvents.ITEM_BREAK, SoundSource.PLAYERS, 0.8F, 1.0F);
-			CoeCore.LOGGER.debug("[回旋镖] 耐久不足爆掉：累计损耗 {} ≥ 剩余 {}：{}", this.flightWear, remaining, this);
-			return true;
-		}
-		boomerang.addWear(stack, this.flightWear); // ← 唯一一处写回（结果 ≥ 1）
-		return false;
-	}
-
-	/** 把船上的乘客逐个交给玩家（{@code playerTouch} 吸收；掉落物先清掉拾取延迟，否则它什么都不做）。 */
-	private void handPassengersToPlayer(Player player) {
-		for (Entity passenger : new ArrayList<>(getPassengers())) {
-			passenger.stopRiding();
-			if (passenger instanceof ItemEntity item) {
-				// 刚上船时设了拾取延迟；这里是我们主动交付，先把延迟清掉，
-				// 否则 playerTouch 会因为延迟而什么都不做、东西就跟着镖一起消失了。
-				item.setPickUpDelay(0);
-			}
-			passenger.playerTouch(player);
-		}
-	}
-
-	/** 把还在船上的掉落物放回世界（别让镖一消散，乘客跟着一起蒸发）。 */
-	private void dropPassengers() {
-		for (Entity passenger : new ArrayList<>(getPassengers())) {
-			passenger.stopRiding();
-			if (passenger instanceof ItemEntity item && !item.getItem().isEmpty()) {
-				spawnAtLocation(item.getItem(), 0.0F);
-				item.discard();
-			}
-		}
-	}
-
-	// ================= 存档（bug a：必须调 super） =================
-
 	@Override
 	protected void readAdditionalSaveData(CompoundTag tag) {
-		// ⛔ 这一行是 Quark bug a 的修复：owner（Owner UUID / LeftOwner）的标准持久化就在 super 里。
+		// ⛔ 这一行是 Quark bug a 的修复：owner（Owner UUID / LeftOwner）的标准持久化就在 super 里，
+		// 且必须早于下面的读入（键与口径见 BoomerangEntitySaveData#read）。
 		super.readAdditionalSaveData(tag);
-		this.liveTime = tag.getInt("LiveTime");
-		this.returnTicks = tag.getInt("ReturnTicks");
-		this.hitCount = tag.getInt("HitCount");
-		this.slot = tag.getInt("Slot");
-		// 本次飞行的耐久账（批 2）：不读回来 = 重载一次就能把欠的耐久一笔勾销。
-		this.flightWear = tag.getInt("FlightWear");
-		// 穿刺额度（批 3）：-1 表示"还没初始化"（那时不写键，读回来仍是 -1，第一次命中再算）；
-		// 已用掉一部分的额度必须读回来，否则"飞出去半趟、卸载区块"就能白刷一份额度。
-		this.pierceMobsLeft = tag.contains("PierceMobsLeft") ? tag.getInt("PierceMobsLeft") : -1;
-		this.pierceBlocksLeft = tag.contains("PierceBlocksLeft") ? tag.getInt("PierceBlocksLeft") : -1;
-		// 技能携带标记（同前）：没有该键 = 老存档/没带 ⇒ false（与"不按技能键"同义）
-		this.pierceSkillCarried = tag.getBoolean("PierceSkillCarried");
-		this.orbitSkillCarried = tag.getBoolean("OrbitSkillCarried");
-		// 花瓣曲线状态（批 2）：模式 + 锚点 + 基准角 + 进度（写侧见 addAdditionalSaveData）。
-		if (tag.getBoolean("PetalFlight")) {
-			this.entityData.set(DATA_PETAL, true);
-			this.entityData.set(DATA_PETAL_ORIGIN, new Vector3f(
-				(float) tag.getDouble("PetalOriginX"),
-				(float) tag.getDouble("PetalOriginY"),
-				(float) tag.getDouble("PetalOriginZ")));
-			this.entityData.set(DATA_PETAL_ANGLE, (float) tag.getDouble("PetalAngle"));
-			this.petalProgress = tag.getDouble("PetalProgress");
-		}
-		// 投掷原点（可选键：键在 ⇒ 已记录。重载后不许重记，否则基准会被挪到重载点）
-		if (tag.contains("ThrowOriginX")) {
-			this.originX = tag.getDouble("ThrowOriginX");
-			this.originY = tag.getDouble("ThrowOriginY");
-			this.originZ = tag.getDouble("ThrowOriginZ");
-			this.originRecorded = true;
-		}
-		// 镖本身（含扣过的能量）也要能跨区块重载；老存档没有该键时保持 EMPTY 的兜底形状。
-		if (tag.contains("BoomerangStack")) {
-			setItemStack(ItemStack.parseOptional(registryAccess(), tag.getCompound("BoomerangStack")));
-		}
-		// 回程段是同步值，但它同时驱动 noPhysics：重载后要把本侧的状态补齐
-		if (this.entityData.get(DATA_RETURNING)) {
-			this.noPhysics = true;
-		}
+		BoomerangEntitySaveData.read(this, tag);
 	}
 
 	@Override
 	protected void addAdditionalSaveData(CompoundTag tag) {
 		super.addAdditionalSaveData(tag); // 同上：owner 由 Projectile 存
-		tag.putInt("LiveTime", this.liveTime);
-		tag.putInt("ReturnTicks", this.returnTicks);
-		tag.putInt("HitCount", this.hitCount);
-		tag.putInt("Slot", this.slot);
-		// 本次飞行的耐久账（2026-10-02 批 2）：跨区块重载不许把欠账抹掉，否则
-		// "飞出去一趟正好让区块卸载"就成了躲避爆掉的捷径。
-		tag.putInt("FlightWear", this.flightWear);
-		// 穿刺额度（2026-10-02 批 3）：记过才写（-1 = 还没初始化就不写键，
-		// 读回来仍是 -1 ⇒ 第一次命中时按当时的等级现算，与"从没打过东西"完全等价）。
-		if (this.pierceMobsLeft >= 0) {
-			tag.putInt("PierceMobsLeft", this.pierceMobsLeft);
-			tag.putInt("PierceBlocksLeft", this.pierceBlocksLeft);
-		}
-		// 技能携带标记（作者 2026-10-02 第二次裁定）：投掷那一刻的按键结果，重载后必须还在，
-		// 否则"区块卸载再回来"会把这一发带的效果（以及环绕波的生成资格）抹掉。
-		tag.putBoolean("PierceSkillCarried", this.pierceSkillCarried);
-		tag.putBoolean("OrbitSkillCarried", this.orbitSkillCarried);
-		// 花瓣曲线状态（2026-10-02 批 2）：模式 + 锚点 + 基准角 + 进度。
-		// ⚠ 这三项平时走同步数据（两端要一起算曲线），但同步数据不进存档 ⇒ 重载一次就会
-		// 退化成"点按直线"（进度归零 = 从头再飞一瓣），所以必须各自落一份 NBT。
-		if (isPetalFlight()) {
-			Vector3f petalOrigin = this.entityData.get(DATA_PETAL_ORIGIN);
-			tag.putBoolean("PetalFlight", true);
-			tag.putDouble("PetalOriginX", petalOrigin.x());
-			tag.putDouble("PetalOriginY", petalOrigin.y());
-			tag.putDouble("PetalOriginZ", petalOrigin.z());
-			tag.putDouble("PetalAngle", this.entityData.get(DATA_PETAL_ANGLE));
-			tag.putDouble("PetalProgress", this.petalProgress);
-		}
-		// 投掷原点：记过才写（没记过就不写键，读回来仍是"未记录"）
-		if (this.originRecorded) {
-			tag.putDouble("ThrowOriginX", this.originX);
-			tag.putDouble("ThrowOriginY", this.originY);
-			tag.putDouble("ThrowOriginZ", this.originZ);
-		}
-		ItemStack stack = getItemStack();
-		if (!stack.isEmpty()) {
-			tag.put("BoomerangStack", stack.save(registryAccess()));
-		}
+		BoomerangEntitySaveData.write(this, tag);
 	}
 }
