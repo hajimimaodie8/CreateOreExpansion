@@ -34,16 +34,16 @@ public final class CoeJeiCategories {
             new CreateRecipeCategory.Builder<>(LightningRecipe.class)
                 .addTypedRecipes(CoeRecipeTypes.LIGHTNING)
                 .catalyst(() -> Blocks.LIGHTNING_ROD)
-                .catalyst(() -> CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
-                .itemIcon(CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
+                .catalyst(() -> CoeMachines.REINFORCED_LIGHTNING_ROD.get())
+                .itemIcon(CoeMachines.REINFORCED_LIGHTNING_ROD.get())
                 .emptyBackground(178, 72)
                 .build("lightning", LightningCategory::new),
 
             new CreateRecipeCategory.Builder<>(LightningBlockRecipe.class)
                 .addTypedRecipes(CoeRecipeTypes.LIGHTNING_BLOCK)
                 .catalyst(() -> Blocks.LIGHTNING_ROD)
-                .catalyst(() -> CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
-                .itemIcon(CoeBlocks.REINFORCED_LIGHTNING_ROD.get())
+                .catalyst(() -> CoeMachines.REINFORCED_LIGHTNING_ROD.get())
+                .itemIcon(CoeMachines.REINFORCED_LIGHTNING_ROD.get())
                 .emptyBackground(178, 72)
                 .build("lightning_block", LightningBlockCategory::new));
     }

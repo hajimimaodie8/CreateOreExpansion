@@ -14,6 +14,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeCreativeTabs;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeEffects;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRegistrate;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.AllEntityTypes;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlockEntityTypes;
@@ -194,6 +195,13 @@ public class CreateOreExpansion {
         // 仍由 :cews 自己的 @Mod 构造器触发（见 CewsMod）；嬗化（原 TRANS 层）的
         // 流体 / 效果 / 物品由<b>本构造器</b>触发（W6-b2：内容已进 :coe，见上面的注释块）。
         CoeBlocks.register();
+        // 批 2（2026-10-04）：机壳与机器类方块从 CoeBlocks 分家到同包的 CoeMachines（作者指定）。
+        // 本行是本仓「注册触发顺序必须显式写死」的口径落点；**顺序锚点不在这一行**——
+        // CoeMachines 的类初始化已由 CoeBlocks 里那个 static{} 块在**原机壳槽位**（矿物块之后、
+        // 水晶之前）触发，因此这一行运行时是幂等空操作，登记顺序与拆分前逐条一致。
+        // 反过来，若把这一行当成唯一触发点（哪怕放在 CoeBlocks.register() 之前/之后），
+        // 这 6 件都会排到水晶之后，创造页里同族条目的位次会变（见 CoeBlocks 的 static{} 注释）。
+        CoeMachines.register();
         CoeBlockEntityTypes.register();
         AllTiers.register();
         CoeChargerBlocks.register();

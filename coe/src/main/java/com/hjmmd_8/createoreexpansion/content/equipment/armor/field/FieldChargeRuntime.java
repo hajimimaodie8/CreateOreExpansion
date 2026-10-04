@@ -10,7 +10,7 @@ import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSkillFx;
@@ -233,7 +233,7 @@ public final class FieldChargeRuntime {
             return false;
         }
         BlockState state = world.getBlockState(pos);
-        if (state.is(CoeBlocks.STRESS_INJECTOR.get())) {
+        if (state.is(CoeMachines.STRESS_INJECTOR.get())) {
             // 已经是注入器：可能是别的会话占着，也可能是上一次没收干净的孤儿（它会自己移除）
             return false;
         }
@@ -248,7 +248,7 @@ public final class FieldChargeRuntime {
      */
     private static @Nullable StressInjectorBlockEntity placeInjector(ServerLevel world, BlockPos socket,
                                                                      BlockPos source) {
-        BlockState state = CoeBlocks.STRESS_INJECTOR.get()
+        BlockState state = CoeMachines.STRESS_INJECTOR.get()
             .defaultBlockState()
             .setValue(StressInjectorBlock.FACING, facingTowards(socket, source));
         if (!world.setBlock(socket, state, Block.UPDATE_ALL)) {
@@ -490,7 +490,7 @@ public final class FieldChargeRuntime {
         if (!world.isLoaded(pos)) {
             return;
         }
-        if (!world.getBlockState(pos).is(CoeBlocks.STRESS_INJECTOR.get())) {
+        if (!world.getBlockState(pos).is(CoeMachines.STRESS_INJECTOR.get())) {
             return;
         }
         if (world.getBlockEntity(pos) instanceof StressInjectorBlockEntity injector) {

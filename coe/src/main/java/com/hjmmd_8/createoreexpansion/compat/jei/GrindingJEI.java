@@ -3,8 +3,8 @@ package com.hjmmd_8.createoreexpansion.compat.jei;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.AdvancedGrindingCategory;
 import com.hjmmd_8.createoreexpansion.compat.jei.category.DismantlingCategory;
@@ -59,23 +59,23 @@ public class GrindingJEI implements IModPlugin {
 
 		CreateRecipeCategory<?> grinding = builder(GrindingRecipe.class)
 			.addTypedRecipes(CoeRecipeTypes.GRINDING)
-			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
-			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), Items.IRON_INGOT)
+			.catalyst(CoeMachines.POWER_ANGLE_GRINDER::get)
+			.doubleItemIcon(CoeMachines.POWER_ANGLE_GRINDER.get(), Items.IRON_INGOT)
 			.emptyBackground(177, 70)
 			.build(CoeCore.modLoc("grinding"), GrindingCategory::new);
 
 		CreateRecipeCategory<?> advanced = builder(AbstractCrushingRecipe.class)
 			.addTypedRecipes(com.simibubi.create.AllRecipeTypes.CRUSHING)
 			.addTypedRecipes(com.simibubi.create.AllRecipeTypes.MILLING)
-			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
-			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), Items.DIAMOND)
+			.catalyst(CoeMachines.POWER_ANGLE_GRINDER::get)
+			.doubleItemIcon(CoeMachines.POWER_ANGLE_GRINDER.get(), Items.DIAMOND)
 			.emptyBackground(177, 70)
 			.build(CoeCore.modLoc("advanced_grinding"), AdvancedGrindingCategory::new);
 
 		CreateRecipeCategory<?> dismantling = builder(DismantlingRecipe.class)
 			.addTypedRecipes(CoeRecipeTypes.DISMANTLING)
-			.catalyst(CoeBlocks.POWER_ANGLE_GRINDER::get)
-			.doubleItemIcon(CoeBlocks.POWER_ANGLE_GRINDER.get(), CoeItems.SAPPHIRE_INGOT.get())
+			.catalyst(CoeMachines.POWER_ANGLE_GRINDER::get)
+			.doubleItemIcon(CoeMachines.POWER_ANGLE_GRINDER.get(), CoeItems.SAPPHIRE_INGOT.get())
 			.emptyBackground(177, 70)
 			.build(CoeCore.modLoc("dismantling"), DismantlingCategory::new);
 

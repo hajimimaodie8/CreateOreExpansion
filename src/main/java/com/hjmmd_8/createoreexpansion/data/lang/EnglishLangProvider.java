@@ -5,6 +5,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.CoeChargerBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
 import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.LanguageProvider;
@@ -135,17 +136,18 @@ public class EnglishLangProvider extends LanguageProvider {
         add(CoeBlocks.RAW_STELLARSTONE_BLOCK.get(), "Raw Stellarstone Block");
         add(CoeBlocks.STELLARSTONE_BLOCK.get(), "Stellarstone Block");
         // W9：the three casings belong to COE (user ruling) -- the registering class moved from
-        // CewsBlocks to CoeBlocks, so these reads follow the registry, not the language keys.
-        add(CoeBlocks.JADE_CASING.get(), "Jade Casing");
-        add(CoeBlocks.SAPPHIRE_CASING.get(), "Sapphire Casing");
-        add(CoeBlocks.STELLARSTONE_CASING.get(), "Stellarstone Casing");
+        // CewsBlocks to CoeBlocks, then (batch 2, 2026-10-04) to CoeMachines, so these reads
+        // follow the registry, not the language keys.
+        add(CoeMachines.JADE_CASING.get(), "Jade Casing");
+        add(CoeMachines.SAPPHIRE_CASING.get(), "Sapphire Casing");
+        add(CoeMachines.STELLARSTONE_CASING.get(), "Stellarstone Casing");
         // Stellarstone growable crystal
         add(CoeBlocks.STELLARSTONE_BUDDING_BLOCK.get(), "Stellarstone Crystal Budding Block");
         add(CoeBlocks.STELLARSTONE_SMALL_BUD.get(), "Small Stellarstone Crystal Bud");
         add(CoeBlocks.STELLARSTONE_MEDIUM_BUD.get(), "Medium Stellarstone Crystal Bud");
         add(CoeBlocks.STELLARSTONE_LARGE_BUD.get(), "Large Stellarstone Crystal Bud");
         add(CoeBlocks.STELLARSTONE_CLUSTER.get(), "Stellarstone Crystal Cluster");
-        add(CoeBlocks.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
+        add(CoeMachines.POWER_ANGLE_GRINDER.get(), "Power Angle Grinder");
         // NOTE: this used to read "Jade Create Charger" while the goggle entry for the same
         // machine read "Jade Stress Charger"; both now use the same wording.
         // W6-c: the three stress chargers moved to the first layer's CoeChargerBlocks.
@@ -238,7 +240,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add(CewsBlocks.ENERGY_WAVE_DISPERSER.get(), "Energy Wave Disperser");
         add(CewsBlocks.SIX_FACE_DISPERSER.get(), "Six-Face Energy Wave Disperser");
         add(CewsBlocks.OCTA_ENERGY_WAVE_DIFFERENCER.get(), "Octa Energy Wave Disperser");
-        add(CoeBlocks.REINFORCED_LIGHTNING_ROD.get(), "Reinforced Lightning Rod");
+        add(CoeMachines.REINFORCED_LIGHTNING_ROD.get(), "Reinforced Lightning Rod");
         add(CoeItems.RUBY_INGOT.get(), "Ruby Ingot");
         add(CoeItems.RUBY_SHEET.get(), "Ruby Sheet");
         add(CoeItems.RUBY_ROD.get(), "Ruby Rod");
@@ -424,7 +426,7 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.equip_skill.field_charge_no_space", "No free spot for the stress injector");
         // Stress Injector (the unobtainable internal block, spec section 4.2). Its name can only
         // ever be seen through goggles while it is energized; there is no item form at all.
-        add(CoeBlocks.STRESS_INJECTOR.get(), "Stress Injector (internal)");
+        add(CoeMachines.STRESS_INJECTOR.get(), "Stress Injector (internal)");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");

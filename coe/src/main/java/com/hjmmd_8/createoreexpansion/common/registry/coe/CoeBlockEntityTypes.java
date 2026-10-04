@@ -16,7 +16,7 @@ public final class CoeBlockEntityTypes {
 
 	public static final BlockEntityEntry<PowerAngleGrinderBlockEntity> POWER_ANGLE_GRINDER = CoeRegistrate.REGISTRATE
 		.blockEntity("power_angle_grinder", PowerAngleGrinderBlockEntity::new)
-		.validBlocks(CoeBlocks.POWER_ANGLE_GRINDER)
+		.validBlocks(CoeMachines.POWER_ANGLE_GRINDER)
 		.renderer(() -> GrinderRenderer::new)
 		.register();
 
@@ -33,13 +33,13 @@ public final class CoeBlockEntityTypes {
 	 */
 	public static final BlockEntityEntry<StressInjectorBlockEntity> STRESS_INJECTOR = CoeRegistrate.REGISTRATE
 		.blockEntity("stress_injector", StressInjectorBlockEntity::new)
-		.validBlocks(CoeBlocks.STRESS_INJECTOR)
+		.validBlocks(CoeMachines.STRESS_INJECTOR)
 		.register();
 
 	/** 强化避雷针方块实体（γ 充能状态；渲染用原版避雷针模型，无需自定义渲染器） */
 	public static final BlockEntityEntry<ReinforcedLightningRodBlockEntity> REINFORCED_LIGHTNING_ROD = CoeRegistrate.REGISTRATE
 		.blockEntity("reinforced_lightning_rod", ReinforcedLightningRodBlockEntity::new)
-		.validBlocks(CoeBlocks.REINFORCED_LIGHTNING_ROD)
+		.validBlocks(CoeMachines.REINFORCED_LIGHTNING_ROD)
 		.register();
 
 	/** 水晶芽床生长进度方块实体（四种宝石芽床共用） */

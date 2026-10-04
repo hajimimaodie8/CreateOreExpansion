@@ -2,7 +2,7 @@ package com.hjmmd_8.createoreexpansion.mixin;
 
 import org.spongepowered.asm.mixin.Mixin;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.field.StressInjectorBlockEntity;
 import com.simibubi.create.api.equipment.goggles.IProxyHoveringInformation;
 import com.simibubi.create.content.kinetics.crank.HandCrankBlock;
@@ -64,7 +64,7 @@ public abstract class HandCrankGoggleProxyMixin implements IProxyHoveringInforma
                 continue;
             }
             if (!level.getBlockState(neighbour)
-                .is(CoeBlocks.STRESS_INJECTOR.get())) {
+                .is(CoeMachines.STRESS_INJECTOR.get())) {
                 continue;
             }
             if (level.getBlockEntity(neighbour) instanceof StressInjectorBlockEntity injector

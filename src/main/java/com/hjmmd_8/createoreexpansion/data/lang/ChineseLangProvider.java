@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.data.lang;
 import com.hjmmd_8.createoreexpansion.common.registry.cews.CewsItems;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationItems;
 import net.minecraft.data.PackOutput;
 import net.neoforged.neoforge.common.data.LanguageProvider;
@@ -52,8 +53,9 @@ public class ChineseLangProvider extends LanguageProvider {
         add(CoeItems.JADE_AXE.get(), "翡翠斧");
         add(CoeItems.JADE_SHOVEL.get(), "翡翠铲");
         add(CoeItems.JADE_HOE.get(), "翡翠锄");
-        // W9：机壳归 COE（用户裁定），登记类从 CewsBlocks 改指 CoeBlocks——lang 键名不变。
-        add(CoeBlocks.JADE_CASING.get(), "翡翠机壳");
+        // W9：机壳归 COE（用户裁定），登记类从 CewsBlocks 改指 CoeBlocks；批 2（2026-10-04）
+        // 机壳又从 CoeBlocks 分家到 CoeMachines——lang 键名不变。
+        add(CoeMachines.JADE_CASING.get(), "翡翠机壳");
         add(CoeItems.TOPAZ_INGOT.get(), "黄玉锭");
         add(CoeItems.RAW_TOPAZ.get(), "粗黄玉");
         add(CoeItems.TOPAZ_NUGGET.get(), "黄玉粒");
@@ -68,8 +70,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add(CoeItems.TOPAZ_AXE.get(), "黄玉斧");
         add(CoeItems.TOPAZ_SHOVEL.get(), "黄玉铲");
         add(CoeItems.TOPAZ_HOE.get(), "黄玉锄");
-        add(CoeBlocks.SAPPHIRE_CASING.get(), "蓝宝石机壳");
-        add(CoeBlocks.STELLARSTONE_CASING.get(), "星辉石机壳");
+        add(CoeMachines.SAPPHIRE_CASING.get(), "蓝宝石机壳");
+        add(CoeMachines.STELLARSTONE_CASING.get(), "星辉石机壳");
         add(CoeItems.SAPPHIRE_INGOT.get(), "蓝宝石锭");
         add(CoeItems.RAW_SAPPHIRE.get(), "粗蓝宝石");
         add(CoeItems.SAPPHIRE_NUGGET.get(), "蓝宝石粒");
@@ -296,7 +298,7 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.equip_skill.field_charge_no_space", "动力源方块旁边没有可放置应力注入器的空位");
         // 应力注入器（不可获取的内部方块，规格 §4.2）：**只在被赋能时**可能被护目镜/调试看到名字。
         // 它没有物品形态，所以这个名字永远不会出现在创造页/JEI/搜索里。
-        add(CoeBlocks.STRESS_INJECTOR.get(), "应力注入器（内部）");
+        add(CoeMachines.STRESS_INJECTOR.get(), "应力注入器（内部）");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");

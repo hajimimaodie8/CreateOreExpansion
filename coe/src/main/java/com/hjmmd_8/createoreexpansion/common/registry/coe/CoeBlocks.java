@@ -3,27 +3,17 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalBuddingBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalClusterBlock;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalGrowthConfigs;
-import com.hjmmd_8.createoreexpansion.content.equipment.armor.field.StressInjectorBlock;
-import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
-import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
 import com.hjmmd_8.createoreexpansion.common.*;
 import com.simibubi.create.api.behaviour.interaction.MovingInteractionBehaviour;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
-import com.simibubi.create.api.stress.BlockStressValues;
-import com.simibubi.create.content.decoration.encasing.CasingBlock;
 import com.simibubi.create.content.kinetics.base.DirectionalKineticBlock;
-import com.simibubi.create.content.kinetics.base.HorizontalKineticBlock;
-import com.simibubi.create.foundation.data.BuilderTransformers;
-import com.simibubi.create.foundation.data.SharedProperties;
 import com.simibubi.create.foundation.data.TagGen;
 import com.tterrag.registrate.util.entry.BlockEntry;
 
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.Direction;
-import net.minecraft.core.Direction.Plane;
 import net.minecraft.core.HolderLookup.RegistryLookup;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -32,7 +22,6 @@ import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.AmethystClusterBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.LootTable;
@@ -44,21 +33,28 @@ import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
 import net.neoforged.neoforge.client.model.generators.ItemModelBuilder;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
 import net.neoforged.neoforge.client.model.generators.VariantBlockStateBuilder;
-import net.neoforged.neoforge.client.model.generators.ModelFile.ExistingModelFile;
 import net.neoforged.neoforge.client.model.generators.ModelFile.UncheckedModelFile;
 import net.neoforged.neoforge.common.Tags;
 
 import java.util.function.Supplier;
 
 /**
- * <b>COE（矿物拓展）</b>方块注册：矿石 / 宝石块 / 粗矿块 / 雷鸣合金块、三种机壳、
- * 动力角磨床、强化避雷针，以及四种宝石的可生长水晶（芽 / 簇 / 芽床）。<br>
+ * <b>COE（矿物拓展）</b>的<b>简单方块</b>注册：矿石 / 宝石块 / 粗矿块 / 雷鸣合金块，
+ * 以及四种宝石的可生长水晶（芽 / 簇 / 芽床）。<br>
+ * 与 {@link CoeMachines} 的分工是<b>职责域</b>（作者 2026-10-04 指定）：本类只留
+ * <b>简单方块</b>（没有 BE、也没有机器行为的方块），<b>机壳（{@code *_CASING}）与机器类方块</b>
+ * （动力角磨床 / 应力注入器 / 强化避雷针）在批 2 搬进同包的 {@link CoeMachines}。
  * 与 {@code CewsBlocks}、{@code CewsBlockEntityTypes} 的分区见
  * {@code markdown_output/CEWS 能量波阵学模块（拆分方案与思索）.md} §3.2。
- * <p>本次拆分是<b>纯搬运</b>：注册 id / 贴图路径 / 数值 / 链式调用一字未改，
+ * <p>本类的内容一直是<b>纯搬运</b>：注册 id / 贴图路径 / 数值 / 链式调用一字未改，
  * P2a 已删除 {@code AllBlocks} 外观类，全仓引用点直接指向本层，注册 id 与行为零变化。</p>
+ * <p><b>为什么晶体与芽床留在这里（判据 = 有没有 BE / 有没有机器行为）</b>：
+ * 芽是 {@code CrystalClusterBlock}（无 BE、无机器行为，走随机刻生长）；芽床虽有 BE
+ * （{@code CrystalBuddingBlockEntity}，只存"生长进度"），但既无动能/应力接口、也无机器交互，
+ * 属<b>世界内容</b>而非机器；作者也把"晶体与芽床"明确归入简单方块一侧。</p>
  * <p><b>W9（2026-09-28）</b>：{@code JADE_CASING / SAPPHIRE_CASING / STELLARSTONE_CASING}
- * 三条从 {@code CewsBlocks} 搬进本类（用户裁定"三个机壳归 COE"）——见下方机壳那一组的注释。</p>
+ * 三条从 {@code CewsBlocks} 搬进本类（用户裁定"三个机壳归 COE"）；批 2 又从本类搬进
+ * {@link CoeMachines}（本类只保留它们原来的<b>槽位</b>作为一个触发点，见下方那个 {@code static {}} 块）。</p>
  */
 public final class CoeBlocks {
 
@@ -346,172 +342,24 @@ public final class CoeBlocks {
 		.build()
 		.register();
 
-	// ========== 机壳（Casing）：翡翠 / 蓝宝石 / 星辉石 ==========
-	// W9（用户裁定 2026-09-28）：「三个机壳归属于 COE，而不归属于 CEWS」。
-	// 这三条原先住在 common/registry/cews/CewsBlocks（W6-c 的 U3 按"对应机壳"把它们留在了 L2），
-	// 现整条搬回本层。落点选本类而不是新建包，理由三条：
-	//   ① 本类就是它们的**拆分前原址**——`CasingBlock` 与 `BuilderTransformers` 两个 import 从
-	//      P3z 起就一直是本类里的未用残留（本轮的插入把它们重新用上，不是新加依赖）；
-	//   ② 一个 Java 包不能同时属于两个 mod 文件，新建包只会多一个 JPMS 风险点；
-	//   ③ 第一层不能 import 第二层，而机壳的 CTM sprite shift（AllSpriteShifts#*_CASING）住 core，
-	//      机壳登记在本层时方向天然合法。
-	// 位置 = **拆分前 JADE_CASING 在原 AllBlocks 里的槽位**（紧接 SANCTSTONE_BLOCK，
-	// 见 9678b5ce 的 AllBlocks.java:344），三种机壳按 翡翠 → 蓝宝石 → 星辉石 成组，
-	// 与拆分前 create:casing 标签里的出现顺序一致。
-	// ⚠ 唯一可观察的副作用：三条现在由 CoeRegistrate 注册 ⇒ Registrate 会把它们按注册顺序
-	// 放进**矿物页**（CoeCreativeTabs.BASE_TAB），插入点之后的既有矿物页条目展示位次不变。
-
-	/** 翡翠机壳（{@code createoreexpansion:jade_casing}，Create 机壳标签成员，可包轴/齿轮）。 */
-	public static final BlockEntry<CasingBlock> JADE_CASING = CoeRegistrate.REGISTRATE
-		.block("jade_casing", CasingBlock::new)
-		.properties(p -> p.mapColor(MapColor.TERRACOTTA_GREEN))
-		.transform(BuilderTransformers.casing(() -> AllSpriteShifts.JADE_CASING))
-		.register();
-
-	/** 蓝宝石机壳（{@code createoreexpansion:sapphire_casing}）。 */
-	public static final BlockEntry<CasingBlock> SAPPHIRE_CASING = CoeRegistrate.REGISTRATE
-		.block("sapphire_casing", CasingBlock::new)
-		.properties(p -> p.mapColor(MapColor.TERRACOTTA_BLUE))
-		.transform(BuilderTransformers.casing(() -> AllSpriteShifts.SAPPHIRE_CASING))
-		.register();
-
-	/** 星辉石机壳（{@code createoreexpansion:stellarstone_casing}）：带星辉石系列特性。 */
-	public static final BlockEntry<CasingBlock> STELLARSTONE_CASING = CoeRegistrate.REGISTRATE
-		.block("stellarstone_casing", CasingBlock::new)
-		.properties(p -> p.mapColor(MapColor.TERRACOTTA_PINK))
-		.transform(BuilderTransformers.casing(() -> AllSpriteShifts.STELLARSTONE_CASING))
-		// 星辉石系列特性（掉落物不落虚空 / 岩浆与嬗化液中不销毁并发光…）：登记进系列方块标签。
-		// 本方块的物品由上面 casing 变换器注册，拿不到 ItemBuilder 去挂物品标签，故走方块标签这一支
-		// （运行时判定三支都认：物品标签 ∪ 方块标签 ∪ 注册名约定，见 SeriesTraits#isStellarstone）。
-		.transform(SeriesTraits.addStellarstoneTraits())
-		.register();
-
-	@SuppressWarnings("removal") // addLayer 过时但无替代，用于 cutoutMipped 渲染层
-	public static final BlockEntry<PowerAngleGrinderBlock> POWER_ANGLE_GRINDER = CoeRegistrate.REGISTRATE
-		.block("power_angle_grinder", PowerAngleGrinderBlock::new)
-		.initialProperties(SharedProperties::stone)
-		.properties(p -> p.mapColor(MapColor.PODZOL))
-		.properties(p -> p.noOcclusion())
-		.properties(p -> p.isRedstoneConductor((state, level, pos) -> false))
-		.addLayer(() -> () -> RenderType.cutoutMipped())
-		.transform(TagGen.axeOrPickaxe())
-		.blockstate((ctx, prov) -> {
-			ExistingModelFile closed = prov.models()
-				.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-					"block/power_angle_grinder/power_angle_grinde"));
-			ExistingModelFile open = prov.models()
-				.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-					"block/power_angle_grinder/power_angle_grinder_rotated"));
-			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
-			for (Direction dir : Plane.HORIZONTAL) {
-				int y = (int) dir.toYRot();
-				vb.partialState()
-					.with(HorizontalKineticBlock.HORIZONTAL_FACING, dir)
-					.with(PowerAngleGrinderBlock.OPEN, false)
-					.modelForState()
-					.modelFile(closed)
-					.rotationY(y)
-					.addModel();
-				vb.partialState()
-					.with(HorizontalKineticBlock.HORIZONTAL_FACING, dir)
-					.with(PowerAngleGrinderBlock.OPEN, true)
-					.modelForState()
-					.modelFile(open)
-					.rotationY(y)
-					.addModel();
-			}
-		})
-		.onRegister(block -> BlockStressValues.IMPACTS.register(block, () -> 8.0))
-		.item()
-		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("power_angle_grinder"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/power_angle_grinder/power_angle_grinder_item")))
-		.build()
-		.register();
-
-	// ===== 能量感应灯（EnergySensingLamp）：暂时下架 —— 待作者重做模型后恢复注册。
-	// 贴图/模型文件保留在 resources（assets/.../energy_wave_machine/jade_energy_sensing_lamp_*.json + png）。
-
-	// ========== 应力注入器（stress_injector）—— ⚠ **不可获取的内部方块** ==========
-	// 用户 2026-10-01 规格 §4.2（方案 A）：临域充力发动时由技能**临时放置**在曲柄旁边、
-	// 收尾时移除；容量按等级 8192/16384/32768 SU（我们自己的表，不借 Create 给曲柄的容量）。
-	// 用户原话："可千万千万不要真的把它注册成一个能够被获取的方块。这个玩意儿应该是非常隐藏的那种。"
-	// ⇒ 与上面所有方块的三处关键区别（**缺任何一条玩家就能拿到它**）：
-	//   ① **没有 .item()** ⇒ 没有 BlockItem：不进背包、不进创造页（Registrate 只把**物品**
-	//      填进页：AbstractRegistrate#item(...) 里才读 defaultCreativeModeTab）、不进 JEI / 创造页搜索；
-	//   ② **.properties(p -> p.noLootTable())** ⇒ Block#getLootTable() = BuiltInLootTables.EMPTY
-	//      ⇒ Registrate 的战利品回调被跳过、BlockLootSubProvider 也跳过它 ⇒ **一个战利品表文件都不生成**，
-	//      被挖/被炸也不掉任何东西；
-	//   ③ 方块状态指向**原版**的 minecraft:block/air（其模型就是一个空的 "{}"，零贴图）——
-	//      不新增贴图、不新增模型文件，也不引用任何 png（美术红线"一张图都不要改、也不要自己画"
-	//      因此零触碰）；方块本身由 StressInjectorBlock#getRenderShape = RenderShape.INVISIBLE
-	//      完全跳过渲染（用户 2026-10-02："我想把这个方块的材质设置成全透明"⇒ 做到"看不到任何东西"），
-	//      并且 getShape 返回空形状 ⇒ 连选中描边都没有、射线也打不到它。
-	// 命名空间仍是 createoreexpansion（红线），id 取内部风格。完整说明见
-	// content/equipment/armor/field/StressInjectorBlock 的类注释。
-	public static final BlockEntry<StressInjectorBlock> STRESS_INJECTOR = CoeRegistrate.REGISTRATE
-		.block("stress_injector", StressInjectorBlock::new)
-		.properties(p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE)
-			.noCollission()
-			.noOcclusion()
-			.noLootTable())
-		// 每个 FACING 各一条变体，一律指向**原版空气模型**（minecraft:block/air 的内容就是空的 "{}"，
-		// 零贴图、零引用）：方块带属性时**不要**用空 key 的"全状态"写法，逐值列出来最稳
-		// （本仓 reinforced_lightning_rod / 水晶都是这个写法）。这条 blockstate 只是"有定义"，
-		// 因为 RenderShape.INVISIBLE 根本不进渲染管线 ⇒ 玩家一个像素都看不到。
-		.blockstate((ctx, prov) -> {
-			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
-			for (Direction dir : Direction.values()) {
-				vb.partialState()
-					.with(StressInjectorBlock.FACING, dir)
-					.modelForState()
-					.modelFile(new UncheckedModelFile("minecraft:block/air"))
-					.addModel();
-			}
-		})
-		// 内部名字（英文侧由这里钉死，中文侧在 ChineseLangProvider 里补一条同名键 —— 中英键集必须对齐）。
-		.lang("Stress Injector (internal)")
-		.register();
-
-	/** 强化避雷针：继承原版 LightningRodBlock（全部原版行为保留），叠加 γ 级能量波充能；
-	 * 加入原版 lightning_rods tag（三叉戟引雷、铁砧工艺等交互正常作用）。 */
-	public static final BlockEntry<ReinforcedLightningRodBlock> REINFORCED_LIGHTNING_ROD = CoeRegistrate.REGISTRATE
-		.block("reinforced_lightning_rod", ReinforcedLightningRodBlock::new)
-		.initialProperties(SharedProperties::copperMetal)
-		.properties(p -> p.requiresCorrectToolForDrops())
-		// 原版 lightning_rods tag（BlockTags 无此常量，用 create 显式创建）
-		.tag(BlockTags.create(ResourceLocation.withDefaultNamespace("lightning_rods")))
-		.blockstate((ctx, prov) -> {
-			// 仿原版避雷针 blockstate：facing 六向 + powered 两态，模型普通/强化各一
-			VariantBlockStateBuilder vb = prov.getVariantBuilder(ctx.get());
-			for (Direction dir : Direction.values()) {
-				for (boolean powered : new boolean[] { false, true }) {
-					int xRot = dir == Direction.DOWN ? 180 : dir == Direction.UP ? 0 : 90;
-					int yRot = switch (dir) {
-						case NORTH -> 0;
-						case SOUTH -> 180;
-						case WEST -> 270;
-						case EAST -> 90;
-						default -> 0;
-					};
-					String name = powered ? "reinforced_lightning_rod_powered" : "reinforced_lightning_rod";
-					vb.partialState()
-						.with(BlockStateProperties.FACING, dir)
-						.with(BlockStateProperties.POWERED, powered)
-						.modelForState()
-						.modelFile(prov.models()
-							.getExistingFile(ResourceLocation.fromNamespaceAndPath("createoreexpansion",
-								"block/reinforced_lightning_rod/" + name)))
-						.rotationX(xRot)
-						.rotationY(yRot)
-						.addModel();
-				}
-			}
-		})
-		.item()
-		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("reinforced_lightning_rod"))
-			.parent(new UncheckedModelFile("createoreexpansion:block/reinforced_lightning_rod/reinforced_lightning_rod")))
-		.build()
-		.register();
+	// ========== 机壳与机器类方块：已迁出到同包的 CoeMachines（批 2「职责域拆分」，作者 2026-10-04 指定） ==========
+	// 迁出内容 = 三种机壳（JADE_CASING / SAPPHIRE_CASING / STELLARSTONE_CASING）+ 动力角磨床
+	// + 应力注入器 + 强化避雷针（逐件判据见 CoeMachines 的类注释；历史与属性注释随代码一起搬走）。
+	//
+	// ⚠ **下面这个 static {} 块的位置 = 三条机壳在拆分前的原址**（紧接 SANCTSTONE_BLOCK）。
+	// 它触发 CoeMachines 的类初始化 ⇒ 那边的字段在本类 <clinit> 的**中段**登记，于是合并后的
+	// 登记顺序与拆分前逐条一致：
+	//     [矿物/材料块 17 件] → [机壳3 → 角磨床 → 应力注入器 → 强化避雷针] → [水晶芽/簇/芽床 20 件]
+	// 依据：Registrate 的登记动作就是**字段初始化**，而 JLS 12.4.2 规定静态字段初始化器与
+	// static{} 块按**文本顺序**执行。所以"在 register() 里先留简单方块、再调 CoeMachines"或
+	// "由 CreateOreExpansion 顺序调用两个 register()"都会把这 6 件排到水晶之后 —— 那不是等价顺序，
+	// 创造页里同族条目的位次会跟着变（CoeCreativeSections 用**稳定排序**，同族内保持注册顺序）。
+	// CoeMachines 不反向引用本类，故无类初始化环。
+	// 另：CreateOreExpansion 里紧随 CoeBlocks.register() 的那行 CoeMachines.register() 是本仓
+	// 「注册触发顺序必须显式写死」的口径落点（届时该类已初始化 ⇒ 运行时是幂等空操作）。
+	static {
+		CoeMachines.register();
+	}
 
 	// ========== 可生长水晶（翡翠/黄玉/蓝宝石/星辉石）——继承原版紫水晶机制，AE2 催生器可加速 ==========
 	// 每种水晶 5 个方块：小芽 → 中芽 → 大芽 → 簇（随机刻逐级生长），芽床（随机刻 + 方块实体进度双轨生芽）。

@@ -4,7 +4,7 @@ import com.hjmmd_8.createoreexpansion.content.machine.energyfieldcontroller.Ener
 
 import java.util.List;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyField;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFieldType;
 import com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields;
@@ -361,7 +361,8 @@ public class EnergyFieldControllerBlockEntity extends KineticBlockEntity {
 		int w = CASING_RADIUS * 2 + 1;
 		int half = CASING_RADIUS;
 		// W9：机壳归 COE（用户裁定），故这里读第一层的 CoeBlocks；CEWS -> COE 是允许方向。
-		Block sapphire = CoeBlocks.SAPPHIRE_CASING.get();
+		// 批 2（2026-10-04）：机壳（*_CASING）从 CoeBlocks 分家到同包的 CoeMachines，引用点随之改名。
+		Block sapphire = CoeMachines.SAPPHIRE_CASING.get();
 
 		// 每端在横向窗口上的机壳覆盖（任意扫描层出现即算）
 		boolean[][] covA = new boolean[w][w];

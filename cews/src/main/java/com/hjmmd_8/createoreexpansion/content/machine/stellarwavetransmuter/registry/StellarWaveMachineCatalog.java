@@ -174,7 +174,7 @@ public final class StellarWaveMachineCatalog {
 	 */
 	private static void registerOwnMachines() {
 		StellarWaveMachineRegistry.register(
-			com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks.POWER_ANGLE_GRINDER.get())
+			com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines.POWER_ANGLE_GRINDER.get())
 			.addTypes(waveType("grinding"),
 				com.simibubi.create.AllRecipeTypes.CRUSHING, com.simibubi.create.AllRecipeTypes.MILLING,
 				waveType("dismantling"))

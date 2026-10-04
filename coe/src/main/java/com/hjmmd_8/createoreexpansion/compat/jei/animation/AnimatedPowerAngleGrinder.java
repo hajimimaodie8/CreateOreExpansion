@@ -1,6 +1,6 @@
 package com.hjmmd_8.createoreexpansion.compat.jei.animation;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlocks;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.common.AllPartialModels;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -37,7 +37,7 @@ public class AnimatedPowerAngleGrinder extends AnimatedKinetics {
 		matrixStack.mulPose(Axis.YP.rotationDegrees(22.5f + 90));
 		int scale = 25;
 
-		BlockState machine = CoeBlocks.POWER_ANGLE_GRINDER.getDefaultState()
+		BlockState machine = CoeMachines.POWER_ANGLE_GRINDER.getDefaultState()
 			.setValue(PowerAngleGrinderBlock.HORIZONTAL_FACING, Direction.SOUTH);
 
 		// 完整的机器（关盖）
