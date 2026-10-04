@@ -1,31 +1,19 @@
 package com.hjmmd_8.createoreexpansion.content.grinding.block;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeRecipeTypes;
-import com.hjmmd_8.createoreexpansion.common.recipe.RecipeAutomation;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.GrinderInventory;
 import com.hjmmd_8.createoreexpansion.content.grinding.behaviour.SidedItemHandlers;
 import com.hjmmd_8.createoreexpansion.content.grinding.effect.GrindingWheelEffect;
 import com.hjmmd_8.createoreexpansion.content.grinding.effect.GrindingWheelEffects;
 import com.hjmmd_8.createoreexpansion.content.grinding.item.GrindingWheelTier;
-import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
-import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrinderRecipeTypes;
-import com.hjmmd_8.createoreexpansion.content.grinding.recipe.GrindingRecipe;
-import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.simibubi.create.content.kinetics.base.KineticBlockEntity;
 import com.simibubi.create.content.kinetics.belt.behaviour.DirectBeltInputBehaviour;
-import com.simibubi.create.content.processing.recipe.ProcessingRecipe;
-import com.simibubi.create.content.processing.sequenced.SequencedAssemblyRecipe;
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour;
 import com.simibubi.create.foundation.blockEntity.behaviour.filtering.FilteringBehaviour;
 import com.simibubi.create.foundation.item.ItemHelper;
-import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
-import com.simibubi.create.foundation.recipe.RecipeConditions;
-import com.simibubi.create.foundation.recipe.RecipeFinder;
 
 import net.createmod.catnip.math.VecHelper;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
@@ -37,7 +25,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Clearable;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -57,9 +44,6 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * 动力角磨床方块实体：应力驱动加工（仿动力锯）。
@@ -67,17 +51,29 @@ import java.util.stream.Collectors;
  * <p>触发方式：物品从上方丢入、或从侧面漏斗/传送带输入；
  * 有应力（转速）时角磨轮工作，物品在轮上处理（粒子沿移动方向偏移表现缓慢移动），
  * 完成后经漏斗引出或向输出方向抛出（方向随转速正负，从盖往轮看）。</p>
+ *
+ * <h2>本类的形状（2026-10-05 行为零变化拆分）</h2>
+ * <p>本类保留<b>公开/受保护形状与运行态</b>（物品与电容的进出、角磨轮的装卸与查询、护目镜与悬停
+ * 文案、持久化、粒子），按职责域拆出的同包类只做搬运：</p>
+ * <ul>
+ *   <li>{@link GrinderProcessing} —— 每 tick 的加工流程（合盖 / 装轮且转速够 / 转速非 0 三道门、
+ *       {@code remainingTime} 推进、完成与"无配方"两条收尾）；</li>
+ *   <li>{@link GrinderRecipeRunner} —— 配方解析与产出落库（匹配哪些配方、产出什么、成品放哪儿）；</li>
+ *   <li>{@link GrinderGoggles} —— 护目镜 / 悬停栏的文案装配（两个 {@code @Override} 仍在本类，
+ *       只保留 {@code super} 调用与转交）。</li>
+ * </ul>
+ * <p>构造期只做字段初始化（{@code inventory} / {@code recipeIndex}），没有调用任何被搬出去的 helper。</p>
  */
 public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements Clearable {
 
 	public FilteringBehaviour filtering;
 	public GrinderInventory inventory;
 
-	private int recipeIndex;
+	int recipeIndex;
 	/** 已安装的角磨轮物品 id（null = 未安装） */
 	private ResourceLocation wheel;
 	/** 当前是否为序列装配的角磨步骤（序列加工时禁用轮子产出类效果） */
-	private boolean sequenceStep;
+	boolean sequenceStep;
 
 	public PowerAngleGrinderBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
 		super(type, pos, state);
@@ -126,71 +122,9 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	public void tick() {
 		super.tick();
 
-		// 合盖时才能加工
-		if (getBlockState().getValue(PowerAngleGrinderBlock.OPEN))
-			return;
-		// 必须安装角磨轮且转速达到该等级最低要求才能加工
-		GrindingWheelTier tier = getWheelTier();
-		if (tier == null || Math.abs(getSpeed()) < tier.getMinRpm())
-			return;
-		if (getSpeed() == 0)
-			return;
-
-		if (inventory.remainingTime == -1) {
-			// 仅槽 0 有输入才启动加工（成品区槽 1+ 有成品不影响新输入）
-			if (!inventory.getStackInSlot(0)
-				.isEmpty() && !inventory.appliedRecipe)
-				start(inventory.getStackInSlot(0));
-			return;
-		}
-
-		float processingSpeed = Mth.clamp(Math.abs(getSpeed()) / 24, 1, 128);
-		inventory.remainingTime -= processingSpeed;
-
-		if (inventory.remainingTime > 0)
-			spawnParticles(inventory.getStackInSlot(0));
-
-		if (inventory.remainingTime < 5 && !inventory.appliedRecipe) {
-			if (level.isClientSide)
-				return;
-			if (applyRecipe()) {
-				inventory.appliedRecipe = true;
-				inventory.recipeDuration = 20;
-				inventory.remainingTime = 20;
-				sendData();
-			} else {
-				// 无匹配配方（或结果为空）：消耗 1 个输入但不产出（物品一点一点减少，不瞬间消失）
-				consumeInputNoOutput();
-			}
-			return;
-		}
-
-		if (inventory.remainingTime > 0)
-			return;
-		inventory.remainingTime = 0;
-
-		// 加工完成：成品已存入槽 1+（insertToOutput），立即重置并继续加工槽 0 剩余输入。
-		// 成品区 32 格可堆叠、漏斗可随时抽取（见 GrinderInventory.extractItem），
-		// 无需阻塞等待成品被抽走（无漏斗时也能连续加工，槽满时 insertToOutput 会掉落不丢失）
-		if (inventory.appliedRecipe) {
-			inventory.remainingTime = -1;
-			inventory.appliedRecipe = false;
-			sendData();
-			return;
-		}
-
-		// 无匹配配方（不可加工物品）：消耗 1 个输入但不产出，保留成品区（槽 1+）
-		consumeInputNoOutput();
-	}
-
-	/** 消耗 1 个输入但不产出任何物品（无匹配配方：物品逐个减少，加工节奏/粒子正常，不瞬间消失） */
-	private void consumeInputNoOutput() {
-		ItemStack input = inventory.getStackInSlot(0);
-		input.shrink(1);
-		if (input.isEmpty())
-			inventory.setStackInSlot(0, ItemStack.EMPTY);
-		inventory.remainingTime = -1;
-		sendData();
+		// 加工流程（合盖 / 装轮且转速够 / 转速非 0 三道门 + remainingTime 推进 + 两条收尾）
+		// 逐字搬到 GrinderProcessing#tick；本方法只剩基类记账与这次转交。
+		GrinderProcessing.tick(this);
 	}
 
 	/**
@@ -256,7 +190,7 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		if (level.isClientSide)
 			return;
 
-		List<RecipeHolder<? extends Recipe<?>>> recipes = getRecipes();
+		List<RecipeHolder<? extends Recipe<?>>> recipes = GrinderRecipeRunner.getRecipes(this);
 		// 加工耗时由角磨轮等级与当前转速决定（线性插值）再乘轮子效果倍率
 		float time = tier.getProcessingTime(Math.abs(getSpeed())) * 20 * getWheelEffect().getTimeMultiplier();
 
@@ -286,45 +220,6 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 		sendData();
 	}
 
-	/** 应用配方产出成品；无匹配配方或结果为空返回 false（由调用方吞掉输入） */
-	private boolean applyRecipe() {
-		List<RecipeHolder<? extends Recipe<?>>> recipes = getRecipes();
-		if (recipes.isEmpty())
-			return false;
-		if (recipeIndex >= recipes.size())
-			recipeIndex = 0;
-
-		Recipe<?> recipe = recipes.get(recipeIndex).value();
-		List<ItemStack> results = new java.util.ArrayList<>();
-		if (recipe instanceof ProcessingRecipe<?, ?> processing) {
-			processing.rollResults(level.random)
-				.forEach(stack -> results.add(stack));
-		} else if (recipe instanceof DismantlingRecipe dismantling) {
-			ItemStack out = dismantling.getResult(inventory.getStackInSlot(0));
-			if (!out.isEmpty())
-				results.add(out);
-		}
-		if (results.isEmpty())
-			return false;
-
-		// 一次加工消耗 1 个输入（槽 0）
-		ItemStack input = inventory.getStackInSlot(0);
-		input.shrink(1);
-		if (input.isEmpty())
-			inventory.setStackInSlot(0, ItemStack.EMPTY);
-
-		// 轮子特殊效果：额外产出/数量提升/双倍等（序列加工步骤不应用，避免序列配方产出爆炸）
-		if (!sequenceStep)
-			getWheelEffect().onProcessCompleted(input, results, level.random);
-
-		// 成品统一存入库存（槽 1+）：有输出漏斗由漏斗抽取，无漏斗时玩家空手右键取出
-		// （机器本质是容器；手动放入与漏斗输入走同一套输出逻辑，行为一致）
-		for (ItemStack result : results) {
-			insertToOutput(result);
-		}
-		return true;
-	}
-
 	/** 待渲染的物品（仿置物台显示）：未加工（槽 0）优先；槽 0 空时取成品区（槽 1+）第一格。
 	 * 多个物品（未加工 + 已加工）时只渲染未加工；只有一种物品（无论未加工/已加工）时渲染该种。 */
 	public ItemStack getRenderedItem() {
@@ -337,74 +232,6 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 				return stack;
 		}
 		return ItemStack.EMPTY;
-	}
-
-	/** 成品插入槽 1+（堆叠或空槽）；全部槽满时剩余部分掉落到机器上方，不再静默丢失。
-	 *
-	 * <p>用 {@code setStackInSlot} 直接存入：父类 {@code ProcessingInventory.isItemValid}
-	 * 只允许物品插入槽 0（输入区），走 {@code insertItem} 到成品区会被拒绝并返回原物品，
-	 * 导致成品静默消失；直接设置槽位绕过该输入验证（成品区为内部输出，外部漏斗
-	 * 的插入通道仍受 isItemValid 限制，不会污染输出槽）。</p> */
-	private void insertToOutput(ItemStack stack) {
-		for (int slot = 1; slot < inventory.getSlots(); slot++) {
-			ItemStack existing = inventory.getStackInSlot(slot);
-			if (existing.isEmpty()) {
-				inventory.setStackInSlot(slot, stack);
-				return;
-			}
-			if (ItemStack.isSameItemSameComponents(existing, stack)) {
-				int space = existing.getMaxStackSize() - existing.getCount();
-				if (stack.getCount() <= space) {
-					existing.grow(stack.getCount());
-					inventory.setStackInSlot(slot, existing);
-					return;
-				}
-				existing.grow(space);
-				inventory.setStackInSlot(slot, existing);
-				stack = stack.copy();
-				stack.shrink(space);
-			}
-		}
-		// 全部槽满：剩余部分掉落到机器上方（不静默丢失）
-		if (!stack.isEmpty()) {
-			ItemEntity drop = new ItemEntity(level, worldPosition.getX() + .5, worldPosition.getY() + 1,
-				worldPosition.getZ() + .5, stack);
-			drop.setDeltaMovement(Vec3.ZERO);
-			level.addFreshEntity(drop);
-		}
-	}
-
-	private List<RecipeHolder<? extends Recipe<?>>> getRecipes() {
-		// 序列装配：物品处于某个序列加工配方中且当前步骤是角磨步骤（仿动力锯）
-		Optional<RecipeHolder<GrindingRecipe>> assemblyRecipe = SequencedAssemblyRecipe.getRecipe(level,
-			inventory.getStackInSlot(0), CoeRecipeTypes.GRINDING.getType(), GrindingRecipe.class);
-		if (assemblyRecipe.isPresent() && filtering.test(assemblyRecipe.get()
-			.value()
-			.getResultItem(level.registryAccess()))) {
-			sequenceStep = true;
-			return List.of(assemblyRecipe.get());
-		}
-		sequenceStep = false;
-
-		List<RecipeHolder<? extends Recipe<?>>> recipes = new java.util.ArrayList<>();
-
-		// 按角磨轮等级遍历配方类型注册表（开闭：新增配方类型只需 GrinderRecipeTypes.register，
-		// 本方法不感知具体类型；1 级=GRINDING，2 级+=CRUSHING/MILLING，3 级+=DISMANTLING）
-		GrindingWheelTier tier = getWheelTier();
-		if (tier != null) {
-			for (IRecipeTypeInfo typeInfo : GrinderRecipeTypes.getFor(tier.level)) {
-				// key 用 typeInfo 对象本身（枚举常量，对象身份唯一稳定）：
-				// RecipeFinder 缓存按 key 全局缓存，用 ResourceLocation 作 key 可能与其他代码缓存冲突
-				recipes.addAll(RecipeFinder.get(typeInfo, level,
-					RecipeConditions.isOfType(typeInfo.getType())));
-			}
-		}
-
-		return recipes.stream()
-			.filter(RecipeConditions.outputMatchesFilter(filtering))
-			.filter(RecipeConditions.firstIngredientMatches(inventory.getStackInSlot(0)))
-			.filter(r -> !RecipeAutomation.shouldIgnoreInAutomation(r))
-			.collect(Collectors.toList());
 	}
 
 	/**
@@ -485,7 +312,7 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	}
 
 	/** 当前安装角磨轮的特殊效果；未安装返回无效果 */
-	private GrindingWheelEffect getWheelEffect() {
+	GrindingWheelEffect getWheelEffect() {
 		ResourceLocation wheelId = getWheel();
 		return wheelId == null ? GrindingWheelEffect.NONE : GrindingWheelEffects.get(wheelId);
 	}
@@ -512,77 +339,17 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 
 	@Override
 	public boolean addToTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
-		boolean added = super.addToTooltip(tooltip, isPlayerSneaking);
-
-		// 悬停提示：当前支持的加工类型（随安装的角磨轮等级变化）；行排版统一缩进（GoggleUtil）
-		GrindingWheelTier tier = getWheelTier();
-		if (tier == null) {
-			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.no_wheel_type")
-				.withStyle(ChatFormatting.GRAY));
-			return true;
-		}
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.supported_types")
-			.withStyle(ChatFormatting.GRAY));
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.type_grinding")
-			.withStyle(ChatFormatting.GRAY));
-		if (tier.level >= 2) {
-			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.type_advanced")
-				.withStyle(ChatFormatting.GRAY));
-		}
-		if (tier.level >= 3) {
-			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.tooltip.type_dismantling")
-				.withStyle(ChatFormatting.GRAY));
-		}
+		super.addToTooltip(tooltip, isPlayerSneaking);
+		// 悬停提示的文案装配逐字搬到 GrinderGoggles#appendSupportedTypes（返回值恒为 true，与原来同值）
+		GrinderGoggles.appendSupportedTypes(this, tooltip);
 		return true;
 	}
 
 	@Override
 	public boolean addToGoggleTooltip(List<Component> tooltip, boolean isPlayerSneaking) {
 		boolean added = super.addToGoggleTooltip(tooltip, isPlayerSneaking);
-
-		// 护目镜信息行：行排版统一缩进（GoggleUtil，同充能器/波闸）
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.angle_grinder")
-			.withStyle(ChatFormatting.GRAY));
-		added = true;
-
-		ResourceLocation wheelId = getWheel();
-		if (wheelId == null) {
-			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.no_wheel")
-				.withStyle(ChatFormatting.RED));
-			return added;
-		}
-
-		Item wheelItem = BuiltInRegistries.ITEM.get(wheelId);
-		Component wheelName = wheelItem != null && wheelItem != Items.AIR
-			? wheelItem.getDescription()
-			: Component.literal(wheelId.toString());
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.installed_wheel", wheelName)
-			.withStyle(ChatFormatting.WHITE));
-
-		// 轮子特殊效果（护目镜可见）
-		Component effectDescription = getWheelEffect().getDescription();
-		if (!effectDescription.getString()
-			.isEmpty())
-			GoggleUtil.forGoggles(tooltip, effectDescription.copy()
-				.withStyle(ChatFormatting.AQUA));
-
-		GrindingWheelTier tier = getWheelTier();
-		if (tier == null)
-			return added;
-
-		GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.required_speed", tier.getMinRpm())
-			.withStyle(ChatFormatting.GOLD));
-
-		float speed = Math.abs(getSpeed());
-		if (speed < tier.getMinRpm()) {
-			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.speed_too_low")
-				.withStyle(ChatFormatting.RED));
-		} else {
-			GoggleUtil.forGoggles(tooltip, Component.translatable("createoreexpansion.goggles.processing_time",
-				String.format(Locale.ROOT, "%.1f", tier.getProcessingTime(speed)))
-				.withStyle(ChatFormatting.AQUA));
-		}
-		return added;
+		// 护目镜行的装配逐字搬到 GrinderGoggles#appendGoggleLines（added 由宿主带进去、原样带出来）
+		return GrinderGoggles.appendGoggleLines(this, tooltip, added);
 	}
 
 	// ========== 持久化 ==========

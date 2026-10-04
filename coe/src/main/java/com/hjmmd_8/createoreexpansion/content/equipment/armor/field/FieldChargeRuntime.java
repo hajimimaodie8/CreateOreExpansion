@@ -10,7 +10,6 @@ import java.util.UUID;
 import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
-import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillFx;
@@ -18,13 +17,11 @@ import com.hjmmd_8.createoreexpansion.content.equipment.armor.RotationAxis;
 import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.FieldChargeConfigs;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -76,6 +73,11 @@ import net.minecraft.world.level.block.state.BlockState;
  * 会话超过 {@link #WATCHDOG_TICKS} tick 没被续期 ⇒ 强制收尾。这是"漏一处就会留下永远在转的曲柄"
  * 的兜底。</p>
  *
+ * <h2>本类的形状（2026-10-05 行为零变化拆分）</h2>
+ * <p>本类保留<b>公开出口与运行态</b>（两个结果枚举、start / hold / release / finish / forget /
+ * finishAll / watchdog / activeSessions、会话表与心跳宽限），世界侧的落子与拆除按职责域拆到
+ * {@link StressInjectorSites}（放得下吗 / 放 / 赋能 / 朝哪边 / 怎么拆）：搬运逐字、判定与顺序未变。</p>
+ *
  * @since 1.0.0
  */
 public final class FieldChargeRuntime {
@@ -113,20 +115,20 @@ public final class FieldChargeRuntime {
     }
 
     /** 一次供能的全部状态（**内存态**：服务器重启/换维度都会重新开始，绝不会留下幽灵会话）。 */
-    private static final class Session {
-        private final ResourceKey<Level> dimension;
-        private final StressSourceKind kind;
-        private final BlockPos source;
-        private final BlockPos injector;
+    static final class Session {
+        final ResourceKey<Level> dimension;
+        final StressSourceKind kind;
+        final BlockPos source;
+        final BlockPos injector;
         /** 等级在**发动那一刻**定死：中途换甲不会让已放的注入器容量漂移。 */
-        private final FieldChargeConfigs.Config config;
+        final FieldChargeConfigs.Config config;
         /** 已经扣掉的能量（与 {@code FieldChargeConfigs.costAfter} 逐值对齐）。 */
-        private int paid;
+        int paid;
         /** 上一次被续期的 tick（watchdog 用）。 */
-        private long lastRefresh;
+        long lastRefresh;
 
-        private Session(ResourceKey<Level> dimension, StressSourceKind kind, BlockPos source,
-                        BlockPos injector, FieldChargeConfigs.Config config, long now) {
+        Session(ResourceKey<Level> dimension, StressSourceKind kind, BlockPos source,
+                BlockPos injector, FieldChargeConfigs.Config config, long now) {
             this.dimension = dimension;
             this.kind = kind;
             this.source = source;
@@ -168,7 +170,7 @@ public final class FieldChargeRuntime {
             }
             // ① 先纯判定"这一格放得下注入器吗"（无副作用）——放不下直接换下一个曲柄，
             //    避免出现"驱动了一个又立刻停下"的抖动。
-            BlockPos socket = pickSocket(world, kind, source);
+            BlockPos socket = StressInjectorSites.pickSocket(world, kind, source);
             if (socket == null) {
                 continue;
             }
@@ -177,19 +179,19 @@ public final class FieldChargeRuntime {
             //    （它里面 clearKineticInformation() + updateSpeed = true），也就是**会把曲柄刚刚
             //    建立的网络字段与速度清掉**。所以"放注入器"必须排在"驱动曲柄"之前 ——
             //    这样驱动那一步建出来的网络才是干净的、注入器才能立刻并进去（否则会空转一 tick）。
-            StressInjectorBlockEntity injector = placeInjector(world, socket, source);
+            StressInjectorBlockEntity injector = StressInjectorSites.placeInjector(world, socket, source);
             if (injector == null) {
                 continue;
             }
             // ③ 驱动它**真转**（驱动不了就把刚放的注入器撤掉，换下一个曲柄）。
             if (!kind.drive(world, source)) {
-                removeInjector(world, socket);
+                StressInjectorSites.removeInjector(world, socket);
                 continue;
             }
             // ④ 最后赋能：并入曲柄那张动力网络（Create: KineticBlockEntity#setNetwork → KineticNetwork#add）。
             //    失败（方块实体没建起来，理论上不会）⇒ 注入器与曲柄一起回滚。
-            if (!energizeInjector(injector, source, config)) {
-                removeInjector(world, socket);
+            if (!StressInjectorSites.energizeInjector(injector, source, config)) {
+                StressInjectorSites.removeInjector(world, socket);
                 kind.halt(world, source);
                 continue;
             }
@@ -201,92 +203,6 @@ public final class FieldChargeRuntime {
             return StartResult.OK;
         }
         return StartResult.NO_SPACE;
-    }
-
-    /** 在候选位里挑第一个"可替换"的格子（世界已加载 + 不是别的注入器 + {@code canBeReplaced()}）。 */
-    private static @Nullable BlockPos pickSocket(ServerLevel world, StressSourceKind kind, BlockPos source) {
-        List<BlockPos> sockets = kind.injectorSockets(world, source);
-        if (sockets == null || sockets.isEmpty()) {
-            return null;
-        }
-        java.util.ArrayList<BlockPos> shuffled = new java.util.ArrayList<>(sockets.size());
-        for (BlockPos pos : sockets) {
-            if (pos != null) {
-                shuffled.add(pos.immutable());
-            }
-        }
-        Collections.shuffle(shuffled, new Random(world.getRandom().nextLong()));
-        for (BlockPos pos : shuffled) {
-            if (canPlaceInjector(world, pos)) {
-                return pos;
-            }
-        }
-        return null;
-    }
-
-    /** 那一格能不能放注入器（纯判定）。 */
-    private static boolean canPlaceInjector(ServerLevel world, BlockPos pos) {
-        if (!world.isLoaded(pos)) {
-            return false;
-        }
-        if (!world.getWorldBorder().isWithinBounds(pos)) {
-            return false;
-        }
-        BlockState state = world.getBlockState(pos);
-        if (state.is(CoeMachines.STRESS_INJECTOR.get())) {
-            // 已经是注入器：可能是别的会话占着，也可能是上一次没收干净的孤儿（它会自己移除）
-            return false;
-        }
-        return state.canBeReplaced();
-    }
-
-    /**
-     * <b>只放置</b>注入器（不赋能、不驱动）—— 顺序承重见 {@link #start} 的 ②。
-     *
-     * @return 放好的方块实体；{@code false} 情形（放不下 / 方块实体没建起来）返回 {@code null}
-     *         并保证不留半成品
-     */
-    private static @Nullable StressInjectorBlockEntity placeInjector(ServerLevel world, BlockPos socket,
-                                                                     BlockPos source) {
-        BlockState state = CoeMachines.STRESS_INJECTOR.get()
-            .defaultBlockState()
-            .setValue(StressInjectorBlock.FACING, facingTowards(socket, source));
-        if (!world.setBlock(socket, state, Block.UPDATE_ALL)) {
-            return null;
-        }
-        if (!(world.getBlockEntity(socket) instanceof StressInjectorBlockEntity injector)) {
-            // 方块实体没建起来（理论上不会）：立刻把方块撤掉，不留半成品
-            world.removeBlock(socket, false);
-            return null;
-        }
-        return injector;
-    }
-
-    /** 赋能（把容量并入源方块的动力网络）；方块实体已经不存在 ⇒ {@code false}。 */
-    private static boolean energizeInjector(StressInjectorBlockEntity injector, BlockPos source,
-                                            FieldChargeConfigs.Config config) {
-        if (injector.isRemoved()) {
-            return false;
-        }
-        injector.energize(source, config.stressSu(), StressInjectorBlockEntity.HEARTBEAT_TICKS);
-        return true;
-    }
-
-    /** 从 {@code from} 指向 {@code to} 的方向（只可能差一格，所以按轴从大到小取）。 */
-    private static Direction facingTowards(BlockPos from, BlockPos to) {
-        int dx = Integer.signum(to.getX() - from.getX());
-        int dy = Integer.signum(to.getY() - from.getY());
-        int dz = Integer.signum(to.getZ() - from.getZ());
-        if (dx != 0) {
-            return dx > 0 ? Direction.EAST : Direction.WEST;
-        }
-        if (dy != 0) {
-            return dy > 0 ? Direction.UP : Direction.DOWN;
-        }
-        if (dz != 0) {
-            return dz > 0 ? Direction.SOUTH : Direction.NORTH;
-        }
-        return Direction.NORTH;
     }
 
     // ------------------------------------------------------------------
@@ -405,7 +321,7 @@ public final class FieldChargeRuntime {
         if (session == null) {
             return;
         }
-        teardown(player.getServer(), session);
+        StressInjectorSites.teardown(player.getServer(), session);
         CoeCore.LOGGER.info("[临域充力] 收尾：曲柄={} 注入器={} 已扣能量={}",
             session.source, session.injector, session.paid);
     }
@@ -419,7 +335,7 @@ public final class FieldChargeRuntime {
         if (session == null) {
             return;
         }
-        teardown(player.getServer(), session);
+        StressInjectorSites.teardown(player.getServer(), session);
     }
 
     /**
@@ -438,7 +354,7 @@ public final class FieldChargeRuntime {
         for (UUID id : players) {
             Session session = SESSIONS.remove(id);
             if (session != null) {
-                teardown(server, session);
+                StressInjectorSites.teardown(server, session);
             }
         }
         CoeCore.LOGGER.info("[临域充力] 服务器关闭：已收尾 {} 个会话", players.size());
@@ -463,41 +379,6 @@ public final class FieldChargeRuntime {
         CoeCore.LOGGER.warn("[临域充力] 会话心跳超时（{} tick 未续期）⇒ 强制收尾，"
             + "曲柄={} 注入器={}", WATCHDOG_TICKS, session.source, session.injector);
         finish(player);
-    }
-
-    /**
-     * 把世界侧的东西收干净：<b>先移除注入器</b>（顺带把容量从网络里撤掉），<b>再让曲柄静止</b>。
-     *
-     * <p>顺序承重：注入器先撤容量再消失，曲柄再失速 ⇒ 不会出现"曲柄还在转、容量却没了"的一瞬间，
-     * 也不会留下一个没有任何宿主却仍在提供应力的方块。</p>
-     */
-    private static void teardown(@Nullable net.minecraft.server.MinecraftServer server, Session session) {
-        if (server == null) {
-            // 服务器已经在关了：方块会随存档保存，下次载入时注入器（不持久化状态）会自己移除，
-            // 曲柄的 inUse 也会在 10 tick 内自减到 0 ⇒ 不会永远在转。
-            return;
-        }
-        ServerLevel world = server.getLevel(session.dimension);
-        if (world == null) {
-            return;
-        }
-        removeInjector(world, session.injector);
-        session.kind.halt(world, session.source);
-    }
-
-    /** 移除注入器（无掉落；只移除"那一格确实是注入器"的情况）。 */
-    private static void removeInjector(ServerLevel world, BlockPos pos) {
-        if (!world.isLoaded(pos)) {
-            return;
-        }
-        if (!world.getBlockState(pos).is(CoeMachines.STRESS_INJECTOR.get())) {
-            return;
-        }
-        if (world.getBlockEntity(pos) instanceof StressInjectorBlockEntity injector) {
-            injector.deEnergize();
-        }
-        // removeBlock（不是 destroyBlock）⇒ 不产生任何掉落物。
-        world.removeBlock(pos, false);
     }
 
     /** 诊断用：当前有会话的玩家数（只给日志/调试看）。 */
