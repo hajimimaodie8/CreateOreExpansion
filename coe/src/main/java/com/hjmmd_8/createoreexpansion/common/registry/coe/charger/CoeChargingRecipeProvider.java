@@ -13,7 +13,8 @@ import net.minecraft.world.level.ItemLike;
  * <b>工具充能配方的生成动作（第一层侧）</b>（W6-c；原 {@code CewsRecipeProvider}，P3c 从
  * {@code data/RecipeProvider} 拆出）。
  *
- * <p><b>归属为什么是第一层</b>：这 160 条配方（32 个可充能物品 × 5 个充能等级）的
+ * <p><b>归属为什么是第一层</b>：这 195 条配方（39 个可充能物品 × 5 个充能等级；W6-c 时是
+ * 160 = 32 × 5，2026-10-02 的四个回旋镖 +20、2026-10-03 的三张新弓 +15）的
  * {@code type} 是 {@code createoreexpansion:charging}，而充能器那三台机器与
  * {@code CHARGING} 配方类型现在都在 {@code :coe}（Recipe Type 的层归属跟着"谁能加工它"走：
  * 充能器是第一层，所以类型也是）。留一份在 {@code :cews} 就是 P7d 那条禁令的镜像——
