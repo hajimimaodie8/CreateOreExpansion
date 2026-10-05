@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.compat.createaddition.coe.CoeRollingRecipeProvider;
 import com.hjmmd_8.createoreexpansion.content.grinding.recipe.DismantlingRecipe;
 
 import net.minecraft.data.recipes.RecipeOutput;
@@ -77,6 +78,28 @@ import net.neoforged.neoforge.common.conditions.ICondition;
  *       与手写版逐字段一致。详见 {@link CoeMechanicalCraftingRecipeProvider} 的类注释。</li>
  * </ol>
  *
+ * <p><b>配方迁移 批 6：最后转发第三方 CC&amp;A 类型的轧制族，共 8 条</b>
+ * （{@link CoeRollingRecipeProvider}：8 条 {@code createaddition:rolling}，四种宝石
+ * × {锭 → 杆, 板 → 线}），同样追加在末尾、同样用参数里的 output。本族是本轮<b>唯一</b>
+ * 一个配方类型来自<b>第三方模组</b>的族（{@code com.mrh0.createaddition.recipe.rolling.RollingRecipe}），
+ * 因此它的 provider 住 {@code compat/createaddition/coe/} 而不是本包，见该类注释的取舍说明。
+ * 本族三条特有结论：</p>
+ * <ol>
+ *   <li><b>时长</b>：{@code RollingRecipe extends StandardProcessingRecipe<RecipeWrapper>}，
+ *       <b>是</b> {@code ProcessingRecipe} 那条链上的类型，而
+ *       {@code ProcessingRecipe#canSpecifyDuration()} 的默认实现是 {@code false}、
+ *       {@code StandardProcessingRecipe} 与 {@code RollingRecipe} <b>都没有</b>覆写它
+ *       ⇒ 批 1 那条约束<b>适用</b>，结论是<b>"核实为 false ⇒ 绝不许写"</b>
+ *       （与批 5 的"链上根本没有这个方法"是两种不同的判决，别混）。</li>
+ *   <li><b>组件</b>：8 条产物都是普通物品（杆 / 线），手写版 {@code results} 里没有
+ *       {@code components} 键，走 {@code output(ItemLike, int)} 得到的是空
+ *       {@code DataComponentPatch} ⇒ 批 3 那条"{@code output(ItemStack)} 会静默丢组件"的坑
+ *       在本族<b>不适用</b>（不是"绕过了"，是"本来就没有组件"）。</li>
+ *   <li><b>类型面</b>：必须用纯 builder（{@code StandardProcessingRecipe.Builder}），
+ *       <b>不能</b>用 CC&amp;A 自带的 {@code RollingRecipeGen}——后者自带 {@code PackOutput}
+ *       直接写盘，与批 5 被否掉的 {@code MechanicalCraftingRecipeGen} 同款形状。</li>
+ * </ol>
+ *
  * <p><b>为什么转发挂在这里、而不是根工程的 {@code buildRecipes}</b>：层的归属由
  * {@code LayerRecipeRouter} 在<b>调用点</b>绑定，而根工程的调用点已经把
  * {@code CoeRecipeProvider.generate} 收到的 {@code RecipeOutput} 包成了「本层 coe」的
@@ -90,9 +113,9 @@ public final class CoeRecipeProvider {
 
     /**
      * 本层的配方生成入口：拆磨 61 条（调用顺序与拆分前的 {@code buildRecipes} 逐字相同），
-     * 末尾再转发配方迁移五批的十族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
+     * 末尾再转发配方迁移六批的十一族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
      * 锯切 8 + 粉碎 13；批 3：雷击 8 + 嬗变 15；批 4：原版合成 26 = 有序 14 + 无序 12；
-     * 批 5：动力合成 5，见类注释）。
+     * 批 5：动力合成 5；批 6：第三方轧制 8，见类注释）。
      */
     public static void generate(RecipeOutput output) {
         // ========== 原版装备/武器拆磨（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
@@ -177,6 +200,20 @@ public final class CoeRecipeProvider {
         //      showNotification 参数传下去 ⇒ 恰好同时产出 accept_mirrored=false 与
         //      show_notification=false，与 5 条手写版逐字段一致；漏掉就变成"允许镜像"（玩法变化）。
         CoeMechanicalCraftingRecipeProvider.generate(output);
+
+        // ========== 配方迁移 批 6：第三方 CC&A 轧制族 8 条（原手写，现由生成器产出） ==========
+        // 8 条 createaddition:rolling（翡翠/黄玉/蓝宝石/星辉石 × {锭→杆, 板→线}）。同样追加在
+        // 批 1/2/3/4/5 十族之后。本族是本轮唯一使用"第三方模组配方类型"的族，所以 provider 住
+        // compat/createaddition/coe/（第三方耦合集中在 compat/ 子树），见该类注释的取舍说明。
+        // ⚠ "该类型允不允许时长"对本族<b>适用</b>：RollingRecipe 在 ProcessingRecipe 那条继承链上
+        //   （StandardProcessingRecipe<RecipeWrapper>），而 canSpecifyDuration() 的默认实现是 false、
+        //   它没有覆写 ⇒ 结论是"核实为 false ⇒ 绝不许写 duration"（手写版 8 条也没有该键）。
+        //   注意这与批 5 的判决<b>不是同一个</b>：那条是"继承层次里根本没有这个方法"。
+        // ⚠ 组件：8 条产物都是普通物品，手写版没有 components 键，output(ItemLike, int) 给的是空补丁
+        //   ⇒ 批 3 的"output(ItemStack) 静默丢组件"在本族不适用（本来就没有组件）。
+        // ⚠ 目录段 "rolling/" 由 build(output) 从 RollingRecipe.TYPE_INFO 的 id 补齐（第三方），
+        //   该类自己加了一道断言把它钉住，见 CoeRollingRecipeProvider#requireStableTypePath。
+        CoeRollingRecipeProvider.generate(output);
     }
 
     /** 一套材料：5 工具 + 4 装备的拆磨配方 */
