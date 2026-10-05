@@ -1,0 +1,106 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "minecraft:end_stone"
+  },
+  "loops": 4,
+  "results": [
+    {
+      "id": "createoreexpansion:stellarstone_budding_block"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "minecraft:end_stone"
+        },
+        {
+          "item": "createoreexpansion:lucky_dust"
+        }
+      ],
+      "results": [
+        {
+          "id": "minecraft:end_stone"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "minecraft:end_stone"
+        },
+        {
+          "item": "createoreexpansion:stellarstone_ingot"
+        }
+      ],
+      "results": [
+        {
+          "id": "minecraft:end_stone"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "ingredients": [
+        {
+          "item": "minecraft:end_stone"
+        }
+      ],
+      "level": 3,
+      "results": [
+        {
+          "id": "minecraft:end_stone"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "ingredients": [
+        {
+          "item": "minecraft:end_stone"
+        }
+      ],
+      "level": 4,
+      "results": [
+        {
+          "id": "minecraft:end_stone"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "ingredients": [
+        {
+          "item": "minecraft:end_stone"
+        }
+      ],
+      "level": 5,
+      "results": [
+        {
+          "id": "minecraft:end_stone"
+        }
+      ]
+    },
+    {
+      "type": "createaddition:charging",
+      "energy": 1000,
+      "ingredients": [
+        {
+          "item": "minecraft:end_stone"
+        }
+      ],
+      "max_charge_rate": 200,
+      "results": [
+        {
+          "id": "minecraft:end_stone"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "minecraft:end_stone"
+  }
+}

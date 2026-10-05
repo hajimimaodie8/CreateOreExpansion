@@ -1,0 +1,106 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "minecraft:netherrack"
+  },
+  "loops": 4,
+  "results": [
+    {
+      "id": "createoreexpansion:sapphire_budding_block"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "minecraft:netherrack"
+        },
+        {
+          "item": "createoreexpansion:lucky_dust"
+        }
+      ],
+      "results": [
+        {
+          "id": "minecraft:netherrack"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "minecraft:netherrack"
+        },
+        {
+          "item": "createoreexpansion:sapphire_ingot"
+        }
+      ],
+      "results": [
+        {
+          "id": "minecraft:netherrack"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "ingredients": [
+        {
+          "item": "minecraft:netherrack"
+        }
+      ],
+      "level": 2,
+      "results": [
+        {
+          "id": "minecraft:netherrack"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "ingredients": [
+        {
+          "item": "minecraft:netherrack"
+        }
+      ],
+      "level": 3,
+      "results": [
+        {
+          "id": "minecraft:netherrack"
+        }
+      ]
+    },
+    {
+      "type": "createoreexpansion:charging",
+      "ingredients": [
+        {
+          "item": "minecraft:netherrack"
+        }
+      ],
+      "level": 4,
+      "results": [
+        {
+          "id": "minecraft:netherrack"
+        }
+      ]
+    },
+    {
+      "type": "createaddition:charging",
+      "energy": 1000,
+      "ingredients": [
+        {
+          "item": "minecraft:netherrack"
+        }
+      ],
+      "max_charge_rate": 200,
+      "results": [
+        {
+          "id": "minecraft:netherrack"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "minecraft:netherrack"
+  }
+}

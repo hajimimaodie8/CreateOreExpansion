@@ -100,6 +100,28 @@ import net.neoforged.neoforge.common.conditions.ICondition;
  *       直接写盘，与批 5 被否掉的 {@code MechanicalCraftingRecipeGen} 同款形状。</li>
  * </ol>
  *
+ * <p><b>配方迁移 批 7（最后一族）：再转发序列组装族，共 10 条</b>
+ * （{@link CoeSequencedAssemblyRecipeProvider}：9 条 {@code create:sequenced_assembly}
+ * + 1 条同目录下的 {@code createoreexpansion:medallion_binding}），同样追加在末尾、
+ * 同样用参数里的 output。<b>本族是迁移的最后一族——转完这一族，全模组再无手写配方。</b>
+ * 本族四条特有结论（逐条细节见该类的 javadoc）：</p>
+ * <ol>
+ *   <li><b>时长是"每步各自"的，不是每族一个</b>：本族 10 条配方里<b>没有任何一步</b>带时长
+ *       （{@code processingDuration = 0}），所以批 1 那条
+ *       {@code processingDuration &gt; 0 &amp;&amp; !canSpecifyDuration()} 的守卫
+ *       <b>一个分支都进不去</b>；但七个步骤类型的 {@code canSpecifyDuration()} 仍已逐一核实
+ *       （cutting / grinding 是 true，其余五个是默认 false）并写在该类里。</li>
+ *   <li><b>组件</b>：本族没有任何输出带 {@code components}，批 3 那条坑不适用；
+ *       但有一条<b>同形陷阱</b>——{@code addOutput(ItemLike, float)} 把 {@code count} 钉死为 1，
+ *       而 {@code *_big_shard} 的输出是 3 个与 2 个，必须走 {@code addOutput(ItemStack, float)}。</li>
+ *   <li><b>镜像</b>：{@code sequenced_assembly} 不是 {@code ShapedRecipe}，
+ *       没有 {@code accept_mirrored} / {@code show_notification} ⇒ 批 5 那条坑不适用。</li>
+ *   <li><b>类型面</b>：必须用纯 builder {@code SequencedAssemblyRecipeBuilder}（把配方交给
+ *       调用方给的 {@code RecipeOutput}），<b>不能</b>用 Create 的
+ *       {@code SequencedAssemblyRecipeGen}（自带 {@code PackOutput} 直接写盘，
+ *       与批 5/6 被否掉的两个 {@code *RecipeGen} 同款形状）。</li>
+ * </ol>
+ *
  * <p><b>为什么转发挂在这里、而不是根工程的 {@code buildRecipes}</b>：层的归属由
  * {@code LayerRecipeRouter} 在<b>调用点</b>绑定，而根工程的调用点已经把
  * {@code CoeRecipeProvider.generate} 收到的 {@code RecipeOutput} 包成了「本层 coe」的
@@ -113,9 +135,10 @@ public final class CoeRecipeProvider {
 
     /**
      * 本层的配方生成入口：拆磨 61 条（调用顺序与拆分前的 {@code buildRecipes} 逐字相同），
-     * 末尾再转发配方迁移六批的十一族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
+     * 末尾再转发配方迁移七批的十二族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
      * 锯切 8 + 粉碎 13；批 3：雷击 8 + 嬗变 15；批 4：原版合成 26 = 有序 14 + 无序 12；
-     * 批 5：动力合成 5；批 6：第三方轧制 8，见类注释）。
+     * 批 5：动力合成 5；批 6：第三方轧制 8；批 7：序列组装 10 = 序列组装 9 + 凝能佩绑定 1，
+     * 见类注释）。<b>批 7 是本轮最后一族</b>——转完之后本层再无手写配方。
      */
     public static void generate(RecipeOutput output) {
         // ========== 原版装备/武器拆磨（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
@@ -214,6 +237,18 @@ public final class CoeRecipeProvider {
         // ⚠ 目录段 "rolling/" 由 build(output) 从 RollingRecipe.TYPE_INFO 的 id 补齐（第三方），
         //   该类自己加了一道断言把它钉住，见 CoeRollingRecipeProvider#requireStableTypePath。
         CoeRollingRecipeProvider.generate(output);
+
+        // ========== 配方迁移 批 7（最后一族）：序列组装族 10 条（原手写，现由生成器产出） ==========
+        // 9 条 create:sequenced_assembly + 1 条同目录的 createoreexpansion:medallion_binding
+        // （后者不是序列组装，是 CustomRecipe；它 id 里的 "sequenced_assembly/" 是历史误名，
+        //  一个字不许改）。同样追加在批 1/2/3/4/5/6 十一族之后——**本族是最后一族**。
+        // ⚠ 时长在本族是"每个步骤各自"的字段：10 条里没有任何一步带时长（processingDuration=0），
+        //   所以批 1 的 canSpecifyDuration 守卫一个分支都进不去；七个步骤类型的结论仍逐一核实过。
+        // ⚠ 本族特有的同形陷阱：addOutput(ItemLike, float) 把 count 钉死为 1，而 *_big_shard
+        //   的输出是 3 个与 2 个 ⇒ 必须走 addOutput(ItemStack, float)（否则 count 键静默消失）。
+        // ⚠ 必须用纯 builder SequencedAssemblyRecipeBuilder（不能再用 Create 自带的
+        //   SequencedAssemblyRecipeGen：它自带 PackOutput 直接写盘、绕过按调用点绑层 ⇒ F1 红）。
+        CoeSequencedAssemblyRecipeProvider.generate(output);
     }
 
     /** 一套材料：5 工具 + 4 装备的拆磨配方 */
