@@ -7,11 +7,10 @@
   ],
   "results": [
     {
-      "id": "createoreexpansion:thunderite_stress_medallion",
-      "count": 1,
       "components": {
         "createoreexpansion:energy": 10000
-      }
+      },
+      "id": "createoreexpansion:thunderite_stress_medallion"
     }
   ]
 }

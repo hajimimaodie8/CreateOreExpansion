@@ -2,13 +2,12 @@
   "type": "createoreexpansion:transmuting",
   "ingredients": [
     {
-      "item": "createoreexpansion:sapphire_wire"
+      "item": "createoreexpansion:sapphire_sheet"
     }
   ],
   "results": [
     {
-      "id": "createoreexpansion:ruby_wire",
-      "count": 1
+      "id": "createoreexpansion:ruby_sheet"
     }
   ]
 }

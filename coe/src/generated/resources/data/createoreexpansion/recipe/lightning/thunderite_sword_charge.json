@@ -2,16 +2,15 @@
   "type": "createoreexpansion:lightning",
   "ingredients": [
     {
-      "item": "createoreexpansion:thunderite_shovel"
+      "item": "createoreexpansion:thunderite_sword"
     }
   ],
   "results": [
     {
-      "id": "createoreexpansion:thunderite_shovel",
-      "count": 1,
       "components": {
         "createoreexpansion:energy": 5000
-      }
+      },
+      "id": "createoreexpansion:thunderite_sword"
     }
   ]
 }

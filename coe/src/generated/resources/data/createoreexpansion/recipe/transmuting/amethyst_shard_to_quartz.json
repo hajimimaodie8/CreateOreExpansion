@@ -7,13 +7,11 @@
   ],
   "results": [
     {
-      "id": "minecraft:quartz",
-      "count": 1
+      "id": "minecraft:quartz"
     },
     {
-      "id": "minecraft:quartz",
-      "count": 1,
-      "chance": 0.25
+      "chance": 0.25,
+      "id": "minecraft:quartz"
     }
   ]
 }

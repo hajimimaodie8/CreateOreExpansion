@@ -40,6 +40,13 @@ import net.neoforged.neoforge.common.conditions.ICondition;
  * {@code canSpecifyDuration()}：pressing / splashing 是<b>默认 false</b>（不许写时长），
  * cutting / crushing 覆写为 <b>true</b>（必须写，分别 100 与 350/400/450）。</p>
  *
+ * <p><b>配方迁移 批 3：再转发两族 COE 自有类型，共 23 条</b>（{@link CoeLightningRecipeProvider} 8 +
+ * {@link CoeTransmutingRecipeProvider} 15），同样追加在末尾、同样用参数里的 output。
+ * 两者都<b>不</b>覆写 {@code canSpecifyDuration()}（默认 {@code false}）⇒ 一律不许写时长，
+ * 手写版也确实没有 {@code processing_time} 键；雷击那 5 条充能配方的输出带
+ * {@code createoreexpansion:energy} 数据组件（5000 / 凝能佩 10000），走
+ * {@code output(ItemStack)} 才不丢组件。逐族结论写在各自类的 javadoc 里。</p>
+ *
  * <p><b>为什么转发挂在这里、而不是根工程的 {@code buildRecipes}</b>：层的归属由
  * {@code LayerRecipeRouter} 在<b>调用点</b>绑定，而根工程的调用点已经把
  * {@code CoeRecipeProvider.generate} 收到的 {@code RecipeOutput} 包成了「本层 coe」的
@@ -53,8 +60,8 @@ public final class CoeRecipeProvider {
 
     /**
      * 本层的配方生成入口：拆磨 61 条（调用顺序与拆分前的 {@code buildRecipes} 逐字相同），
-     * 末尾再转发配方迁移两批的六族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
-     * 锯切 8 + 粉碎 13，见类注释）。
+     * 末尾再转发配方迁移三批的八族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
+     * 锯切 8 + 粉碎 13；批 3：雷击 8 + 嬗变 15，见类注释）。
      */
     public static void generate(RecipeOutput output) {
         // ========== 原版装备/武器拆磨（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
@@ -100,6 +107,17 @@ public final class CoeRecipeProvider {
         CoeSplashingRecipeProvider.generate(output);
         CoeCuttingRecipeProvider.generate(output);
         CoeCrushingRecipeProvider.generate(output);
+
+        // ========== 配方迁移 批 3：COE 自有类型两族 23 条（原手写，现由生成器产出） ==========
+        // 雷击 8 + 嬗变 15 = 23 条。同样追加在批 1/批 2 六族之后，两族之间也没有顺序契约
+        // （每条一个文件、互不覆盖）。
+        // ⚠ "该类型允不允许时长"逐族判决（批 1 的教训）：这两族的注册类
+        // LightningRecipe / AllTransmutingRecipe 都没有覆写 canSpecifyDuration()
+        // ⇒ 用 ProcessingRecipe 的默认 false ⇒ 绝不能写 duration（手写版也没有该键）。
+        // ⚠ 雷击那 5 条充能配方的输出带 createoreexpansion:energy 数据组件，走
+        // output(ItemStack) 才保留 getComponentsPatch()。逐族结论写在各自类的 javadoc 里。
+        CoeLightningRecipeProvider.generate(output);
+        CoeTransmutingRecipeProvider.generate(output);
     }
 
     /** 一套材料：5 工具 + 4 装备的拆磨配方 */

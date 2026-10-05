@@ -2,14 +2,12 @@
   "type": "createoreexpansion:transmuting",
   "ingredients": [
     {
-      "item": "minecraft:sugar"
+      "item": "createoreexpansion:sapphire_wire"
     }
   ],
   "results": [
     {
-      "id": "minecraft:gunpowder",
-      "count": 1,
-      "chance": 0.5
+      "id": "createoreexpansion:ruby_wire"
     }
   ]
 }
