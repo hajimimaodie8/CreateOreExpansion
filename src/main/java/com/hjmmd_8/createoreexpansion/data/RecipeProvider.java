@@ -39,13 +39,14 @@ import java.util.concurrent.CompletableFuture;
  * mod 执行生成器），所以各层只提供"生成动作"、由本入口按序调用，提供器仍是与拆分前同名同序的那一个。</p>
  *
  * <p><b>顺序</b>：{@code buildRecipes} 里的调用顺序与拆分前逐字相同——
- * COE 拆磨（原版 4 组装备 → 本模组 5 组工具）→ CEWS 工具充能。
+ * COE 拆磨（原版 4 组装备 → 本模组 5 组工具）→ 工具充能（原 {@code CewsRecipeProvider}，
+ * W6-c 改名 {@code CoeChargingRecipeProvider} 并随充能器住进 {@code :coe}）。
  * 配方落盘文件名带条目名（互不覆盖），但调用顺序决定产物的生成顺序，
  * 保持它就能保证 {@code src/generated} 逐条目不变。</p>
  *
  * <p><b>P7d：两层产出的<b>落点</b>分家</b>。datagen 只有一个 {@code --output}（根工程的
  * {@code src/generated/resources}），所以"代码已经分家、产物却全落根"是 P7c §5 实测的发布阻断：
- * 三个模块 jar 的 {@code data/**&#47;recipe/**} 与根的 221 条<b>交集 = 0</b>——单装任一模块 jar
+ * 三个模块 jar 的 {@code data/**&#47;recipe/**} 与根的 367 条<b>交集 = 0</b>——单装任一模块 jar
  * 一条生成配方都没有。修法<b>不是</b>按路径判层（CEWS 的配方路径也是
  * {@code data/createoreexpansion/recipe/...}，与 COE 逐字同类），而是把<b>调用点</b>的层交给
  * {@link LayerRecipeRouter}：本类每个 {@code generate} 各包一层「本层」的 {@code RecipeOutput}
@@ -58,7 +59,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
 
-    /** 把本层配方改道到模块目录的路由器；{@code null} = 无层配置 → 221 条照旧落根（旧行为）。 */
+    /** 把本层配方改道到模块目录的路由器；{@code null} = 无层配置 → 367 条照旧落根（旧行为）。 */
     @Nullable
     private final LayerRecipeRouter router;
 
@@ -93,7 +94,7 @@ public class RecipeProvider extends net.minecraft.data.recipes.RecipeProvider {
     @Override
     protected void buildRecipes(RecipeOutput output) {
         // 层顺序 = 拆分前逐字相同：拆磨（原版 4 组 + 本模组 5 组）→ 工具充能。
-        // W6-c：第二段不再是"另一个模块的东西"——160 条工具充能配方的 type
+        // W6-c：第二段不再是"另一个模块的东西"——195 条工具充能配方的 type
         // （createoreexpansion:charging）随充能器进了 :coe，所以它的层名也从 "cews" 改成 "coe"，
         // 产物从 cews/src/generated 移到 coe/src/generated（配方 id 与文件名一字未改）。
         CoeRecipeProvider.generate(bind(output, "coe"));

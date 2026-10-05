@@ -14,6 +14,7 @@ import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRu
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.AreaAoeItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BloodPactItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.EquipmentSkillStub;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BowExclusiveShotItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BowShootItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.HoeItemSkill;
 import com.hjmmd_8.createoreexpansion.integration.skiller.skill.PlunderItemSkill;
@@ -215,7 +216,10 @@ public final class SkillerIntegration {
 
     /**
      * 注册使用系（右键）技能：{@code hoe}（锄头四优先级）、{@code pierce} / {@code orbit}
-     * （回旋镖穿刺 + 环绕）、弓类两条（{@code bow_curse} / {@code bow_disarm}）。
+     * （回旋镖穿刺 + 环绕）、弓类<b>五条</b>（{@code bow_curse} / {@code bow_disarm} 走
+     * "松手射击"两段式；{@code bow_wave_shift} / {@code bow_astral_barrage} /
+     * {@code bow_thunder_might} 是 2026-10-05 批 7 的三条<b>专属</b>技能，内核 release 只写标记，
+     * 换箭在弓的 {@code shoot} 里读标记之后）。
      *
      * <p>触发点是 {@code content/skill/handler/UseItemHandler}（已经接过新内核）。
      * 弓类两个技能属于"松手射出 → 箭命中"的两段式，不走右键瞬间，另行处理。</p>
@@ -253,6 +257,26 @@ public final class SkillerIntegration {
         event.register(SkillerRegistries.SKILL, skillId("bow_disarm"),
                 () -> new ItemSkillRegistration<BowShootSkillContext>(
                         CoeSkillTypes.USE, BowContextFactory.KEY, BowShootItemSkill.DISARM));
+        // 三条「专属弓技能」（2026-10-05 弓技能批 7；键三默认 G）：
+        //   量波置换（宝石弓）/ 星元波置（星界弓）/ 雷鸣神力（雷鸣弓）。
+        // 与上面那两条 bow_shoot 技能**不同**：它们的执行槽不是"发这一箭"，而是
+        // "在弓上写『这一发要换成我』的标记"（BowExclusiveShotItemSkill#release），真正换箭在
+        // JadeTopazBowItem#shoot 读标记之后 —— 所以这里的注册目的有三个：
+        //   1) skiller:skill 是数据驱动白名单，漏了 ⇒ 物品上这个技能实例反序列化返回 null
+        //      （症状是"看着接好了、其实没绑上"，HUD 也没有第三行）；
+        //   2) 客户端据此为**本把弓的第三个槽位**（slot 2）轮询按键 —— 这就是"专属技能只认
+        //      自己那个键"的机器来源：内核按真实槽位派发，弓侧不再自己猜"按的是哪个键"；
+        //   3) 与 AllSkills 逐条对齐（tools/check-skill-registry-parity.ps1）。
+        // ⚠ 三条都不新增耗能与冷却（代价是那一发箭本身），见 BowExclusiveShotItemSkill 类注释。
+        event.register(SkillerRegistries.SKILL, skillId("bow_wave_shift"),
+                () -> new ItemSkillRegistration<BowShootSkillContext>(
+                        CoeSkillTypes.USE, BowContextFactory.KEY, BowExclusiveShotItemSkill.WAVE_SHIFT));
+        event.register(SkillerRegistries.SKILL, skillId("bow_astral_barrage"),
+                () -> new ItemSkillRegistration<BowShootSkillContext>(
+                        CoeSkillTypes.USE, BowContextFactory.KEY, BowExclusiveShotItemSkill.ASTRAL_BARRAGE));
+        event.register(SkillerRegistries.SKILL, skillId("bow_thunder_might"),
+                () -> new ItemSkillRegistration<BowShootSkillContext>(
+                        CoeSkillTypes.USE, BowContextFactory.KEY, BowExclusiveShotItemSkill.THUNDER_MIGHT));
     }
 
     /**

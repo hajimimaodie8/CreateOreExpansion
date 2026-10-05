@@ -66,9 +66,9 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * 的多资源包是<b>累加合并</b>（{@code listMatchingResourceStacks} + 无 {@code "replace"}），
  * 不是"后者覆盖"——详见 {@code LayerDataProvider} 类注释"四"。</p>
  *
- * <p><b>P7d：221 条生成配方的落点分家</b>。配方<b>不由 Registrate 产出</b>
+ * <p><b>P7d：367 条生成配方的落点分家</b>。配方<b>不由 Registrate 产出</b>
  * （{@code data/RecipeProvider} 才是唯一挂到生成器上的那个配方提供器），所以上面那套路径改写
- * 覆盖不到它们——P7c §5 实测三个模块 jar 的 {@code data/**&#47;recipe/**} 与根的 221 条交集 = 0。
+ * 覆盖不到它们——P7c §5 实测三个模块 jar 的 {@code data/**&#47;recipe/**} 与根的 367 条交集 = 0。
  * 修法是把本类解析出的「层名 → 模块输出根」一并交给 {@code RecipeProvider}，由它在
  * {@code Coe/CewsRecipeProvider} 的调用点显式绑层（{@code LayerRecipeRouter}）。
  * 层不按路径推断：两层的配方路径都形如 {@code data/createoreexpansion/recipe/...}。</p>
@@ -135,10 +135,11 @@ public class CreateOreExpansionDatagen {
             generator.addProvider(true, new LayerLangSplitter(output, coeRoot, cewsRoot, transmutationRoot));
         }
         if (event.includeServer()) {
-            // ── P7d：221 条生成配方按「产出它的 provider」改道到模块目录 ────────────────────
-            // 配方不由 Registrate 产出（它们是本工程自己的 RecipeProvider：COE 拆磨 61 + CEWS 工具充能 160），
+            // ── P7d：367 条生成配方按「产出它的 provider」改道到模块目录 ────────────────────
+            // 配方不由 Registrate 产出（它们是本工程自己的 RecipeProvider：COE 172 条［含拆磨 61］
+            // + 工具充能 195 条，W6-c 起两段都属 :coe），
             // 所以 LayerDataProvider 那套改道覆盖不到它们 —— P7c §5 实测：三个模块 jar 的
-            // data/**/recipe/** 与根的 221 条交集 = 0，单装任一模块 jar 一条生成配方都没有。
+            // data/**/recipe/** 与根的 367 条交集 = 0，单装任一模块 jar 一条生成配方都没有。
             // 这里把「层名 → 模块输出根」交给它，由它按调用点（Coe/CewsRecipeProvider）逐层绑定；
             // 层绝不按路径推断（CEWS 的配方路径也是 data/createoreexpansion/recipe/...）。
             generator.addProvider(true, new RecipeProvider(output, event.getLookupProvider(), layerRoots));

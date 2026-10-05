@@ -343,6 +343,11 @@ public class EnglishLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.hoe", "Tend");
         add("skill.createoreexpansion.bow_curse", "Wither Curse");
         add("skill.createoreexpansion.bow_disarm", "Disarm Storm");
+        // 弓技能批 7（2026-10-05）：三条「专属弓技能」的正式条目名。中文名由作者给死
+        // （量波置换 / 星元波置 / 雷鸣神力），英文是执行会话给的等义译法（报告里贴出）。
+        add("skill.createoreexpansion.bow_wave_shift", "Wave Shift");
+        add("skill.createoreexpansion.bow_astral_barrage", "Astral Barrage");
+        add("skill.createoreexpansion.bow_thunder_might", "Thunder Might");
         // 回旋镖技能（2026-10-02 批 3 穿刺 / 批 4 环绕）。id 与语言键照需求 §六 推断值 #6：
         // pierce / orbit + skill.createoreexpansion.<id>（本仓 snake_case 风格，与 fall_guard 同形）。
         add("skill.createoreexpansion.pierce", "Pierce");

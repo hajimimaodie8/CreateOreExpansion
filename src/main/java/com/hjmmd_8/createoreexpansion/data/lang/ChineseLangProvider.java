@@ -221,6 +221,13 @@ public class ChineseLangProvider extends LanguageProvider {
         add("skill.createoreexpansion.hoe", "耕作");
         add("skill.createoreexpansion.bow_curse", "凋零诅咒");
         add("skill.createoreexpansion.bow_disarm", "缴械风暴");
+        // 弓技能批 7（2026-10-05）：三条「专属弓技能」的正式条目名 —— 作者给死的中文名逐字写死
+        // （量波置换 / 星元波置 / 雷鸣神力），与 AllSkills.BOW_WAVE_SHIFT / BOW_ASTRAL_BARRAGE /
+        // BOW_THUNDER_MIGHT 的 id 一一对应。它们是各自只被一把弓携带的技能（宝石 / 星界 / 雷鸣），
+        // 键位是键三（默认 G）。
+        add("skill.createoreexpansion.bow_wave_shift", "量波置换");
+        add("skill.createoreexpansion.bow_astral_barrage", "星元波置");
+        add("skill.createoreexpansion.bow_thunder_might", "雷鸣神力");
         // 回旋镖技能（2026-10-02 批 3 穿刺 / 批 4 环绕）：需求 §3.5 / §3.6 的技能名。
         add("skill.createoreexpansion.pierce", "穿刺");
         add("skill.createoreexpansion.orbit", "环绕");

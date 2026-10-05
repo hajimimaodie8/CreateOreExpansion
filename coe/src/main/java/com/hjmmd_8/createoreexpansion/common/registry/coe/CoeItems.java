@@ -737,8 +737,12 @@ public final class CoeItems {
     // 数值真源 = BowTier（能量上限 / 耐久上限 / 取色 / 能量条色标 / 技能四项派生量全在那里），
     // 行为逻辑四把共用 JadeTopazBowItem（无箭耗能、拉弓、发射、技能释放逐字相同）。
     //
-    // ⚠ 技能继承（本批）：三把新弓复用翠玉之弓那两条技能 id（bow_curse / bow_disarm），
+    // ⚠ 技能继承（批 2）：三把新弓复用翠玉之弓那两条技能 id（bow_curse / bow_disarm），
     //   起始等级与描边色取自档位表；翠玉之弓那四行（下面 748-751）一个字没动。
+    // ⚠ 批 7：三把新弓各自再挂**一条自己的专属技能**（量波置换 / 星元波置 / 雷鸣神力，键三 G），
+    //   它们**不是**共用 id ⇒ 各有自己的 AllSkills 条目 / 内核白名单 / 语言键。
+    //   翠玉之弓仍是两条（作者红线：那把弓不许动）。
+    //   三条专属技能的起始等级也取档位表（与继承那两条同源），见 inheritedBow(..) 的第三参数。
     //
     // ⚠ 模型/贴图是**手写**的（每把 4 张图 + 4 个模型 JSON，落在
     //   coe/src/main/resources/assets/createoreexpansion/{textures,models}/item/）：
@@ -759,17 +763,23 @@ public final class CoeItems {
      * 宝石之弓：<b>继承翠玉之弓那两条技能</b>（同一对 id），起始等级 2（档位表
      * {@link BowTier#baseSkillLevel()}）、等级上限 3、描边色 {@code SAPPHIRE_BLUE}；
      * 技能冷却走<b>按技能记</b>（两条技能各记各的）。
+     *
+     * <p>批 7 起<b>第三条</b>是它自己的专属技能 {@code bow_wave_shift}（「量波置换」，键三 G）：
+     * 三个参数里最后一个就是这条专属技能 —— 三把弓各传各的，所以"哪把弓有哪条专属技能"
+     * 在注册链上就是一行字面量（关卡 §30a 逐把钉住那张对应表）。</p>
      */
     public static final ItemEntry<JadeTopazBowItem> SAPPHIRE_RUBY_BOW =
-            inheritedBow("sapphire_ruby_bow", BowTier.SAPPHIRE_RUBY);
+            inheritedBow("sapphire_ruby_bow", BowTier.SAPPHIRE_RUBY, AllSkills.BOW_WAVE_SHIFT);
 
-    /** 星界之弓：继承同一对技能，起始等级 3、上限 3、描边色 {@code STELLARSTONE_PINK}；冷却按技能记。 */
+    /** 星界之弓：继承同一对技能，起始等级 3、上限 3、描边色 {@code STELLARSTONE_PINK}；冷却按技能记；
+     * 专属技能 = {@code bow_astral_barrage}（「星元波置」，键三 G）。 */
     public static final ItemEntry<JadeTopazBowItem> ASTRAL_BOW =
-            inheritedBow("astral_bow", BowTier.ASTRAL);
+            inheritedBow("astral_bow", BowTier.ASTRAL, AllSkills.BOW_ASTRAL_BARRAGE);
 
-    /** 雷鸣之弓：继承同一对技能，起始等级 3、上限 3、描边色 {@code THUNDER_PURPLE}；冷却按技能记。 */
+    /** 雷鸣之弓：继承同一对技能，起始等级 3、上限 3、描边色 {@code THUNDER_PURPLE}；冷却按技能记；
+     * 专属技能 = {@code bow_thunder_might}（「雷鸣神力」，键三 G）。 */
     public static final ItemEntry<JadeTopazBowItem> THUNDER_BOW =
-            inheritedBow("thunder_bow", BowTier.THUNDER);
+            inheritedBow("thunder_bow", BowTier.THUNDER, AllSkills.BOW_THUNDER_MIGHT);
 
     /**
      * <b>弓族级注册链</b>（形态照 {@code boomerang(...)} / {@code armor(...)} / {@code grindingWheel(...)}：
@@ -823,7 +833,8 @@ public final class CoeItems {
 
     /**
      * <b>三把继承弓的族级注册链</b>（2026-10-03 弓技能批 1）—— 族级 {@link #bow} 链
-     * <b>+ 继承翠玉之弓那两条技能</b>（同一对 id，不新建技能条目、不加白名单、不加语言键）。
+     * <b>+ 继承翠玉之弓那两条技能</b>（同一对 id，不新建技能条目、不加白名单、不加语言键）
+     * <b>+ 本把弓自己的专属技能</b>（批 7：三条各自独立的 id，写在各自的声明处）。
      *
      * <p>为什么另起一个 helper 而不是把技能塞进 {@link #bow}：翠玉之弓那四行
      * （{@code .addSkills(AllSkills.BOW_CURSE, 1)} / {@code .addSkills(AllSkills.BOW_DISARM, 1)} /
@@ -836,6 +847,13 @@ public final class CoeItems {
      *   <li>{@code .addSkills(AllSkills.BOW_CURSE / BOW_DISARM, tier.baseSkillLevel())} ——
      *       起始等级<b>取自档位表</b>（1/2/3/3，作者给死），链上不写等级字面量
      *       （与回旋镖那条 {@code .addSkills(AllSkills.PIERCE, tier.baseSkillLevel())} 逐字同形）；</li>
+     *   <li>{@code .addSkills(exclusive, tier.baseSkillLevel())} —— <b>批 7 新增的第三条</b>：
+     *       三把弓各传自己的专属技能（{@code AllSkills.BOW_WAVE_SHIFT} /
+     *       {@code BOW_ASTRAL_BARRAGE} / {@code BOW_THUNDER_MIGHT}，见各自声明处）。
+     *       ⚠ 它<b>不是</b>共用 id：每把弓的专属技能只被它自己携带，所以上限写在那条技能自己的
+     *       注册条目上（{@code AllSkills} 的 {@code .maxLevel(3)}）——这与前两条"共用 id、
+     *       上限只能住档位表"是两回事；起始等级照旧取档位表，于是三条技能的起始等级
+     *       与同弓那两条继承技能<b>同源</b>（宝石 2 / 星界 3 / 雷鸣 3，见 §30a 的对应表）；</li>
      *   <li>{@code .skillColor(tier.skillOutlineColor())} —— 描边发光色取<b>同档工具已经在用的那一色</b>
      *       （宝石 {@code SAPPHIRE_BLUE} / 星界 {@code STELLARSTONE_PINK} / 雷鸣 {@code THUNDER_PURPLE}），
      *       弓侧不新造色值；</li>
@@ -848,13 +866,15 @@ public final class CoeItems {
      *       只有翠玉之弓保留它）。</li>
      * </ul>
      *
-     * @param id   注册 id（同时是图标贴图名 {@code item/<id>} 与模型 JSON 的文件名）
-     * @param tier 数值档（见 {@link BowTier}；起始等级与描边色也从这里取）
+     * @param id        注册 id（同时是图标贴图名 {@code item/<id>} 与模型 JSON 的文件名）
+     * @param tier      数值档（见 {@link BowTier}；起始等级与描边色也从这里取）
+     * @param exclusive <b>本把弓的专属技能</b>（批 7；三把弓各一条，写在各自的声明处）
      */
-    private static ItemEntry<JadeTopazBowItem> inheritedBow(String id, BowTier tier) {
+    private static ItemEntry<JadeTopazBowItem> inheritedBow(String id, BowTier tier, DataSkill exclusive) {
         return bow(id, tier)
             .addSkills(AllSkills.BOW_CURSE, tier.baseSkillLevel())
             .addSkills(AllSkills.BOW_DISARM, tier.baseSkillLevel())
+            .addSkills(exclusive, tier.baseSkillLevel())
             .skillColor(tier.skillOutlineColor())
             .build()
             .register();

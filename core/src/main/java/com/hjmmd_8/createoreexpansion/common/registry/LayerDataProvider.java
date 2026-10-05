@@ -145,7 +145,7 @@ import net.neoforged.neoforge.data.event.GatherDataEvent;
  * <p><b>P7d 追加 {@code /recipe/} 到同一豁免</b>：生成配方由<b>另一个</b>提供器写
  * （集成层的 {@code data/RecipeProvider} 经 {@link LayerRecipeRouter} 改道），本模块 Registrate
  * 提供器的 {@code produced} 对它同样永远不权威。不豁免的话第二次 {@code runData} 会把上一轮
- * 刚落盘的 61 / 160 条配方当 stale 删掉——与标签同一个坑（P4f 已踩过一次）。配方的 stale 清理
+ * 刚落盘的 172 / 195 条配方当 stale 删掉——与标签同一个坑（P4f 已踩过一次）。配方的 stale 清理
  * 由写出它们的那个路由器自己负责（{@code LayerRecipeRouter#purgeStale}，范围只限配方子树）。</p>
  *
  * <p>另外：本路由做在 {@code writeIfNeeded} <b>之内</b>而不是做成"后置拷贝 pass"，

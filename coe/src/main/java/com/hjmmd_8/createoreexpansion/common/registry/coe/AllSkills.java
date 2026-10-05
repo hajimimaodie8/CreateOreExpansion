@@ -162,6 +162,35 @@ public final class AllSkills {
     // 缴械风暴 Lv4/Lv5 为预留等级：数值已在 BowDisarmConfigs 定义，
     // 将来启用时 addSkills(BOW_DISARM, 4/5) 即可，无需新增注册。
 
+    // ========== 三条「专属弓技能」正式条目（2026-10-05 弓技能批 7）==========
+    // 它们与上面那对<b>不同</b>：上面那对 id 被四把弓复用（所以等级上限只能住在 BowTier），
+    // 这三条<b>各自只被一把弓携带</b>（宝石 / 星界 / 雷鸣），因此等级上限可以、也应该写在这里。
+    //
+    // 为什么写 maxLevel(3)：作者明令三条技能都是<b>3 级封顶</b>；而三条各自的档位行里
+    // BowTier#maxSkillLevel() 也正好是 3（SAPPHIRE_RUBY / ASTRAL / THUNDER），
+    // 两处同值 ⇒ <b>不冲突</b>（关卡 §30e-6 把这条一致性逐条钉住）。
+    //
+    // 为什么<b>不挂</b> .config(...) / .configsByLevel(...)：三张数值表的类型是
+    // BowWaveShiftConfigs / BowAstralBarrageConfigs / BowThunderMightConfigs（静态表，
+    // 不是 SkillConfig），执行也不在内核里 —— 内核侧 release 只写「这一发要换成 X」的标记，
+    // 真正的发射在 JadeTopazBowItem#shoot 读标记之后交给各自的 launcher
+    // （与 pierce / orbit / 装备技能「登记只为反序列化」同一形状，见 SkillerIntegration）。
+    /** 量波置换（宝石弓专属 · 键三 G） */
+    public static final RegisteredDataSkill BOW_WAVE_SHIFT =
+            skill("bow_wave_shift", SkillType.USE_SKILL)
+                    .maxLevel(3)
+                    .register();
+    /** 星元波置（星界弓专属 · 键三 G） */
+    public static final RegisteredDataSkill BOW_ASTRAL_BARRAGE =
+            skill("bow_astral_barrage", SkillType.USE_SKILL)
+                    .maxLevel(3)
+                    .register();
+    /** 雷鸣神力（雷鸣弓专属 · 键三 G） */
+    public static final RegisteredDataSkill BOW_THUNDER_MIGHT =
+            skill("bow_thunder_might", SkillType.USE_SKILL)
+                    .maxLevel(3)
+                    .register();
+
     // ========== 装备（护甲）技能 —— 数值统一在各自的 *Configs 里改 ==========
     /**
      * 虚衡坠护（翠玉套 · 槽位 1）：被动摔落豁免 + 长按 100% 豁免。

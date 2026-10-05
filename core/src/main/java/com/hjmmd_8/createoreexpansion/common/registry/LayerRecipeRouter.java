@@ -23,13 +23,13 @@ import net.minecraft.data.CachedOutput;
  *
  * <h2>一、为什么配方不能像资产/标签那样交给 {@code LayerDataProvider}</h2>
  * <p>{@code LayerDataProvider} 只包<b>它自己那个 Registrate 提供器</b>的
- * {@code run(CachedOutput)}；而 221 条生成配方<b>根本不由 Registrate 产出</b>——它们出自
+ * {@code run(CachedOutput)}；而 367 条生成配方<b>根本不由 Registrate 产出</b>——它们出自
  * 集成层的 {@code data/RecipeProvider}（它是唯一挂到 {@code DataGenerator} 上的配方提供器，
- * 内部依次调用 {@code CoeRecipeProvider.generate} 61 条拆磨 与
- * {@code CewsRecipeProvider.generate} 160 条工具充能）。那个提供器的 {@code --output} 是
- * 根工程的 {@code src/generated/resources}，所以 221 条全落根：三个模块 jar 里一条都没有
+ * 内部依次调用 {@code CoeRecipeProvider.generate} 172 条［含拆磨 61］与
+ * {@code CoeChargingRecipeProvider.generate} 195 条工具充能）。那个提供器的 {@code --output} 是
+ * 根工程的 {@code src/generated/resources}，所以 367 条全落根：三个模块 jar 里一条都没有
  * （P7c §5 实测：模块 jar 的 {@code data/**&#47;recipe/**} 共 111 条 = 96 手写 + 15 嬗变，
- * 与根的 221 条<b>交集 = 0</b>）。</p>
+ * 与根的 367 条<b>交集 = 0</b>）。</p>
  *
  * <h2>二、层由「哪个 provider 产出」<b>显式</b>决定，绝不按路径判层</h2>
  * <p>红线规定所有层的注册命名空间恒为 {@code createoreexpansion}，所以 CEWS 的配方路径也是
@@ -61,14 +61,14 @@ import net.minecraft.data.CachedOutput;
  *       且只在本轮真的产出过配方时执行（照 {@code LayerDataProvider} 的口径）。</li>
  *   <li><b>{@code LayerDataProvider} 的 purge 必须跳过 {@code /recipe/}</b>（已改）：那些文件由
  *       <b>另一个</b>提供器写进本模块目录，而本模块 Registrate 提供器的 {@code produced} 对它们
- *       永远不权威。不跳的话，第二次 {@code runData} 会把上一轮刚落盘的 61/160 条配方当 stale
+ *       永远不权威。不跳的话，第二次 {@code runData} 会把上一轮刚落盘的 172/195 条配方当 stale
  *       删掉（P4f 给标签踩过同一个坑，见 {@code LayerDataProvider} 类注释"四"）。</li>
  * </ul>
  *
  * <h2>五、未注入时退化成旧行为</h2>
  * <p>取不到 {@code coe.datagen.layerAssetRoots}（例如从别的入口手工造
  * {@code RecipeProvider}）时 {@link #isEnabled} 对每一层都是 {@code false}，
- * {@link #wrap} 原样返回 delegate、{@link #bind} 不记录任何东西 ⇒ 221 条照旧落根工程，
+ * {@link #wrap} 原样返回 delegate、{@link #bind} 不记录任何东西 ⇒ 367 条照旧落根工程，
  * 与 P7d 之前<b>逐字节相同</b>。缺配置只会"没分家"，不会写错地方。</p>
  */
 public final class LayerRecipeRouter {
