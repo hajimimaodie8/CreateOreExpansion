@@ -241,7 +241,12 @@ public final class BowAstralBarrageLauncher {
                                         double dropY, int immobilizeTicks) {
         Vec3 offset = BowAstralBarrageConfigs.discOffset(world.random, radius);
         ItemStack stack = new ItemStack(Items.TIPPED_ARROW);
-        stack.set(DataComponents.POTION_CONTENTS, new PotionContents(Optional.empty(), Optional.empty(),
+        // 粒子/药水色<b>显式钉成嬗乱自己的颜色</b>（{@code MobEffect#getColor()}，不写第二个色值）：
+        // 原版那条"按效果算色"的公式拿 amplifier + 1 当权重（PotionContents#getColorOptional），
+        // 而本清单里的"跳跃削弱"是一个<b>负</b> amplifier ⇒ 权重为负，算出来的色会偏到橙色去。
+        // 作者要的是"带嬗乱效果的药水箭"，落在世界里的拖尾粒子就该是嬗乱那支颜色的。
+        stack.set(DataComponents.POTION_CONTENTS, new PotionContents(Optional.empty(),
+            Optional.of(TransmutationEffects.TRANSMUTATION_DISORDER.value().getColor()),
             List.of(
                 new MobEffectInstance(TransmutationEffects.TRANSMUTATION_DISORDER,
                     BowAstralBarrageConfigs.DISORDER_TICKS, BowAstralBarrageConfigs.DISORDER_AMPLIFIER),
