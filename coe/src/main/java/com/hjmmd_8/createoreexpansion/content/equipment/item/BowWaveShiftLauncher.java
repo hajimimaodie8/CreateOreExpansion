@@ -13,8 +13,15 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * <b>「发一枚（带重力的）攻击波 + 若干枚环绕伴随波」那一段</b> —— 弓技能批 4（宝石弓「量波置换」，
- * 作者 2026-10-05）把这件事做成一个<b>可复用形状</b>；批 5（同日，星界弓「星元波置」）<b>原样复用它</b>
- * （只把星界档在 {@code BowWaveShiftConfigs#appliesTo} 上改成 {@code true}，等级照旧取该弓的档位起始等级）。
+ * 作者 2026-10-05）把这件事做成一个<b>可复用形状</b>；今天<b>只有宝石弓</b>走它。
+ *
+ * <p>⚠ <b>批 5 曾经让星界弓「星元波置」原样复用它（只把星界档在
+ * {@code BowWaveShiftConfigs#appliesTo} 上改成 {@code true}）；作者同日批 6 撤回了那条口径</b>
+ * （"不是发射能量波哈，不是替换哈"），星界弓改走它自己的区域弹幕
+ * （{@code BowAstralBarrageLauncher} / {@code BowAstralBarrageConfigs}）——
+ * 于是本类里那句"星界弓已在批 5 这么做"的历史记录就此失效，<b>现行口径 = 只有宝石弓一档</b>。
+ * 本类唯一被批 6 动过的地方是 {@link #nextBatch()} 的可见性（{@code private} → 包级私有），
+ * 好让弹幕那一侧复用<b>同一个号源</b>；发射路径与要素一个字未动。</p>
  *
  * <h2>形状出处：照抄星芒嬗震的 {@code StarShockWaveLauncher}（不新造第二套）</h2>
  * <p>本类回答的只有一件事：<b>给定世界、施法者与技能等级，往世界里放哪一种波、放在哪、盖哪些要素</b>。
@@ -40,22 +47,26 @@ import net.minecraft.world.phys.Vec3;
  *       <td>一次发射一个<b>负号段</b>批次（见 {@link #nextBatch()} 的说明）</td></tr>
  * </table>
  *
- * <h2>怎么复用它（批 5 的接法已落地）</h2>
+ * <h2>怎么复用它（现行口径：只有宝石弓一档）</h2>
  * <ol>
  *   <li>在 {@code BowWaveShiftConfigs#appliesTo(BowTier)} 里把那一档弓改成 {@code true}
- *       （穷尽 switch，少一个 case 编译不过）—— <b>星界弓已在批 5 这么做</b>；</li>
+ *       （穷尽 switch，少一个 case 编译不过）—— 今天<b>只有宝石弓那一行是 true</b>
+ *       （星界弓批 5 曾为 true，作者批 6 已改回 false）；</li>
  *   <li>在弓物品的发射闸门（{@code JadeTopazBowItem#shoot} 的 {@code fireWaveShiftInsteadOfArrow}）
- *       照旧生效 —— 它已经是"按档位问 {@code appliesTo}、按无箭那一发问标记"的形状，
+ *       照旧生效 —— 它已经是"按档位问 {@code appliesTo}、按技能键问闸门"的形状，
  *       <b>不用改</b>；</li>
  *   <li>等级<b>一律传该弓的档位起始等级</b> {@code this.tier.baseSkillLevel()}（物品侧那一行
- *       从批 4 起就是这个形状，<b>批 5 一个字都没改</b>）⇒ 星界弓（起始等级 3）走本表表尾
- *       {@code LEVEL_3}：主波 γ + <b>2</b> 枚伴随环绕波（作者批 5 裁定："星界弓「星元波置」=
- *       它自己的 0/1/2，不是恒定 2 级"）。⚠ 本类<b>不</b>为谁写死等级：写死 2 会让星界弓少一枚
- *       伴随波，而且与"该弓的档位起始等级"这条唯一口径打架。</li>
+ *       从批 4 起就是这个形状）⇒ 宝石弓（起始等级 2）走 {@code LEVEL_2}：
+ *       主波 β + <b>1</b> 枚伴随环绕波。⚠ 本类<b>不</b>为谁写死等级：写死数字就与
+ *       "该弓的档位起始等级"这条唯一口径打架。</li>
  * </ol>
  * <p>⚠ <b>雷鸣弓「雷鸣神力」不走本类</b>（作者批 5："不是发波，是另一套"）：它是电荷 + 原版闪电，
  * 数值住在 {@code BowThunderMightConfigs}、发射点住在 {@code BowThunderMightLauncher} ——
  * 两者与本类<b>零共用的数值</b>，只有键位 / 闸门 / 耐久那三件事同形。</p>
+ * <p>⚠ <b>星界弓「星元波置」批 6 起也不走本类</b>（作者批 6："不是发射能量波哈，不是替换哈"）：
+ * 它改在锚定圆盘上<b>降下弹幕</b>（药水箭 + 随机魔素波），数值住在
+ * {@code BowAstralBarrageConfigs}、发射点住在 {@code BowAstralBarrageLauncher}
+ * —— 两处唯一与本类有关的是<b>共用号源</b> {@link #nextBatch()}（见它的说明）。</p>
  * <p>⚠ <b>本类不改 {@code WaveAccess}</b>：那两处技能发射点（星芒嬗震、回旋镖环绕）仍按旧口径
  * 直接调实体原生 API，本批的第三处与它们<b>同形</b>（迁移是显式延后的，见
  * {@code check-armor-sets.ps1} 的 {@code wave-api-deferred-consumers}）。</p>
@@ -92,6 +103,10 @@ public final class BowWaveShiftLauncher {
      * </ul>
      * <p>写成 {@code synchronized} 是照既有两处的形状（FML 的 mod 构造/事件派发可并行，
      * 而这个计数器是进程内唯一的顺序源）。</p>
+     *
+     * <p><b>批 6 起它也是星界弓「星元波置」弹幕的批次号源</b>（{@code BowAstralBarrageLauncher}
+     * 与本类同包，直接复用这一个计数器）：两处共用一段只意味着号<b>依然唯一</b>——
+     * 豁免判据本来就只要求"同一次发射内相等"，跨技能本来就不该相等。</p>
      */
     private static int BATCH_SEQUENCE = Integer.MIN_VALUE;
 
@@ -101,8 +116,11 @@ public final class BowWaveShiftLauncher {
      * <p>回绕兜底：递增到非负（= 越界进入星芒嬗震的正号段或撞上 0）时绕回
      * {@link Integer#MIN_VALUE}。只有约 2³¹ 次发射之后才可能发生 —— 那时旧号早已不在世界里，
      * 但要"绝不跨进别人的号段"这条性质在代码里成立，而不是靠"跑不到"。</p>
+     *
+     * <p>包级私有（不是 {@code private}）：同包的 {@code BowAstralBarrageLauncher} 要用<b>同一个</b>
+     * 号源，另起一个计数器就得再造一段号段并论证它与已有三段不相交。</p>
      */
-    private static synchronized int nextBatch() {
+    static synchronized int nextBatch() {
         if (BATCH_SEQUENCE >= 0) {
             BATCH_SEQUENCE = Integer.MIN_VALUE;
         }

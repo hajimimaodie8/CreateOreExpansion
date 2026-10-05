@@ -4,6 +4,7 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveEssenceEffects;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.BowAstralBarrageLauncher;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowHitEffects;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowMetaArrowTrait;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
@@ -35,7 +36,11 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  *         滚动一次基础概率效果（凋零/缓慢/转化紊乱+缴械）；</li>
  *     <li>被动技能「元矢自生」（2026-10-04 批 3）：箭上带着魔素标记
  *         （{@link JadeTopazBowItem#TAG_META_ESSENCE}，只有"无箭射击"会写）时，把它交给魔素层
- *         "对生物"的那一支（{@code WaveEssenceEffects#applyEssenceOnCreatureHit}）。</li>
+ *         "对生物"的那一支（{@code WaveEssenceEffects#applyEssenceOnCreatureHit}）；</li>
+ *     <li><b>星界弓「星元波置」的弹幕箭不许伤害施放者</b>（2026-10-05 批 6）：
+ *         {@code BowAstralBarrageLauncher#isBarrageArrow} 为真且命中者就是箭的主人时，
+ *         <b>取消这一次命中</b>（原版语义：这次命中不处理、箭继续飞）。判据与施加面都在
+ *         那一处，本类不重复写"谁是主人"。</li>
  * </ul>
  *
  * <p><b>基础效果的生效范围（2026-10-03 弓技能批 1 第 5 条）</b>：原先"任何玩家的任何箭"都会滚
@@ -73,6 +78,20 @@ public class JadeTopazBowEventHandler {
 			return;
 		if (!(hit.getEntity() instanceof LivingEntity target))
 			return;
+
+		// 弓技能批 6（星界弓「星元波置」）：弹幕里的药水箭<b>不许伤害施放者</b>。
+		// 为什么需要这一支：本技能的圆盘圆心在施放者<b>前方 4 格</b>、半径可达 <b>4 格</b>
+		// ⇒ 他自己就站在圆盘边上，而原版箭一旦 leftOwner 就<b>可以</b>命中主人
+		// （Projectile#canHitEntity 只排除"同乘"），本模组的波那一侧靠 isOwner 排除、
+		// 箭这一侧没有对应机制 ⇒ 在这里按"排除施放者"的既有约定取消这一次命中。
+		// 取消的语义就是原版 ProjectileImpactEvent 的语义：<b>这次命中不处理，箭继续飞</b>
+		// （箭会照常落下去），所以"主人被自己降下的箭扎一下"在代码里没有入口。
+		// ⚠ 这一支必须在下面的 isFromOurBow 来源闸门<b>之前</b>：弹幕箭不是弓射出来的
+		// （它不带来源标记），放到闸门之后就永远走不到这里。
+		if (BowAstralBarrageLauncher.isBarrageArrow(arrow) && arrow.getOwner() == target) {
+			event.setCanceled(true);
+			return;
+		}
 
 		// 生效范围闸门（2026-10-03 弓技能批 1 第 5 条）：基础概率效果只对"本模组四把弓射出的箭"
 		// 生效。发射点在 JadeTopazBowItem#shootProjectile 无条件写下来源标记（四把弓共用那一个点）；

@@ -6,8 +6,9 @@ import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 /**
- * <b>弓主动技能「量波置换」（宝石弓，作者 2026-10-05 弓技能批 4）与「星元波置」（星界弓，
- * 同日批 5）共用的数值真源</b> ——
+ * <b>弓主动技能「量波置换」（宝石弓，作者 2026-10-05 弓技能批 4）的数值真源</b> ——
+ * （⚠ 批 5 曾把星界弓「星元波置」挂到本表上；作者批 6 撤回了那条口径：星界弓改成
+ * "在锚定区域降下弹幕"，数值改住 {@link BowAstralBarrageConfigs}，本表重新<b>只服务宝石弓</b>。）
  * 与 {@link BowCurseConfigs} / {@link BowDisarmConfigs} 同形，是这条技能<b>唯一</b>写数字的地方：
  * 等级表（伴随波枚数 / 主波波级）、重力量、环绕几何（半径 / 角速度 / 相位）、炮口前推量
  * 全部只在这里写一遍，发射点（{@code BowWaveShiftLauncher}）与物品侧
@@ -85,7 +86,7 @@ public final class BowWaveShiftConfigs {
     /** Lv2 —— 额外 1 枚伴随波（<b>宝石弓走的就是这一档</b>），主波 β。 */
     public static final Level LEVEL_2 = new Level(1, 2);
 
-    /** Lv3 —— 额外 2 枚伴随波，主波 γ（<b>星界弓走的就是这一档</b>：它的档位起始等级 = 3，表尾 = 2 枚）。 */
+    /** Lv3 —— 额外 2 枚伴随波，主波 γ（今天没有哪把弓走这一档：宝石弓的起始等级 = 2 ⇒ 走 Lv2）。 */
     public static final Level LEVEL_3 = new Level(2, 3);
 
     /** 按等级取配置（与其余各条 {@code *Configs} 同名同形；越界先夹到 [1, 3]）。 */
@@ -94,24 +95,26 @@ public final class BowWaveShiftConfigs {
     }
 
     /**
-     * <b>本技能对哪一档弓生效</b>（作者 2026-10-05 批 4："宝石弓专属技能"；同日批 5 加上星界弓）。
+     * <b>本技能对哪一档弓生效</b>（作者 2026-10-05 批 4："宝石弓专属技能"）。
      *
      * <p>刻意写成<b>穷尽 switch（无 default）</b>：将来给枚举加一档弓，这里会<b>编译不过</b>，
-     * 而不是静默地让新弓"什么也不发生"。今天有<b>两档</b>为 {@code true}：</p>
+     * 而不是静默地让新弓"什么也不发生"。今天<b>只有一档</b>为 {@code true}：</p>
      * <ul>
-     *   <li><b>宝石弓</b>（批 4，2026-10-05「量波置换」）—— 与批 4 那一行<b>逐字相同</b>；</li>
-     *   <li><b>星界弓</b>（<b>批 5</b>，2026-10-05「星元波置」）—— 作者批 5 裁定：
-     *       星界弓那条 = <b>它自己的 0/1/2</b>（<b>不是</b>"恒定 2 级"）⇒ 它按键那一发<b>发波</b>，
-     *       并按<b>它自己的技能等级</b>给 0/1/2 枚伴随波。等级口径与宝石弓那条<b>逐字相同</b>：
-     *       物品侧传的就是 {@link BowTier#baseSkillLevel()}（<b>星界 = 3</b>，不是写死的 2），
-     *       而本表只有三档 ⇒ 落在表尾 {@link #LEVEL_3} = <b>主波 γ + 2 枚伴随波</b>
-     *       （Lv1 = 0 枚 / Lv2 = 1 枚 / Lv3 = 2 枚，一行都不改）。</li>
+     *   <li><b>宝石弓</b>（批 4，2026-10-05「量波置换」）—— 与批 4 那一行<b>逐字相同</b>，
+     *       本批一个字节都没动它。</li>
      * </ul>
      *
-     * <p>⚠ 另外两档（翠玉 / 雷鸣）在这里恒为 {@code false}：翠玉之弓那两条技能一个字不许动；
+     * <p>⚠ <b>星界弓在批 5 曾经是第二档 {@code true}，作者 2026-10-05 批 6 把它撤了</b>
+     * （作者原话："<b>不是发射能量波哈，不是替换哈</b>，就是锚定我方前面 4 格的一块圆形区域…"）
+     * ⇒ 星界弓那一档回到 {@code false}：它按键那一发<b>不再走"发射一枚波 + 若干枚环绕伴随波"</b>
+     * 这条路，改走它自己的 {@code BowAstralBarrageConfigs} / {@code BowAstralBarrageLauncher}
+     * （区域弹幕）。这不是"放宽"：批 5 的关卡断言按<b>同一条口径</b>同步改成钉 {@code false}
+     * （见 {@code check-armor-sets.ps1} 的 {@code bow5-astral-tier} 与 {@code bow6-* }）。</p>
+     *
+     * <p>另外两档（翠玉 / 雷鸣）在这里恒为 {@code false}：翠玉之弓那两条技能一个字不许动；
      * 雷鸣弓走的是<b>另一张表</b>（{@code BowThunderMightConfigs#appliesTo} —— 电荷 + 真劈雷，
-     * 与本表零共用的数值，而且它<b>一枚波都不发</b>）。两张表都是穷尽 switch ⇒
-     * 加一档新弓时<b>两处都会编译不过</b>，不会被任何一方静默吞掉。</p>
+     * 与本表零共用的数值，而且它<b>一枚波都不发</b>）。三张表都是穷尽 switch ⇒
+     * 加一档新弓时<b>三处都会编译不过</b>，不会被任何一方静默吞掉。</p>
      */
     public static boolean appliesTo(BowTier tier) {
         if (tier == null) {
@@ -119,7 +122,7 @@ public final class BowWaveShiftConfigs {
         }
         return switch (tier) {
             case SAPPHIRE_RUBY -> true;
-            case ASTRAL -> true;
+            case ASTRAL -> false;
             case JADE_TOPAZ, THUNDER -> false;
         };
     }
