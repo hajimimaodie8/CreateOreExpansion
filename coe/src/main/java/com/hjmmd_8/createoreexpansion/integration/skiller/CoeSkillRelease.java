@@ -90,6 +90,49 @@ public final class CoeSkillRelease {
     }
 
     /**
+     * <b>主手物品的技能键此刻按着没有</b> —— 只读判据（2026-10-05 弓技能批 4 返工引入）。
+     *
+     * <p>它回答的是「这一发是不是<b>按着技能键</b>打出去的」，供<b>携带式技能</b>在触发点自己判定：
+     * 宝石弓的主动技能「量波置换」在松手那一发问它一次，按着就把这一箭换成能量波
+     * （{@code JadeTopazBowItem#waveShiftKeyHeld}）。回旋镖批 3/4 的穿刺 / 环绕是同一族形状
+     * （{@code BoomerangItem#skillKeyHeld}），只是那两处要问"<b>我的第几个</b>技能键"，
+     * 而本方法问的是"<b>我这件物品的任一</b>技能键"。</p>
+     *
+     * <h2>为什么必须走这一条通道</h2>
+     * <ul>
+     *   <li><b>服务端权威</b>：{@link PlayerPressedKeys} 由客户端的按键包写入，专用服务器上同样为真
+     *       —— 而 {@code AllKeys#isPressed()} 是纯客户端对象，专用服务器恒 false
+     *       （本模组换核时修掉的正是那个缺陷）；</li>
+     *   <li><b>与释放路径同一个判据</b>：这里遍历的绑定表与 {@link #release} 遍历的是<b>同一份</b>
+     *       {@link CoeSkillProvider#componentOf}（含同两条守卫：空槽位、装备段槽位），
+     *       所以"释放路径看到按了键"与"本方法说按了键"永远一致，不会出现两套键位真相；</li>
+     *   <li><b>只认主手物品</b>：与 {@link CoeSkillProvider} 的既有口径逐字一致（换核时定了
+     *       "只认主手物品"，四个触发点都按它走），这里刻意不另开一条读副手的路。</li>
+     * </ul>
+     *
+     * @param player 目标玩家
+     * @return 该玩家主手物品的任一技能槽位当前被按住；没有物品 / 没有技能 / 没按键时 {@code false}
+     */
+    public static boolean anyHeldItemSkillKeyPressed(ServerPlayer player) {
+        if (player == null) {
+            return false;
+        }
+        // 与 release(..) 的遍历逐条同源：同一个绑定表、同样跳过空槽位与装备段（本方法的来源是
+        // CoeSkillProvider，本来就只有工具/物品段 0/1/2；装备段那条守卫是形状对齐，不是新语义）。
+        for (Map.Entry<Integer, SkillBundle> binding : CoeSkillProvider.componentOf(player).bindings().entrySet()) {
+            Integer slot = binding.getKey();
+            if (slot == null || !PlayerPressedKeys.isPressed(player, slot)) {
+                continue;
+            }
+            if (ArmorSkillProvider.isEquipmentSlot(slot)) {
+                continue;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * 便捷重载：直接把一个 NeoForge 事件包成环境。
      *
      * <p>注意事件类型要与技能自己的 {@code SkillContextFactory} 对得上；对不上时
