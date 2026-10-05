@@ -89,22 +89,35 @@ import net.minecraft.world.level.ItemLike;
  *       {@code "tag"} 逐字相同；<b>不换成具体物品</b>（那会缩窄匹配面 = 行为变化）。</li>
  * </ul>
  *
- * <h2>⚠ 两处"手写版就是这样的"——刻意保留，不是笔误</h2>
- * <ol>
- *   <li><b>{@code ruby_block_from_compacting}</b>：文件名说红宝石块，但手写版里的
- *       {@code key} 是 {@code c:ingots/jade}、{@code result} 是
- *       {@code createoreexpansion:jade_block}——<b>与 {@code jade_block_from_compacting} 完全重复</b>。
- *       这几乎肯定是一处笔误，但本批的红线是<b>行为零变化</b>，所以
- *       {@link #generate} 里<b>逐字照抄</b>它、并把这条重复如实登记在报告中，交给作者决定；
- *       <b>绝不在这里"顺手修好"</b>（改了就是内容变化，且会让"26 条语义相等"的证明失去意义）。</li>
- *   <li><b>行尾符 / 排版</b>：工作区里这 26 条手写文件曾以 <b>CRLF</b> 落盘，但仓库内容不是 CRLF
- *       ——{@code .gitattributes} 有 {@code *.json text eol=lf}，git blob 里它们本来就是 LF，
- *       而生成器产出的 JSON 也恒为 LF（{@code DataProvider} 的固定格式）。所以本批的<b>字节层面
- *       差异极小</b>：实测 26 条里 <b>25 条与迁移前的 git blob 逐字节相同</b>；唯一不同的一条是
- *       {@code thunderite_ingot.json}——它的 8 个原料在手写版里是<b>压缩成一行</b>（{@code {"item":"..."}}），
- *       生成器则逐个对象换行展开，属于<b>无意义的 JSON 空白差异</b>（同一棵解析树）。
- *       这条差异在等价证明里<b>单独成类</b>列出（不混进"键序"/"省略默认值"两类）。</li>
- * </ol>
+ * <h2>⚠ 一处手写版的笔误——批 4 逐字照抄，批 7 按作者裁定修好</h2>
+ * <p><b>{@code ruby_block_from_compacting}</b>：文件名说红宝石块，但手写版里的
+ * {@code key} 是 {@code c:ingots/jade}、{@code result} 是
+ * {@code createoreexpansion:jade_block}——<b>与 {@code jade_block_from_compacting} 完全重复</b>。
+ * 批 4 的红线是<b>行为零变化</b>，所以当时逐字照抄、把这条重复如实登记在报告里交给作者决定。</p>
+ * <p><b>批 7 作者已裁定：这是笔误，改成"用红宝石锭合成红宝石块"</b>。所以本类现在的
+ * {@link #generate} 里那一条是 {@code "ingots/ruby"} + {@code CoeBlocks.RUBY_BLOCK}，
+ * <b>不再是</b>翡翠那一对。两条前置都已核实存在后才改的：</p>
+ * <ul>
+ *   <li>{@code c:ingots/ruby} —— {@code coe/src/generated/resources/data/c/tags/item/ingots/ruby.json}
+ *       的 values 是 {@code createoreexpansion:ruby_ingot}；</li>
+ *   <li>{@code createoreexpansion:ruby_block} —— {@code CoeBlocks.RUBY_BLOCK}
+ *       （{@code .block("ruby_block", Block::new)}，注册名逐字即 {@code ruby_block}）。</li>
+ * </ul>
+ * <p>改完与下面那条 {@code ruby_ingot_from_decompacting}（{@code c:storage_blocks/ruby} → 9 个红宝石锭）
+ * 方向对称：压块用 {@code c:ingots/ruby}，解块用 {@code c:storage_blocks/ruby}，
+ * 与翡翠/蓝宝石/星辉石/黄玉那几对的写法完全同形。</p>
+ * <p><b>⚠ 这是本批（也是整轮迁移）唯一的一处"内容变化"，不是零变化迁移</b>：
+ * 它<b>不是</b>新增配方（文件数不变，F2 的 26 条里它照旧算一条），改的是那条配方的
+ * {@code key} 与 {@code result} 两个字段——数据包层面 = 那条配方的<b>内容变了</b>。
+ * 它在"新旧对照表"里单独成类列出，理由与取证见批 7 的报告。</p>
+ * <h2>⚠ 行尾符 / 排版</h2>
+ * <p>工作区里这 26 条手写文件曾以 <b>CRLF</b> 落盘，但仓库内容不是 CRLF
+ * ——{@code .gitattributes} 有 {@code *.json text eol=lf}，git blob 里它们本来就是 LF，
+ * 而生成器产出的 JSON 也恒为 LF（{@code DataProvider} 的固定格式）。所以批 4 的<b>字节层面
+ * 差异极小</b>：实测 26 条里 <b>25 条与迁移前的 git blob 逐字节相同</b>；唯一不同的一条是
+ * {@code thunderite_ingot.json}——它的 8 个原料在手写版里是<b>压缩成一行</b>（{@code {"item":"..."}}），
+ * 生成器则逐个对象换行展开，属于<b>无意义的 JSON 空白差异</b>（同一棵解析树）。
+ * 这条差异在批 4 的等价证明里<b>单独成类</b>列出（不混进"键序"/"省略默认值"两类）。</p>
  *
  * <p><b>调用方</b>：{@link CoeRecipeProvider#generate} 的末尾（批 1/2/3 八族之后）。理由同上。</p>
  */
@@ -130,8 +143,10 @@ public final class CoeCraftingRecipeProvider {
         compact(output, "raw_jade_block_from_compacting", "raw_materials/jade", CoeBlocks.RAW_JADE_BLOCK.get());
         compact(output, "raw_sapphire_block_from_compacting", "raw_materials/sapphire", CoeBlocks.RAW_SAPPHIRE_BLOCK.get());
         compact(output, "raw_topaz_block_from_compacting", "raw_materials/topaz", CoeBlocks.RAW_TOPAZ_BLOCK.get());
-        // ⚠ 手写版就是这样（键与产物都是翡翠，与上面 jade_block_from_compacting 重复）：逐字照抄，见类注释。
-        compact(output, "ruby_block_from_compacting", "ingots/jade", CoeBlocks.JADE_BLOCK.get());
+        // 批 7 按作者裁定修掉的笔误：本条原为 "ingots/jade" + JADE_BLOCK —— 文件名叫 ruby、
+        // 内容却与上面 jade_block_from_compacting 逐字重复（产翡翠块）。现改为
+        // "用红宝石锭合成红宝石块"。见类注释"一处已修的笔误"。
+        compact(output, "ruby_block_from_compacting", "ingots/ruby", CoeBlocks.RUBY_BLOCK.get());
         compact(output, "sanctstone_block_from_compacting", "ingots/sanctstone", CoeBlocks.SANCTSTONE_BLOCK.get());
         compact(output, "sapphire_block_from_compacting", "ingots/sapphire", CoeBlocks.SAPPHIRE_BLOCK.get());
         compact(output, "sapphire_ingot_from_compacting", "nuggets/sapphire", CoeItems.SAPPHIRE_INGOT.get());

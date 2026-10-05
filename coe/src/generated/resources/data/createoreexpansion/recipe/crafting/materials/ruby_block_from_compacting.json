@@ -3,7 +3,7 @@
   "category": "misc",
   "key": {
     "#": {
-      "tag": "c:ingots/jade"
+      "tag": "c:ingots/ruby"
     }
   },
   "pattern": [
@@ -13,6 +13,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "createoreexpansion:jade_block"
+    "id": "createoreexpansion:ruby_block"
   }
 }
