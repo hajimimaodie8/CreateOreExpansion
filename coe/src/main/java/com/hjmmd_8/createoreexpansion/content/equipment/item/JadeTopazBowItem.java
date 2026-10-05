@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowThunderMightConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowWaveShiftConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
@@ -90,7 +91,9 @@ import net.neoforged.neoforge.event.EventHooks;
  * 其他的都是主动技能哈，都会将射出去的箭换成这个东西"</i>。</p>
  * <ul>
  *   <li><b>只有宝石弓这一档</b>（{@link BowWaveShiftConfigs#appliesTo(BowTier)}，穷尽 switch）
- *       —— 翠玉 / 星界 / 雷鸣三把弓的发射路径<b>一个字节都不变</b>；</li>
+ *       —— 翠玉 / 星界 / 雷鸣三把弓的发射路径<b>一个字节都不变</b>；
+ *       ⚠ <b>批 5 已把星界那一档加进来</b>（作者同日裁定），这句话的现行版本见下面批 5 那一段：
+ *       本条记录的"批 4 当时只放宝石弓"仍然成立，只是不再是今天的全集；</li>
  *   <li><b>主动技能的判据 = 这一发按着技能键</b>（{@link #waveShiftKeyHeld} →
  *       {@code CoeSkillRelease#anyHeldItemSkillKeyPressed}，服务端权威、与技能释放路径<b>同一个
  *       来源</b>）：按了键的那一发<b>无论手里有没有箭</b>都换成波；<b>没按键的普通射击
@@ -114,6 +117,25 @@ import net.neoforged.neoforge.event.EventHooks;
  *       {@code src/main/java/.../data/lang/*}（本次返工的硬边界之外，且要跑 {@code runData}）
  *       ⇒ 本次刻意只走"既有形状"，见返工报告；</li>
  *   <li>数值（等级表 / 重力量 / 环绕几何）全部住在 {@link BowWaveShiftConfigs}。</li>
+ * </ul>
+ *
+ * <p><b>2026-10-05 弓技能批 5（星界弓「星元波置」+ 雷鸣弓「雷鸣神力」；同日，两条一起落地）</b>：</p>
+ * <ul>
+ *   <li><b>星界弓「星元波置」= 批 4 那条技能原样多一档</b>（作者裁定："是它自己的 0/1/2，
+ *       <b>不是</b>恒定 2 级"）：本类<b>一个字都没改</b> —— 变化的只有
+ *       {@link BowWaveShiftConfigs#appliesTo(BowTier)} 里多了一行 {@code case ASTRAL -> true;}，
+ *       而发射等级本来就是 {@code this.tier.baseSkillLevel()}（星界 = 3）= 那个方括号里"它自己的等级"
+ *       ⇒ 星界按键那一发 = 主波 γ + <b>2</b> 枚伴随波（表尾那一行，表只有三档）。</li>
+ *   <li><b>雷鸣弓「雷鸣神力」是另一套</b>（作者："不是发波"）：新增
+ *       {@link #fireThunderMightInsteadOfArrow} —— <b>同一个</b>键位读数（同一个
+ *       {@link #waveShiftKeyHeld}）、同一处耐久记账、同一条"整支箭都不造"的路，换出来的却是
+ *       <b>以命中点为中心的水平方形内每只生物随机染一笔电荷 + 按等级概率劈一道原版闪电</b>
+ *       （落点由射线现算，<b>绝不取施放者坐标</b>；数值全住在
+ *       {@link BowThunderMightConfigs}，实际发射在 {@code BowThunderMightLauncher}）。</li>
+ *   <li><b>三条技能一个都没变成正式技能条目</b>：零新 id、零内核白名单、零语言键、不跑
+ *       {@code runData} —— 键位仍走同一条 {@code CoeSkillRelease#anyHeldItemSkillKeyPressed}。</li>
+ *   <li>⚠ <b>不按键的普通射击（有箭 / 无箭）仍然逐字走 {@code super.shoot}</b>：两条闸门都不通过时
+ *       本类的 {@link #shoot} 与批 4 一模一样地落回原版路径。</li>
  * </ul>
  */
 public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
@@ -373,8 +395,15 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	}
 
 	/**
-	 * <b>这一发是不是按着技能键打出去的</b> —— 主动技能「量波置换」<b>唯一</b>的键位判据
+	 * <b>这一发是不是按着技能键打出去的</b> —— 本模组三把"主动"弓技能<b>唯一</b>的键位判据
 	 * （2026-10-05 弓技能批 4 返工；作者："其他的都是主动技能哈，都会将射出去的箭换成这个东西"）。
+	 *
+	 * <p>⚠ <b>批 5 起它是两条 / 三档弓共用的读数</b>：宝石弓「量波置换」与星界弓「星元波置」
+	 * （{@link #fireWaveShiftInsteadOfArrow}）和雷鸣弓「雷鸣神力」
+	 * （{@link #fireThunderMightInsteadOfArrow}）读的<b>都是这一个方法</b>——
+	 * 刻意<b>不</b>在第二处再调一次 {@code CoeSkillRelease}，否则"一个键位来源"就变成两处调用，
+	 * 两条技能的按键口径也会各自漂移（批次关卡数着 {@code anyHeldItemSkillKeyPressed} 的出现次数）。
+	 * 方法名保留批 4 的字面量（它是"波置换的键位判据"那段历史的落点）。</p>
 	 *
 	 * <p><b>走既有的键位通道，不自己造一套</b>：{@code CoeSkillRelease#anyHeldItemSkillKeyPressed}
 	 * ← {@code PlayerPressedKeys#isPressed(ServerPlayer, slot)} —— 与技能释放路径
@@ -443,6 +472,11 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		if (fireWaveShiftInsteadOfArrow(level, shooter, hand, weapon)) {
 			return;
 		}
+		// 批 5：雷鸣弓「雷鸣神力」（另一套：电荷 + 按概率的真雷）。两把弓各问各的档位表，互不相干
+		// （宝石 / 星界在那张表里是 false，雷鸣在这张表里是 false 的那一边）。
+		if (fireThunderMightInsteadOfArrow(level, shooter, hand, weapon)) {
+			return;
+		}
 		super.shoot(level, shooter, hand, weapon, projectileItems, velocity, inaccuracy, isCrit, target);
 	}
 
@@ -465,6 +499,50 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		BowWaveShiftLauncher.fire(level, shooter, this.tier.baseSkillLevel());
 		// 耐久与原版同一笔账（{@code ProjectileWeaponItem#shoot} 射出一发后扣 1 点）：
 		// 少了这一行，这条技能会静默变成"宝石弓的按键射击不再磨损弓"（白赚耐久）。
+		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
+		return true;
+	}
+
+	/**
+	 * <b>雷鸣弓「雷鸣神力」的发射闸门</b>（2026-10-05 弓技能批 5；作者："不是发波，是另一套"）。
+	 *
+	 * <p>形状与 {@link #fireWaveShiftInsteadOfArrow} <b>逐条同构</b>（同一个 {@code shoot} 覆写里调用、
+	 * 同样的两个闸门、同样扣一笔耐久、同样"整支箭都不造"），差别只在"换成了什么"与数值表：</p>
+	 * <ol>
+	 *   <li><b>档位闸门</b>：{@link BowThunderMightConfigs#appliesTo(BowTier)} —— 只有雷鸣弓这一档
+	 *       （宝石 / 星界走另一张表的另一条路，翠玉两处都是 false ⇒ 它那两条技能与普通射击一字未动）；</li>
+	 *   <li><b>技能键闸门</b>：<b>同一个</b>服务端权威键位读数（{@link #waveShiftKeyHeld}，
+	 *       它问的是 {@code CoeSkillRelease#anyHeldItemSkillKeyPressed} —— 全模组唯一的键位通道，
+	 *       与技能释放路径 / 回旋镖 / 装备技能读的是同一个入口）。⚠ 这里刻意<b>不</b>再写一次
+	 *       {@code CoeSkillRelease.…}：那会让"一个键位来源"变成两处调用（批 4 的关卡数着这个数）。</li>
+	 * </ol>
+	 *
+	 * <p><b>等级</b>：与另外两条弓技能<b>同一处真源</b> —— {@link BowTier#baseSkillLevel()}
+	 * （雷鸣 = 3）⇒ 范围 4×4、真雷 60%。刻意<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}
+	 * （那会读附魔）：作者给的"该弓的档位"是一个按弓固定的量，三条技能都是这个口径。</p>
+	 *
+	 * <p><b>耐久</b>：与原版 {@code ProjectileWeaponItem#shoot} 同一笔账 —— 少了这一行，
+	 * 这条技能会静默变成"雷鸣弓按着技能键射击不再磨损弓"（白赚耐久）。</p>
+	 *
+	 * <p>⚠ <b>本方法一个数字都不写</b>（连等级都不是字面量）：范围边长 / 真雷概率 / 射程 /
+	 * 垂直容差全部按名取自 {@link BowThunderMightConfigs}，实际发射在
+	 * {@code BowThunderMightLauncher#strike}。本方法只回答"这一发该不该换成雷鸣神力"。</p>
+	 *
+	 * @return {@code true} = 这一发已经由雷鸣神力接管（调用方<b>不得</b>再走 {@code super.shoot}）
+	 */
+	private boolean fireThunderMightInsteadOfArrow(ServerLevel level, LivingEntity shooter, InteractionHand hand,
+												   ItemStack weapon) {
+		if (!BowThunderMightConfigs.appliesTo(this.tier)) {
+			return false;
+		}
+		// 与「量波置换」同一个键位读数（唯一的键位来源）。写成局部量是为了让"按着键"这件事
+		// 只在一处判定（下面那一行是它唯一的消费点）。
+		boolean keyHeld = waveShiftKeyHeld(shooter);
+		if (!keyHeld) {
+			return false;
+		}
+		// 等级 = 该弓的档位起始等级（雷鸣 3 ⇒ 4×4 / 60%），与「元矢自生」「量波置换」同一处真源。
+		BowThunderMightLauncher.strike(level, shooter, this.tier.baseSkillLevel());
 		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
 		return true;
 	}

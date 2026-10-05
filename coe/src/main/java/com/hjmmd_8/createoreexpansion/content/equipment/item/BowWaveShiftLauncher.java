@@ -13,7 +13,8 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * <b>「发一枚（带重力的）攻击波 + 若干枚环绕伴随波」那一段</b> —— 弓技能批 4（宝石弓「量波置换」，
- * 作者 2026-10-05）把这件事做成一个<b>可复用形状</b>，供后面的星界弓「星元波置」与雷鸣弓直接调用。
+ * 作者 2026-10-05）把这件事做成一个<b>可复用形状</b>；批 5（同日，星界弓「星元波置」）<b>原样复用它</b>
+ * （只把星界档在 {@code BowWaveShiftConfigs#appliesTo} 上改成 {@code true}，等级照旧取该弓的档位起始等级）。
  *
  * <h2>形状出处：照抄星芒嬗震的 {@code StarShockWaveLauncher}（不新造第二套）</h2>
  * <p>本类回答的只有一件事：<b>给定世界、施法者与技能等级，往世界里放哪一种波、放在哪、盖哪些要素</b>。
@@ -39,17 +40,22 @@ import net.minecraft.world.phys.Vec3;
  *       <td>一次发射一个<b>负号段</b>批次（见 {@link #nextBatch()} 的说明）</td></tr>
  * </table>
  *
- * <h2>怎么复用它（后续两批的接法）</h2>
+ * <h2>怎么复用它（批 5 的接法已落地）</h2>
  * <ol>
  *   <li>在 {@code BowWaveShiftConfigs#appliesTo(BowTier)} 里把那一档弓改成 {@code true}
- *       （穷尽 switch，少一个 case 编译不过）；</li>
+ *       （穷尽 switch，少一个 case 编译不过）—— <b>星界弓已在批 5 这么做</b>；</li>
  *   <li>在弓物品的发射闸门（{@code JadeTopazBowItem#shoot} 的 {@code fireWaveShiftInsteadOfArrow}）
  *       照旧生效 —— 它已经是"按档位问 {@code appliesTo}、按无箭那一发问标记"的形状，
  *       <b>不用改</b>；</li>
- *   <li>等级传什么由那一批的作者口径决定：星界弓「星元波置」= 作者原话"等同量波置换 <b>2 级</b>"
- *       ⇒ 调 {@link #fire(ServerLevel, LivingEntity, int)} 时传 <b>2</b>（不是该弓的档位起始等级 3），
- *       于是伴随波 1 枚 —— 与本类今天在宝石弓上走的分支逐字相同。</li>
+ *   <li>等级<b>一律传该弓的档位起始等级</b> {@code this.tier.baseSkillLevel()}（物品侧那一行
+ *       从批 4 起就是这个形状，<b>批 5 一个字都没改</b>）⇒ 星界弓（起始等级 3）走本表表尾
+ *       {@code LEVEL_3}：主波 γ + <b>2</b> 枚伴随环绕波（作者批 5 裁定："星界弓「星元波置」=
+ *       它自己的 0/1/2，不是恒定 2 级"）。⚠ 本类<b>不</b>为谁写死等级：写死 2 会让星界弓少一枚
+ *       伴随波，而且与"该弓的档位起始等级"这条唯一口径打架。</li>
  * </ol>
+ * <p>⚠ <b>雷鸣弓「雷鸣神力」不走本类</b>（作者批 5："不是发波，是另一套"）：它是电荷 + 原版闪电，
+ * 数值住在 {@code BowThunderMightConfigs}、发射点住在 {@code BowThunderMightLauncher} ——
+ * 两者与本类<b>零共用的数值</b>，只有键位 / 闸门 / 耐久那三件事同形。</p>
  * <p>⚠ <b>本类不改 {@code WaveAccess}</b>：那两处技能发射点（星芒嬗震、回旋镖环绕）仍按旧口径
  * 直接调实体原生 API，本批的第三处与它们<b>同形</b>（迁移是显式延后的，见
  * {@code check-armor-sets.ps1} 的 {@code wave-api-deferred-consumers}）。</p>

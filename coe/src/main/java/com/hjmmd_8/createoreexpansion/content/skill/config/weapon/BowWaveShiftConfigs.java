@@ -6,8 +6,9 @@ import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 /**
- * <b>弓被动「量波置换」（宝石弓专属，作者 2026-10-05 弓技能批 4）的数值真源</b> ——
- * 与 {@link BowCurseConfigs} / {@link BowDisarmConfigs} 同形，是这条被动<b>唯一</b>写数字的地方：
+ * <b>弓主动技能「量波置换」（宝石弓，作者 2026-10-05 弓技能批 4）与「星元波置」（星界弓，
+ * 同日批 5）共用的数值真源</b> ——
+ * 与 {@link BowCurseConfigs} / {@link BowDisarmConfigs} 同形，是这条技能<b>唯一</b>写数字的地方：
  * 等级表（伴随波枚数 / 主波波级）、重力量、环绕几何（半径 / 角速度 / 相位）、炮口前推量
  * 全部只在这里写一遍，发射点（{@code BowWaveShiftLauncher}）与物品侧
  * （{@code JadeTopazBowItem}）<b>一个数字都不写</b>。
@@ -22,7 +23,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
  *
  * <h2>⛔ 它不定义"波"，只定义"发几枚、多重、怎么绕"</h2>
  * <p>作者 2026-10-02 的硬口径（见 {@code StarShockRuntime} 类注释）是"能量波是由好几个要素定义的，
- * <b>不要再凭空造出一个新的能量波</b>"⇒ 本被动发的就是既有的 {@code ChargerWaveEntity}
+ * <b>不要再凭空造出一个新的能量波</b>"⇒ 本技能发的就是既有的 {@code ChargerWaveEntity}
  * （实体类型 {@code createoreexpansion:charger_wave}，与三台应力充能器/差波器<b>同一个类型、
  * 同一个渲染器</b>），靠既有要素把它发出去：</p>
  * <ul>
@@ -38,11 +39,11 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
  *       否则出生瞬间就互相湮灭（见 {@code AbstractChargerWaveEntity#sameFiringBatch}）。</li>
  * </ul>
  *
- * <h2>耗能与冷却：<b>本被动都不新增</b></h2>
+ * <h2>耗能与冷却：<b>本技能都不新增</b></h2>
  * <p>它挂在既有的"<b>无箭射击</b>"那条路上（{@code JadeTopazBowItem#prepareProjectiles} 的
  * "无箭但能量够 ⇒ 耗 {@code NO_ARROW_COST} 造一支无形魔法箭"分支）⇒ 耗能就是那条路本来就付的
  * {@code JadeTopazBowItem.NO_ARROW_COST}（<b>已有真源，本类不复制那个数</b>），
- * 冷却 <b>无</b>（作者没给；它是一条被动，和「元矢自生」同形：没有技能条目、没有键位、没有冷却）。</p>
+ * 冷却 <b>无</b>（作者没给；它是一条主动技能，只是没有正式技能条目，与「元矢自生」那条被动同形地"无冷却"：没有内核条目、没有独立键位）。</p>
  *
  * <h2>重力为什么不是"原版箭那一个 0.05 格/tick²"</h2>
  * <p>原版箭的重力确实是 {@code 0.05 格/tick²}（{@code AbstractArrow#getDefaultGravity}），
@@ -84,7 +85,7 @@ public final class BowWaveShiftConfigs {
     /** Lv2 —— 额外 1 枚伴随波（<b>宝石弓走的就是这一档</b>），主波 β。 */
     public static final Level LEVEL_2 = new Level(1, 2);
 
-    /** Lv3 —— 额外 2 枚伴随波，主波 γ。 */
+    /** Lv3 —— 额外 2 枚伴随波，主波 γ（<b>星界弓走的就是这一档</b>：它的档位起始等级 = 3，表尾 = 2 枚）。 */
     public static final Level LEVEL_3 = new Level(2, 3);
 
     /** 按等级取配置（与其余各条 {@code *Configs} 同名同形；越界先夹到 [1, 3]）。 */
@@ -93,16 +94,24 @@ public final class BowWaveShiftConfigs {
     }
 
     /**
-     * <b>本被动对哪一档弓生效</b>（作者 2026-10-05："宝石弓专属技能"）。
+     * <b>本技能对哪一档弓生效</b>（作者 2026-10-05 批 4："宝石弓专属技能"；同日批 5 加上星界弓）。
      *
      * <p>刻意写成<b>穷尽 switch（无 default）</b>：将来给枚举加一档弓，这里会<b>编译不过</b>，
-     * 而不是静默地让新弓"什么也不发生"。今天恰好只有宝石弓这一档为 {@code true}
-     * ⇒ 翠玉 / 星界 / 雷鸣三把弓的射击（含它们各自继承的两条技能）<b>一个字节都不变</b>。</p>
+     * 而不是静默地让新弓"什么也不发生"。今天有<b>两档</b>为 {@code true}：</p>
+     * <ul>
+     *   <li><b>宝石弓</b>（批 4，2026-10-05「量波置换」）—— 与批 4 那一行<b>逐字相同</b>；</li>
+     *   <li><b>星界弓</b>（<b>批 5</b>，2026-10-05「星元波置」）—— 作者批 5 裁定：
+     *       星界弓那条 = <b>它自己的 0/1/2</b>（<b>不是</b>"恒定 2 级"）⇒ 它按键那一发<b>发波</b>，
+     *       并按<b>它自己的技能等级</b>给 0/1/2 枚伴随波。等级口径与宝石弓那条<b>逐字相同</b>：
+     *       物品侧传的就是 {@link BowTier#baseSkillLevel()}（<b>星界 = 3</b>，不是写死的 2），
+     *       而本表只有三档 ⇒ 落在表尾 {@link #LEVEL_3} = <b>主波 γ + 2 枚伴随波</b>
+     *       （Lv1 = 0 枚 / Lv2 = 1 枚 / Lv3 = 2 枚，一行都不改）。</li>
+     * </ul>
      *
-     * <p><b>后续批次怎么接进来</b>（作者已排的两批，本批不实现）：星界弓「星元波置」= "等同量波置换
-     * <b>2 级</b>" ⇒ 只需把下面那一行注释换成 {@code case ASTRAL -> true;}，并在物品侧把发射等级
-     * 传成 {@code LEVEL_2} 对应值（{@code 2}）；雷鸣弓「雷鸣神力」是另一套（电荷 + 真劈雷），
-     * 与本被动无共用的数值，但它若要复用"发波 + 环绕波"那段，同样只需要一个 {@code true}。</p>
+     * <p>⚠ 另外两档（翠玉 / 雷鸣）在这里恒为 {@code false}：翠玉之弓那两条技能一个字不许动；
+     * 雷鸣弓走的是<b>另一张表</b>（{@code BowThunderMightConfigs#appliesTo} —— 电荷 + 真劈雷，
+     * 与本表零共用的数值，而且它<b>一枚波都不发</b>）。两张表都是穷尽 switch ⇒
+     * 加一档新弓时<b>两处都会编译不过</b>，不会被任何一方静默吞掉。</p>
      */
     public static boolean appliesTo(BowTier tier) {
         if (tier == null) {
@@ -110,9 +119,8 @@ public final class BowWaveShiftConfigs {
         }
         return switch (tier) {
             case SAPPHIRE_RUBY -> true;
-            // 星界弓「星元波置」= 等同量波置换 2 级（作者 2026-10-05 排的下一批）：
-            // case ASTRAL -> true;
-            case JADE_TOPAZ, ASTRAL, THUNDER -> false;
+            case ASTRAL -> true;
+            case JADE_TOPAZ, THUNDER -> false;
         };
     }
 
