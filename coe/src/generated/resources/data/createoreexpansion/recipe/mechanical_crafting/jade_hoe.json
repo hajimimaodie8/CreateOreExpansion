@@ -17,14 +17,14 @@
     }
   },
   "pattern": [
-    "  A  ",
-    " AAA ",
-    " CAC ",
-    "DCBCD",
-    "  D  "
+    "AAAA",
+    "  BC",
+    "  D ",
+    "  D "
   ],
   "result": {
-    "id": "createoreexpansion:jade_sword"
+    "count": 1,
+    "id": "createoreexpansion:jade_hoe"
   },
   "show_notification": false
 }

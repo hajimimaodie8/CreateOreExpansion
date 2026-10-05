@@ -17,13 +17,15 @@
     }
   },
   "pattern": [
-    "AAAA",
-    "  BC",
-    "  D ",
-    "  D "
+    "ABA",
+    "ACA",
+    " D ",
+    " D ",
+    " D "
   ],
   "result": {
-    "id": "createoreexpansion:jade_hoe"
+    "count": 1,
+    "id": "createoreexpansion:jade_shovel"
   },
   "show_notification": false
 }

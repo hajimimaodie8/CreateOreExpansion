@@ -59,6 +59,24 @@ import net.neoforged.neoforge.common.conditions.ICondition;
  * {@code data/<ns>/recipe/} ⇒ 那些 advancement 会留在根输出、静默消失且不被 F1 抓到；
  * 正确形态是 {@code output.accept(id, recipe, null)}（{@code advancement = null}）。</p>
  *
+ * <p><b>配方迁移 批 5：再转发 Create 专用类型的动力合成族，共 5 条</b>
+ * （{@link CoeMechanicalCraftingRecipeProvider}：5 条 {@code create:mechanical_crafting}，
+ * 翡翠剑/镐/斧/锹/锄），同样追加在末尾、同样用参数里的 output。本族三条特有结论：</p>
+ * <ol>
+ *   <li><b>类型面</b>：必须用 {@code MechanicalCraftingRecipeBuilder}（纯 builder，把配方交给
+ *       调用方给的 {@code RecipeOutput}）；<b>不能</b>用 {@code MechanicalCraftingRecipeGen}
+ *       ——后者自带 {@code PackOutput} 直接写盘，绕过按调用点绑层 ⇒ 5 条落进根输出、
+ *       三个模块 jar 里一条都没有（F1 立刻红）。</li>
+ *   <li><b>时长</b>：{@code MechanicalCraftingRecipe extends ShapedRecipe}，
+ *       <b>不是</b> {@code ProcessingRecipe} ⇒ 批 1 那条
+ *       {@code canSpecifyDuration()} 约束<b>不适用</b>（该类型继承层次里没有这个方法，
+ *       也没有 {@code processing_time} 字段）。手写版 5 条确实一条都没有该键。</li>
+ *   <li><b>镜像</b>：{@code disallowMirrored()} 把 {@code acceptMirrored=false}
+ *       <b>同时</b>当作 {@code ShapedRecipe} 的 {@code showNotification} 参数传下去 ⇒
+ *       一个调用同时产出 {@code accept_mirrored=false} 与 {@code show_notification=false}，
+ *       与手写版逐字段一致。详见 {@link CoeMechanicalCraftingRecipeProvider} 的类注释。</li>
+ * </ol>
+ *
  * <p><b>为什么转发挂在这里、而不是根工程的 {@code buildRecipes}</b>：层的归属由
  * {@code LayerRecipeRouter} 在<b>调用点</b>绑定，而根工程的调用点已经把
  * {@code CoeRecipeProvider.generate} 收到的 {@code RecipeOutput} 包成了「本层 coe」的
@@ -72,8 +90,9 @@ public final class CoeRecipeProvider {
 
     /**
      * 本层的配方生成入口：拆磨 61 条（调用顺序与拆分前的 {@code buildRecipes} 逐字相同），
-     * 末尾再转发配方迁移四批的九族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
-     * 锯切 8 + 粉碎 13；批 3：雷击 8 + 嬗变 15；批 4：原版合成 26 = 有序 14 + 无序 12，见类注释）。
+     * 末尾再转发配方迁移五批的十族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
+     * 锯切 8 + 粉碎 13；批 3：雷击 8 + 嬗变 15；批 4：原版合成 26 = 有序 14 + 无序 12；
+     * 批 5：动力合成 5，见类注释）。
      */
     public static void generate(RecipeOutput output) {
         // ========== 原版装备/武器拆磨（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
@@ -141,6 +160,23 @@ public final class CoeRecipeProvider {
         //      save 会额外产出 data/<ns>/advancement/recipes/**，而 LayerRecipeRouter 只改道
         //      data/<ns>/recipe/ ⇒ 那些 advancement 留在根输出（根不发布）⇒ 静默消失，F1 也看不到。
         CoeCraftingRecipeProvider.generate(output);
+
+        // ========== 配方迁移 批 5：动力合成族 5 条（原手写，现由生成器产出） ==========
+        // 5 条 create:mechanical_crafting（翡翠剑/镐/斧/锹/锄）。同样追加在批 1/2/3/4 九族之后。
+        // ⚠ "该类型允不允许时长"对本族<b>不适用</b>：注册类 MechanicalCraftingRecipe extends
+        //   ShapedRecipe（不是 ProcessingRecipe）⇒ 它的继承层次里根本没有 canSpecifyDuration()，
+        //   也没有 processing_time 字段（手写版 5 条确实都没有该键）。
+        // ⚠ 本族特有陷阱（见 CoeMechanicalCraftingRecipeProvider 类注释）：
+        //   ① 必须用 MechanicalCraftingRecipeBuilder（纯 builder、写调用方给的 output），
+        //      <b>不能</b>用 MechanicalCraftingRecipeGen —— 后者自带 PackOutput 直接写盘，
+        //      会绕过 LayerRecipeRouter 的按调用点绑层 ⇒ 产物落进根输出、模块 jar 里一条没有（F1 红）。
+        //   ② 必须显式传 id "mechanical_crafting/<名>"：build(output) 的默认 id 是
+        //      <b>产物物品的 id</b>（本族文件名恰好等于产物名 ⇒ 会静默改名 = 配方搬家，
+        //      而且文件数一个不少、静态关卡全绿）。
+        //   ③ disallowMirrored() 必须调：它把 acceptMirrored=false <b>同时</b>当作 ShapedRecipe 的
+        //      showNotification 参数传下去 ⇒ 恰好同时产出 accept_mirrored=false 与
+        //      show_notification=false，与 5 条手写版逐字段一致；漏掉就变成"允许镜像"（玩法变化）。
+        CoeMechanicalCraftingRecipeProvider.generate(output);
     }
 
     /** 一套材料：5 工具 + 4 装备的拆磨配方 */

@@ -17,14 +17,15 @@
     }
   },
   "pattern": [
-    " AA ",
-    "AAAA",
-    "A BC",
-    "  D ",
-    "  D "
+    " ABA ",
+    "AACAA",
+    "  D  ",
+    "  D  ",
+    "  D  "
   ],
   "result": {
-    "id": "createoreexpansion:jade_axe"
+    "count": 1,
+    "id": "createoreexpansion:jade_pickaxe"
   },
   "show_notification": false
 }
