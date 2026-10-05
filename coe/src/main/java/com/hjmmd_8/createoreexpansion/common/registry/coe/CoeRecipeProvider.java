@@ -47,6 +47,18 @@ import net.neoforged.neoforge.common.conditions.ICondition;
  * {@code createoreexpansion:energy} 数据组件（5000 / 凝能佩 10000），走
  * {@code output(ItemStack)} 才不丢组件。逐族结论写在各自类的 javadoc 里。</p>
  *
+ * <p><b>配方迁移 批 4：再转发原版合成族，共 26 条</b>（{@link CoeCraftingRecipeProvider}：
+ * 14 条 {@code minecraft:crafting_shaped} + 12 条 {@code minecraft:crafting_shapeless}），
+ * 同样追加在末尾、同样用参数里的 output。本族是<b>唯一</b>不走 Create 配方类型的族
+ * （直接用原版 {@code ShapedRecipe} / {@code ShapelessRecipe} 构造器），因此它<b>不受</b>
+ * 批 1 那条"{@code canSpecifyDuration()}"约束——原版合成配方根本没有时长字段。
+ * 但本族有<b>两个自己的陷阱</b>，都写在 {@link CoeCraftingRecipeProvider} 的类注释里：
+ * ① id 的 {@code crafting/materials/} 前缀必须显式写（原版 builder 的默认 id 不带它 ⇒
+ * 不显式给就等于配方改名 = 搬家）；② 不许用 builder 的 {@code save(output, id)}——它会额外
+ * 产出 {@code data/<ns>/advancement/recipes/**}，而 {@code LayerRecipeRouter} 只改道
+ * {@code data/<ns>/recipe/} ⇒ 那些 advancement 会留在根输出、静默消失且不被 F1 抓到；
+ * 正确形态是 {@code output.accept(id, recipe, null)}（{@code advancement = null}）。</p>
+ *
  * <p><b>为什么转发挂在这里、而不是根工程的 {@code buildRecipes}</b>：层的归属由
  * {@code LayerRecipeRouter} 在<b>调用点</b>绑定，而根工程的调用点已经把
  * {@code CoeRecipeProvider.generate} 收到的 {@code RecipeOutput} 包成了「本层 coe」的
@@ -60,8 +72,8 @@ public final class CoeRecipeProvider {
 
     /**
      * 本层的配方生成入口：拆磨 61 条（调用顺序与拆分前的 {@code buildRecipes} 逐字相同），
-     * 末尾再转发配方迁移三批的八族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
-     * 锯切 8 + 粉碎 13；批 3：雷击 8 + 嬗变 15，见类注释）。
+     * 末尾再转发配方迁移四批的九族（批 1：角磨 9 + 方块雷击 1；批 2：压片 4 + 洗涤 4 +
+     * 锯切 8 + 粉碎 13；批 3：雷击 8 + 嬗变 15；批 4：原版合成 26 = 有序 14 + 无序 12，见类注释）。
      */
     public static void generate(RecipeOutput output) {
         // ========== 原版装备/武器拆磨（权重：剑2 镐3 斧3 铲1 锄2 / 头盔5 胸甲8 护腿7 靴子4） ==========
@@ -118,6 +130,17 @@ public final class CoeRecipeProvider {
         // output(ItemStack) 才保留 getComponentsPatch()。逐族结论写在各自类的 javadoc 里。
         CoeLightningRecipeProvider.generate(output);
         CoeTransmutingRecipeProvider.generate(output);
+
+        // ========== 配方迁移 批 4：原版合成族 26 条（原手写，现由生成器产出） ==========
+        // 14 条有序合成 + 12 条无序合成 = 26 条。同样追加在批 1/2/3 八族之后。
+        // ⚠ 本族是唯一不走 Create 配方类型的族 ⇒ 与"该类型允不允许时长"无关（原版合成没有时长字段）。
+        // ⚠ 本族两个特有陷阱（见 CoeCraftingRecipeProvider 类注释）：
+        //   ① 配方 id 必须显式写全 "crafting/materials/<名>"——原版 builder 的默认 id 不带该前缀，
+        //      不显式给就等于把 26 条配方集体改名（数据包层面 = 配方搬家）。
+        //   ② 必须用 output.accept(id, recipe, null) 直接提交，不许用 builder 的 save(output, id)：
+        //      save 会额外产出 data/<ns>/advancement/recipes/**，而 LayerRecipeRouter 只改道
+        //      data/<ns>/recipe/ ⇒ 那些 advancement 留在根输出（根不发布）⇒ 静默消失，F1 也看不到。
+        CoeCraftingRecipeProvider.generate(output);
     }
 
     /** 一套材料：5 工具 + 4 装备的拆磨配方 */
