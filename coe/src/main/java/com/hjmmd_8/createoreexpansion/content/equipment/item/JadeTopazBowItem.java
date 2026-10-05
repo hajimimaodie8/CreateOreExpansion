@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowWaveShiftConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
@@ -81,6 +82,29 @@ import net.neoforged.neoforge.event.EventHooks;
  * <p><b>P3p</b>：实现 {@link EnergyGradientTool} —— 共享库（core）的能量门面/能量 tooltip
  * 不能再 {@code instanceof JadeTopazBowItem}（库不 import 层），改判这个零方法标记契约；
  * 判定结果对现有物品逐个相同。</p>
+ *
+ * <p><b>2026-10-05 弓技能批 4（宝石弓专属被动「量波置换」）</b>：作者原话是"发射出的弓箭替换为
+ * 具有同样重力效果，但是在水中能够沿直线飞行的随机魔素攻击能量波…2 级生成一枚小伴随波…
+ * 3 级生成两枚"。</p>
+ * <ul>
+ *   <li><b>只有宝石弓这一档</b>（{@link BowWaveShiftConfigs#appliesTo(BowTier)}，穷尽 switch）
+ *       —— 翠玉 / 星界 / 雷鸣三把弓的发射路径<b>一个字节都不变</b>；</li>
+ *   <li><b>箭的替换点</b>：覆写 {@link #shoot}（<b>不是</b> {@code shootProjectile} ——
+ *       原版 {@code ProjectileWeaponItem#shoot} 是"先 shootProjectile(..) 再 addFreshEntity(..)"，
+ *       在那里 discard 箭会以"Tried to add entity … marked as removed already"的 WARN 收场，
+ *       每发一条）；命中替换条件后<b>整支箭都不造</b>，改由
+ *       {@link BowWaveShiftLauncher#fire} 发波；</li>
+ *   <li><b>触发条件 = 既有的"无箭射击"那一发</b>（松手时耗 {@value #NO_ARROW_COST} 点能量造一支
+ *       {@code INTANGIBLE_PROJECTILE} 魔法箭的那条路）：标记由 {@link #markWaveShiftShot}
+ *       写在弓上、由 {@link #consumeWaveShiftMarker} 在发射时读走并清掉（形状照批 3 的
+ *       {@link #TAG_META_ESSENCE} 两段式）；<b>有箭的射击、以及"按了技能键"的那一发都不替换</b>
+ *       —— 箭是那两条继承技能（凋零诅咒 / 缴械风暴）的载体（{@link #TAG_SKILL} ⇒ 命中处理器），
+ *       把它们吃掉不是本批要的效果（关卡 {@code bow4-arrow-path-untouched} 守着）；</li>
+ *   <li><b>无新增技能条目 / 语言键 / 注册项</b>：与批 3 的「元矢自生」同形（被动、不占键位），
+ *       {@code AllSkills} 里那两条弓技能与四把弓的注册链一个字未动；</li>
+ *   <li><b>无新增耗能与冷却</b>：耗能就是"无箭补给"本来付的那 {@value #NO_ARROW_COST} 点，
+ *       冷却无；数值（等级表 / 重力量 / 环绕几何）全部住在 {@link BowWaveShiftConfigs}。</li>
+ * </ul>
  */
 public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 
@@ -126,6 +150,32 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 * 它只可能由本模组四把弓的"无箭射击"写上 ⇒ 原版弓 / 别家模组的弓射出的箭永远没有这个键。</p>
 	 */
 	public static final String TAG_META_ESSENCE = "jade_topaz_meta_essence";
+
+	/**
+	 * <b>弓上的"这一发是无箭补给那一发"标记（布尔）</b>—— 弓技能批 4「量波置换」的发射段闸门
+	 * （2026-10-05，宝石弓专属被动）。
+	 *
+	 * <p>同一个键名只在<b>弓</b>上用一次，形状照 {@link #TAG_SKILL} / {@link #TAG_META_ESSENCE}
+	 * （同一个 {@code CUSTOM_DATA} 上的一个键：发射前写、发射时读走并清掉）：</p>
+	 * <ul>
+	 *   <li><b>写</b>：{@link #markWaveShiftShot}，唯一调用点是 {@link #prepareProjectiles} 的
+	 *       "<b>无箭但能量够</b>"那条分支（<b>松手时真的扣了 {@value #NO_ARROW_COST} 点能量</b>
+	 *       造无形魔法箭的那一条）—— 有箭的射击根本走不到那里；只有
+	 *       {@link BowWaveShiftConfigs#appliesTo(BowTier)} 认可的那一档弓会写（今天 = 宝石弓）
+	 *       ⇒ 另外三把弓的弓上存档内容与本批之前<b>逐字相同</b>；</li>
+	 *   <li><b>读 + 清</b>：{@link #consumeWaveShiftMarker}，唯一调用点是 {@link #shoot} 的替换闸门；
+	 *       <b>读到就当场清掉</b>（照批 3 "{@code stampMetaArrowEssence} 搬走即清"的纪律）——
+	 *       留着就会让下一发（哪怕是有箭的普通箭）被误替换，而那是<b>没有报错</b>的坏法；</li>
+	 *   <li><b>兜底</b>：{@code use()}（每次拉弓的第一句）也 remove 它，与
+	 *       {@link #TAG_META_ESSENCE} 走同一道防泄漏闸门。</li>
+	 * </ul>
+	 *
+	 * <p><b>为什么不直接看箭身上有没有 {@code INTANGIBLE_PROJECTILE}</b>：那个组件<b>不是</b>
+	 * "本模组的无箭补给"专用 —— 原版 {@code ProjectileWeaponItem#useAmmo} 在"这一发不消耗箭"
+	 * （无限附魔 / 创造）时也会给<b>真箭</b>盖上它（{@code ProjectileWeaponItem.java:156}）
+	 * ⇒ 用它会把这把弓的<b>无限附魔射击</b>也误判成无箭补给。标记由本模组自己写，判据才唯一。</p>
+	 */
+	public static final String TAG_WAVE_SHIFT = "jade_topaz_wave_shift";
 
 	/** 无箭时发射魔法箭消耗的能量 */
 	public static final int NO_ARROW_COST = 10;
@@ -213,6 +263,7 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 					tag.remove(TAG_SKILL);
 					tag.remove(TAG_SKILL_LEVEL);
 					tag.remove(TAG_META_ESSENCE);
+					tag.remove(TAG_WAVE_SHIFT);
 				}));
 		player.startUsingItem(hand);
 		return InteractionResultHolder.consume(stack);
@@ -299,6 +350,10 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 			// 掷一次骰子 —— 中签就给这一发魔法箭附一种随机魔素（不额外扣能、无冷却）。
 			// ⚠ 抽取点只有这一处：有箭的普通射击根本走不到这个分支 ⇒ 那条路一个字未变。
 			rollMetaArrowEssence(bow, player);
+			// ★ 被动技能「量波置换」（2026-10-05 弓技能批 4，宝石弓专属）：把"这一发是无箭补给"
+			// 记在弓上 —— 发射段（shoot）读到它就把整支箭换成能量波（+ 该等级的伴随环绕波）。
+			// ⚠ 同样只有这一处会写，且只有 appliesTo(..) 认可的那一档弓真的写（今天 = 宝石弓）。
+			markWaveShiftShot(bow);
 			ItemStack magicArrow = Items.ARROW.getDefaultInstance();
 			magicArrow.set(DataComponents.INTANGIBLE_PROJECTILE, Unit.INSTANCE);
 			return List.of(magicArrow);
@@ -329,11 +384,109 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 			data -> data.update(tag -> tag.putString(TAG_META_ESSENCE, essence)));
 	}
 
+	/**
+	 * <b>把"这一发是无箭补给"记在弓上</b>（「量波置换」的写入段，2026-10-05 弓技能批 4）。
+	 *
+	 * <p>唯一调用点是 {@link #prepareProjectiles} 的"无箭但能量够"分支 —— 那一刻
+	 * {@value #NO_ARROW_COST} 点能量<b>已经真的扣掉了</b>（这就是"松手耗能"那半句），
+	 * 所以发射段读到的标记永远对应一次<b>真的付过钱</b>的射击。</p>
+	 *
+	 * <p>⚠ <b>档位闸门在这里</b>：{@link BowWaveShiftConfigs#appliesTo(BowTier)} 不认的弓
+	 * （翠玉 / 星界 / 雷鸣）<b>一个键都不写</b> ⇒ 那三把弓的弓上存档内容与本批之前逐字相同
+	 * （"别影响翠玉/星界/雷鸣"落到最底层：连一个多余的 NBT 键都没有）。</p>
+	 */
+	private void markWaveShiftShot(ItemStack bow) {
+		if (!BowWaveShiftConfigs.appliesTo(this.tier)) {
+			return;
+		}
+		bow.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
+			data -> data.update(tag -> tag.putBoolean(TAG_WAVE_SHIFT, true)));
+	}
+
+	/**
+	 * <b>读走并清掉"这一发是无箭补给"标记</b>（「量波置换」的读取段，2026-10-05 弓技能批 4）。
+	 *
+	 * <p>"搬走即在弓上清掉"照的是批 3 {@code stampMetaArrowEssence} 的纪律：弓上那个标记是
+	 * <b>一次性暂存</b>，留着就会让下一发（哪怕是有箭的普通箭）被误替换 —— 那是本批最容易
+	 * 静默发生的一种坏法（没有报错、只在特定顺序下偶尔发生）。</p>
+	 *
+	 * @return {@code true} = 这一发确实是无箭补给那一发（标记已在本次调用里清掉）
+	 */
+	private static boolean consumeWaveShiftMarker(ItemStack bow) {
+		if (!bow.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+			.copyTag()
+			.getBoolean(TAG_WAVE_SHIFT)) {
+			return false;
+		}
+		bow.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
+			data -> data.update(tag -> tag.remove(TAG_WAVE_SHIFT)));
+		return true;
+	}
+
 	/** 检测本次射击请求的技能键位：键一=0（凋零诅咒）、键二=1（缴械风暴）、无= -1 */
 	private int detectSkillSlot() {
 		if (AllKeys.SKILL_RELEASE.isPressed()) return 0;
 		if (AllKeys.SKILL_RELEASE_2.isPressed()) return 1;
 		return -1;
+	}
+
+	/**
+	 * <b>发射段总闸门</b>（2026-10-05 弓技能批 4「量波置换」）：命中替换条件时<b>整支箭都不造</b>，
+	 * 改由 {@link BowWaveShiftLauncher#fire} 发一枚带重力的攻击波（+ 该等级的伴随环绕波）。
+	 *
+	 * <p><b>为什么覆写 {@code shoot} 而不是 {@code shootProjectile}</b>：原版
+	 * {@code ProjectileWeaponItem#shoot} 的顺序是
+	 * <code>createProjectile(..) → shootProjectile(..) → level.addFreshEntity(projectile)</code>
+	 * （{@code ProjectileWeaponItem.java:99-101}）—— 在 {@code shootProjectile} 里 discard 掉那支箭，
+	 * 紧接着的 {@code addFreshEntity} 会撞上 {@code ServerLevel#addEntity} 的
+	 * "entity.isRemoved()" 守卫并打一条 WARN（{@code ServerLevel.java:940-942}）：
+	 * <b>每一发一条警告日志</b>，而且那支箭其实已经构造过一遍。覆写 {@code shoot} 则从源头就不造箭。</p>
+	 *
+	 * <p>三个闸门（全部通过才替换，任何一条不通过 ⇒ {@code super.shoot(..)} 逐字走原路径）：</p>
+	 * <ol>
+	 *   <li>{@link BowWaveShiftConfigs#appliesTo(BowTier)} —— 只有宝石弓这一档（三把别的弓
+	 *       连标记都不会有，这里是第二道锁）；</li>
+	 *   <li>{@link #consumeWaveShiftMarker} —— 这一发必须真的是"无箭补给"那一发
+	 *       （有箭的射击不替换：那支箭是 {@link #TAG_SOURCE_BOW} / {@link #TAG_SKILL} 的载体）；</li>
+	 *   <li>{@link #getSkill} 为空 —— <b>按了技能键的那一发不替换</b>：凋零诅咒 / 缴械风暴的效果
+	 *       写在<b>箭</b>上、由 {@code JadeTopazBowEventHandler} 命中时读（
+	 *       {@code shootProjectile} 里那三行），换成波就等于把这两条<b>继承技能</b>在宝石弓上
+	 *       静默吃掉（还照扣 100 点技能能量与冷却）。</li>
+	 * </ol>
+	 */
+	@Override
+	protected void shoot(ServerLevel level, LivingEntity shooter, InteractionHand hand, ItemStack weapon,
+						 List<ItemStack> projectileItems, float velocity, float inaccuracy, boolean isCrit,
+						 @Nullable LivingEntity target) {
+		if (fireWaveShiftInsteadOfArrow(level, shooter, hand, weapon)) {
+			return;
+		}
+		super.shoot(level, shooter, hand, weapon, projectileItems, velocity, inaccuracy, isCrit, target);
+	}
+
+	/**
+	 * 三个闸门 + 发波 + 记账（见 {@link #shoot} 的说明）。
+	 *
+	 * @return {@code true} = 这一发已经由能量波替代（调用方<b>不得</b>再走 {@code super.shoot}）
+	 */
+	private boolean fireWaveShiftInsteadOfArrow(ServerLevel level, LivingEntity shooter, InteractionHand hand,
+											   ItemStack weapon) {
+		if (!BowWaveShiftConfigs.appliesTo(this.tier)) {
+			return false;
+		}
+		// ⚠ 先读走并清掉标记（无论下面走哪条分支都不留残标记），再判技能那一道闸门。
+		if (!consumeWaveShiftMarker(weapon)) {
+			return false;
+		}
+		if (!getSkill(weapon).isEmpty()) {
+			return false;
+		}
+		// 等级 = 该弓的档位起始等级（宝石弓 2 ⇒ 1 枚伴随波），与「元矢自生」同一处真源。
+		BowWaveShiftLauncher.fire(level, shooter, this.tier.baseSkillLevel());
+		// 耐久与原版同一笔账（{@code ProjectileWeaponItem#shoot} 射出一发后扣 1 点）：
+		// 少了这一行，这条被动会静默变成"宝石弓的无箭射击不再磨损弓"（白赚耐久）。
+		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
+		return true;
 	}
 
 	@Override

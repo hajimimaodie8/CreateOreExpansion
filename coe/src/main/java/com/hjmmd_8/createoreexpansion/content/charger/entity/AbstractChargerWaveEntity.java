@@ -12,6 +12,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveHitResolver;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveContraptionCollisions;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveSubLevelCollisions;
 import com.hjmmd_8.createoreexpansion.content.charger.recipe.ChargingRecipe;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
@@ -431,6 +432,69 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 	/** 命中附加效果要素：效果等级（amplifier，0 = I 级）；默认 0。 */
 	private int hitEffectAmplifier;
+
+	// ==================================================================================
+	// ★ 2026-10-05 弓技能批 4（宝石弓「量波置换」）：第三个"通用、可选、默认关闭"的波要素
+	//    —— <b>重力要素</b>（作者原话："射出的箭替换为具有同样重力效果、但在水中能够沿直线飞行的
+	//    随机魔素攻击能量波"）。
+	//
+	// 为什么它是"给既有波加一个要素"而不是新实体/新飞行模式：与环绕波要素、命中附加效果要素
+	// 同一口径 —— 作者 2026-10-02 的硬口径是"能量波是由好几个要素定义的，不要再凭空造一个新的
+	// 能量波"。本要素<b>不设时字段就是 0</b>，每 tick 的位移分支第一句直接返回同一个 Vec3
+	// ⇒ <b>机器波 / 变器波 / 差波器子波 / 星芒嬗震的主波与环绕波 / 回旋镖的环绕波，飞行与改造前
+	// 逐字相同</b>（关卡 bow4-gravity-gated 守着这条负向）。
+	//
+	// ⚠ 它<b>只</b>改变"本波自己走出来的那一跳"（tick 里那一句 setPos 的入参），
+	// 不动 movement 主方向、不动 getSpeedBlocks()、不动速度修正、不碰能量场修正：
+	// 于是"环绕波的环平面法向"（= 锚点的 movement = 发射方向）与一切既有读数都不变。
+	// ==================================================================================
+
+	/**
+	 * <b>重力要素</b>：本波每 tick 额外叠加的<b>向下加速度</b>（格/秒²）。
+	 * {@code <= 0} = <b>未设</b>（字段默认值，即"关闭"）⇒ 本要素一个字节都不生效。
+	 *
+	 * <p>单位与口径：{@code 格/秒²}；每 tick 的下落速度增量 = {@code 它 / 20}（格/秒），
+	 * 每 tick 的下落位移 = 当前下落速度 {@code / 20}（格）。两者都用 {@code ChargeConfigs.TICKS_PER_SECOND}
+	 * 这个"一秒 = 多少 tick"的唯一真源，不在本类写 20。</p>
+	 *
+	 * <p><b>数值本身不住在这里</b>：本类只提供"要素"（开关 + 施加），强度由调用方传
+	 * （弓技能批 4 传的是 {@code BowWaveShiftConfigs#gravity()}）—— 与"波级/波速由波情五要素的
+	 * 持有者填、实体只负责解释"是同一个分工。</p>
+	 *
+	 * <p>刻意是原始类型（默认 0.0）：{@link #setPos} 会被父类 {@code Entity} 的构造器调用，
+	 * 那一刻字段初始化器还没执行 —— 本字段只被 {@link #tick()} 读，构造期不可达，
+	 * 与 {@code pathBroken} 的约束同源。</p>
+	 */
+	private double gravityAcceleration;
+
+	/**
+	 * 重力要素的<b>运行态</b>：已攒下的下落速度（格/秒，恒 ≥ 0；向下）。
+	 *
+	 * <p>每 tick {@code += 加速度 / 20}；位移里按 {@code -它 / 20} 追加到下跳上。</p>
+	 *
+	 * <p><b>水中走直线</b>（作者原话"在水中能够沿直线飞行"）：波处于水中时本值被<b>清零</b>
+	 * 且不再累加 ⇒ 该 tick 的位移回到"沿 movement 的匀速直线"，
+	 * 与一切既有波在水中逐字相同（关卡 bow4-water-straight 守着这条：
+	 * 水中分支里既不能有加速度累加、也不能有下落位移）。</p>
+	 *
+	 * <p>刻意<b>不进 NBT</b>：它是"这一次飞行的过程量"，不是配置；波实体类型是 {@code noSave()}
+	 * 本来也不落盘。读档后从 0 重新开始累积，与改造前"没有这个要素"同形。</p>
+	 */
+	private double gravityFallSpeed;
+
+	/**
+	 * 设置<b>重力要素</b>（可选；不调用 = 本波不受重力，飞行与一切既有波逐字相同）。
+	 *
+	 * @param accelerationBlocksPerSecondSquared 向下加速度（格/秒²；{@code <= 0} 视为不做事）
+	 */
+	public void setGravity(double accelerationBlocksPerSecondSquared) {
+		this.gravityAcceleration = accelerationBlocksPerSecondSquared;
+	}
+
+	/** 是否设了重力要素（诊断/关卡用；{@code false} = 飞行与改造前逐字相同）。 */
+	public boolean hasGravity() {
+		return gravityAcceleration > 0.0D;
+	}
 
 	/**
 	 * 设置<b>环绕波要素</b>（一次设全；调用方还必须继承父波批次号，见 {@link #orbitAnchorUuid}）。
@@ -882,6 +946,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			setFieldVelocity(corrected);
 			step = corrected.scale(1.0 / 20.0);
 		}
+		// ★ 重力要素（可选、默认关闭；弓技能批 4「量波置换」）：把本 tick 的位移追加一个向下分量。
+		// ⚠ 刻意放在"能量场修正之后、自走位移之前"：重力是<b>本波自己的位移</b>的一部分，
+		// 必须与正常自走一起落在 selfPropelled 窗口里（否则会被 setPos 覆写当成"外力搬运"，
+		// 让攻击场的"真的穿过场盒"判定把受重力的波整段跳过）。
+		// 未设要素（字段默认 0）⇒ 本方法第一句就返回同一个 Vec3，位移与改造前逐字相同。
+		step = applyGravityElement(step);
 		// 这一段是唯一的"自走"位移；selfPropelled 之外的一切 setPos 都记为外力搬运（见 setPos 覆写）。
 		// 环绕波要素（可选、默认关闭）也在这段里改写位置：它同样是"波自己走出来的位移"
 		// （环上相邻两点只差 0.25 格），故刻意留在 selfPropelled 窗口内，不被当成瞬移断点——
@@ -1285,6 +1355,43 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return Math.max(MIN_SPEED, Math.min(WaveLevels.maxSpeed(waveLevel), base + speedOffset));
 	}
 
+	/**
+	 * <b>重力要素</b>（可选、默认关闭，见 {@link #gravityAcceleration}）：把本 tick 的位移
+	 * 追加一个向下的速度分量，并把下落速度按秒²加速度累积。
+	 *
+	 * <p>三条口径，逐条对应关卡：</p>
+	 * <ol>
+	 *   <li><b>要素未设 ⇒ 原样返回</b>（第一句）：{@code step} 是同一个对象、同一份数值
+	 *       ⇒ 机器波 / 变器波 / 一切既有波的飞行与改造前<b>逐字相同</b>（正向与负向都在
+	 *       bow4-gravity-gated 里）；</li>
+	 *   <li><b>水中走直线</b>：{@link net.minecraft.world.entity.Entity#isInWater()}（= 原版
+	 *       {@code wasTouchingWater}，在本 tick 的 {@code super.tick()} 里刚刷新）为真时
+	 *       <b>不累加、并把下落速度清零</b> ⇒ 位移恒为 {@code movement × 速度 / 20}，
+	 *       即"沿发射方向的匀速直线"。这里刻意<b>不是</b>"在水中把重力翻倍/减半"，
+	 *       而是"水中这个要素整个不作用"（作者原话："在水中能够沿直线飞行"）；</li>
+	 *   <li><b>下落分量只进位移、不进 movement</b>：主方向仍是发射方向 ⇒
+	 *       {@link #orbitDirection()}（环绕波的环平面法向）、粒子散布方向、掉落物扫掠盒
+	 *       与能量场读数全部不受重力影响（"别改既有要素的读数"）。</li>
+	 * </ol>
+	 *
+	 * <p>下游消费者（{@code ChargerWaveFx} 的拖尾/绽放、{@code WaveHitResolver} 的命中链）
+	 * 一个字都不用改：它们只看位置与 movement，而位置由本方法逐 tick 影响。</p>
+	 */
+	private Vec3 applyGravityElement(Vec3 step) {
+		if (!hasGravity()) {
+			// 要素未设（= 一切既有波）：原样返回同一个 Vec3 —— 不是"加个零向量"，
+			// 是这一整段在数值上与不存在等价（关卡 bow4-gravity-gated 的负向断言读这一句）。
+			return step;
+		}
+		if (isInWater()) {
+			// 水中走直线：不再累加下落速度，并把它清零 ⇒ 本 tick 位移 = 沿 movement 的匀速直线。
+			gravityFallSpeed = 0.0D;
+			return step;
+		}
+		gravityFallSpeed += gravityAcceleration * ChargeConfigs.perTickFactor();
+		return step.add(0.0D, -gravityFallSpeed * ChargeConfigs.perTickFactor(), 0.0D);
+	}
+
 	/** 施加一次速度修正（叠加语义：在此值上增加 amount，可正可负）。 */
 	public void addSpeedOffset(double amount) {
 		this.speedOffset += amount;
@@ -1585,6 +1692,11 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			hitEffectDuration = tag.getInt("HitEffectDuration");
 			hitEffectAmplifier = tag.getInt("HitEffectAmplifier");
 		}
+		// 重力要素（可选、默认关闭；弓技能批 4）：<b>可缺省</b>——老存档 / 未设要素的波没有该键
+		// ⇒ getDouble 读作 0（= 不受重力），飞行与改造前逐字相同。
+		// 运行态（gravityFallSpeed，本 tick 已攒下的下落速度）刻意不落盘：它是过程量，
+		// 读档后从 0 重新累积，与"这次飞行从头开始受重力"同形。
+		gravityAcceleration = tag.getDouble("GravityAcceleration");
 	}
 
 	@Override
@@ -1625,6 +1737,11 @@ public abstract class AbstractChargerWaveEntity extends Entity
 				tag.putInt("HitEffectDuration", hitEffectDuration);
 				tag.putInt("HitEffectAmplifier", hitEffectAmplifier);
 			}
+		}
+		// 重力要素（可选、默认关闭；弓技能批 4）：<b>只在真的设了的时候才写键</b> ⇒ 没设要素的波
+		// （= 一切既有波），存档内容与改造前逐字相同（"默认行为一个字不变"包括 NBT 形状）。
+		if (gravityAcceleration > 0.0D) {
+			tag.putDouble("GravityAcceleration", gravityAcceleration);
 		}
 		tag.putInt("Charge", charge == null ? 0
 			: charge == com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE ? 1 : 2);
