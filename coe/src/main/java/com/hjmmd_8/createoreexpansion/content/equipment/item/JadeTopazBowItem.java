@@ -120,7 +120,8 @@ import net.neoforged.neoforge.event.EventHooks;
  *       内核白名单 + 一条 {@code skill.createoreexpansion.<id>} 语言键），而语言键住在根
  *       {@code src/main/java/.../data/lang/*}（本次返工的硬边界之外，且要跑 {@code runData}）
  *       ⇒ 本次刻意只走"既有形状"，见返工报告；<b>（批 7 已按这三处补齐，见文末）</b></li>
- *   <li>数值（等级表 / 重力量 / 环绕几何）全部住在 {@link BowWaveShiftConfigs}。</li>
+ *   <li>数值（等级表 / 波级分布表 / 环绕几何）全部住在 {@link BowWaveShiftConfigs}。
+ *       （⚠ 批 4 时这一行还写着"重力量"；批 10 撤回了主波重力，那个常量已从表里删除。）</li>
  * </ul>
  *
  * <p><b>2026-10-05 弓技能批 5（星界弓「星元波置」+ 雷鸣弓「雷鸣神力」；同日，两条一起落地）</b>：</p>
@@ -235,6 +236,22 @@ import net.neoforged.neoforge.event.EventHooks;
  *       （{@code BowTier#skillOutlineColor()}：星界 = 星辉石粉），<b>零新增贴图 / 模型</b>；</li>
  *   <li><b>其它三把弓、两条翠玉技能、三条专属技能的触发通道一个字节未改</b>：
  *       本类那三道闸门、两段式标记、服务端权威键位读数全部照旧（关卡 §43/§46/§47 仍在守）。</li>
+ * </ul>
+ *
+ * <p><b>2026-10-05 弓技能批 10（「量波置换」的等级来源 + 主波重力；本类只承担第 ① 件）</b>：</p>
+ * <ul>
+ *   <li><b>等级来源改口径</b>：{@link #fireWaveShiftInsteadOfArrow} 由
+ *       {@code this.tier.baseSkillLevel()}（宝石弓恒 2）改成
+ *       {@link #effectiveSkillLevel(ItemStack)}（基准 2 + 技艺提升 / 记忆回溯，上限
+ *       {@code BowTier#maxSkillLevel()} = 3）⇒ 附魔提升后波级分布随之升档。
+ *       ⚠ 这<b>推翻</b>了上面批 4～7 里"等级 = 该弓的档位起始等级、三条技能都是这个口径"
+ *       那几句 —— <b>只推翻「量波置换」这一条</b>：雷鸣（{@code fireThunderMightInsteadOfArrow}）
+ *       与星界（{@code fireAstralBarrageInsteadOfArrow}）<b>继续</b>用档位起始等级，
+ *       本批一个字节都没动它们；</li>
+ *   <li><b>主波重力撤回</b>：波级与重力的数值都在 {@link BowWaveShiftConfigs}，本类只负责把
+ *       等级读数交出去；重力那一句删在发射点（{@code BowWaveShiftLauncher}），本类无感；</li>
+ *   <li><b>拉弓动画</b>：四个 {@code pull}/{@code pulling} item property 的注册住在
+ *       {@code client/JadeTopazBowModelRegistration}（本批把另外三把弓一并注册），不在本类。</li>
  * </ul>
  */
 public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
@@ -643,8 +660,12 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 
 	/**
 	 * <b>发射段总闸门</b>（2026-10-05 弓技能批 4「量波置换」；同日返工为<b>主动</b>形态）：
-	 * 命中替换条件时<b>整支箭都不造</b>，改由 {@link BowWaveShiftLauncher#fire} 发一枚带重力的
+	 * 命中替换条件时<b>整支箭都不造</b>，改由 {@link BowWaveShiftLauncher#fire} 发一枚
 	 * 攻击波（+ 该等级的伴随环绕波）。
+	 *
+	 * <p><b>等级（批 10 改口径）</b>：本闸门传的是 {@link #effectiveSkillLevel(ItemStack)}
+	 * —— 含附魔提升的技能等级（上限 3）。批 4~9 传的是档位起始等级 {@code tier.baseSkillLevel()}
+	 * （宝石弓恒 2），作者批 10 明确改成读技能等级，好让附魔提升后波级分布也跟着变。</p>
 	 *
 	 * <p><b>为什么覆写 {@code shoot} 而不是 {@code shootProjectile}</b>：原版
 	 * {@code ProjectileWeaponItem#shoot} 的顺序是
@@ -719,8 +740,11 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		if (!BowExclusiveShotItemSkill.WAVE_SHIFT.matches(pendingShot)) {
 			return false;
 		}
-		// 等级 = 该弓的档位起始等级（宝石弓 2 ⇒ 1 枚伴随波），与「元矢自生」同一处真源。
-		BowWaveShiftLauncher.fire(level, shooter, this.tier.baseSkillLevel());
+		// ★ 批 10：等级 = 该弓的<b>技能等级</b> {@link #effectiveSkillLevel(ItemStack)}
+		//   （基准 = 档位起始等级 2，含技艺提升 / 记忆回溯的附魔加成，上限 BowTier#maxSkillLevel() = 3）
+		//   —— 波级分布与伴随波枚数都按它取。批 4~9 这里传的是档位起始等级
+		//   {@code this.tier.baseSkillLevel()}（宝石弓恒 2 ⇒ 分布恒为 Lv2），作者批 10 改成读技能等级。
+		BowWaveShiftLauncher.fire(level, shooter, this.effectiveSkillLevel(weapon));
 		// 耐久与原版同一笔账（{@code ProjectileWeaponItem#shoot} 射出一发后扣 1 点）：
 		// 少了这一行，这条技能会静默变成"宝石弓的按键射击不再磨损弓"（白赚耐久）。
 		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
@@ -743,7 +767,9 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 *
 	 * <p><b>等级</b>：与另外两条弓技能<b>同一处真源</b> —— {@link BowTier#baseSkillLevel()}
 	 * （雷鸣 = 3）⇒ 范围 4×4、真雷 60%。刻意<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}
-	 * （那会读附魔）：作者给的"该弓的档位"是一个按弓固定的量，三条技能都是这个口径。</p>
+	 * （那会读附魔）：作者给的"该弓的档位"是一个按弓固定的量。
+	 * ⚠ 批 10 只把<b>「量波置换」那一条</b>改成读技能等级（作者点名的就是它）；
+	 * 本条（雷鸣）与星界那条<b>继续</b>用档位起始等级 —— 三条闸门各有各的口径，别顺手一起改。</p>
 	 *
 	 * <p><b>耐久</b>：与原版 {@code ProjectileWeaponItem#shoot} 同一笔账 —— 少了这一行，
 	 * 这条技能会静默变成"雷鸣弓按着技能键射击不再磨损弓"（白赚耐久）。</p>

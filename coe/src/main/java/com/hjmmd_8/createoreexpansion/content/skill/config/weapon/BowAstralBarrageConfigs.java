@@ -128,7 +128,9 @@ import net.minecraft.world.phys.Vec3;
  *   <li>{@value #STAGNATION_AMPLIFIER} —— 滞留的强度（作者只给了时长没给强度；
  *       {@code 6} 让缓慢的移速乘数与跳跃强度都归 0，即"几乎无法移动"）。</li>
  *   <li>波级 —— 作者没给，本表按<b>与姊妹技能同一条规则</b>取"波级随技能等级"（Lv1/2/3 → α/β/γ，
- *       与 {@code BowWaveShiftConfigs#mainWaveLevelFor} 同一条口径，只是本技能自己的表）。</li>
+ *       与批 4 的 {@code BowWaveShiftConfigs} 同一条口径，只是本技能自己的表）。
+ *       ⚠ 姊妹技能那张表在<b>批 10</b> 改成了"按技能等级掷一次分布"（并扩到 ε/ω），
+ *       本表<b>不受影响</b>：星界弹幕仍按等级取一个固定波级（作者批 10 只点了「量波置换」）。</li>
  *   <li><b>批 9 新增的四个"作者没给"</b>：{@value #PREVIEW_MAX_FORWARD_BLOCKS}（作者只给了"最多 5 格"
  *       这个上限，没给"从几格开始推"⇒ 起点<b>沿用批 6 的 4</b>，松手越早越接近旧手感）、
  *       {@value #PREVIEW_FORWARD_BLOCKS_PER_TICK}（"一点一点"的速度）、

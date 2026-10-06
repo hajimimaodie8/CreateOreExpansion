@@ -5,22 +5,29 @@ import com.hjmmd_8.createoreexpansion.content.equipment.item.BowTier;
 import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
+import net.minecraft.util.RandomSource;
+
 /**
  * <b>弓主动技能「量波置换」（宝石弓，作者 2026-10-05 弓技能批 4）的数值真源</b> ——
  * （⚠ 批 5 曾把星界弓「星元波置」挂到本表上；作者批 6 撤回了那条口径：星界弓改成
  * "在锚定区域降下弹幕"，数值改住 {@link BowAstralBarrageConfigs}，本表重新<b>只服务宝石弓</b>。）
  * 与 {@link BowCurseConfigs} / {@link BowDisarmConfigs} 同形，是这条技能<b>唯一</b>写数字的地方：
- * 等级表（伴随波枚数 / 主波波级）、重力量、环绕几何（半径 / 角速度 / 相位）、炮口前推量
+ * 等级表（伴随波枚数）、<b>波级分布表</b>（技能等级 → α/β/γ/ε/ω 的累积权重区间）、
+ * 环绕几何（半径 / 角速度 / 相位）、炮口前推量
  * 全部只在这里写一遍，发射点（{@code BowWaveShiftLauncher}）与物品侧
  * （{@code JadeTopazBowItem}）<b>一个数字都不写</b>。
  *
- * <h2>作者原话（逐字）</h2>
+ * <h2>作者原话（逐字，批 4）</h2>
  * <blockquote>
  * 发射出的弓箭替换为具有同样重力效果，但是在水中能够沿直线飞行的随机魔素攻击能量波，
  * 但是在空中有实体重力，效果与弓箭相似，可能比较不好做，你自己掂量掂量。<br>
  * 与此同时：2 级生成一枚小伴随波，效果也是沿着飞出能量波轨迹的垂直平面环绕，与星界套装的技能相似；
  * 3 级生成两枚。
  * </blockquote>
+ * <p>⚠ <b>上面引文里"空中有实体重力"那一半已被批 10（2026-10-05，作者裁定）撤回：</b>
+ * 主波<b>不再</b>设重力要素，改成<b>一直走直线</b>（水里与空中同形）。
+ * 伴随波枚数那半（2 级一枚 / 3 级两枚）<b>不变</b>；批 10 同时把波级从"按等级查一个值"
+ * 改成"按技能等级掷一次分布"（见下两节）。</p>
  *
  * <h2>⛔ 它不定义"波"，只定义"发几枚、多重、怎么绕"</h2>
  * <p>作者 2026-10-02 的硬口径（见 {@code StarShockRuntime} 类注释）是"能量波是由好几个要素定义的，
@@ -28,12 +35,14 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
  * （实体类型 {@code createoreexpansion:charger_wave}，与三台应力充能器/差波器<b>同一个类型、
  * 同一个渲染器</b>），靠既有要素把它发出去：</p>
  * <ul>
- *   <li><b>波级</b> —— {@link #mainWaveLevelFor(int)}（技能等级 → 波级；定颜色/波速/伤害）；</li>
+ *   <li><b>波级</b> —— {@link #rollWaveLevel(int, RandomSource)}（技能等级 → 一张累积权重分布表
+ *       → 掷一次；定颜色/波速/伤害。<b>主波与每一枚伴随波各自独立掷</b>）；</li>
  *   <li><b>波型</b> —— 攻击态（{@code WaveTypes.ATTACK}，就是"变器攻击波变态"引燃出来的那一个）；</li>
  *   <li><b>魔素</b> —— 每枚<b>各自随机</b>抽一种，池子复用 {@code BowMetaArrowTrait#randomEssence}
  *       （= 那八种魔素的<b>同一条池子</b>，本类不另抄一份名单）；</li>
- *   <li><b>重力</b> —— <b>本批新增的波要素</b>（{@code AbstractChargerWaveEntity#setGravity}），
- *       强度 = {@link #GRAVITY_BLOCKS_PER_SECOND_SQUARED}；</li>
+ *   <li><b>重力</b> —— ⛔ <b>批 10 起不用了</b>：波实体上的那个要素仍在
+ *       （{@code AbstractChargerWaveEntity#setGravity}，默认 0 = 不作用），但本表与发射点
+ *       <b>都不再</b>设它 ⇒ 主波走直线（见下面「重力要素：批 4 加、批 10 撤」那一节）；</li>
  *   <li><b>环绕</b> —— <b>既有的环绕波要素</b>（{@code setOrbitAnchor}：垂直平面 + 半径 + 角速度
  *       + 相位；与星芒嬗震/回旋镖那条完全同一套机制，不新造第二套）；</li>
  *   <li><b>批次</b> —— 同一次发射的主波与伴随波共用一个批次号（{@code setFiringBatch}），
@@ -46,17 +55,36 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
  * {@code JadeTopazBowItem.NO_ARROW_COST}（<b>已有真源，本类不复制那个数</b>），
  * 冷却 <b>无</b>（作者没给；它是一条主动技能，只是没有正式技能条目，与「元矢自生」那条被动同形地"无冷却"：没有内核条目、没有独立键位）。</p>
  *
- * <h2>重力为什么不是"原版箭那一个 0.05 格/tick²"</h2>
- * <p>原版箭的重力确实是 {@code 0.05 格/tick²}（{@code AbstractArrow#getDefaultGravity}），
- * 换算成格/秒² 是 <b>20</b>。但那是配"满蓄力约 60 格/秒"的初速的量级：把 20 格/秒² 直接搬到本波
- * （β 波 = <b>4 格/秒</b>）身上，波飞 1 秒只前进 4 格却下落 10 格 —— 那不叫"效果与弓箭相似"，
- * 叫"出门就砸脚面"。</p>
- * <p>所以本表取的是<b>同一个"落差 / 水平距离"比</b>，再按本波速度折算：原版箭在 1 秒时的
- * 落差/水平 = ½·20/60 ≈ <b>0.17</b>；本波 4 格/秒要得到同一个比 ⇒
- * {@code g = 2 × 0.17 × 4 ≈ }<b>{@value #GRAVITY_BLOCKS_PER_SECOND_SQUARED}</b> 格/秒²。
- * 观感：飞 2 秒时前进 8 格、落下约 2.7 格 —— 一条看得见的抛物线，与"要抬枪口才打得远"的弓箭手感同形。</p>
- * <p>⚠ <b>这个数是本项目自定的第一版手感值</b>（作者只给了"与弓箭相似"这句话，没给数）：
- * 要拉平/拉陡，只改这一行（本类是全仓唯一取值点，关卡 {@code bow4-gravity-source} 读它）。</p>
+ * <h2>波级：为什么是"按技能等级掷一次分布"而不是"按等级查一个波级"</h2>
+ * <p>批 4 的写法是"技能等级 → 一个波级"（1/2/3 ⇒ α/β/γ）。作者批 10（2026-10-05）把它改成
+ * <b>按技能等级给一张分布、每次发射掷一次</b>，并且分布扩到 ε/ω（此前 4/5 级只由蓝宝石
+ * 256 RPM 充能器产出）：</p>
+ * <table border="1">
+ *   <caption>等级 → 波级分布（作者给死；主波与每一枚伴随波<b>各自</b>掷一次）</caption>
+ *   <tr><th>技能等级</th><th>α(1)</th><th>β(2)</th><th>γ(3)</th><th>ε(4)</th><th>ω(5)</th></tr>
+ *   <tr><td>Lv1</td><td>100%</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+ *   <tr><td>Lv2</td><td>—</td><td>50%</td><td>50%</td><td>—</td><td>—</td></tr>
+ *   <tr><td>Lv3</td><td>—</td><td>—</td><td>50%</td><td>25%</td><td>25%</td></tr>
+ * </table>
+ * <p>⚠ 平衡（作者已过目）：Lv3 掷出 ω 时是 <b>12 伤害</b>（批 4 那档 β 是 6 ⇒ <b>翻倍</b>），
+ * 而 ε/ω 此前只由蓝宝石 256 RPM 充能器产出 —— 这就是"技能等级越高越能打出高波级"的既定意图。</p>
+ * <p>落法：分布写成<b>整数累积权重区间</b>（{@link WaveLevelOdds}），掷一个
+ * {@code [0, 100)} 的整数落进哪段就是哪级 ⇒ 无浮点、无舍入误差，概率一个都不在调用点写。
+ * 等级越界（{@code <1} 或 {@code >3}）由 {@link #level(int)} 先夹到 [1, 3]。</p>
+ *
+ * <h2>重力要素：批 4 加、批 10 撤（要素本身留在波实体上）</h2>
+ * <p>批 4 给主波设过重力（{@code setGravity(1.35)}，"与弓箭相似"）；<b>批 10 撤回了它</b>：
+ * 发射点不再设 ⇒ 主波与伴随波一样<b>一直走直线</b>（水中与空中同形）。
+ * 因此本表原来那个 {@code GRAVITY_BLOCKS_PER_SECOND_SQUARED = 1.35D} 常量<b>已删除</b>
+ * （它当时的换算口径也一并作废）。</p>
+ * <p>波实体侧那个要素<b>刻意保留</b>（{@code setGravity} / {@code hasGravity} /
+ * {@code applyGravityElement} / NBT 的 {@code GravityAcceleration}）：它的默认值 0
+ * ⇒ 要素未设时 {@code applyGravityElement} 第一句原样返回同一个 {@code step}，
+ * 对机器波/变器波/差波器子波/星芒嬗震/回旋镖环绕波的飞行<b>逐字不变</b>；
+ * 而且它是 {@code :cews} 也编译得到的公开形状，而"共享波基类的 public/protected 形状只许增长"
+ * 是既有的判定（关卡 {@code bow4-public-shape} 逐条枚举它的成员，删掉那两个访问器会直接红）。
+ * 今天<b>全仓没有任何 {@code .setGravity(} 调用点</b>；将来若要把抛物线加回来，
+ * 改的是发射点一行，不必再动实体与存档形状。</p>
  *
  * @since 1.0.0
  */
@@ -70,26 +98,62 @@ public final class BowWaveShiftConfigs {
     public static final int MAX_LEVEL = 3;
 
     /**
+     * <b>一个等级的波级分布</b>：候选波级 + <b>累积权重</b>（整数百分比，最后一项恒 = 100）。
+     *
+     * <p>两个数组<b>等长且同序</b>：第 {@code i} 个候选波级的区间是
+     * {@code [cumulative[i-1], cumulative[i])}（{@code cumulative[-1] = 0}）。
+     * 掷法 = 在 {@code [0, 最后一项)} 上均匀取一个整数，落进哪个区间就是哪个波级 ——
+     * <b>整数区间、无浮点、无舍入误差</b>，而"最后一项 = 100"就是权重总和本身
+     * （关卡两头都核：区间严格递增，且最后一项 = 100）。</p>
+     *
+     * <p>⚠ 本记录<b>不持有随机源</b>：随机源由调用方每枚波各传一次（发射点传 {@code world.random}），
+     * 于是本类不可能造出第二个号源，也不会碰 {@code nextBatch()} 那个批次号计数器。</p>
+     *
+     * @param waveLevels       候选波级（{@link WaveLevels#LOW α} ~ {@link WaveLevels#OMEGA ω}）
+     * @param cumulativeWeight 累积权重（严格递增，最后一项 = 100）
+     */
+    public record WaveLevelOdds(int[] waveLevels, int[] cumulativeWeight) {
+
+        /** 在 {@code [0, 100)} 上均匀取一个整数，落进哪个累积区间就返回哪个波级。 */
+        public int roll(RandomSource random) {
+            int pick = random.nextInt(cumulativeWeight[cumulativeWeight.length - 1]);
+            for (int i = 0; i < cumulativeWeight.length; i++) {
+                if (pick < cumulativeWeight[i]) {
+                    return waveLevels[i];
+                }
+            }
+            return waveLevels[waveLevels.length - 1];
+        }
+    }
+
+    /**
      * 单级「量波置换」定义。
      *
      * @param companionWaves 额外生成的<b>伴随波</b>枚数（Lv1 = 0 / Lv2 = 1 / Lv3 = 2，作者给死）
-     * @param waveLevel      主波波级（本波实际打出的伤害/速度/颜色由它决定，见 {@link WaveLevels}）
+     * @param waveLevelOdds  本等级的<b>波级分布</b>（主波与每一枚伴随波各自掷一次，见
+     *                       {@link #rollWaveLevel(int, RandomSource)}）
      */
-    public record Level(int companionWaves, int waveLevel) {
+    public record Level(int companionWaves, WaveLevelOdds waveLevelOdds) {
     }
 
-    // ========== 三个等级（作者 2026-10-05 给死：1 级只发那枚波 / 2 级 +1 / 3 级 +2） ==========
+    // ========== 三个等级（作者 2026-10-05 批 10 给死；伴随波枚数沿用批 4，波级改成分分布） ======
 
-    /** Lv1 —— 只发那枚波（0 枚伴随波），主波 α。 */
-    public static final Level LEVEL_1 = new Level(0, 1);
+    /** Lv1 —— 只发那枚波（0 枚伴随波），波级 <b>100% α</b>。 */
+    public static final Level LEVEL_1 = new Level(0, new WaveLevelOdds(new int[] { 1 }, new int[] { 100 }));
 
-    /** Lv2 —— 额外 1 枚伴随波（<b>宝石弓走的就是这一档</b>），主波 β。 */
-    public static final Level LEVEL_2 = new Level(1, 2);
+    /** Lv2 —— 额外 1 枚伴随波（<b>宝石弓的基准档</b>），波级 <b>50% β / 50% γ</b>。 */
+    public static final Level LEVEL_2 = new Level(1, new WaveLevelOdds(new int[] { 2, 3 }, new int[] { 50, 100 }));
 
-    /** Lv3 —— 额外 2 枚伴随波，主波 γ（今天没有哪把弓走这一档：宝石弓的起始等级 = 2 ⇒ 走 Lv2）。 */
-    public static final Level LEVEL_3 = new Level(2, 3);
+    /** Lv3 —— 额外 2 枚伴随波（宝石弓附魔提升后能到这一档），波级 <b>50% γ / 25% ε / 25% ω</b>。 */
+    public static final Level LEVEL_3 = new Level(2, new WaveLevelOdds(new int[] { 3, 4, 5 }, new int[] { 50, 75, 100 }));
 
-    /** 按等级取配置（与其余各条 {@code *Configs} 同名同形；越界先夹到 [1, 3]）。 */
+    /**
+     * 按等级取配置（与其余各条 {@code *Configs} 同名同形）。
+     *
+     * <p><b>越界一律夹到 [1, 3]</b>：{@code <1}（含 0 / 负数）⇒ 第 1 档，{@code >3} ⇒ 第 3 档。
+     * 夹取走 {@link SkillLevelTables#pick3Clamped} 这个既有形状（表长 = 上限本身），
+     * 本类不手写 {@code Math.max/min} —— 掷波级也走这里，所以"越界夹取"只有一处。</p>
+     */
     public static Level level(int level) {
         return SkillLevelTables.pick3Clamped(level, MAX_LEVEL, LEVEL_1, LEVEL_2, LEVEL_3);
     }
@@ -132,43 +196,29 @@ public final class BowWaveShiftConfigs {
         return level(level).companionWaves();
     }
 
-    /** 该技能等级的<b>主波波级</b>（1/2/3 ⇒ α/β/γ）。 */
-    public static int mainWaveLevelFor(int level) {
-        return level(level).waveLevel();
-    }
-
     /**
-     * <b>伴随波的波级</b> —— 口径照抄星芒嬗震的 {@code StarShockConfigs#orbitWaveLevelFor}：
-     * <b>取伤害不小于"主波伤害一半"的最低波级</b>（"取不到一半就宁高不宁低"）。
+     * <b>按技能等级掷一次波级</b>（作者 2026-10-05 批 10）。
      *
-     * <p>实算（{@link WaveLevels#damage} = 4 / 6 / 8 / 10 / 12，主波 α/β/γ = 4 / 6 / 8，
-     * 一半 = 2 / 3 / 4）：三个等级都落在 <b>α（伤害 4）</b> —— 这正是作者要的
-     * "一枚<b>小</b>伴随波"（伤害最小、颜色最淡的那一档）。</p>
+     * <p>三件一起看：</p>
+     * <ol>
+     *   <li><b>分布住在表里</b>：本方法只问 {@link #level(int)} 取本等级的 {@link WaveLevelOdds}
+     *       再掷一次 —— 概率一个都不在调用点写，越界夹取也在同一条路上；</li>
+     *   <li><b>主波与每一枚伴随波各自掷</b>：<b>每枚波各调一次本方法</b>（主波一次、伴随波循环里
+     *       每枚一次），与魔素池（{@code BowMetaArrowTrait#randomEssence}）完全同形 ——
+     *       同一个方法、按波调用、每枚独立。⇒ 批 4 那条"伴随波取伤害不小于主波一半的最低波级"的
+     *       规则（{@code companionWaveLevelFor}）已被这条口径<b>作废并删除</b>：它现在既不是
+     *       伴随波的取值点，也不再是任何人的取值点（同一份分布才是伴随波的来源）；</li>
+     *   <li><b>随机源是 {@code world.random}</b>：调用方（发射点）逐枚传进来的服务端世界随机源，
+     *       本类不持有号源、也不碰批次号计数器（那是 {@code BowWaveShiftLauncher#nextBatch()} 的事）。</li>
+     * </ol>
      *
-     * <p>刻意<b>写规则而不是写死 {@code WaveLevels.LOW}</b>：将来主波波级表变大（或者作者把
-     * 伴随波改成"主波同款"）时，这里跟着算，而不是留下一个与主波脱节的常数。
-     * ⚠ 伴随波的<b>波速</b>对观感没有意义（它的位置每 tick 被环绕要素改写），
-     * 有意义的只有伤害与颜色。</p>
+     * @param level  技能等级（越界先夹到 [1, 3]，见 {@link #level(int)}）
+     * @param random 服务端世界随机源（发射点传 {@code world.random}）
+     * @return 本次掷出的波级（1~5；本表三行分别落在 {1} / {2,3} / {3,4,5}）
      */
-    public static int companionWaveLevelFor(int level) {
-        float wanted = WaveLevels.damage(mainWaveLevelFor(level)) / 2.0F;
-        int chosen = WaveLevels.LOW;
-        for (int lv = WaveLevels.LOW; lv <= WaveLevels.MAX_LEVEL; lv++) {
-            chosen = lv;
-            if (WaveLevels.damage(lv) >= wanted) {
-                break;
-            }
-        }
-        return chosen;
+    public static int rollWaveLevel(int level, RandomSource random) {
+        return level(level).waveLevelOdds().roll(random);
     }
-
-    /**
-     * <b>重力要素的强度</b>（格/秒²）—— 唯一取值点，口径与来由见类注释那一节。
-     *
-     * <p>它<b>不是</b>本类的字段而是常量：波实体只提供"要素"（{@code setGravity(强度)}），
-     * 强度由发射点传进去；要按等级分档（作者没要求）就把本方法改成查等级表。</p>
-     */
-    public static final double GRAVITY_BLOCKS_PER_SECOND_SQUARED = 1.35D;
 
     /**
      * <b>伴随波的环绕半径</b>（格）：照抄星芒嬗震那条口径的 <b>0.80</b>。
