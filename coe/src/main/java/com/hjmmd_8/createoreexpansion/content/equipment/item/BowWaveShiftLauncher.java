@@ -173,7 +173,8 @@ public final class BowWaveShiftLauncher {
         //   main.setGravity(BowWaveShiftConfigs.GRAVITY_BLOCKS_PER_SECOND_SQUARED);
         // （批 4 的"空中有实体重力、水中走直线"）—— 作者批 10 撤回了重力那一半，主波自此
         // <b>一直走直线</b>（空中与水中同形）。波实体上的重力要素仍在（默认 0 ⇒
-        // applyGravityElement 第一句原样返回同一个 step），但全仓已无任何 .setGravity( 调用点。
+        // applyGravityElement 第一句原样返回同一个 step）；当前唯一调用点是
+        // BowAstralBarrageLauncher（星界弹幕，要跟随药水箭的下落剖面），宝石弓这条不设重力。
         // 同一次发射的波共用一个批次号 ⇒ 互相豁免碰撞（否则主波与伴随波出生瞬间就互相湮灭）
         main.setFiringBatch(batch);
         world.addFreshEntity(main);

@@ -83,8 +83,9 @@ import net.minecraft.util.RandomSource;
  * 对机器波/变器波/差波器子波/星芒嬗震/回旋镖环绕波的飞行<b>逐字不变</b>；
  * 而且它是 {@code :cews} 也编译得到的公开形状，而"共享波基类的 public/protected 形状只许增长"
  * 是既有的判定（关卡 {@code bow4-public-shape} 逐条枚举它的成员，删掉那两个访问器会直接红）。
- * 今天<b>全仓没有任何 {@code .setGravity(} 调用点</b>；将来若要把抛物线加回来，
- * 改的是发射点一行，不必再动实体与存档形状。</p>
+ * 今天<b>全仓唯一的 {@code .setGravity(} 调用点是 {@code BowAstralBarrageLauncher}</b>
+ * （星界弹幕那一族要"与药水箭同一条下落剖面"才设重力；<b>宝石弓这条不设重力</b>）；
+ * 将来若要把抛物线加回来，改的是发射点一行，不必再动实体与存档形状。</p>
  *
  * @since 1.0.0
  */

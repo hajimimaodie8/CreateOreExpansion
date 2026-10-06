@@ -186,7 +186,9 @@ import net.minecraft.world.phys.Vec3;
  * <h2>⛔ 零注册、零语言键、零新 id、零新实体</h2>
  * <p>与批 4 / 批 5 逐字同形：本技能<b>不是</b>正式技能条目 —— 不加 {@code AllSkills} 条目、
  * 不进内核白名单、不写语言键、不跑 {@code runData}；它挂在本把弓自己那两条既有技能的键位上
- * （{@code CoeSkillRelease#anyHeldItemSkillKeyPressed}，服务端权威读数）。落下的两样东西
+ * （服务端读 {@code CoeSkillProvider#slotPressed} / {@code CoeSkillProvider#pressedSlot}，
+ * 客户端读 {@code CoeSkillClient#toolSlotKeyHeld}；那个旧的
+ * {@code CoeSkillRelease#anyHeldItemSkillKeyPressed} 批 8 已删）。落下的两样东西
  * 都是<b>原版 / 既有</b>实体（{@code minecraft:arrow} 家族与 {@code createoreexpansion:charger_wave}）。</p>
  *
  * <h2>★ 我独创 / 作者没给、本表定死的那些数（调参只改本表）</h2>
