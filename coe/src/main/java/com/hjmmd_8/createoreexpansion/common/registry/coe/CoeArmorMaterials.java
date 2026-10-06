@@ -69,7 +69,27 @@ public final class CoeArmorMaterials {
     // 超过 20 + d/f 的点数才完全没有收益、且不会更差，所以超出 20 的部分收益递减，而不是按
     // 1.5×/2× 直接乘上去；点数因此按"逐档不降、且不低于钻石"排，强度由韧性 + 抗击退承担。
 
-    /** <b>翠玉盔甲</b>：耐久 = 钻石与下界合金的 3/4 分界点（倍率 36）。 */
+    // ==================== 修复材料（铁砧用材料修）—— 作者 2026-10-06 批 13 逐条裁定 ==========
+    // 四套的 repairIngredient 就是「融合规则」本身，作者原话逐字：
+    //     「雷鸣不是融合 ⇒ 只认雷鸣合金锭」
+    // 于是三套融合套各认**两种**锭、雷鸣套只认**一种**：
+    //     翠玉 = jade_ingot      + topaz_ingot      （翡翠·黄玉）
+    //     宝石 = sapphire_ingot  + ruby_ingot       （蓝宝石·红宝石）
+    //     星界 = stellarstone_ingot + sanctstone_ingot（星辉石·星芒石）
+    //     雷鸣 = thunderite_ingot                    （单一；它不是融合套）
+    // `Ingredient.of(A, B)` 天然就是「任一即可」（原版 Ingredient#of(ItemLike...) 收成多值，
+    // test 命中其中一个即为真 ⇒ ArmorItem#isValidRepairItem 直接放行）—— 不许自造合并类。
+    //
+    // ⚠ 批 13 修掉的那处抄错：宝石套在本批之前认的是 **topaz_ingot（黄玉锭）**，
+    // 与宝石套自己那两种锭（蓝宝石 / 红宝石）毫无关系 —— 那是 e43b95d9 建类那一次就带进来的。
+    // 四套的修复材料与弓 / 回旋镖两张档位表同源（BowTier#repairIngredient() /
+    // BoomerangTier#repairIngredient()），改一处要三处一起改。
+    //
+    // ⚠ 实现形状：这与既有 AllTiers（工具 Tier 的 getRepairIngredient）是同一件事的两种载体
+    // —— 工具走原版 Tier 接口、盔甲走 ArmorMaterial#repairIngredient、弓/镖走物品自己的
+    // isValidRepairItem 覆写；三处都是「该档唯一真源」，都不自造合并类。
+
+    /** <b>翠玉盔甲</b>：耐久 = 钻石与下界合金的 3/4 分界点（倍率 36）。修复材料 = 翡翠锭 + 黄玉锭。 */
     public static final DeferredHolder<ArmorMaterial, ArmorMaterial> JADE_TOPAZ = register(
         "jade_topaz",
         new int[] { 3, 6, 8, 3 },
@@ -77,9 +97,9 @@ public final class CoeArmorMaterials {
         SoundEvents.ARMOR_EQUIP_DIAMOND,
         2.5F,
         0.05F,
-        () -> Ingredient.of(CoeItems.JADE_INGOT.get()));
+        () -> Ingredient.of(CoeItems.JADE_INGOT.get(), CoeItems.TOPAZ_INGOT.get()));
 
-    /** <b>宝石盔甲</b>：耐久 = 下界合金的 1.25 倍（倍率 47）。 */
+    /** <b>宝石盔甲</b>：耐久 = 下界合金的 1.25 倍（倍率 47）。修复材料 = 蓝宝石锭 + 红宝石锭。 */
     public static final DeferredHolder<ArmorMaterial, ArmorMaterial> SAPPHIRE_RUBY = register(
         "sapphire_ruby",
         new int[] { 4, 7, 8, 3 },
@@ -87,9 +107,9 @@ public final class CoeArmorMaterials {
         SoundEvents.ARMOR_EQUIP_DIAMOND,
         4.5F,
         0.15F,
-        () -> Ingredient.of(CoeItems.TOPAZ_INGOT.get()));
+        () -> Ingredient.of(CoeItems.SAPPHIRE_INGOT.get(), CoeItems.RUBY_INGOT.get()));
 
-    /** <b>星界盔甲</b>：耐久 = 下界合金的 2 倍（倍率 74），韧性 6.0、抗击退 0.20。 */
+    /** <b>星界盔甲</b>：耐久 = 下界合金的 2 倍（倍率 74），韧性 6.0、抗击退 0.20。修复材料 = 星辉石锭 + 星芒石锭。 */
     public static final DeferredHolder<ArmorMaterial, ArmorMaterial> ASTRAL = register(
         "astral",
         new int[] { 4, 8, 9, 4 },
@@ -97,9 +117,9 @@ public final class CoeArmorMaterials {
         SoundEvents.ARMOR_EQUIP_NETHERITE,
         6.0F,
         0.20F,
-        () -> Ingredient.of(CoeItems.STELLARSTONE_INGOT.get()));
+        () -> Ingredient.of(CoeItems.STELLARSTONE_INGOT.get(), CoeItems.SANCTSTONE_INGOT.get()));
 
-    /** <b>雷鸣盔甲</b>：耐久 = 下界合金的 2 倍（倍率 74），韧性 6.0、抗击退 0.20。 */
+    /** <b>雷鸣盔甲</b>：耐久 = 下界合金的 2 倍（倍率 74），韧性 6.0、抗击退 0.20。修复材料 = 雷鸣合金锭（单一，非融合）。 */
     public static final DeferredHolder<ArmorMaterial, ArmorMaterial> THUNDER = register(
         "thunder",
         new int[] { 4, 8, 9, 4 },
