@@ -44,6 +44,13 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.settings.SkillSettings
  * <b>服务端权威</b>的。这正好修掉本模组的一个既有缺陷：旧 {@code AllKeys} 是纯客户端
  * 对象，专用服务器上 {@code isPressed()} 恒为 false，技能键永远不触发。</p>
  *
+ * <p><b>2026-10-05 弓技能批 8 ③</b>：原先那个"主手物品有没有技能键被按住"的只读查询
+ * （{@code anyHeldItemSkillKeyPressed}，批 4 引入、批 7 起零调用者）<b>已删除</b> ——
+ * 本类因此重新只暴露<b>两个</b> {@code release} 重载（关卡 §43 钉着这个数）。
+ * 服务端权威的"有没有技能意图"查询搬到了<b>绑定表的归属类</b>
+ * （{@code CoeSkillProvider#pressedSlot} / {@code CoeSkillProvider#slotPressed}），
+ * 走的是与 {@link #release} 同一份绑定表与同一个键位来源 —— 键位真源仍然只有一条。</p>
+ *
  * @since 1.0.0
  */
 public final class CoeSkillRelease {
@@ -87,58 +94,6 @@ public final class CoeSkillRelease {
             }
         }
         return released;
-    }
-
-    /**
-     * <b>主手物品的技能键此刻按着没有</b> —— 只读判据（2026-10-05 弓技能批 4 返工引入）。
-     *
-     * <p>它回答的是「这一发是不是<b>按着技能键</b>打出去的」。</p>
-     *
-     * <p>⚠ <b>2026-10-05 弓技能批 7 起它在本仓<b>没有调用者</b></b>，而且这是<b>刻意保留</b>的：
-     * 批 4/5/6 把它当成三条专属弓技能的唯一判据（{@code JadeTopazBowItem#waveShiftKeyHeld}），
-     * 那造成了一个<b>歧义</b>——它问的是"<b>任一</b>技能键"，所以按 Shift / R（键一 / 键二）
-     * 同样命中它：那一发被专属技能接管，而内核已经先按槽位 0/1 放出了继承的
-     * {@code bow_curse} / {@code bow_disarm}（能量与冷却白付、效果一个字没生效）。
-     * 批 7 因此把触发判据换成<b>技能自己写的标记</b>（{@code BowExclusiveShotItemSkill}：
-     * 内核按真实槽位派发 ⇒ 每条专属技能只认自己那个键）。</p>
-     *
-     * <p>保留它的理由：它本身<b>没错</b>（服务端权威、与释放路径同源），只是"任一键"这个粒度
-     * 不足以区分专属技能；将来若有<b>真正按"这件物品有没有技能被按住"</b>判定的携带式效果，
-     * 这里就是现成的那一处判据。<b>不要</b>再用它做"是哪一条技能"的判定 —— 那是批 7 修掉的坏法。
-     * 同族的按槽位读法见回旋镖的 {@code BoomerangItem#skillKeyHeld}（它问"<b>我的第几个</b>键"）。</p>
-     *
-     * <h2>为什么必须走这一条通道</h2>
-     * <ul>
-     *   <li><b>服务端权威</b>：{@link PlayerPressedKeys} 由客户端的按键包写入，专用服务器上同样为真
-     *       —— 而 {@code AllKeys#isPressed()} 是纯客户端对象，专用服务器恒 false
-     *       （本模组换核时修掉的正是那个缺陷）；</li>
-     *   <li><b>与释放路径同一个判据</b>：这里遍历的绑定表与 {@link #release} 遍历的是<b>同一份</b>
-     *       {@link CoeSkillProvider#componentOf}（含同两条守卫：空槽位、装备段槽位），
-     *       所以"释放路径看到按了键"与"本方法说按了键"永远一致，不会出现两套键位真相；</li>
-     *   <li><b>只认主手物品</b>：与 {@link CoeSkillProvider} 的既有口径逐字一致（换核时定了
-     *       "只认主手物品"，四个触发点都按它走），这里刻意不另开一条读副手的路。</li>
-     * </ul>
-     *
-     * @param player 目标玩家
-     * @return 该玩家主手物品的任一技能槽位当前被按住；没有物品 / 没有技能 / 没按键时 {@code false}
-     */
-    public static boolean anyHeldItemSkillKeyPressed(ServerPlayer player) {
-        if (player == null) {
-            return false;
-        }
-        // 与 release(..) 的遍历逐条同源：同一个绑定表、同样跳过空槽位与装备段（本方法的来源是
-        // CoeSkillProvider，本来就只有工具/物品段 0/1/2；装备段那条守卫是形状对齐，不是新语义）。
-        for (Map.Entry<Integer, SkillBundle> binding : CoeSkillProvider.componentOf(player).bindings().entrySet()) {
-            Integer slot = binding.getKey();
-            if (slot == null || !PlayerPressedKeys.isPressed(player, slot)) {
-                continue;
-            }
-            if (ArmorSkillProvider.isEquipmentSlot(slot)) {
-                continue;
-            }
-            return true;
-        }
-        return false;
     }
 
     /**
