@@ -36,6 +36,9 @@ import java.util.Set;
  * <p>另外提供 {@link #consume(Player, ItemStack, Consumable, int)}：新内核的资源不足时是
  * <b>静默失败</b>，而旧路径会发低能量提示，这里把提示补回来（详见方法 javadoc）。</p>
  *
+ * <p>还有 {@link #cooldownTicks(ItemStack, int)}：把"技能自己的秒数 / 显式无冷却 / 没配回落物品注册表"
+ * 三态分开（2026-10-06 批 14 修掉"配了 0 会悄悄变成 1 秒"那个坑，见那个方法的 javadoc）。</p>
+ *
  * @since 1.0.0
  */
 public final class CoeSkillSupport {
@@ -145,11 +148,53 @@ public final class CoeSkillSupport {
     }
 
     /**
-     * 本次释放的冷却时长（tick）：技能自己有冷却就用它，否则回落物品上的通用冷却
-     * （旧 {@code HurtLivingEntityHandler#triggerSlot} 的口径）。
+     * 「<b>本条技能自己没配冷却</b>」的哨兵（2026-10-06 批 14 引入）。
+     *
+     * <p>见 {@link #cooldownTicks(ItemStack, int)} 的三态语义 —— 负数 = 没配，只有这一条路会去问
+     * 物品的按物品冷却注册表。</p>
+     */
+    public static final int NO_SKILL_COOLDOWN = -1;
+
+    /**
+     * 本次释放的冷却时长（tick）—— <b>三态语义</b>（2026-10-06 批 14 厘清）。
+     *
+     * <h2>三态（为什么不是"小于等于 0 就回落"）</h2>
+     * <ol>
+     *   <li><b>{@code cooldownSeconds > 0}</b> ⇒ {@code 秒数 × 20} tick。四条调用方
+     *       （剥取 / 夺取 / 弓那两条 / 三条弓专属）今天<b>全部</b>走这一支
+     *       （3~12 秒，一个 0 都没有）⇒ <b>本批行为零变化</b>；</li>
+     *   <li><b>{@code cooldownSeconds == 0}</b> ⇒ <b>0 tick = 显式"无冷却"</b>，调用方不写冷却。
+     *       ⚠ 这正是批 14 修的坑：批 1~13 的判据是 {@code <= 0}，于是"把配置改成 0 想表达无冷却"
+     *       会掉进下面的注册表分支，而物品未注册时 {@code SkillCooldowns} 返回它的
+     *       {@code DEFAULT_COOLDOWN_TICKS = 20} ⇒ <b>悄悄变成 1 秒冷却</b>（想表达"无"却得到一个值）；</li>
+     *   <li><b>{@code cooldownSeconds < 0}</b>（约定值 = {@link #NO_SKILL_COOLDOWN}）⇒
+     *       <b>本条技能没配冷却</b> ⇒ 回落物品注册表 {@link SkillCooldowns#getTicks(ItemStack)}
+     *       —— 全模组唯一写点是 {@code CoeItems} 翠玉之弓那行 {@code .skillCooldown(5 * 20)}
+     *       （= 100 tick = 5 秒，红线行，批 14 未动）；物品也没注册时由 core 自己声明的
+     *       {@code SkillCooldowns.DEFAULT_COOLDOWN_TICKS}（20 tick）兜底 —— 那是 core 的默认值，
+     *       <b>不是本方法"悄悄"产生的</b>（第 ② 条已把"配了 0"从这里摘出去）。</li>
+     * </ol>
+     * <p>⚠ 为什么保留"回落注册表"这条支（而不是删掉那处注册）：那处注册落在翠玉之弓的注册链上、
+     * 是关卡逐字钉住的<b>红线行</b>，而 {@code SkillCooldowns} 住在共享库 {@code core}
+     * （本批不许动）；删掉注册只会让 core 那张表<b>一个读者一个写者都不剩</b>（死代码从一处挪到
+     * 一处、还动了红线）。批 14 的选择是<b>让注册值重新有意义（有真实读者）</b>，并把
+     * "没配"与"配了 0"两种意图分开表达。</p>
+     *
+     * <p>⚠ 本批<b>没有</b>给开岩 / 引渠 / 平场 / 耕作加冷却（作者明确"没必要"）：它们的配置里
+     * 不出现冷却字段，也就不会调到本方法。</p>
+     *
+     * @param stack           手持工具（第 ③ 支只在物品注册表里查它）
+     * @param cooldownSeconds 该技能<b>自己</b>的冷却秒数：正 = 用它；0 = 显式无冷却；
+     *                        负（{@link #NO_SKILL_COOLDOWN}）= 没配，回落物品注册表
      */
     public static int cooldownTicks(ItemStack stack, int cooldownSeconds) {
-        return cooldownSeconds > 0 ? cooldownSeconds * 20 : SkillCooldowns.getTicks(stack);
+        if (cooldownSeconds > 0) {
+            return cooldownSeconds * 20;
+        }
+        if (cooldownSeconds == 0) {
+            return 0;
+        }
+        return SkillCooldowns.getTicks(stack);
     }
 
     /**
