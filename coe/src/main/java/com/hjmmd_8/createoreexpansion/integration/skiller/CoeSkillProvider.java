@@ -13,8 +13,10 @@ import com.leaf.skiller.foundation.provider.SkillProvider;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.skill.ItemSkillRegistration;
 import com.leaf.skiller.foundation.skill.SkillBundle;
+import com.leaf.skiller.server.PlayerPressedKeys;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 
@@ -120,6 +122,68 @@ public class CoeSkillProvider implements SkillProvider {
         cachedLegacy = legacy;
         cachedResult = converted;
         return converted;
+    }
+
+    /**
+     * <b>服务端权威：该玩家主手物品此刻按着的技能槽位</b>（2026-10-05 弓技能批 8 ①）。
+     *
+     * <p>它回答的是"这一次触发有没有技能意图"，走的是与释放路径 {@code CoeSkillRelease#release}
+     * <b>同一份</b>绑定表（{@link #componentOf}）与<b>同一个</b>键位来源（{@link PlayerPressedKeys}
+     * —— 由客户端的按键包写入，<b>专用服务器上同样为真</b>）。</p>
+     *
+     * <h2>为什么必须有这一处</h2>
+     * <p>{@code content/skill/input/AllKeys} 是<b>纯客户端</b>对象（服务端没有 keybind，
+     * {@code isPressed()} 恒 false）⇒ 专用服务器上"这次拉弓按了技能键没有"这个问题，
+     * 客户端读数只有一个答案"没有"⇒ 弓类技能（含三条专属）在专用服务器上<b>永远不释放</b>
+     * （单人 / 局域网主机看不出问题：客户端按键状态在同一个进程里可读）。</p>
+     *
+     * <p>弓侧因此把预检的<b>服务端那一半</b>交给本方法（{@code JadeTopazBowItem} 的两处读数），
+     * 客户端那一半仍是 {@code JadeTopazBowItem#detectSkillSlot()}（纯客户端读数，只用于客户端）。</p>
+     *
+     * <p>多个槽位同时按下时返回<b>绑定表顺序里的第一个</b>（= 槽位号最小的那个）：
+     * 调用方只用它回答"<b>有没有</b>"（负数 = 一个都没按）。要问"<b>某一个</b>槽位按着没有"
+     * 用 {@link #slotPressed}。</p>
+     *
+     * @param player 目标玩家
+     * @return 主手物品的某个技能槽位号；没有物品 / 没有已迁移技能 / 没按键时 {@code -1}
+     */
+    public static int pressedSlot(@Nullable ServerPlayer player) {
+        if (player == null) {
+            return -1;
+        }
+        for (Map.Entry<Integer, SkillBundle> binding : componentOf(player).bindings().entrySet()) {
+            Integer slot = binding.getKey();
+            if (slot == null || !PlayerPressedKeys.isPressed(player, slot)) {
+                continue;
+            }
+            if (ArmorSkillProvider.isEquipmentSlot(slot)) {
+                continue;
+            }
+            return slot;
+        }
+        return -1;
+    }
+
+    /**
+     * <b>服务端权威：该玩家主手物品的指定技能槽位此刻是否被按住</b>（2026-10-05 弓技能批 8 ②）。
+     *
+     * <p>"该槽位<b>已绑定技能</b>且此刻被按住"是<b>一个</b>判据（遍历的就是绑定表本身）：
+     * 槽位没有绑定任何技能时恒 {@code false} —— 这就是"翠玉之弓没有第三个技能槽"的机器来源
+     * （它上面按 G 不会被当成专属技能意图）。</p>
+     *
+     * <p>装备段槽位（3/4/5）不属于本来源（{@link ArmorSkillProvider} 另管一段），
+     * 这里的守卫与 {@code CoeSkillRelease#release} 的遍历逐条同形：形状对齐，不是新语义。</p>
+     *
+     * @param player 目标玩家
+     * @param slot   要问的槽位号
+     * @return 该槽位已绑定技能且此刻被按住；否则 {@code false}
+     */
+    public static boolean slotPressed(@Nullable ServerPlayer player, int slot) {
+        if (player == null || ArmorSkillProvider.isEquipmentSlot(slot)) {
+            return false;
+        }
+        return componentOf(player).bindings().containsKey(slot)
+                && PlayerPressedKeys.isPressed(player, slot);
     }
 
     /** 真正的转换：旧组件 → 新组件（结果会被 {@link #componentOf} 缓存）。 */

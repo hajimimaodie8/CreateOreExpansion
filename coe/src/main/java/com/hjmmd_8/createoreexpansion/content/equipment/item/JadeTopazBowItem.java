@@ -4,6 +4,7 @@ import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowAstralBarra
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowThunderMightConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowWaveShiftConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
+import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillProvider;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillRelease;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillTypes;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.factory.BowContextFactory;
@@ -198,6 +199,26 @@ import net.neoforged.neoforge.event.EventHooks;
  *   <li><b>翠玉之弓一个字节未改</b>：它只有槽位 0/1（没有第三条技能），按 G 什么也不发生；
  *       它那两条技能的释放路径与标记机制一个字没动。</li>
  * </ul>
+ *
+ * <p><b>2026-10-05 弓技能批 8（三件修补；本类只承担第 ① 件）</b>：</p>
+ * <ul>
+ *   <li><b>修掉的真 bug</b>：两处"这次拉弓按了技能键没有"的读数原先都只问 {@code AllKeys}
+ *       （纯客户端对象，服务端 keybind 为 null ⇒ {@code isPressed()} 恒 false）
+ *       ⇒ 专用服务器上 {@code PendingSkillSlot} 恒 -1 ⇒ {@link #releaseSkillIfRequested}
+ *       直接 return ⇒ <b>弓类技能（含三条专属）在专用服务器上完全不释放</b>
+ *       （单人 / 局域网主机不受影响：客户端按键状态在同一个进程里可读）。</li>
+ *   <li><b>修法（读数分流，两处同改）</b>：{@code player instanceof ServerPlayer} 时问
+ *       {@code CoeSkillProvider.pressedSlot(..)}（服务端权威：{@code PlayerPressedKeys}
+ *       经集成层，与 {@code CoeSkillRelease#release} 同一份绑定表），否则才问
+ *       {@link #detectSkillSlot()}（客户端读数，关卡 §46 钉着它的三条键位）。
+ *       ⛔ 弓侧<b>不</b>直接 import 内核键位表（关卡 §43 钉着"只问集成层"）。</li>
+ *   <li><b>语义一个字没改</b>：两段式时机（拉弓起点记录 ⊕ 松手补测）仍是"或"；
+ *       一个槽位都没按 ⇒ 没有技能意图 ⇒ 普通射击照旧不释放技能；
+ *       真正放哪一条仍由内核按真实槽位派发。</li>
+ *   <li>②（专属接管的那一发不扣继承那条的能量与冷却）落在
+ *       {@code BowShootItemSkill} + {@code BowExclusiveShotItemSkill}，不在本类；
+ *       ③（删零调用的 {@code anyHeldItemSkillKeyPressed}）在 {@code CoeSkillRelease}。</li>
+ * </ul>
  */
 public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 
@@ -328,9 +349,21 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		// （{@link BowExclusiveShotItemSkill#clearPendingShot}，只清不读）：一次"没打成"的拉弓
 		// （无箭且能量不足 ⇒ releaseUsing 在 shoot 之前就 return）会把标记留在弓上，
 		// 不在新的一次拉弓起点清掉就会泄漏到下一发普通射击上 —— 与上面那道魔素闸门同一个理由。
+		//
+		// ★ 批 8 ①：这一次的键位读数 —— <b>服务端一律走服务端权威通道</b>。
+		// ⚠ AllKeys 是纯客户端对象（服务端 keybind 为 null ⇒ isPressed() 恒 false），
+		// 所以专用服务器上原先这里恒写 -1 ⇒ 松手时 {@link #releaseSkillIfRequested} 直接 return
+		// ⇒ 弓类技能（含三条专属）在专用服务器上<b>永远不释放</b>（单人 / 局域网主机看不出）。
+		// detectSkillSlot() 保留为<b>客户端</b>读数（关卡 §46 钉着它的三条键位），
+		// 服务端改问集成层的 CoeSkillProvider.pressedSlot(..)：同一份绑定表
+		// （CoeSkillProvider#componentOf）+ 同一个键位来源（PlayerPressedKeys，由客户端按键包写入）。
+		// 两处读数（拉弓起点 + 松手补测）口径必须一致 —— 改一处不改另一处就是"专用服务器上时好时坏"。
+		int pendingSlot = player instanceof ServerPlayer serverPlayer
+				? CoeSkillProvider.pressedSlot(serverPlayer)
+				: detectSkillSlot();
 		stack.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
 				data -> data.update(tag -> {
-					tag.putInt("PendingSkillSlot", detectSkillSlot());
+					tag.putInt("PendingSkillSlot", pendingSlot);
 					tag.remove(TAG_SKILL);
 					tag.remove(TAG_SKILL_LEVEL);
 					tag.remove(TAG_META_ESSENCE);
@@ -359,8 +392,13 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 				.copyTag().getInt("PendingSkillSlot");
 		// 拉弓时未按技能键（或按键发生在拉弓之后）：松手时实时补测一次，
 		// 避免"无箭 + 释放技能"场景下技能被跳过、只扣除魔法箭能量
+		// ★ 批 8 ①：同一条读数口径 —— 服务端问服务端权威通道（PlayerPressedKeys 经集成层），
+		// 客户端才用 detectSkillSlot()。少了这一处，专用服务器上"拉弓之后才按技能键"
+		// 这一种时机仍然不会释放。
 		if (pendingSlot < 0) {
-			pendingSlot = detectSkillSlot();
+			pendingSlot = player instanceof ServerPlayer serverPlayer
+					? CoeSkillProvider.pressedSlot(serverPlayer)
+					: detectSkillSlot();
 		}
 		stack.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
 				data -> data.update(tag -> tag.remove("PendingSkillSlot")));
@@ -391,6 +429,12 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 * <p>⚠ 传进来的 {@code slot} 只用来回答"这次松手有没有技能意图"（{@code < 0} 就整个跳过）；
 	 * <b>真正放哪一条由内核按 {@code PlayerPressedKeys} 的真实槽位决定</b> ——
 	 * 这正是批 7 修掉"任一键"歧义的地方（弓不再自己判断按的是哪个键）。</p>
+	 *
+	 * <p><b>批 8 ①：这个 {@code slot} 在服务端已经是服务端权威的</b> —— 它的两个来源
+	 * （拉弓起点的记录、松手时的补测）在服务端都问 {@code CoeSkillProvider.pressedSlot(..)}
+	 * （{@code PlayerPressedKeys}），只有客户端才用 {@code detectSkillSlot()}。
+	 * 于是"不按键的普通射击不释放技能"仍然成立（一个槽位都没按 ⇒ 恒 {@code -1} ⇒ 这里 return），
+	 * 而专用服务器上按了键的那一发不再被误判成"没按"。</p>
 	 */
 	private void releaseSkillIfRequested(Player player, ItemStack bow, int slot) {
 		if (slot < 0) return;
@@ -503,11 +547,18 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	}
 
 	/**
-	 * 检测本次射击请求的技能键位：键一=0（凋零诅咒）、键二=1（缴械风暴）、
+	 * <b>客户端读数</b>：检测本次射击请求的技能键位 —— 键一=0（凋零诅咒）、键二=1（缴械风暴）、
 	 * <b>键三=2（本把弓的专属技能，批 7）</b>、无= -1。
 	 *
-	 * <p>⚠ 这里用的是 {@code AllKeys}（<b>纯客户端</b>对象，专用服务器上恒 false）—— 这是既有形状，
-	 * 本批不动：它的产物 {@code PendingSkillSlot} 只用来回答"这次拉弓有没有技能意图"，
+	 * <p>⚠ 这里用的是 {@code AllKeys}（<b>纯客户端</b>对象：服务端没有 keybind，
+	 * {@code isPressed()} 恒 false）。<b>批 8 ① 之后它只服务客户端</b>：
+	 * 两处调用点（{@link #use} 的拉弓起点、{@link #releaseUsing} 的松手补测）都是
+	 * {@code player instanceof ServerPlayer ? CoeSkillProvider.pressedSlot(..) : detectSkillSlot()}
+	 * —— 服务端走服务端权威通道（{@code PlayerPressedKeys} 经集成层），客户端才走这里。
+	 * 因此本方法<b>不再是</b>服务端释放闸门的判据（那正是批 8 修掉的坏法：
+	 * 专用服务器上这个方法恒 -1 ⇒ 弓类技能永不释放）。</p>
+	 *
+	 * <p>产物 {@code PendingSkillSlot} 只用来回答"这次拉弓有没有技能意图"（负数 = 没有），
 	 * 真正放哪一条由内核按 {@code PlayerPressedKeys} 的真实槽位决定（见
 	 * {@link #releaseSkillIfRequested} → {@code CoeSkillRelease#release}）。</p>
 	 */
