@@ -57,11 +57,14 @@ import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
  * <p>⚠ <b>垂直容差是「我独创、作者没写死」的一个数</b>（作者只给了"水平方形"）：要改成
  * 零厚度、或者改成 n 格高的立方体，只改本表两个方法/常量（本类是唯一取值点）。</p>
  *
- * <h2>耗能与冷却</h2>
- * <p>沿用批 4 已落地的口径：<b>无箭那一发</b>已经由 {@code prepareProjectiles} 的"无箭补给"付过
- * {@code JadeTopazBowItem.NO_ARROW_COST} 点（那条路一字未动）；<b>有箭那一发</b>箭本身就是代价
- * （{@code draw(..)} 已经把它从物品栏收走）。耐久照原版同一笔账在物品侧扣。冷却<b>无</b>
- * （与另外两条弓技能同形：不是正式技能条目，内核侧没有它的耗能与冷却）。</p>
+ * <h2>耗能与冷却（<b>2026-10-06 批 13 补齐</b>；批 5~12 这两项都为「无」）</h2>
+ * <p>作者原话：「<b>基础的能量都是一次释放技能，消耗 150 乘以技能等级点</b>」「<b>只有弓，弓的话，
+ * 冷却是3秒、4秒、5秒</b>」⇒ 本条技能补上 {@link #ENERGY_COST_PER_LEVEL}（一级消耗 150，
+ * 实际 = 150 × 有效等级）与 {@link #cooldownSecondsFor(int)}（3 / 4 / 5 秒，宿主 = 按技能记的
+ * {@code PerSkillCooldown}，判定在 {@code BowExclusiveShotItemSkill} 里两处同判）。</p>
+ * <p>⚠ 「有箭那一发箭本身就是代价」（{@code draw(..)} 已把它从物品栏收走）、「无箭那一发由
+ * {@code prepareProjectiles} 另付 {@code JadeTopazBowItem.NO_ARROW_COST}」与"耐久照原版同一笔账"
+ * 这三条既有口径<b>一个字未改</b>：新增的是技能自己那一次释放的能量与冷却，两笔账互不替代。</p>
  *
  * <h2>⛔ 零注册、零语言键、零新 id</h2>
  * <p>与批 4 逐字同形：本技能<b>不是</b>正式技能条目 —— 不加 {@code AllSkills} 条目、不进内核白名单、
@@ -88,7 +91,21 @@ public final class BowThunderMightConfigs {
 	public record Level(int areaSideBlocks, float realBoltChance) {
 	}
 
+	/**
+	 * <b>一级消耗</b>（作者 2026-10-06 批 13 给死）：「基础的能量都是一次释放技能，消耗
+	 * <b>150 乘以技能等级</b>点」⇒ 本条技能每释放一次扣 {@code 150 × 有效等级} 点工具能量
+	 * （Lv1 = 150 / Lv2 = 300 / Lv3 = 450）。
+	 *
+	 * <p>这里写的是<b>一级消耗</b>（一个数），"乘等级"由既有算术
+	 * {@code CoeSkillSupport.cost(..) ← SkillEnergyCost.compute(..)} 完成；唯一调用点 =
+	 * {@code BowExclusiveShotItemSkill#consumeResource}（按名读本常量）。</p>
+	 */
+	public static final int ENERGY_COST_PER_LEVEL = 150;
+
 	// ========== 三个等级（作者 2026-10-05 给死：2×2/20% · 3×3/40% · 4×4/60%） ==========
+	// ⚠ 批 13 加的那一列（冷却 3/4/5 秒）**不进下面三行**：边长与真雷概率被关卡
+	// bow5-thunder-tables 逐字钉住 ⇒ 为加一列而改那处钉法，会把"作者既有三行的数值"从
+	// "逐字不变"降级成"改过一遍"。冷却单独走下面那个按等级的读数（同一张表、同一个夹取）。
 
 	/** Lv1 —— 水平方形边长 2 格、真雷 20%。 */
 	public static final Level LEVEL_1 = new Level(2, 0.20F);
@@ -96,7 +113,7 @@ public final class BowThunderMightConfigs {
 	/** Lv2 —— 水平方形边长 3 格、真雷 40%。 */
 	public static final Level LEVEL_2 = new Level(3, 0.40F);
 
-	/** Lv3 —— 水平方形边长 4 格、真雷 60%（<b>雷鸣弓走的就是这一档</b>：它的档位起始等级 = 3）。 */
+	/** Lv3 —— 水平方形边长 4 格、真雷 60%。 */
 	public static final Level LEVEL_3 = new Level(4, 0.60F);
 
 	/** 按等级取配置（与其余各条 {@code *Configs} 同名同形；越界先夹到 [1, 3]）。 */
@@ -135,6 +152,23 @@ public final class BowThunderMightConfigs {
 	/** 该技能等级的<b>真雷概率</b>（0.20F / 0.40F / 0.60F，作者给死）。 */
 	public static float realBoltChanceFor(int level) {
 		return level(level).realBoltChance();
+	}
+
+	/**
+	 * 该技能等级的<b>冷却秒数</b>（3 / 4 / 5；作者 2026-10-06 批 13 给死）。
+	 *
+	 * <p>三条弓专属技能（量波置换 / 星元波置 / 雷鸣神力）<b>同一张表</b>；越界先夹到 [1, 3]
+	 * —— 走 {@link SkillLevelTables#pick3Clamped(int, int, Object, Object, Object)} 这个既有形状
+	 * （表长 = 上限本身，与 {@link #level(int)} 同一个夹取），本类<b>不</b>手写
+	 * {@code Math.max/min}、也不另立第二张等级表。</p>
+	 *
+	 * <p>宿主 = 按技能记的 {@code PerSkillCooldown}（雷鸣弓的
+	 * {@code BowTier#perSkillCooldown()} = true），判定位置 = {@code BowExclusiveShotItemSkill} 的
+	 * {@code consumeResource} 与 {@code release} <b>两处同判</b>（既有红线：只判一处会出现
+	 * "冷却中照扣能量"或"扣了却不执行"）。</p>
+	 */
+	public static int cooldownSecondsFor(int level) {
+		return SkillLevelTables.pick3Clamped(level, MAX_LEVEL, 3, 4, 5);
 	}
 
 	/**

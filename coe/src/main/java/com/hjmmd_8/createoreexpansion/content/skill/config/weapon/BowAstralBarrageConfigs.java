@@ -280,7 +280,21 @@ public final class BowAstralBarrageConfigs {
     public record Level(int radiusBlocks, int immobilizeSeconds, int waveLevel) {
     }
 
+    /**
+     * <b>一级消耗</b>（作者 2026-10-06 批 13 给死）：「基础的能量都是一次释放技能，消耗
+     * <b>150 乘以技能等级</b>点」⇒ 本条技能每释放一次扣 {@code 150 × 有效等级} 点工具能量
+     * （Lv1 = 150 / Lv2 = 300 / Lv3 = 450）。
+     *
+     * <p>这里写的是<b>一级消耗</b>（一个数），"乘等级"由既有算术
+     * {@code CoeSkillSupport.cost(..) ← SkillEnergyCost.compute(..)} 完成；唯一调用点 =
+     * {@code BowExclusiveShotItemSkill#consumeResource}（按名读本常量，发射点与物品侧一个数字都不写）。</p>
+     */
+    public static final int ENERGY_COST_PER_LEVEL = 150;
+
     // ========== 三个等级（作者 2026-10-05 批 6 给死：半径 2/3/4 · 滞留 4/5/6 秒） ==========
+    // ⚠ 批 13 加的那一列（冷却 3/4/5 秒）**不进下面三行**：半径 / 滞留 / 波级三个字段被关卡
+    // bow6-radius 逐字钉住 ⇒ 为加一列而改那处钉法，会把"作者既有三行的数值"从"逐字不变"
+    // 降级成"改过一遍"。冷却单独走下面那个按等级的读数（同一张表、同一个夹取）。
 
     /** Lv1 —— 半径 2 格、滞留 4 秒、波级 α。 */
     public static final Level LEVEL_1 = new Level(2, 4, WaveLevels.LOW);
@@ -339,6 +353,23 @@ public final class BowAstralBarrageConfigs {
     /** 该技能等级落下的<b>能量波波级</b>（Lv1/2/3 ⇒ α/β/γ；作者没给，见类注释那一节）。 */
     public static int waveLevelFor(int level) {
         return level(level).waveLevel();
+    }
+
+    /**
+     * 该技能等级的<b>冷却秒数</b>（3 / 4 / 5；作者 2026-10-06 批 13 给死）。
+     *
+     * <p>三条弓专属技能（量波置换 / 星元波置 / 雷鸣神力）<b>同一张表</b>；越界先夹到 [1, 3]
+     * —— 走 {@link SkillLevelTables#pick3Clamped(int, int, Object, Object, Object)} 这个既有形状
+     * （表长 = 上限本身，与 {@link #level(int)} 同一个夹取），本类<b>不</b>手写
+     * {@code Math.max/min}、也不另立第二张等级表。</p>
+     *
+     * <p>宿主 = 按技能记的 {@code PerSkillCooldown}（星界弓的
+     * {@code BowTier#perSkillCooldown()} = true），判定位置 = {@code BowExclusiveShotItemSkill} 的
+     * {@code consumeResource} 与 {@code release} <b>两处同判</b>（既有红线：只判一处会出现
+     * "冷却中照扣能量"或"扣了却不执行"）。</p>
+     */
+    public static int cooldownSecondsFor(int level) {
+        return SkillLevelTables.pick3Clamped(level, MAX_LEVEL, 3, 4, 5);
     }
 
     // ==================================================================================

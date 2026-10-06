@@ -1,6 +1,12 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.BowTier;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.PerSkillCooldown;
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowAstralBarrageConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowThunderMightConfigs;
+import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowWaveShiftConfigs;
 import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillProvider;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowShootSkillContext;
 import com.leaf.skiller.foundation.Consumable;
@@ -12,6 +18,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
+
+import java.util.function.IntUnaryOperator;
+import java.util.function.Predicate;
 
 /**
  * <b>三条「专属弓技能」在新内核里的执行槽</b>（2026-10-05 弓技能批 7；形态照
@@ -51,17 +60,53 @@ import net.minecraft.world.item.component.CustomData;
  *       {@code JadeTopazBowItem#shoot} 里读标记之后交给各自的 launcher —— 理由是"整支箭都不造"
  *       这件事只能在 {@code shoot} 那一层做（在 {@code shootProjectile} 里 discard 会让
  *       {@code addFreshEntity} 每发打一条 WARN，见弓类注释）；</li>
- *   <li>{@link #consumeResource}：<b>空实现</b>（契约要求，不是没写完）。这三条技能的代价是
- *       <b>那一发箭本身</b>（有箭时 {@code draw(..)} 已经把箭从物品栏收走，无箭时那条既有路
- *       已经付过 {@code JadeTopazBowItem.NO_ARROW_COST} 点能量），冷却也<b>无</b>（作者没给）
- *       —— 这与批 4/5/6 已落地的口径逐字相同，本批<b>不</b>给它们新增耗能或冷却（硬边界：
- *       三套行为的表现一个字不许改）。</li>
+ *   <li>{@link #consumeResource}：<b>批 13 起不再空实现</b> —— 三条技能的代价从"只有那一发箭"
+ *       变成「那一发箭（或无箭时的 {@code NO_ARROW_COST}）<b>再加上</b>技能自己那一次释放的
+ *       能量与冷却」，见下一节。</li>
+ * </ul>
+ *
+ * <h2>2026-10-06 批 13：三条技能的能量与冷却（作者逐条裁定）</h2>
+ * <p>作者原话：</p>
+ * <blockquote>
+ * 「<b>基础的能量都是一次释放技能，消耗 150 乘以技能等级点</b>」<br>
+ * 「<b>只有弓，弓的话，冷却是3秒、4秒、5秒</b>」
+ * </blockquote>
+ * <p>落法（两个数都<b>不住在本类</b>：本类只按名读那三张 {@code *Configs}，一个数字都不写）：</p>
+ * <ul>
+ *   <li><b>能量</b> = 各自 {@code *Configs#ENERGY_COST_PER_LEVEL}（一级消耗 150）× <b>有效等级</b>
+ *       ⇒ Lv1 / Lv2 / Lv3 = <b>150 / 300 / 450</b>。乘等级走既有算术
+ *       {@code CoeSkillSupport.cost(..)} → {@code SkillEnergyCost.compute(..)}；</li>
+ *   <li><b>冷却</b> = 各自 {@code *Configs#cooldownSecondsFor(有效等级)}
+ *       ⇒ Lv1 / Lv2 / Lv3 = <b>3 / 4 / 5 秒</b>（<b>按等级</b>，三条同表 —— 作者把"3秒/4秒/5秒"
+ *       与"150 × 等级"并排说，两处都是同一张等级表；⚠ 按技能各给一个值是另一种读法，
+ *       本批<b>不</b>采用，见批 13 报告）；</li>
+ *   <li><b>有效等级</b> = {@link CoeSkillSupport#effectiveLevel(ItemStack, ISkillInstance)}
+ *       —— 与既有手持物技能<b>同一条口径</b>（内核实例的绑定等级 + 技艺提升/回溯，经该技能自己的
+ *       {@code maxLevel} 钳位；三条技能各自只被一把弓携带、上限都是 3）。
+ *       ⚠ <b>刻意不用</b> {@code BowTier#thirdSkillLevel()}（那是"发射效果"的等级读数）：
+ *       效果半径与能量费<b>不能</b>各读一套等级，但"这一发在哪个槽位上、绑定几级"只有内核实例知道
+ *       （量波置换在宝石弓是槽 2 的 ①、在星界/雷鸣弓是槽 1 的 ② —— 同一条技能、不同绑定），
+ *       所以这里取实例等级：{@code 150 × 绑定等级} 在三条技能、四把弓上逐一正确；</li>
+ *   <li><b>冷却载体</b> = {@link PerSkillCooldown}（<b>按技能记</b>）—— 三条技能都在
+ *       {@code BowTier#perSkillCooldown()} = {@code true} 的那三把弓上（翠玉弓没有本族技能），
+ *       形态照 {@code BloodPactItemSkill}。⚠ <b>不走迅启减冷却</b>：作者给的是固定 3/4/5 秒
+ *       （血契置换那 30 秒同形）；弓上另外两条技能走的是"按技能记 + 迅启折扣"那一支，
+ *       这条差异写进批 13 报告；</li>
+ *   <li><b>两处同判</b>（既有红线，形状照 {@code BowShootItemSkill}）：
+ *       {@link #consumeResource} 里不通过 ⇒ 一个 {@code DelayConsumable} 都不累加 ⇒ <b>不扣能</b>；
+ *       {@link #release} 里不通过 ⇒ <b>不写标记、不起冷却</b>。于是"冷却中照扣能量"与
+ *       "扣了却不执行"两种形状都写不出来；</li>
+ *   <li><b>扣能前置</b>（{@code willDoWork} 等价物）= {@link #willTakeOverShot}：
+ *       本把弓那一档确实在本技能自己的 {@code appliesTo} 表上（不在 ⇒ 这一发根本不会被本技能接管，
+ *       扣了也是白扣）<b>且</b>冷却就绪。⚠ 能量<b>够不够</b>不在这里判：内核的
+ *       {@code DelayConsumable#canConsume} 不过 ⇒ <b>整体放弃</b>（标记不写、冷却不起、能量不扣），
+ *       那一发退化为一次普通射击 —— 这是与其余各条技能逐字相同的既有裁决；</li>
+ *   <li><b>与箭那一笔账互不替代</b>：有箭那一发的箭仍被 {@code draw(..)} 收走，无箭那一发仍另付
+ *       {@code JadeTopazBowItem.NO_ARROW_COST}（那条路一个字未改）。</li>
  * </ul>
  *
  * <p>⚠ 三条技能是<b>各自只被一把弓携带</b>的（不是共用 id），所以它们的等级上限写在自己的
- * {@code AllSkills} 条目上（{@code .maxLevel(3)}，与各自档位行
- * {@code BowTier#maxSkillLevel()} 同值）；发射用的等级仍是<b>档位起始等级</b>
- * （{@code BowTier#baseSkillLevel()} = 2/3/3），与批 4/5/6 逐字相同。</p>
+ * {@code AllSkills} 条目上（{@code .maxLevel(3)}，与各自档位行 {@code BowTier#maxSkillLevel()} 同值）。</p>
  *
  * @since 1.0.0
  */
@@ -78,18 +123,37 @@ public final class BowExclusiveShotItemSkill implements ItemSkill<BowShootSkillC
     public static final String TAG_PENDING_SHOT = "jade_topaz_pending_shot";
 
     /** 宝石弓「量波置换」（键三 G · 起始等级 2） */
-    public static final BowExclusiveShotItemSkill WAVE_SHIFT = new BowExclusiveShotItemSkill("bow_wave_shift");
+    public static final BowExclusiveShotItemSkill WAVE_SHIFT = new BowExclusiveShotItemSkill(
+            "bow_wave_shift", BowWaveShiftConfigs::appliesTo, BowWaveShiftConfigs.ENERGY_COST_PER_LEVEL,
+            BowWaveShiftConfigs::cooldownSecondsFor);
 
     /** 星界弓「星元波置」（键三 G · 起始等级 3） */
-    public static final BowExclusiveShotItemSkill ASTRAL_BARRAGE =
-            new BowExclusiveShotItemSkill("bow_astral_barrage");
+    public static final BowExclusiveShotItemSkill ASTRAL_BARRAGE = new BowExclusiveShotItemSkill(
+            "bow_astral_barrage", BowAstralBarrageConfigs::appliesTo, BowAstralBarrageConfigs.ENERGY_COST_PER_LEVEL,
+            BowAstralBarrageConfigs::cooldownSecondsFor);
 
     /** 雷鸣弓「雷鸣神力」（键三 G · 起始等级 3） */
-    public static final BowExclusiveShotItemSkill THUNDER_MIGHT =
-            new BowExclusiveShotItemSkill("bow_thunder_might");
+    public static final BowExclusiveShotItemSkill THUNDER_MIGHT = new BowExclusiveShotItemSkill(
+            "bow_thunder_might", BowThunderMightConfigs::appliesTo, BowThunderMightConfigs.ENERGY_COST_PER_LEVEL,
+            BowThunderMightConfigs::cooldownSecondsFor);
 
     /** 本技能在内核注册表（{@code skiller:skill}）里的 id —— 必须与 {@code AllSkills} 那条一字不差。 */
     private final ResourceLocation id;
+
+    /**
+     * <b>本技能对哪几档弓生效</b> = 本技能自己那张 {@code *Configs#appliesTo(BowTier)}（方法引用）。
+     *
+     * <p>它是本类唯一的<b>「这一发会不会真的被本技能接管」</b>判据：不在表上 ⇒ 弓侧那道闸门
+     * （{@code JadeTopazBowItem#shoot} 里按 {@code matches(id)} 分流）根本不会走本技能，
+     * 于是 {@code consumeResource} 里也就不该扣能 —— 这就是本类 {@code willDoWork} 等价物的第一半。</p>
+     */
+    private final Predicate<BowTier> appliesTo;
+
+    /** 本技能的<b>一级消耗</b>（作者批 13：150），实际消耗 = 本级消耗 × 有效等级（见类注释）。 */
+    private final int energyCostPerLevel;
+
+    /** 本技能<b>该等级的冷却秒数</b>（作者批 13：3 / 4 / 5，按等级），唯一来源 = 各自 {@code *Configs}。 */
+    private final IntUnaryOperator cooldownSecondsFor;
 
     /**
      * <b>三条专属技能在"自己那把弓"上的按键槽位号</b>（键三，默认 G ⇒ 槽位 2）。
@@ -142,8 +206,12 @@ public final class BowExclusiveShotItemSkill implements ItemSkill<BowShootSkillC
         return SLOT;
     }
 
-    private BowExclusiveShotItemSkill(String path) {
+    private BowExclusiveShotItemSkill(String path, Predicate<BowTier> appliesTo, int energyCostPerLevel,
+                                     IntUnaryOperator cooldownSecondsFor) {
         this.id = ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, path);
+        this.appliesTo = appliesTo;
+        this.energyCostPerLevel = energyCostPerLevel;
+        this.cooldownSecondsFor = cooldownSecondsFor;
     }
 
     /**
@@ -162,15 +230,72 @@ public final class BowExclusiveShotItemSkill implements ItemSkill<BowShootSkillC
         if (player == null || bow.isEmpty()) {
             return;
         }
+        // 批 13：扣能前置的第二半（第一半在 consumeResource 里，两处逐条同判）—— 见 willTakeOverShot。
+        if (!willTakeOverShot(player, bow)) {
+            return;
+        }
+        // 冷却（按技能记；秒数取自本技能自己那张表的"该等级"那一行，本类一个数字都不写）。
+        // 写在标记之前：与 BowShootItemSkill#release（先 startCooldown、后写标记）同序。
+        int level = CoeSkillSupport.effectiveLevel(bow, instance);
+        int ticks = CoeSkillSupport.cooldownTicks(bow, cooldownSecondsFor.applyAsInt(level));
+        if (ticks > 0) {
+            PerSkillCooldown.startTicks(player, id, ticks);
+        }
         // 唯一的写点：把"这一发换成我"写进弓（弓的 shoot 读一次并清掉）。
         bow.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY, custom -> custom.update(tag ->
                 tag.putString(TAG_PENDING_SHOT, id.toString())));
     }
 
+    /**
+     * 消耗：<b>批 13 起真的扣</b> —— {@code 一级消耗（150）× 有效等级}，资源 = 工具能量
+     * （{@code createoreexpansion:tool_energy}，与弓上另外两条技能同一个池子）。
+     *
+     * <p>与 {@link #release} <b>两处同判</b>同一个判据（{@link #willTakeOverShot}）：
+     * 这里 return ⇒ 本实例一个 {@code DelayConsumable} 都不累加 ⇒ 内核的
+     * {@code releaseBundle} 落账里没有它 ⇒ <b>不扣能</b>；只判 release 那一处是不够的。</p>
+     *
+     * <p>⚠ 能量<b>不够</b>不在这里判：照既有形状交给 {@link CoeSkillSupport#consume}（它补一次
+     * 低能量提示后照常累加），由内核的 {@code canConsume} 整体裁决 —— 不过则标记不写、冷却不起、
+     * 能量不扣，这一发退化为普通射击。</p>
+     */
     @Override
     public void consumeResource(BowShootSkillContext context, Consumable consumable,
                                 ISkillInstance<BowShootSkillContext> instance) {
-        // 空实现：这三条技能的代价是那一发箭本身（无箭时付 NO_ARROW_COST），冷却无 —— 见类注释。
+        Player player = context.getPlayer();
+        ItemStack bow = context.bow();
+        if (player == null || bow.isEmpty()) {
+            return;
+        }
+        if (!willTakeOverShot(player, bow)) {
+            return;
+        }
+        int level = CoeSkillSupport.effectiveLevel(bow, instance);
+        int cost = CoeSkillSupport.cost(bow, energyCostPerLevel, level);
+        CoeSkillSupport.consume(player, bow, consumable, cost);
+    }
+
+    /**
+     * <b>这一发真的会被本技能接管、并且付得起"冷却"这一关吗</b> —— 本技能的
+     * {@code willDoWork} 等价物（既有口径：{@code consumeResource} 必须先过它才算数）。
+     *
+     * <p>两半，都是本技能自己的既有事实、不新造判据：</p>
+     * <ol>
+     *   <li><b>本把弓那一档在 {@link #appliesTo} 表上</b> —— 不在 ⇒ 弓侧那道
+     *       {@code matches(id)} 闸门恒不通过，标记写不写都不会有效果 ⇒ 这一发<b>不该扣能</b>；</li>
+     *   <li><b>本技能自己的冷却就绪</b>（{@link PerSkillCooldown}，按技能记）—— 创造模式恒就绪
+     *       （与 {@code BowShootItemSkill#onCooldown} / {@code CoeSkillSupport#onCooldown}
+     *       的创造模式豁免同一条口径）。</li>
+     * </ol>
+     *
+     * <p>⚠ <b>刻意不判"能量够不够"</b>：那不是前置、而是内核的统一裁决点
+     * （{@code DelayConsumable#canConsume}），在这里再判一次就是第二个口径。</p>
+     */
+    private boolean willTakeOverShot(Player player, ItemStack bow) {
+        BowTier tier = bow.getItem() instanceof JadeTopazBowItem bowItem ? bowItem.tier() : null;
+        if (tier == null || !appliesTo.test(tier)) {
+            return false;
+        }
+        return player.isCreative() || PerSkillCooldown.isReady(player, id);
     }
 
     /**

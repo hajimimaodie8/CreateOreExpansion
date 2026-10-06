@@ -52,11 +52,19 @@ import net.minecraft.util.RandomSource;
  *       否则出生瞬间就互相湮灭（见 {@code AbstractChargerWaveEntity#sameFiringBatch}）。</li>
  * </ul>
  *
- * <h2>耗能与冷却：<b>本技能都不新增</b></h2>
- * <p>它挂在既有的"<b>无箭射击</b>"那条路上（{@code JadeTopazBowItem#prepareProjectiles} 的
- * "无箭但能量够 ⇒ 耗 {@code NO_ARROW_COST} 造一支无形魔法箭"分支）⇒ 耗能就是那条路本来就付的
- * {@code JadeTopazBowItem.NO_ARROW_COST}（<b>已有真源，本类不复制那个数</b>），
- * 冷却 <b>无</b>（作者没给；它是一条主动技能，只是没有正式技能条目，与「元矢自生」那条被动同形地"无冷却"：没有内核条目、没有独立键位）。</p>
+ * <h2>耗能与冷却（<b>2026-10-06 批 13 补齐</b>；批 4~12 这两项都为「无」）</h2>
+ * <p>作者原话：「<b>基础的能量都是一次释放技能，消耗 150 乘以技能等级点</b>」「<b>只有弓，弓的话，
+ * 冷却是3秒、4秒、5秒</b>」⇒ 三条弓专属技能各自补上两条：</p>
+ * <ul>
+ *   <li><b>耗能</b> = {@link #ENERGY_COST_PER_LEVEL}（<b>一级消耗</b> 150）× <b>有效等级</b>
+ *       —— 乘等级由既有算术 {@code CoeSkillSupport.cost(..)} 完成（Lv1/2/3 = 150/300/450）；</li>
+ *   <li><b>冷却</b> = {@link #cooldownSecondsFor(int)}（3 / 4 / 5 秒，按等级）—— 宿主是按技能记的
+ *       {@code PerSkillCooldown}，两处同判（见该方法的注释）。</li>
+ * </ul>
+ * <p>⚠ 「无箭射击」那条既有路<b>一个字未改</b>：本技能仍挂在
+ * {@code JadeTopazBowItem#prepareProjectiles} 的"无箭但能量够 ⇒ 耗 {@code NO_ARROW_COST} 造一支
+ * 无形魔法箭"分支上，那一发照旧另付 {@code JadeTopazBowItem.NO_ARROW_COST}（<b>已有真源，
+ * 本类不复制那个数</b>）—— 新增的是<b>技能自己那一次释放</b>的能量与冷却，两笔账互不替代。</p>
  *
  * <h2>波级：为什么是"按技能等级掷一次分布"而不是"按等级查一个波级"</h2>
  * <p>批 4 的写法是"技能等级 → 一个波级"（1/2/3 ⇒ α/β/γ）。作者批 10（2026-10-05）把它改成
@@ -140,7 +148,26 @@ public final class BowWaveShiftConfigs {
     public record Level(int companionWaves, WaveLevelOdds waveLevelOdds) {
     }
 
+    /**
+     * <b>一级消耗</b>（作者 2026-10-06 批 13 给死）：「基础的能量都是一次释放技能，消耗
+     * <b>150 乘以技能等级</b>点」⇒ 本条技能每释放一次扣 {@code 150 × 有效等级} 点工具能量
+     * （Lv1 = 150 / Lv2 = 300 / Lv3 = 450）。
+     *
+     * <p>数值形状与其余各条 {@code *Configs} 一致：这里写的是<b>一级消耗</b>（一个数），
+     * "乘等级"由既有算术 {@code CoeSkillSupport.cost(..) ← SkillEnergyCost.compute(..)} 完成
+     * —— 所以本类<b>不</b>把 150/300/450 三行摊开写（那会让"再乘一次等级"变成写得出的事，
+     * 血契置换那条 {@code 100 × 等级 × 等级} 的口径漂移就是这么来的）。</p>
+     *
+     * <p>唯一调用点 = {@code BowExclusiveShotItemSkill#consumeResource}（按名读本常量，
+     * 发射点与物品侧一个数字都不写）。</p>
+     */
+    public static final int ENERGY_COST_PER_LEVEL = 150;
+
     // ========== 三个等级（作者 2026-10-05 批 10 给死；伴随波枚数沿用批 4，波级改成分分布） ======
+    // ⚠ 批 13 加的那一列（冷却 3/4/5 秒）**不进下面三行**：它是作者给这张表的第三条口径，
+    // 但下面三行的每个字段（伴随波枚数、波级分布）都被关卡 bow4-companion-count 与
+    // bow5-astral-tier 逐字钉住 ⇒ 为加一列而改那两处钉法，会把"作者既有三行的数值"从
+    // "逐字不变"降级成"改过一遍"。所以冷却单独走下面那个按等级的读数（同一张表、同一个夹取）。
 
     /** Lv1 —— 只发那枚波（0 枚伴随波），波级 <b>100% α</b>。 */
     public static final Level LEVEL_1 = new Level(0, new WaveLevelOdds(new int[] { 1 }, new int[] { 100 }));
@@ -203,6 +230,23 @@ public final class BowWaveShiftConfigs {
     /** 该技能等级的<b>伴随波枚数</b>（0 / 1 / 2，作者给死）。 */
     public static int companionWaveCount(int level) {
         return level(level).companionWaves();
+    }
+
+    /**
+     * 该技能等级的<b>冷却秒数</b>（3 / 4 / 5；作者 2026-10-06 批 13 给死）。
+     *
+     * <p>三条弓专属技能（量波置换 / 星元波置 / 雷鸣神力）<b>同一张表</b>；越界先夹到 [1, 3]
+     * —— 走 {@link SkillLevelTables#pick3Clamped(int, int, Object, Object, Object)} 这个既有形状
+     * （表长 = 上限本身，与 {@link #level(int)} 同一个夹取），本类<b>不</b>手写
+     * {@code Math.max/min}、也不另立第二张等级表。</p>
+     *
+     * <p>宿主 = 按技能记的 {@code PerSkillCooldown}（三条专属技能都在三把
+     * <b>perSkillCooldown() = true</b> 的弓上），判定位置 = {@code BowExclusiveShotItemSkill} 的
+     * {@code consumeResource} 与 {@code release} <b>两处同判</b>（既有红线：只判一处会出现
+     * "冷却中照扣能量"或"扣了却不执行"）。</p>
+     */
+    public static int cooldownSecondsFor(int level) {
+        return SkillLevelTables.pick3Clamped(level, MAX_LEVEL, 3, 4, 5);
     }
 
     /**
