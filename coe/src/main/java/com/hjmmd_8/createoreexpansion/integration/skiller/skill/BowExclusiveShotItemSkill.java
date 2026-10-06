@@ -125,6 +125,23 @@ public final class BowExclusiveShotItemSkill implements ItemSkill<BowShootSkillC
                 && CoeSkillProvider.slotPressed(serverPlayer, SLOT);
     }
 
+    /**
+     * <b>本技能自己的槽位键号</b>（{@link #SLOT}，键三 ⇒ {@code 2}）—— 2026-10-06 弓技能批 11 第 ③ 条。
+     *
+     * <p>作者要"星界弓的圆形预选框只在按住那条技能自己的键时才出现"，而"那条技能在哪个键上"
+     * 只有 {@link #SLOT} 一个答案：接管判据（{@link #claimsShot}）读它，预选框经
+     * {@code BowAstralBarrageConfigs#previewKeySlot()} 也读它 —— 于是"专属键"这件事
+     * <b>不可能</b>出现第二个数字。</p>
+     *
+     * <p>⚠ 它只回答"是哪个槽位"；"此刻按下没有"由两侧各自的既有通道回答
+     * （客户端 {@code CoeSkillClient#toolSlotKeyHeld} / 服务端
+     * {@code CoeSkillProvider#slotPressed}）。⛔ 预选框<b>不许</b>退回批 7/8 修掉的
+     * "任一技能键"那种歧义判据。</p>
+     */
+    public int ownSlot() {
+        return SLOT;
+    }
+
     private BowExclusiveShotItemSkill(String path) {
         this.id = ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, path);
     }

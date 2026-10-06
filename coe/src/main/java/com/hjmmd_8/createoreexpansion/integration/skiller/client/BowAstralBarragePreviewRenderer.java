@@ -56,6 +56,29 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * ItemSkill<BowShootSkillContext>} —— 它进不了那条桶，所以本类自己订阅游戏总线，
  * 但<b>用同一套渲染类型、同一个阶段、同一个顶点写法</b>。</p>
  *
+ * <h2>2026-10-06 弓技能批 11（作者原话，逐字）</h2>
+ * <blockquote>
+ * 第二条需要限制……第三条最好贴地，但不贴地也是可以接受。你可以加入一个检测机制，通过玩家的纵坐标
+ * 与附近地面的距离（高度差）来实现：(a) 当玩家飞在空中……圈就没必要固定在地面上。
+ * (b) 当玩家在起伏较小的平坡上……圈最好固定在地上，而不是必须设定在玩家的平面。<br>
+ * 2. 高度差显示优化：如果有高度差，圈的显示最好在衔接的地方加入一些预选框，否则高度突然落差
+ * 可能会显得有些突兀。
+ * </blockquote>
+ * <p>本类改的三处（数值与几何仍然一条都不在本类算）：</p>
+ * <ol>
+ *   <li><b>③"需要限制"</b>：圈<b>只在按住本技能自己的槽位键</b>时才出现 —— 槽位号来自真源
+ *       {@code BowAstralBarrageConfigs#previewKeySlot()}（= 那条专属技能自己的 {@code SLOT}），
+ *       此刻按下没有走既有的客户端键位表 {@code CoeSkillClient#toolSlotKeyHeld}。
+ *       ⛔ 不是"按住任意技能键"（批 7/8 修掉的歧义），也<b>不</b>改用服务端权威读数
+ *       （纯客户端逐帧渲染该读客户端键位；服务端那一半仍是 {@code CoeSkillProvider#slotPressed}）；
+ *       ⚠ 松手之后的存活仍按批 9 的作者口径（"技能释放完之后，该预选框才会消失"）数排程时长；</li>
+ *   <li><b>④贴地 / 不贴地</b>：{@code nearbyGroundY}(向下射线) → {@code sticksToGround}(高度差阈值)
+ *       → {@code landingCentre}(圆心 Y 收口)，三步都调<b>服务端发射处调的同样三个方法</b>
+ *       ⇒ 圈与落点不可能分家；</li>
+ *   <li><b>④-2过渡环</b>：不贴地（有高度差）时，在主圈下方按真源给的间隔补
+ *       {@code transitionRingYs} 那几道环，落进地面以下就停；画法与主圈逐字同形。</li>
+ * </ol>
+ *
  * <h2>★ 圆心 / 半径 / 颜色三件都不在本类算</h2>
  * <ul>
  *   <li><b>圆心</b>：{@code BowAstralBarrageConfigs#previewCenter(眼睛, 视线, 拉弓 tick 数)} ——
@@ -75,14 +98,16 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *
  * <h2>★ 什么时候出现、什么时候消失（作者第 3 条）</h2>
  * <ol>
- *   <li><b>拉弓中</b>（{@code player.isUsingItem()} 且手里那把弓的档位<b>走这条技能</b>，
- *       判据就是发射处那同一个 {@code BowAstralBarrageConfigs#appliesTo(档位)}）：
+ *   <li><b>拉弓中 + 按住专属键</b>（{@code player.isUsingItem()} 且手里那把弓的档位
+ *       <b>走这条技能</b>（判据就是发射处那同一个
+ *       {@code BowAstralBarrageConfigs#appliesTo(档位)}）且<b>本技能自己的槽位键被按住</b>
+ *       —— 第三个条件是批 11③ 加的，见上面的批 11 一节）：
  *       每 tick 用"已经拉了多少 tick"重算圆心 ⇒ 圈<b>一点一点往远离视角的方向移动</b>，
  *       到了真源的上限就不动；</li>
- *   <li><b>松手那一刻</b>：圆心<b>冻结</b>（本类不再重算，保留最后一次拉弓时的值）；
- *       服务端此刻用同一个输入算出同一个圆心 ⇒ 落点就是圈所在处；</li>
+ *   <li><b>松手那一刻</b>（或中途松开专属键）：圆心<b>冻结</b>（本类不再重算，
+ *       保留最后一次算出来的值）；服务端此刻用同一个输入算出同一个圆心 ⇒ 落点就是圈所在处；</li>
  *   <li><b>释放期间</b>：圈一直在，直到 {@code BowAstralBarrageConfigs#barrageScheduleTicks()}
- *       （= 条数 × 节拍）数完才消失 —— 作者："技能释放完之后，该预选框才会消失"。
+ *       （= 条数 × 节拍）数完才消失 —— 作者批 9："技能释放完之后，该预选框才会消失"。
  *       客户端没有"弹幕打完了"的包可收，所以这个时长与发射处的排程用<b>同两个常量</b>算，
  *       改条数/节拍时两边一起动。</li>
  * </ol>
@@ -93,8 +118,9 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *
  * <h2>⚠ 只有进游戏才看得见</h2>
  * <p>按 {@code AGENTS.md} 的"客户端渲染只有进游戏才看得见"：{@code compileJava} / {@code runData}
- * 都<b>不</b>跑渲染，本类的正确性最终只能在游戏里验收（拉弓看到粉色圆圈并向外推进、
- * 远端最多 5 格、松手后箭与波同速落下、放完圈才消失）。</p>
+ * 都<b>不</b>跑渲染，本类的正确性最终只能在游戏里验收（按住专属键拉弓才看到粉色圆圈并向外推进、
+ * 远端最多 5 格、平坡上圈贴地而飞在空中时留在准心平面、有落差处能看到过渡环、
+ * 松手后箭与波几乎同时落地、放完圈才消失）。</p>
  *
  * @since 1.0.0
  */
@@ -125,6 +151,13 @@ public final class BowAstralBarragePreviewRenderer {
     /** 松手之后还要亮多少 tick（排程时长；数到 0 才让圈消失）。 */
     private static int holdTicks;
 
+    /**
+     * <b>主圈下方那几道过渡环的 Y</b>（批 11④-2，作者："如果有高度差，圈的显示最好在衔接的地方
+     * 加入一些预选框"）—— 由真源 {@code BowAstralBarrageConfigs#transitionRingYs} 给出：
+     * 不贴地时才非空，且不会落进地面以下。贴地时是空数组（圈本来就在地面上，没有落差要衔接）。
+     */
+    private static double[] transitionYs = new double[0];
+
     /** 本档的描边色（取色处唯一：{@code BowTier#skillOutlineColor()}，在拉弓那一 tick 记下来）。 */
     private static float red;
     private static float green;
@@ -147,13 +180,29 @@ public final class BowAstralBarragePreviewRenderer {
 
         ItemStack using = player.getUseItem();
         BowTier tier = barrageTier(using);
-        if (player.isUsingItem() && tier != null) {
+        // ★ 批 11③（作者 2026-10-06："第二条需要限制"）：预选框**只在按住本技能自己的槽位键**
+        //   时才出现 —— 批 9 那版是"任何一次拉弓都显示"（按 Shift / R 也画）。槽位号只有一处
+        //   （BowAstralBarrageConfigs#previewKeySlot = 那条专属技能自己的 SLOT），键位读数走
+        //   既有的客户端键位表（CoeSkillClient#toolSlotKeyHeld：SLOT_KEYS + AllKeys.isPressed()）。
+        //   ⛔ 不是"按住任意技能键"（批 7/8 刚把那种歧义修掉）；也**不**改用服务端权威读数
+        //   （纯客户端渲染逐帧读按键，用按键包回传的服务端状态只会慢半拍）。
+        boolean dedicatedKeyHeld = CoeSkillClient.toolSlotKeyHeld(BowAstralBarrageConfigs.previewKeySlot());
+        if (player.isUsingItem() && tier != null && dedicatedKeyHeld) {
             // 拉弓中：圆心跟着"已经拉了多少 tick"一点点往前推。
             // "拉了多少 tick"与"圆心怎么算"两端共用真源同一条（BowAstralBarrageConfigs），
             // 所以这里与服务端发射处喂进去的是同一个数、算出的是同一个点。
             center = BowAstralBarrageConfigs.previewCenter(
                 player.getEyePosition(), player.getLookAngle(),
                 BowAstralBarrageConfigs.drawnTicks(using, player, player.getUseItemRemainingTicks()));
+            // ★ 批 11④：贴不贴地（以及圈最终落在哪个 Y）走与服务端**完全同一组**真源方法 ——
+            //   同一个"附近地面"射线、同一个高度差阈值、同一个圆心 Y 收口方法。
+            double nearbyGroundY = BowAstralBarrageConfigs.nearbyGroundY(level, player);
+            boolean stickToGround = BowAstralBarrageConfigs.sticksToGround(player.getY(), nearbyGroundY);
+            center = BowAstralBarrageConfigs.landingCentre(center, nearbyGroundY, stickToGround);
+            //   有高度差才要过渡环：圈悬在空中时，在它下方按固定间隔补一两道环把落差接起来。
+            transitionYs = stickToGround
+                ? new double[0]
+                : BowAstralBarrageConfigs.transitionRingYs(center.y, nearbyGroundY);
             radius = BowAstralBarrageConfigs.radiusFor(tier.baseSkillLevel());
             SkillOutlineColors.SkillColor color = tier.skillOutlineColor();
             red = color.r();
@@ -167,7 +216,7 @@ public final class BowAstralBarragePreviewRenderer {
         if (!active) {
             return;
         }
-        // 已松手：圆心停在松手那一刻（上面最后一次算出来的值），只把排程时长数完。
+        // 已松手（或中途松开了专属键）：圆心停在最后一次算出来的值，只把排程时长数完。
         holdTicks--;
         if (holdTicks <= 0) {
             clear();
@@ -178,6 +227,7 @@ public final class BowAstralBarragePreviewRenderer {
     private static void clear() {
         active = false;
         holdTicks = 0;
+        transitionYs = new double[0];
     }
 
     /**
@@ -220,10 +270,19 @@ public final class BowAstralBarragePreviewRenderer {
         PoseStack.Pose pose = poseStack.last();
 
         VertexConsumer solid = buffer.getBuffer(RenderType.LINES);
-        ring(pose, solid, red, green, blue, OutlineColors.ALPHA);
+        ring(pose, solid, center.y, red, green, blue, OutlineColors.ALPHA);
 
         VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
-        ring(pose, transparent, red, green, blue, OutlineColors.ALPHA * TRANSPARENT_ALPHA_FACTOR);
+        ring(pose, transparent, center.y, red, green, blue, OutlineColors.ALPHA * TRANSPARENT_ALPHA_FACTOR);
+
+        // ★ 批 11④-2：有高度差时把落差"接"起来的那几道过渡环（真源给的 Y 列表；贴地时是空的）。
+        //   画法与主圈逐字同形（同一个 ring(..)，只是 Y 更低），所以两层渲染的顶点格式与冲刷
+        //   路径一条都不新增。
+        for (double transitionY : transitionYs) {
+            ring(pose, solid, transitionY, red, green, blue, OutlineColors.ALPHA);
+            ring(pose, transparent, transitionY, red, green, blue,
+                OutlineColors.ALPHA * TRANSPARENT_ALPHA_FACTOR);
+        }
 
         poseStack.popPose();
 
@@ -234,14 +293,16 @@ public final class BowAstralBarragePreviewRenderer {
     }
 
     /**
-     * 把预选框画成<b>水平面上的一圈线</b>（圆心 {@link #center}、半径 {@link #radius}、
-     * 高度取圆心的 Y —— 与弹幕圆盘在 XZ 上同心）。
+     * 把预选框画成<b>水平面上的一圈线</b>（圆心 {@link #center} 的 XZ、半径 {@link #radius}、
+     * 高度取调用方给的 {@code y} —— 主圈传 {@link #center} 的 Y，过渡环传真源给的那几道 Y；
+     * 每一道都与弹幕圆盘在 XZ 上同心）。
      *
      * <p>顶点写法照 {@code OutlineRenderer#renderEdge}：{@code addVertex → setColor → setNormal}
      * （法线取该段的方向），两种渲染类型的格式差异（{@code RenderType.LINES} 是
      * POSITION_COLOR_NORMAL、穿透层是 POSITION_COLOR）在这里与既有渲染器处理方式完全一致。</p>
      */
-    private static void ring(PoseStack.Pose pose, VertexConsumer consumer, float r, float g, float b, float a) {
+    private static void ring(PoseStack.Pose pose, VertexConsumer consumer, double y,
+                             float r, float g, float b, float a) {
         for (int i = 0; i < RING_SEGMENTS; i++) {
             double from = TWO_PI * i / RING_SEGMENTS;
             double to = TWO_PI * (i + 1) / RING_SEGMENTS;
@@ -254,15 +315,15 @@ public final class BowAstralBarragePreviewRenderer {
             double length = Math.sqrt(dx * dx + dz * dz);
             float nx = length > 1.0E-9D ? (float) (dx / length) : 1.0F;
             float nz = length > 1.0E-9D ? (float) (dz / length) : 0.0F;
-            vertex(pose, consumer, x0, z0, nx, nz, r, g, b, a);
-            vertex(pose, consumer, x1, z1, nx, nz, r, g, b, a);
+            vertex(pose, consumer, x0, y, z0, nx, nz, r, g, b, a);
+            vertex(pose, consumer, x1, y, z1, nx, nz, r, g, b, a);
         }
     }
 
-    /** 圈上的一个顶点（Y 恒 = 圆心 Y ⇒ 圆环是水平的，与弹幕落下的那块圆盘同一个平面）。 */
-    private static void vertex(PoseStack.Pose pose, VertexConsumer consumer, double x, double z,
+    /** 圈上的一个顶点（Y 取该道环自己的高度 ⇒ 每一道都是水平圆环）。 */
+    private static void vertex(PoseStack.Pose pose, VertexConsumer consumer, double x, double y, double z,
                                float nx, float nz, float r, float g, float b, float a) {
-        consumer.addVertex(pose, (float) x, (float) center.y, (float) z)
+        consumer.addVertex(pose, (float) x, (float) y, (float) z)
             .setColor(r, g, b, a)
             .setNormal(pose, nx, 0.0F, nz);
     }

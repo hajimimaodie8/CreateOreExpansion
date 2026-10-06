@@ -4,10 +4,15 @@ import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowTier;
 import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
+import com.hjmmd_8.createoreexpansion.integration.skiller.skill.BowExclusiveShotItemSkill;
 
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -87,6 +92,74 @@ import net.minecraft.world.phys.Vec3;
  *       在释放期间一直存在，数完才消失。</li>
  * </ul>
  *
+ * <h2>2026-10-06 弓技能批 11（作者原话，逐字）</h2>
+ * <blockquote>
+ * 第1条不必要完全严格，但是误差尽量都在1秒之内，而且射下乱箭或能量波的时候，关于世界的外轴，有一个小范围的、
+ * 不超过10°左右的倾斜角，来塑造出相应的感觉。第二条需要限制，第三条最好贴地，但不贴地也是可以接受。
+ * 你可以加入一个检测机制，通过玩家的纵坐标与附近地面的距离（高度差）来实现以下效果：<br>
+ * 1. 圈的固定位置逻辑：(a) 当玩家飞在空中，攻击天空中的凋零等目标时，圈就没必要固定在地面上。
+ * (b) 当玩家在起伏较小的平坡上，攻击僵尸或骷髅等目标时，圈最好固定在地上，而不是必须设定在玩家的平面。<br>
+ * 2. 高度差显示优化：如果有高度差，圈的显示最好在衔接的地方加入一些预选框，否则高度突然落差可能会显得有些突兀。
+ * </blockquote>
+ * <p>逐条落地（<b>数值与几何全部只在本表</b>，发射处与渲染器一个数字都不写）：</p>
+ * <ul>
+ *   <li><b>①"误差尽量都在 1 秒之内"</b>：落下的波与药水箭<b>共用同一条下落剖面</b> ——
+ *       同一个初始落速（{@link #ARROW_INITIAL_FALL_SPEED}）、同一个下落加速度
+ *       （{@link #FALL_ACCELERATION_BLOCKS_PER_SECOND_SQUARED} 由箭那一侧的
+ *       {@link #ARROW_FALL_ACCELERATION_BLOCKS_PER_TICK_SQUARED} 乘两次一秒换算得出）。
+ *       两侧到达 tick 的差由 {@link #arrivalDeltaSeconds(double)} 现算（纯数学、无 MC 类型），
+ *       上限 {@link #ARRIVAL_SYNC_TOLERANCE_SECONDS}。⚠ <b>箭本身一个字节没改</b>
+ *       （原版重力是全局行为）；改的是<b>弹幕这一批波</b>：它们第一次拿到波实体既有的重力要素
+ *       （{@code setGravity}）—— 批 10 撤回的是<b>宝石弓那一发</b>的标记，与本技能无关；</li>
+ *   <li><b>②"不超过 10° 左右的倾斜角"</b>：{@link #TILT_MAX_DEGREES}（上限只住这里）。
+ *       ★ <b>作者 2026-10-06 补充裁定（逐字）</b>："对了，小角度散射的话，整个场可以稍微错乱。
+ *       每个都是随机生成的，都是散射，发射角度也可以是不一样的。这样的话，才更有那种氛围"
+ *       ⇒ <b>每一枚各自独立随机</b>：在<b>生成那一枚的那一刻</b>掷一次方位角
+ *       {@link #tiltAzimuthRadians(RandomSource)} 与一个 {@code [0, 10°]} 的倾角
+ *       {@link #tiltAngleRadians(RandomSource)}，落向 {@link #fallDirection(double, double)}
+ *       —— 随机源是<b>服务端权威</b>的 {@code world.random}，方向当场写进实体、其后不再重算。
+ *       速率大小不变：箭的速度向量走 {@link #arrowInitialVelocity(Vec3)}（速率恒 =
+ *       {@link #ARROW_INITIAL_FALL_SPEED}），波仍走既有的速度要素 —— 改的只有<b>方向</b>；
+ *       而斜插必然横向漂出，{@link #tiltSpawnShift(double, double, double)} 逐枚把出生点往回让，
+ *       让落点仍落在预选框那块圆盘上（漂移模型与 ① 是同一条下落剖面）；</li>
+ *   <li><b>③"第二条需要限制"</b>：预选框只在<b>本技能自己的槽位键</b>被按住时出现 ——
+ *       槽位由 {@link #previewKeySlot()}（= {@code BowExclusiveShotItemSkill#ownSlot()}，
+ *       与"同一发的接管判据"同一个常量）给出，两侧各自的既有键位通道读数
+ *       （客户端 {@code CoeSkillClient#toolSlotKeyHeld} / 服务端 {@code CoeSkillProvider#slotPressed}）。
+ *       ⛔ <b>不是</b>"按住任意技能键"（批 7/8 刚把那种歧义修掉）；</li>
+ *   <li><b>④"最好贴地 / 加一个检测机制"</b>：{@link #nearbyGroundY(net.minecraft.world.level.Level, Entity)}
+ *       打一条
+ *       向下的方块射线（形状照 {@code BowAstralBarrageLauncher#rainOriginY} 那一条），
+ *       高度差 = 玩家纵坐标 − 附近地面；{@link #GROUND_STICK_MAX_HEIGHT_DIFF} 以内 =
+ *       "起伏较小的平坡" ⇒ 圈贴地；否则 = "飞在空中" ⇒ 圈留在准心那个平面。
+ *       圆心的 Y 由 {@link #landingCentre(Vec3, double, boolean)} 一处决定；
+ *       有高度差时 {@link #transitionRingYs(double, double)} 在圈下方按固定间隔给出过渡环；</li>
+ *   <li><b>⑤"圈与落点同源"</b>：{@link #previewCenter} 仍是<b>唯一</b>的圆心算法（批 9），
+ *       {@link #landingCentre} 只是它的 Y 收口 —— <b>客户端画圈与服务端弹幕都走这两个方法</b>，
+ *       谁也不自己算第二份。</li>
+ * </ul>
+ *
+ * <h2>② 为什么是"每一枚各自随机散射"（作者 2026-10-06 补充裁定，本批的口径）</h2>
+ * <p>作者原话（逐字，覆盖了此前"整场统一一个倾斜"那个读法）：</p>
+ * <blockquote>
+ * 对了，小角度散射的话，整个场可以稍微错乱。每个都是随机生成的，都是散射，发射角度也可以是不一样的。
+ * 这样的话，才更有那种氛围。
+ * </blockquote>
+ * <p>落地口径（三条一起看）：</p>
+ * <ol>
+ *   <li><b>逐枚各自掷</b>：每一支药水箭、每一枚波在<b>自己出生的那一刻</b>掷一对方位角 + 倾角
+ *       （都在 {@code [0, }<b>上限</b>{@code ]} 内），互不影响 ⇒ 整场看起来"稍微错乱"；</li>
+ *   <li><b>随机源 = {@code world.random}</b>：服务端权威、可复现，不新造号源；
+ *       ⛔ <b>方向在出生那一刻就定死并写进实体</b>（箭 = {@code setDeltaMovement}，
+ *       波 = 构造参数 {@code movement}），此后<b>没有任何地方重算它</b> —— 每 tick 重算就是方向抖动；</li>
+ *   <li><b>圈 = 落点仍守得住</b>：漂移补偿也是<b>逐枚</b>的（每枚按自己的方位角/倾角把出生点
+ *       往上游挪）⇒ 散射之后落点仍落在预选框那块圆盘里，只是整片落点比"整场统一"更蓬松一点。</li>
+ * </ol>
+ * <p>⚠ <b>与 ① 的"≤1 秒"不冲突</b>：判据是<b>整体</b>（不是逐枚对齐）—— 两支成分的竖直剖面
+ * 同源（竖直初速同为 {@code 箭速 × cos θ}、每 tick 增量同为 0.05 格/tick²），只差箭那一侧的
+ * 0.99 阻力 ⇒ 无论每枚掷到哪个角度，到达差都在同一个量级（{@link #arrivalDeltaBoundSeconds(double)}
+ * 取的就是最坏的那一档）。散射改的是落点与路径长度，不改这条剖面。</p>
+ *
  * <h2>「滞留」为什么是"缓慢 + 跳跃削弱"而不是"定身"</h2>
  * <p>原版没有"定身"这个效果（也没有任何"每 tick 清零位移"的现成机制）。
  * 本批按<b>父会话对作者的落地说明</b>实现：效果本体 = <b>高等级缓慢</b>
@@ -137,6 +210,21 @@ import net.minecraft.world.phys.Vec3;
  *       {@link #barrageScheduleTicks()}（"技能放完"的判据 = 排程总长 80 tick）、
  *       {@link #fallSpeedBlocksPerSecond()}（作者说"波速 = 箭速"但没说箭速是多少 ⇒
  *       箭速仍取批 6 的 {@value #ARROW_INITIAL_FALL_SPEED} 格/tick，波被设成同一个速度）。</li>
+ *   <li><b>批 11 新增的四个"作者没给"</b>：{@value #GROUND_PROBE_DEPTH}（"附近地面"探多深 ——
+ *       作者只说"附近"，没给深度）、{@value #GROUND_STICK_MAX_HEIGHT_DIFF}（"起伏较小的平坡"
+ *       与"飞在空中"的分界高度差 —— 2 格 = 跳跃/台阶以内算贴地）、
+ *       {@value #TRANSITION_RING_COUNT} / {@value #TRANSITION_RING_SPACING}（作者只说
+ *       "加入一些预选框"、"一两圈"，没给条数与间隔）、{@value #GROUND_PROBE_LIFT}（射线起点
+ *       抬半个格子，纯技术兜底，不是玩法数值）。</li>
+ *   <li><b>批 11 的倾角上限不是"我定的"</b>：{@value #TILT_MAX_DEGREES}° 就是作者原话里的
+ *       "不超过 10° 左右"；本表只负责把它<b>只写一处</b>。实际角度<b>每枚各自</b>在
+ *       {@code [0, 上限]} 上掷（作者 2026-10-06 补充裁定："每个都是随机生成的，都是散射"——
+ *       所以是散射，不是"整场一个方向"）。</li>
+ *   <li><b>批 11 的散射"补偿"是本表定的</b>：作者只说"散射、角度可以不一样"，没说落点要不要
+ *       跟着挪。本表按"圈 = 落点"那条既有红线，逐枚把出生点往上游让掉斜插的横向漂移
+ *       （{@link #tiltSpawnShift(double, double, double)}）⇒ 散射只让落点更蓬松，
+ *       不会让整片落点漂出预选框。⛔ 若作者要的是"落点也随机漂出去"，那是另一条口径，
+ *       改的是发射处那一行（把让掉的量去掉即可），不是本表的公式。</li>
  * </ul>
  *
  * @since 1.0.0
@@ -152,6 +240,9 @@ public final class BowAstralBarrageConfigs {
 
     /**
      * 单级「星元波置」定义。
+     *
+     * <p>⚠ <b>这个名字会遮蔽 {@code net.minecraft.world.level.Level}</b>（同一个简单名）：
+     * 本类里凡是要提 MC 的 {@code Level}（批 11 的地面射线），一律写全限定名。</p>
      *
      * @param radiusBlocks      锚定圆形区域的<b>半径</b>（格）：Lv1 = 2 / Lv2 = 3 / Lv3 = 4
      *                          （作者："半径等于技能等级加 1"）
@@ -466,5 +557,401 @@ public final class BowAstralBarrageConfigs {
         double radius = Math.sqrt(random.nextDouble()) * radiusBlocks;
         double angle = random.nextDouble() * Math.PI * 2.0D;
         return new Vec3(Math.cos(angle) * radius, 0.0D, Math.sin(angle) * radius);
+    }
+
+    // ==================================================================================
+    // 批 11①：下落剖面（箭与波共用同一条）—— "误差尽量都在 1 秒之内"
+    // ==================================================================================
+
+    /**
+     * <b>原版箭每 tick 的下落加速度</b>（格/tick²，{@value #ARROW_FALL_ACCELERATION_BLOCKS_PER_TICK_SQUARED}）。
+     *
+     * <p>它就是原版 {@code AbstractArrow#tick} 里那一句 {@code deltaMovement.add(0.0, -0.05F, 0.0)}
+     * ——本表<b>只读它</b>（箭一个字节都不改：那是全局行为），用途是把弹幕这一批<b>波</b>的
+     * 下落加速度换算成同一个物理量（见 {@link #FALL_ACCELERATION_BLOCKS_PER_SECOND_SQUARED}）。</p>
+     */
+    public static final double ARROW_FALL_ACCELERATION_BLOCKS_PER_TICK_SQUARED = 0.05D;
+
+    /**
+     * <b>原版箭每 tick 的速度保留率</b>（{@value #ARROW_FALL_DRAG_PER_TICK} = 原版
+     * {@code AbstractArrow#tick} 的 {@code 0.99F}）。
+     *
+     * <p>它只服务 {@link #arrivalTicksForArrow(double)} 这条<b>静态测算</b>：
+     * 箭有空气阻力、波没有（波实体只累加下落速度），所以两支成分的下落剖面严格说不是同一条
+     * 抛物线 —— 差多少、够不够 1 秒，本表用这条剖面现算（见 {@link #arrivalDeltaSeconds(double)}）。</p>
+     */
+    public static final double ARROW_FALL_DRAG_PER_TICK = 0.99D;
+
+    /**
+     * <b>落下的波要用的下落加速度</b>（格/秒²）= {@link #ARROW_FALL_ACCELERATION_BLOCKS_PER_TICK_SQUARED}
+     * × 一秒的 tick 数 × 一秒的 tick 数（{@value #FALL_ACCELERATION_BLOCKS_PER_SECOND_SQUARED}）。
+     *
+     * <p>"一秒 = 多少 tick"取全仓唯一换算因数 {@link ChargeConfigs#TICKS_PER_SECOND}，
+     * 本表不写 20。为什么是乘两次：波实体的重力要素是<b>两步</b>换算
+     * （{@code gravityFallSpeed += accel × perTickFactor()} 再 {@code step += gravityFallSpeed × perTickFactor()}），
+     * 所以"每 tick 的位移增量"= {@code accel / 400}；要让它与箭的 0.05 格/tick² 逐值相同，
+     * 加速度就必须是箭那一侧的 <b>400 倍</b> —— 这条等式是 ① 的全部内容，
+     * 两支成分因此<b>不可能各自漂移</b>（改箭那一侧的常量，波这边自动跟着走）。</p>
+     */
+    public static final double FALL_ACCELERATION_BLOCKS_PER_SECOND_SQUARED =
+        ARROW_FALL_ACCELERATION_BLOCKS_PER_TICK_SQUARED
+            * ChargeConfigs.TICKS_PER_SECOND * ChargeConfigs.TICKS_PER_SECOND;
+
+    /**
+     * <b>作者给的误差上限</b>（秒，{@value #ARRIVAL_SYNC_TOLERANCE_SECONDS}）：
+     * 作者原话"误差尽量都在 1 秒之内"。
+     *
+     * <p>它只服务 {@link #arrivalDeltaSeconds(double)} 的自检 —— 谁把下落剖面改坏
+     * （例如把波那边的加速度接回某一个固定值），这个式子立刻超过它。</p>
+     */
+    public static final double ARRIVAL_SYNC_TOLERANCE_SECONDS = 1.0D;
+
+    /** 下落剖面的模拟上限（tick）：够任何一次弹幕（最高 16 格 + 天花板场景）数完。 */
+    private static final int FALL_PROFILE_MAX_TICKS = 400;
+
+    /**
+     * <b>斜着落下时，竖直方向上的初始速度</b>（格/tick）= {@link #ARROW_INITIAL_FALL_SPEED} ×
+     * {@code cos(倾角)}。
+     *
+     * <p>为什么要它：批 11 的落向是斜的，而**两支成分的速率大小是同一个**
+     * （箭 = 落向 × 箭速，波 = 沿落向的"波速 = 箭速"）⇒ 它们的<b>竖直</b>分量同为
+     * {@code 箭速 × cos θ}。两支成分的竖直剖面因此逐值同源，散射（每枚各自一个 θ）也不会
+     * 把两者拉开 —— 逐枚的竖直剖面只差一个共同因子。</p>
+     */
+    public static double verticalFallSpeed(double tiltRadians) {
+        return ARROW_INITIAL_FALL_SPEED * Math.cos(tiltRadians);
+    }
+
+    /**
+     * <b>一支箭从 {@code fallBlocks} 格高处落到地面要多少 tick</b>（静态测算，纯数学）。
+     *
+     * <p>剖面逐字照原版 {@code AbstractArrow}：初速是<b>竖直分量</b>
+     * {@link #verticalFallSpeed(double)}，每 tick 先按当前速度前进，再把速度
+     * {@code (v + 0.05) × 0.99}（重力在前、阻力在后 —— 与 ① 的换算口径一致）。</p>
+     *
+     * @param tiltRadians 该枚自己的倾角（散射时每枚各不相同 ⇒ 逐枚算）
+     */
+    public static int arrivalTicksForArrow(double fallBlocks, double tiltRadians) {
+        double moved = 0.0D;
+        double speed = verticalFallSpeed(tiltRadians);
+        for (int tick = 1; tick <= FALL_PROFILE_MAX_TICKS; tick++) {
+            moved += speed;
+            if (moved >= fallBlocks) {
+                return tick;
+            }
+            speed = (speed + ARROW_FALL_ACCELERATION_BLOCKS_PER_TICK_SQUARED) * ARROW_FALL_DRAG_PER_TICK;
+        }
+        return FALL_PROFILE_MAX_TICKS;
+    }
+
+    /**
+     * <b>一枚波从 {@code fallBlocks} 格高处落到地面要多少 tick</b>（静态测算，纯数学）。
+     *
+     * <p>剖面逐字照波实体的重力要素：竖直初速是与箭<b>同一个</b>
+     * {@link #verticalFallSpeed(double)}（批 9 的"波速 = 箭速" + 批 11 的斜落向），此后每 tick
+     * 的位移增量恒为
+     * {@code FALL_ACCELERATION_BLOCKS_PER_SECOND_SQUARED × perTickFactor() × perTickFactor()}
+     * （= 0.05 格/tick²，与箭那一侧逐值相同），<b>无阻力</b>（波实体没有拖拽）。</p>
+     *
+     * @param tiltRadians 该枚自己的倾角（散射时每枚各不相同 ⇒ 逐枚算）
+     */
+    public static int arrivalTicksForWave(double fallBlocks, double tiltRadians) {
+        double moved = 0.0D;
+        double speed = verticalFallSpeed(tiltRadians);
+        double step = FALL_ACCELERATION_BLOCKS_PER_SECOND_SQUARED
+            * ChargeConfigs.perTickFactor() * ChargeConfigs.perTickFactor();
+        for (int tick = 1; tick <= FALL_PROFILE_MAX_TICKS; tick++) {
+            moved += speed;
+            if (moved >= fallBlocks) {
+                return tick;
+            }
+            speed += step;
+        }
+        return FALL_PROFILE_MAX_TICKS;
+    }
+
+    /**
+     * <b>两支成分落到同一高度的时间差</b>（秒）—— ① 的自检式，作者口径是"尽量都在 1 秒之内"。
+     *
+     * <p>⚠ <b>判据是"整体"而不是"逐枚对齐"</b>（作者 2026-10-06 补充裁定：散射是每枚各自随机
+     * 方向的）：两支成分的竖直剖面<b>只差箭那一侧的 0.99 阻力</b>，而它们的竖直初速同源
+     * （{@link #verticalFallSpeed}）、每 tick 增量同源（{@link #FALL_ACCELERATION_BLOCKS_PER_SECOND_SQUARED}）
+     * ⇒ <b>无论每枚掷到 0~上限之间哪个角度，这个差都是同一个量级</b>；本方法按该枚自己的倾角
+     * 现算，整场要报的那个数由 {@link #arrivalDeltaBoundSeconds(double)} 给（倾角区间两端取大）。</p>
+     */
+    public static double arrivalDeltaSeconds(double fallBlocks, double tiltRadians) {
+        int arrowTicks = arrivalTicksForArrow(fallBlocks, tiltRadians);
+        int waveTicks = arrivalTicksForWave(fallBlocks, tiltRadians);
+        return Math.abs(arrowTicks - waveTicks) / (double) ChargeConfigs.TICKS_PER_SECOND;
+    }
+
+    /**
+     * <b>本次弹幕里任何一枚的到达差上界</b>（秒）：在倾角区间 {@code [0, }上限{@code ]} 的<b>两端</b>
+     * 各算一次、取较大者。
+     *
+     * <p>为什么取两端就够：散射让每枚的倾角不同，而两支成分的竖直初速是<b>同一个</b>
+     * {@code 箭速 × cos θ}、每 tick 增量也是同一个 0.05 格/tick²，两支剖面之间只差箭那一侧的
+     * 0.99 阻力 ⇒ 差随倾角的变化很小（16 格落差处三个角度逐值相同 = 1 tick；
+     * 64 格处 0.25 秒 / 0.20 秒），两端取大就是这个区间上的保守值。</p>
+     *
+     * <p>它同时是发射处日志里报的那一个数（作者只有日志可验收）—— 报上界而不是报"某一枚"，
+     * 因为每枚的角度不同，报单枚没有意义。</p>
+     */
+    public static double arrivalDeltaBoundSeconds(double fallBlocks) {
+        double upright = arrivalDeltaSeconds(fallBlocks, 0.0D);
+        double tilted = arrivalDeltaSeconds(fallBlocks, Math.toRadians(TILT_MAX_DEGREES));
+        return Math.max(upright, tilted);
+    }
+
+    // ==================================================================================
+    // 批 11②：世界的竖直轴那一个小倾斜角（"斜插"的手感；上限只住这里）
+    // ==================================================================================
+
+    /**
+     * <b>下落方向相对世界竖直轴的最大倾角</b>（度，{@value #TILT_MAX_DEGREES}）——
+     * 作者原话"有一个小范围的、<b>不超过 10° 左右</b>的倾斜角"。
+     *
+     * <p>⚠ 它是<b>上限</b>，实际角度<b>每一枚</b>在 {@code [0, 本值]} 上各自掷一次
+     * （见 {@link #tiltAngleRadians(RandomSource)}；作者 2026-10-06 补充裁定："每个都是随机
+     * 生成的，都是散射，发射角度也可以是不一样的"）。小角度散射让整场看起来"稍微错乱、
+     * 都在斜插"，而不是笔直砸下来 —— 这就是作者要的"相应的感觉"。</p>
+     */
+    public static final double TILT_MAX_DEGREES = 10.0D;
+
+    /**
+     * <b>某一枚的落向方位角</b>（弧度，{@code [0, 2π)}）——"这一枚往哪一边斜"。
+     *
+     * <p>随机源由调用方逐枚传入（发射点传服务端权威的 {@code world.random}），本表不持有号源。</p>
+     */
+    public static double tiltAzimuthRadians(RandomSource random) {
+        return random.nextDouble() * Math.PI * 2.0D;
+    }
+
+    /**
+     * <b>倾角上限的度数读数</b>（{@value #TILT_MAX_DEGREES}°）—— 只服务日志/显示。
+     *
+     * <p>为什么要有它：发射处要把"每枚各自掷一个 0~上限的落向"打进日志（作者只有日志可验收），
+     * 而那条日志<b>不该</b>直接去提几何常量（调用点按名读表才是本仓的口径；关卡钉着
+     * "调用点不许出现 TILT_MAX_DEGREES"）。几何本身仍只走 {@link #tiltAngleRadians(RandomSource)}，
+     * 本方法<b>不做任何换算、也不参与取角</b>。</p>
+     */
+    public static double tiltMaxDegrees() {
+        return TILT_MAX_DEGREES;
+    }
+
+    /**
+     * <b>某一枚的落向倾角</b>（弧度，{@code [0, }{@link #TILT_MAX_DEGREES}{@code °]}）——
+     * "斜多少"。上限只在 {@link #TILT_MAX_DEGREES} 那一处写。
+     *
+     * <p>⚠ <b>每一枚各自掷一次</b>（作者 2026-10-06 补充裁定："每个都是随机生成的，都是散射，
+     * 发射角度也可以是不一样的，这样的话才更有那种氛围"）⇒ 调用点是"生成某一枚的那一刻"，
+     * 不是"一次施放掷一次"。</p>
+     */
+    public static double tiltAngleRadians(RandomSource random) {
+        return Math.toRadians(random.nextDouble() * TILT_MAX_DEGREES);
+    }
+
+    /**
+     * <b>斜插的落向单位向量</b>：世界竖直轴（正下方）绕 {@code azimuthRadians} 那一侧偏
+     * {@code tiltRadians}。
+     *
+     * <p>倾角为 0（或负数）时返回批 6 那条既有的正下方常量 {@link #FALL_DIRECTION}
+     * ——退化情形与批 6 逐字同向，不需要第二个"正下方"写法。</p>
+     *
+     * <p>⚠ 这是<b>一枚</b>的落向（散射：每枚各自一对方位角 + 倾角）。它只被求值一次 ——
+     * 在那一枚<b>出生的那一刻</b>，随即写进实体（箭 = {@code setDeltaMovement}，
+     * 波 = 构造参数 {@code movement}）⇒ 之后没有任何地方重算它，方向因此不会逐 tick 抖。</p>
+     */
+    public static Vec3 fallDirection(double azimuthRadians, double tiltRadians) {
+        if (tiltRadians <= 0.0D) {
+            return FALL_DIRECTION;
+        }
+        double lateral = Math.sin(tiltRadians);
+        return new Vec3(lateral * Math.cos(azimuthRadians), -Math.cos(tiltRadians),
+            lateral * Math.sin(azimuthRadians));
+    }
+
+    /**
+     * <b>落下的箭的初始速度向量</b> = 落向 × {@link #ARROW_INITIAL_FALL_SPEED}。
+     *
+     * <p>速率大小<b>恒等于</b>批 6/9 那条常量（作者批 11："不许改变速度大小"）——
+     * 倾斜只改方向。放在本表是因为"箭速"这个数只许写一处，而发射处现在需要的是<b>向量</b>
+     * 而不是"向下 0.5"。</p>
+     */
+    public static Vec3 arrowInitialVelocity(Vec3 fallDirection) {
+        return fallDirection.scale(ARROW_INITIAL_FALL_SPEED);
+    }
+
+    /**
+     * <b>斜插落下的水平漂移</b>（格）：从 {@code fallBlocks} 格高处按 {@code tiltRadians} 斜着落下，
+     * 落点会比出生点沿方位角漂出多远。
+     *
+     * <p>漂移用<b>波那条剖面</b>算（{@link #arrivalTicksForWave(double, double)}，该枚自己的倾角）：
+     * 两支成分在同一高度上的水平漂移几乎逐值相同（箭的横向分量按 0.99 衰减、但箭落得早；
+     * 波不衰减、但落得晚，16 格实机上一个 1.44 格、一个 1.47 格），用其中一条就够，
+     * 不必再养第二条漂移模型。</p>
+     */
+    public static Vec3 tiltDrift(double azimuthRadians, double tiltRadians, double fallBlocks) {
+        double lateralSpeed = ARROW_INITIAL_FALL_SPEED * Math.sin(tiltRadians);
+        double drift = lateralSpeed * arrivalTicksForWave(fallBlocks, tiltRadians);
+        return new Vec3(Math.cos(azimuthRadians) * drift, 0.0D, Math.sin(azimuthRadians) * drift);
+    }
+
+    /**
+     * <b>出生点要往回让多少</b>（格）= {@link #tiltDrift} 的反向量。
+     *
+     * <p>为什么要让：斜插会让落点整体沿倾斜方向漂出去（10° 时十几格落差就是 1.5 格上下），
+     * 而<b>预选框画的是落点那块圆盘</b> ⇒ 出生点必须先往上游挪同样的距离，
+     * 落点才仍落在圈里。不让就等于把"圈 = 落点"偷偷改成"圈 = 出生点"。</p>
+     *
+     * <p>⚠ 散射之后它是<b>逐枚</b>的（每枚自己的方位角/倾角）—— 调用点就是那一枚的出生代码。</p>
+     */
+    public static Vec3 tiltSpawnShift(double azimuthRadians, double tiltRadians, double fallBlocks) {
+        return tiltDrift(azimuthRadians, tiltRadians, fallBlocks).scale(-1.0D);
+    }
+
+    // ==================================================================================
+    // 批 11④：贴地判据（"玩家纵坐标 − 附近地面"）+ 圆心的 Y 收口
+    // ==================================================================================
+
+    /** 向下的地面射线起点相对玩家脚底的抬升（格）：免得脚正好踩在方块顶面时射线从面内出发。 */
+    public static final double GROUND_PROBE_LIFT = 0.5D;
+
+    /**
+     * <b>地面射线的最大深度</b>（格，{@value #GROUND_PROBE_DEPTH}）——
+     * "附近地面"的定义：脚下方这个距离以内找不到地面，就算<b>飞在空中</b>。
+     */
+    public static final double GROUND_PROBE_DEPTH = 8.0D;
+
+    /**
+     * <b>算作"在平坡上"的最大高度差</b>（格，{@value #GROUND_STICK_MAX_HEIGHT_DIFF}）。
+     *
+     * <p>作者 2026-10-06 的判据是"玩家的纵坐标与附近地面的距离（高度差）"：
+     * 差 ≤ 本值 ⇒ (b) "玩家在起伏较小的平坡上" ⇒ <b>圈贴地</b>；
+     * 差 &gt; 本值（或者探不到地面）⇒ (a) "玩家飞在空中" ⇒ <b>圈留在准心那个平面</b>。</p>
+     *
+     * <p>为什么是 2 格：原版一次跳跃约 1.25 格、一格台阶 1 格 ⇒ 站在地上、站在台阶上、
+     * 刚起跳都算"贴着地面"；而飞起来（任意高度）与站在两格以上的柱子上都算"在空中"。</p>
+     */
+    public static final double GROUND_STICK_MAX_HEIGHT_DIFF = 2.0D;
+
+    /**
+     * <b>一条向下的方块射线</b>（形状照 {@code BowAstralBarrageLauncher#rainOriginY} 那一条：
+     * {@code Block.COLLIDER} 实体方块、{@code Fluid.NONE} 不算地面）。
+     *
+     * <p><b>探不到地面时返回 {@code from.y - depth}</b>（= "地面在这么深的地方"）：
+     * 调用方不必处理 null，而高度差判据天然把它判成"在空中"（差 = depth &gt; 阈值）。
+     * 射线从 {@link #GROUND_PROBE_LIFT} 之上出发，脚正踩在方块顶面时也能打到那一格。</p>
+     *
+     * <p>⚠ 这是<b>唯一</b>的地面查询形状：客户端渲染器与服务端发射器各自的 {@code Level}
+     * 都调它（同一个方法、同一个判据），"贴不贴地"不可能两边各判一套。</p>
+     */
+    public static double groundSurfaceY(net.minecraft.world.level.Level level, Vec3 from, double depth, Entity probe) {
+        Vec3 start = from.add(0.0D, GROUND_PROBE_LIFT, 0.0D);
+        Vec3 end = start.add(0.0D, -depth, 0.0D);
+        BlockHitResult hit = level.clip(new ClipContext(start, end,
+            ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, probe));
+        return hit.getType() == HitResult.Type.MISS ? end.y : hit.getLocation().y;
+    }
+
+    /**
+     * <b>玩家脚下方"附近地面"的高度</b>（格）—— 作者要的那个"检测机制"的唯一实现。
+     *
+     * <p>从玩家纵坐标往下探 {@link #GROUND_PROBE_DEPTH} 格；探不到就返回
+     * {@code 玩家纵坐标 − 深度}（判据据此判"在空中"）。</p>
+     */
+    public static double nearbyGroundY(net.minecraft.world.level.Level level, Entity player) {
+        return groundSurfaceY(level, player.position(), GROUND_PROBE_DEPTH, player);
+    }
+
+    /**
+     * <b>玩家是不是"站在起伏较小的平坡上"</b>（作者 1(b)）—— 高度差 ≤
+     * {@link #GROUND_STICK_MAX_HEIGHT_DIFF}。
+     *
+     * <p>差值 = <b>玩家纵坐标</b> − 附近地面（作者原话就是这么定义的）；
+     * 为负（站在方块里）也算贴地。</p>
+     */
+    public static boolean sticksToGround(double playerFeetY, double nearbyGroundY) {
+        return playerFeetY - nearbyGroundY <= GROUND_STICK_MAX_HEIGHT_DIFF;
+    }
+
+    /**
+     * <b>圈 / 弹幕圆盘圆心的 Y 收口（全仓唯一一处）</b>：贴地时把批 9 那条圆心算法给出的
+     * 准心平面点<b>换成附近地面</b>，不贴地时原样返回。
+     *
+     * <p>XZ <b>不动</b>（水平位置仍由 {@link #previewCenter} 唯一决定），所以"圈在哪"这件事
+     * 仍然只有一个算法；本方法只接管作者 1(a)/(b) 那一条<b>Y 的口径</b>。</p>
+     *
+     * <p>⚠ 客户端画圈与服务端弹幕<b>都走这一个方法</b>：否则"圈贴在地上、箭落在半空"
+     * 或反过来，都会是那种圈≠落点的老毛病。</p>
+     *
+     * @param planeCentre     {@link #previewCenter} 给出的准心平面圆心
+     * @param nearbyGroundY   {@link #nearbyGroundY} 给出的附近地面高度
+     * @param stickToGround   {@link #sticksToGround} 的判定结果
+     */
+    public static Vec3 landingCentre(Vec3 planeCentre, double nearbyGroundY, boolean stickToGround) {
+        if (!stickToGround) {
+            return planeCentre;
+        }
+        return new Vec3(planeCentre.x, nearbyGroundY, planeCentre.z);
+    }
+
+    // ==================================================================================
+    // 批 11④-2：高度差处的过渡环（"圈的显示最好在衔接的地方加入一些预选框"）
+    // ==================================================================================
+
+    /** 过渡环的条数（作者没给数 ⇒ 本表定死"一两圈"里的两圈）。 */
+    public static final int TRANSITION_RING_COUNT = 2;
+
+    /** 过渡环之间的固定间隔（格，沿正下方）。 */
+    public static final double TRANSITION_RING_SPACING = 1.5D;
+
+    /**
+     * <b>主圈下方那几道过渡环的 Y</b>（世界坐标）—— 有高度差时把落差"接"起来。
+     *
+     * <p>画法：从圆心正下方按 {@link #TRANSITION_RING_SPACING} 等距排
+     * {@link #TRANSITION_RING_COUNT} 道环（与主圈同半径、同色，只是每一道更淡），
+     * <b>落进地面以下就停</b>（不会把环画进地里）。</p>
+     *
+     * <p>只在<b>不贴地</b>时才有内容：贴地时圈本来就在地面上，没有落差不需衔接
+     * （作者原话是"如果有高度差"）。</p>
+     */
+    public static double[] transitionRingYs(double centreY, double nearbyGroundY) {
+        double[] ys = new double[TRANSITION_RING_COUNT];
+        int count = 0;
+        for (int i = 1; i <= TRANSITION_RING_COUNT; i++) {
+            double y = centreY - i * TRANSITION_RING_SPACING;
+            if (y <= nearbyGroundY) {
+                break;
+            }
+            ys[count++] = y;
+        }
+        double[] trimmed = new double[count];
+        System.arraycopy(ys, 0, trimmed, 0, count);
+        return trimmed;
+    }
+
+    // ==================================================================================
+    // 批 11③：预选框的"专属键"（作者："第二条需要限制"）
+    // ==================================================================================
+
+    /**
+     * <b>预选框听的那一个槽位键</b> —— 就是本技能自己的槽位
+     * （{@code BowExclusiveShotItemSkill#ownSlot()}，键三 ⇒ 2）。
+     *
+     * <p>它不是第二个常量：与"同一发的接管判据"读<b>同一个</b> {@code SLOT}，
+     * 所以"星界弓这条技能在哪个键上"永远只有一处答案。</p>
+     *
+     * <p><b>两侧都取得到的判据</b>：本方法只回答"是哪个槽位"；"此刻按下没有"由两侧各自的
+     * 既有通道回答 —— 客户端 {@code CoeSkillClient#toolSlotKeyHeld(槽位)}（既有键位表
+     * {@code SLOT_KEYS} + {@code AllKeys.isPressed()}），服务端
+     * {@code CoeSkillProvider#slotPressed(玩家, 槽位)}（{@code PlayerPressedKeys}）。
+     * 纯客户端渲染走客户端那一条，<b>不</b>把服务端权威那套硬套上去；两条通道读的是同一个槽位号。</p>
+     *
+     * <p>⛔ 批 7/8 刚修掉"任一技能键"那种歧义（按 Shift / R 也会命中）：预选框
+     * <b>不许</b>退回那个判据。</p>
+     */
+    public static int previewKeySlot() {
+        return BowExclusiveShotItemSkill.ASTRAL_BARRAGE.ownSlot();
     }
 }

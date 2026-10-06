@@ -269,11 +269,30 @@ public final class CoeSkillClient {
             // 装备段：开关（左 Alt 锁存）是唯一闸门
             return isEquipmentModeOn() && SLOT_KEYS[slot - ArmorSkillProvider.SLOT_BASE].isPressed();
         }
-        if (ArmorSkillProvider.isHeldItemSlot(slot) && slot < SLOT_KEYS.length) {
-            // 工具段：只跟物理键走，与装备开关无关（两段并存，见方法注释）
-            return SLOT_KEYS[slot].isPressed();
-        }
-        return false; // 越界或未知槽位：内核契约里一律视为未按下
+        // 工具段：只跟物理键走，与装备开关无关（两段并存，见方法注释）
+        return toolSlotKeyHeld(slot);
+    }
+
+    /**
+     * <b>客户端键位读数（工具段）：该槽位对应的物理技能键此刻是否被按住</b>
+     * （2026-10-06 弓技能批 11 第 ③ 条）。
+     *
+     * <p>它与内核键源 {@link #isSlotPressed} 的<b>工具段那一条分支逐字同源</b>
+     * （同一个 {@link #SLOT_KEYS} 表、同一个 {@code AllKeys.isPressed()}），只是把它单独开出来
+     * 给纯客户端的东西读 —— 今天唯一的读取方是星界弓「星元波置」的圆形预选框：
+     * 作者批 11 要"第二条需要限制"，即预选框只在<b>那条技能自己的槽位键</b>被按住时出现。</p>
+     *
+     * <p><b>为什么客户端直接读键位</b>：预选框是<b>纯客户端</b>的绘制，没有"服务端权威"可言
+     * —— 把 {@code PlayerPressedKeys}（按键包回传的服务端状态）硬套到逐帧渲染上，
+     * 只会让圈比手慢半拍。</p>
+     *
+     * <p>服务端那一半仍是 {@code CoeSkillProvider#slotPressed}（同一个槽位号），
+     * 两者读的是同一件事；槽位号本身来自 {@code BowAstralBarrageConfigs#previewKeySlot()}，只有一处。</p>
+     *
+     * @param slot 内核槽位号（工具段 0/1/2；越界或装备段一律 {@code false}）
+     */
+    public static boolean toolSlotKeyHeld(int slot) {
+        return ArmorSkillProvider.isHeldItemSlot(slot) && slot < SLOT_KEYS.length && SLOT_KEYS[slot].isPressed();
     }
 
     // ================= 长按计时（给 HUD 做"实时扣能预览"用） =================
