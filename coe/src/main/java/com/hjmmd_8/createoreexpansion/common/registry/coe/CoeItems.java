@@ -732,17 +732,18 @@ public final class CoeItems {
                     provider.basicItem(ctx.get()))
             .register();
 
-    // ========== 弓四把（2026-10-03 批 1：物品 / 模型 / 贴图 / 注册 / 档位数值；批 2：技能继承） ==========
-    // 声明处一行一件（族级 helper bow(...) 与 inheritedBow(...) 见本段末尾）；
-    // 数值真源 = BowTier（能量上限 / 耐久上限 / 取色 / 能量条色标 / 技能四项派生量全在那里），
+    // ========== 弓四把（2026-10-03 批 1：物品 / 模型 / 贴图 / 注册 / 档位数值；批 2/7/12：技能表） ==========
+    // 声明处一行一件（族级 helper bow(...) 与 threeSkillBow(...) 见本段末尾）；
+    // 数值真源 = BowTier（能量上限 / 耐久上限 / 取色 / 能量条色标 / 技能各列派生量全在那里），
     // 行为逻辑四把共用 JadeTopazBowItem（无箭耗能、拉弓、发射、技能释放逐字相同）。
     //
-    // ⚠ 技能继承（批 2）：三把新弓复用翠玉之弓那两条技能 id（bow_curse / bow_disarm），
-    //   起始等级与描边色取自档位表；翠玉之弓那四行（下面 748-751）一个字没动。
-    // ⚠ 批 7：三把新弓各自再挂**一条自己的专属技能**（量波置换 / 星元波置 / 雷鸣神力，键三 G），
-    //   它们**不是**共用 id ⇒ 各有自己的 AllSkills 条目 / 内核白名单 / 语言键。
+    // ⚠ 技能表（批 2 建立、**批 12 按作者的新表重排**）：三把新弓各三条技能，
+    //   槽 0 = 凋零诅咒（四把共用 id）、槽 1 与槽 2 由声明处逐把给，等级取档位表的两列
+    //   （BowTier#skillLevel() 给槽 0/1、BowTier#thirdSkillLevel() 给槽 2）。
+    //   批 12 的表：宝石 凋零诅咒①/缴械风暴①/量波置换①、星界 凋零诅咒②/量波置换②/星元波置①、
+    //   雷鸣 凋零诅咒②/量波置换②/雷鸣神力① —— ⚠ 星界/雷鸣**不再有缴械风暴**，
+    //   而量波置换由"宝石专属"变成三把共用（等级 1/2/2）。
     //   翠玉之弓仍是两条（作者红线：那把弓不许动）。
-    //   三条专属技能的起始等级也取档位表（与继承那两条同源），见 inheritedBow(..) 的第三参数。
     //
     // ⚠ 模型/贴图是**手写**的（每把 4 张图 + 4 个模型 JSON，落在
     //   coe/src/main/resources/assets/createoreexpansion/{textures,models}/item/）：
@@ -760,26 +761,45 @@ public final class CoeItems {
             .register();
 
     /**
-     * 宝石之弓：<b>继承翠玉之弓那两条技能</b>（同一对 id），起始等级 2（档位表
-     * {@link BowTier#baseSkillLevel()}）、等级上限 3、描边色 {@code SAPPHIRE_BLUE}；
-     * 技能冷却走<b>按技能记</b>（两条技能各记各的）。
+     * 宝石之弓：<b>三条技能</b>（作者批 12 的表）—— 槽 0 凋零诅咒 ① / 槽 1 缴械风暴 ① /
+     * 槽 2 量波置换 ①（键一 / 键二 / 键三）。
      *
-     * <p>批 7 起<b>第三条</b>是它自己的专属技能 {@code bow_wave_shift}（「量波置换」，键三 G）：
-     * 三个参数里最后一个就是这条专属技能 —— 三把弓各传各的，所以"哪把弓有哪条专属技能"
-     * 在注册链上就是一行字面量（关卡 §30a 逐把钉住那张对应表）。</p>
+     * <p>三条都是"被两把以上弓复用的 id"，所以等级取自档位表
+     * （{@link BowTier#skillLevel()} = 1 给槽 0/1、{@link BowTier#thirdSkillLevel()} = 1 给槽 2），
+     * 上限 3、描边色 {@code SAPPHIRE_BLUE}；技能冷却走<b>按技能记</b>（三条各记各的）。</p>
+     *
+     * <p>⚠ 批 12 之前它的槽 0/1 读的是 {@code baseSkillLevel()}（= 2）⇒ 现在两条降为 ①，
+     * 与作者新表一致；槽 2 一直是它自己的专属技能「量波置换」，本批改的只是等级（2 → 1）
+     * 以及"它不再是宝石专属"这件事（闸门那一侧）。</p>
      */
     public static final ItemEntry<JadeTopazBowItem> SAPPHIRE_RUBY_BOW =
-            inheritedBow("sapphire_ruby_bow", BowTier.SAPPHIRE_RUBY, AllSkills.BOW_WAVE_SHIFT);
+            threeSkillBow("sapphire_ruby_bow", BowTier.SAPPHIRE_RUBY,
+                AllSkills.BOW_DISARM, AllSkills.BOW_WAVE_SHIFT);
 
-    /** 星界之弓：继承同一对技能，起始等级 3、上限 3、描边色 {@code STELLARSTONE_PINK}；冷却按技能记；
-     * 专属技能 = {@code bow_astral_barrage}（「星元波置」，键三 G）。 */
+    /**
+     * 星界之弓：<b>三条技能</b>（作者批 12 的表）—— 槽 0 凋零诅咒 <b>②</b> /
+     * 槽 1 <b>量波置换 ②</b> / 槽 2 星元波置 <b>①</b>。
+     *
+     * <p>⚠ 槽 1 原来是缴械风暴：<b>本批把它摘掉了</b>（作者："星界不再有缴械风暴"），
+     * 换成三把弓共用的「量波置换」（等级 ② ⇒ 波级分布走 Lv2 行、伴随波 1 枚）。
+     * 槽 0 的凋零诅咒由 ① 升到 <b>②</b>（同一列 {@link BowTier#skillLevel()}，两张表现在不同值
+     * ——它读 2，因为星界那一行的槽 0/1 都是 ②）。</p>
+     */
     public static final ItemEntry<JadeTopazBowItem> ASTRAL_BOW =
-            inheritedBow("astral_bow", BowTier.ASTRAL, AllSkills.BOW_ASTRAL_BARRAGE);
+            threeSkillBow("astral_bow", BowTier.ASTRAL,
+                AllSkills.BOW_WAVE_SHIFT, AllSkills.BOW_ASTRAL_BARRAGE);
 
-    /** 雷鸣之弓：继承同一对技能，起始等级 3、上限 3、描边色 {@code THUNDER_PURPLE}；冷却按技能记；
-     * 专属技能 = {@code bow_thunder_might}（「雷鸣神力」，键三 G）。 */
+    /**
+     * 雷鸣之弓：<b>三条技能</b>（作者批 12 的表）—— 槽 0 凋零诅咒 <b>②</b> /
+     * 槽 1 <b>量波置换 ②</b> / 槽 2 雷鸣神力 <b>①</b>。
+     *
+     * <p>⚠ 与星界同形：<b>缴械风暴本批摘掉</b>，槽 1 换成「量波置换」②；槽 2 仍是它自己的
+     * 「雷鸣神力」，等级由 {@code thirdSkillLevel()} = <b>①</b>（批 12 之前是档位起始等级 ③
+     * ⇒ 4×4 / 60%，现在是 2×2 / 20%）。</p>
+     */
     public static final ItemEntry<JadeTopazBowItem> THUNDER_BOW =
-            inheritedBow("thunder_bow", BowTier.THUNDER, AllSkills.BOW_THUNDER_MIGHT);
+            threeSkillBow("thunder_bow", BowTier.THUNDER,
+                AllSkills.BOW_WAVE_SHIFT, AllSkills.BOW_THUNDER_MIGHT);
 
     /**
      * <b>弓族级注册链</b>（形态照 {@code boomerang(...)} / {@code armor(...)} / {@code grindingWheel(...)}：
@@ -832,49 +852,63 @@ public final class CoeItems {
     }
 
     /**
-     * <b>三把继承弓的族级注册链</b>（2026-10-03 弓技能批 1）—— 族级 {@link #bow} 链
-     * <b>+ 继承翠玉之弓那两条技能</b>（同一对 id，不新建技能条目、不加白名单、不加语言键）
-     * <b>+ 本把弓自己的专属技能</b>（批 7：三条各自独立的 id，写在各自的声明处）。
+     * <b>三把「三槽弓」的族级注册链</b>（2026-10-03 弓技能批 1 起；<b>2026-10-06 弓技能批 12 按作者
+     * 的新技能表重排</b>）—— 族级 {@link #bow} 链 <b>+ 三条技能</b>（槽 0 = 凋零诅咒，槽 1 / 槽 2
+     * 由调用处给，三把弓各不相同）。
      *
-     * <p>为什么另起一个 helper 而不是把技能塞进 {@link #bow}：翠玉之弓那四行
+     * <p><b>为什么另起一个 helper 而不是把技能塞进 {@link #bow}</b>：翠玉之弓那四行
      * （{@code .addSkills(AllSkills.BOW_CURSE, 1)} / {@code .addSkills(AllSkills.BOW_DISARM, 1)} /
      * {@code .skillColor(...)} / {@code .skillCooldown(5 * 20)}）是<b>红线</b>——一个字不许动，
      * 而它走的正是同一个 {@code bow(...)} 链。所以族级链保持"只到能量段"，
-     * 技能段按弓分家：翠玉在自己那四行、三把继承弓在本 helper 里（各写一次，不逐件复制）。</p>
+     * 技能段按弓分家：翠玉在自己那四行、三把三槽弓在本 helper 里（各写一次，不逐件复制）。</p>
+     *
+     * <p><b>⚠ 批 12 改了这个 helper 的语义（旧名 {@code inheritedBow}）</b>：它<b>不再</b>表达
+     * "三把弓一律继承翠玉那一对 id"—— 那是批 2 的口径，作者批 12 的表已经把它改掉了
+     * （星界 / 雷鸣摘掉缴械风暴、槽 1 换成共用的量波置换）。现在它是"<b>三槽弓</b>"的形状：
+     * <b>槽 0 固定是凋零诅咒，槽 1 / 槽 2 由声明处逐把给</b>，而"那两条各读几级"由档位表的两列
+     * 决定（见下一条）。</p>
      *
      * <p>链上每一件事的唯一出口：</p>
      * <ul>
-     *   <li>{@code .addSkills(AllSkills.BOW_CURSE / BOW_DISARM, tier.baseSkillLevel())} ——
-     *       起始等级<b>取自档位表</b>（1/2/3/3，作者给死），链上不写等级字面量
-     *       （与回旋镖那条 {@code .addSkills(AllSkills.PIERCE, tier.baseSkillLevel())} 逐字同形）；</li>
-     *   <li>{@code .addSkills(exclusive, tier.baseSkillLevel())} —— <b>批 7 新增的第三条</b>：
-     *       三把弓各传自己的专属技能（{@code AllSkills.BOW_WAVE_SHIFT} /
-     *       {@code BOW_ASTRAL_BARRAGE} / {@code BOW_THUNDER_MIGHT}，见各自声明处）。
-     *       ⚠ 它<b>不是</b>共用 id：每把弓的专属技能只被它自己携带，所以上限写在那条技能自己的
-     *       注册条目上（{@code AllSkills} 的 {@code .maxLevel(3)}）——这与前两条"共用 id、
-     *       上限只能住档位表"是两回事；起始等级照旧取档位表，于是三条技能的起始等级
-     *       与同弓那两条继承技能<b>同源</b>（宝石 2 / 星界 3 / 雷鸣 3，见 §30a 的对应表）；</li>
+     *   <li>{@code .addSkills(AllSkills.BOW_CURSE, tier.skillLevel())} —— 槽 0，
+     *       等级取自 {@link BowTier#skillLevel()}（<b>1/1/2/2</b>，批 12 的表：凋零诅咒 ①①②②）；</li>
+     *   <li>{@code .addSkills(secondSkill, tier.skillLevel())} —— 槽 1，同一个"槽 0/1 那一列"
+     *       （缴械风暴 ①① 或量波置换 ②②）。⚠ 这一行<b>不再</b>写 {@code AllSkills.BOW_DISARM}：
+     *       递进来的那把技能只有声明处知道，所以"哪把弓有哪条槽 1 技能"在注册链上就是一行实参
+     *       （关卡 {@code bow12-skill-table} 逐把逐槽钉住那张表，交换两把的实参立刻红）；</li>
+     *   <li>{@code .addSkills(thirdSkill, tier.thirdSkillLevel())} —— 槽 2，
+     *       等级取自 {@link BowTier#thirdSkillLevel()}（三把都 = <b>1</b>：量波置换① / 星元波置① /
+     *       雷鸣神力①）。它<b>不是</b>共用 id 的等级：三把弓槽 2 上放的三条技能各自只被一把弓携带，
+     *       所以上限写在那条技能自己的注册条目上（{@code AllSkills} 的 {@code .maxLevel(3)}）——
+     *       与槽 0/1 那两条"共用 id、上限只能住档位表"是两回事；</li>
      *   <li>{@code .skillColor(tier.skillOutlineColor())} —— 描边发光色取<b>同档工具已经在用的那一色</b>
      *       （宝石 {@code SAPPHIRE_BLUE} / 星界 {@code STELLARSTONE_PINK} / 雷鸣 {@code THUNDER_PURPLE}），
      *       弓侧不新造色值；</li>
      *   <li><b>等级上限</b>不在这条链上：它是 {@code BowTier#maxSkillLevel()}（三把 = 3），
      *       运行时由 {@code JadeTopazBowItem#effectiveSkillLevel} 一处读取 —— 理由见那个方法
-     *       （{@code AllSkills} 的 {@code maxLevel} 是按技能注册的，而两条技能是四把弓复用的，
+     *       （{@code AllSkills} 的 {@code maxLevel} 是按技能注册的，而槽 0/1 那两条技能是几把弓复用的，
      *       动它就会连翠玉之弓一起改，与红线冲突）；</li>
      *   <li><b>冷却载体</b>也不在这条链上：{@code BowTier#perSkillCooldown()} 说这三把按技能记
      *       ⇒ 它们<b>刻意不写</b> {@code .skillCooldown(...)}（那一行是"按物品记"的注册入口，
      *       只有翠玉之弓保留它）。</li>
      * </ul>
      *
-     * @param id        注册 id（同时是图标贴图名 {@code item/<id>} 与模型 JSON 的文件名）
-     * @param tier      数值档（见 {@link BowTier}；起始等级与描边色也从这里取）
-     * @param exclusive <b>本把弓的专属技能</b>（批 7；三把弓各一条，写在各自的声明处）
+     * <p>⚠ <b>槽位顺序就是这里三行的顺序</b>：内核按主手技能表的下标派发
+     * （{@code CoeSkillProvider#convert} 按类型分组、保序），所以"哪条技能落哪个槽"= "它在这里
+     * 第几个 {@code .addSkills}" ⇒ 键一 / 键二 / 键三 与槽 0 / 1 / 2 一一对应
+     * （{@code JadeTopazBowItem#detectSkillSlot()}）。</p>
+     *
+     * @param id          注册 id（同时是图标贴图名 {@code item/<id>} 与模型 JSON 的文件名）
+     * @param tier        数值档（见 {@link BowTier}；两条等级列与描边色也从这里取）
+     * @param secondSkill <b>本把弓槽 1 的技能</b>（宝石 = 缴械风暴；星界 / 雷鸣 = 量波置换）
+     * @param thirdSkill  <b>本把弓槽 2 的技能</b>（宝石 = 量波置换；星界 = 星元波置；雷鸣 = 雷鸣神力）
      */
-    private static ItemEntry<JadeTopazBowItem> inheritedBow(String id, BowTier tier, DataSkill exclusive) {
+    private static ItemEntry<JadeTopazBowItem> threeSkillBow(String id, BowTier tier,
+                                                             DataSkill secondSkill, DataSkill thirdSkill) {
         return bow(id, tier)
-            .addSkills(AllSkills.BOW_CURSE, tier.baseSkillLevel())
-            .addSkills(AllSkills.BOW_DISARM, tier.baseSkillLevel())
-            .addSkills(exclusive, tier.baseSkillLevel())
+            .addSkills(AllSkills.BOW_CURSE, tier.skillLevel())
+            .addSkills(secondSkill, tier.skillLevel())
+            .addSkills(thirdSkill, tier.thirdSkillLevel())
             .skillColor(tier.skillOutlineColor())
             .build()
             .register();

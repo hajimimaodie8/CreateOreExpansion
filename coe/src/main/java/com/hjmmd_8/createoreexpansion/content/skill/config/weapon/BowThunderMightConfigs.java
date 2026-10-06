@@ -32,16 +32,16 @@ import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
  *       而且只在技能那一发判定<b>一次</b>（没有 tick 循环、不看天气 ⇒ 雷雨天也不会无限刷）。</li>
  * </ol>
  *
- * <h2>★ 等级取哪一套（与 {@link BowWaveShiftConfigs} 逐字同口径）</h2>
- * <p>发射等级 = <b>该弓的档位起始等级</b> {@link BowTier#baseSkillLevel()}（走
+ * <h2>★ 等级取哪一套（批 12 改口径，与「星元波置」同批同改）</h2>
+ * <p>发射等级 = <b>该弓槽 2 那条技能的绑定等级</b> {@link BowTier#thirdSkillLevel()}（走
  * {@code JadeTopazBowItem#fireThunderMightInsteadOfArrow} 传
- * {@code this.tier.baseSkillLevel()}），<b>不是</b>玩家的附魔加成等级
- * （{@code effectiveSkillLevel}）—— 理由与「元矢自生」/「量波置换」那条逐字相同：作者给的是
- * 「该弓的档位」这个按弓固定的量，附魔不该移动它。</p>
- * <p>⚠ 今天只有雷鸣弓这一档（{@link #appliesTo}），而 {@code BowTier#baseSkillLevel()} 的雷鸣行是
- * <b>3</b> ⇒ 实机上<b>恒走 Lv3 那一行</b>（4×4 / 60%）。Lv1 / Lv2 两行不是死代码：它们是这张表的
- * 完整口径（作者原话给了三档），并且随"该弓档位起始等级"这个读数走——将来若把雷鸣档的起始等级
- * 调低、或再挂一把新弓到这张表上，三行会各自生效，调用点一个字都不用改。</p>
+ * {@code this.tier.thirdSkillLevel()}），<b>不是</b>玩家的附魔加成等级
+ * （{@code effectiveSkillLevel}）—— 理由与「元矢自生」那条相同：作者给的是按弓固定的注册期量
+ * （批 12 的表：雷鸣神力 <b>①</b>），附魔不该移动它。</p>
+ * <p>⚠ <b>批 5~11 读的是 {@link BowTier#baseSkillLevel()}（雷鸣 = 3）</b>，作者批 12 的表把这条技能
+ * 定为 <b>①</b> ⇒ 实机上<b>恒走 Lv1 那一行</b>（2×2 / 20%）。Lv2 / Lv3 两行不是死代码：它们是这张表的
+ * 完整口径（作者原话给了三档），并且随"该弓槽 2 的等级"这个读数走 —— 将来若把那一列调高、
+ * 或再挂一把新弓到这张表上，三行会各自生效，调用点一个字都不用改。</p>
  *
  * <h2>「n×n」的读法（本批唯一一处需要写清楚的几何口径）</h2>
  * <p>作者写的是「以命中点为中心、边长 n 的<b>水平方形</b>」⇒ 本批按<b>方形而不是立方体</b>实现：</p>
@@ -108,11 +108,13 @@ public final class BowThunderMightConfigs {
 	 * <b>本技能对哪一档弓生效</b>（作者 2026-10-05："雷鸣弓专属技能"）。
 	 *
 	 * <p>刻意写成<b>穷尽 switch（无 default）</b>：将来给枚举加一档弓，这里会<b>编译不过</b>，
-	 * 而不是静默地让新弓"什么也不发生"。今天恰好只有雷鸣弓这一档为 {@code true}
-	 * ⇒ 翠玉 / 宝石 / 星界三把弓的射击路径（含它们各自的技能）<b>一个字节都不变</b>。</p>
+	 * 而不是静默地让新弓"什么也不发生"。今天只有雷鸣弓这一档为 {@code true}
+	 * ⇒ 翠玉 / 宝石 / 星界三把弓的这条闸门恒不通过。</p>
 	 *
 	 * <p>⚠ 与 {@link BowWaveShiftConfigs#appliesTo(BowTier)} 是<b>两张独立的表、两个独立的判据</b>：
-	 * 宝石 + 星界走那张（发波），雷鸣走这张（电荷 + 真雷），翠玉两处都是 false。
+	 * 批 12 之后<b>雷鸣在两处都为 true</b> —— 但那是<b>两条不同的技能槽</b>（槽 1 = 量波置换走那张表、
+	 * 槽 2 = 本表这条雷鸣神力），弓侧三道闸门的第二道判据是"这一发的标记是不是本技能写的"
+	 * （{@code BowExclusiveShotItemSkill#matches}）⇒ 同一次射击最多只被其中一条接管。
 	 * 两处都是穷尽 switch ⇒ 加一档新弓时<b>两处都会编译不过</b>，不会被任何一方静默吞掉。</p>
 	 */
 	public static boolean appliesTo(BowTier tier) {

@@ -115,7 +115,8 @@ public final class BowThunderMightLauncher {
 	 *
 	 * @param world   服务端世界
 	 * @param shooter 施放者（<b>只</b>用来取视线与"把自己排除在外"；本类绝不把它当落点）
-	 * @param level   技能等级（1~3，越界夹取；雷鸣弓传的是 {@code BowTier#baseSkillLevel()} = 3）
+	 * @param level   技能等级（1~3，越界夹取；雷鸣弓传的是 {@code BowTier#thirdSkillLevel()} =
+	 *                <b>1</b>（批 12；批 5~11 是 {@code baseSkillLevel()} = 3）⇒ 2×2 / 真雷 20%）
 	 * @return 本次被染上电荷的生物只数（供日志 / 关卡核对；闪电劈没劈看日志那一行）
 	 */
 	public static int strike(ServerLevel world, LivingEntity shooter, int level) {

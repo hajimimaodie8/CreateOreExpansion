@@ -8,9 +8,12 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import net.minecraft.util.RandomSource;
 
 /**
- * <b>弓主动技能「量波置换」（宝石弓，作者 2026-10-05 弓技能批 4）的数值真源</b> ——
+ * <b>弓主动技能「量波置换」（作者 2026-10-05 弓技能批 4；<b>批 12 起三把弓共用</b>）的数值真源</b> ——
  * （⚠ 批 5 曾把星界弓「星元波置」挂到本表上；作者批 6 撤回了那条口径：星界弓改成
- * "在锚定区域降下弹幕"，数值改住 {@link BowAstralBarrageConfigs}，本表重新<b>只服务宝石弓</b>。）
+ * "在锚定区域降下弹幕"，数值改住 {@link BowAstralBarrageConfigs}。
+ * ⚠ <b>批 12（2026-10-06）按作者的新技能表把它扩成三把共用</b>：宝石 ① / 星界 ② / 雷鸣 ② ——
+ * 星界与雷鸣的<b>槽 1</b>（原缴械风暴）换成这条技能 ⇒ {@link #appliesTo(BowTier)} 三档为 true；
+ * 星界槽 2 的「星元波置」仍住 {@link BowAstralBarrageConfigs}，两张表各自独立、同一把弓可各占一槽。）
  * 与 {@link BowCurseConfigs} / {@link BowDisarmConfigs} 同形，是这条技能<b>唯一</b>写数字的地方：
  * 等级表（伴随波枚数）、<b>波级分布表</b>（技能等级 → α/β/γ/ε/ω 的累积权重区间）、
  * 环绕几何（半径 / 角速度 / 相位）、炮口前推量
@@ -142,10 +145,10 @@ public final class BowWaveShiftConfigs {
     /** Lv1 —— 只发那枚波（0 枚伴随波），波级 <b>100% α</b>。 */
     public static final Level LEVEL_1 = new Level(0, new WaveLevelOdds(new int[] { 1 }, new int[] { 100 }));
 
-    /** Lv2 —— 额外 1 枚伴随波（<b>宝石弓的基准档</b>），波级 <b>50% β / 50% γ</b>。 */
+    /** Lv2 —— 额外 1 枚伴随波（<b>批 12：星界与雷鸣的基准档</b>，它们读 ②；宝石弓附魔提升后也能到），波级 <b>50% β / 50% γ</b>。 */
     public static final Level LEVEL_2 = new Level(1, new WaveLevelOdds(new int[] { 2, 3 }, new int[] { 50, 100 }));
 
-    /** Lv3 —— 额外 2 枚伴随波（宝石弓附魔提升后能到这一档），波级 <b>50% γ / 25% ε / 25% ω</b>。 */
+    /** Lv3 —— 额外 2 枚伴随波（三把弓<b>附魔提升后</b>都能到这一档），波级 <b>50% γ / 25% ε / 25% ω</b>。 */
     public static final Level LEVEL_3 = new Level(2, new WaveLevelOdds(new int[] { 3, 4, 5 }, new int[] { 50, 75, 100 }));
 
     /**
@@ -160,26 +163,30 @@ public final class BowWaveShiftConfigs {
     }
 
     /**
-     * <b>本技能对哪一档弓生效</b>（作者 2026-10-05 批 4："宝石弓专属技能"）。
+     * <b>本技能对哪几档弓生效</b>（作者 2026-10-06 弓技能批 12 的表：<b>三把弓共用</b>）。
      *
      * <p>刻意写成<b>穷尽 switch（无 default）</b>：将来给枚举加一档弓，这里会<b>编译不过</b>，
-     * 而不是静默地让新弓"什么也不发生"。今天<b>只有一档</b>为 {@code true}：</p>
+     * 而不是静默地让新弓"什么也不发生"。今天的四行逐条有据：</p>
      * <ul>
-     *   <li><b>宝石弓</b>（批 4，2026-10-05「量波置换」）—— 与批 4 那一行<b>逐字相同</b>，
-     *       本批一个字节都没动它。</li>
+     *   <li><b>宝石弓 {@code true}</b>（批 4，2026-10-05「量波置换」）—— 与批 4 那一行<b>逐字相同</b>；</li>
+     *   <li><b>星界弓 {@code true}</b>（<b>批 12 改</b>）：作者新表把「量波置换 <b>②</b>」放在星界弓的
+     *       <b>槽 1</b>（原来槽 1 是缴械风暴，已摘掉）⇒ 它<b>重新</b>走这条发波路，等级 = 2。
+     *       ⚠ 这与批 5 那条被撤回的口径<b>不是同一件事</b>：批 5 让星界的"专属技能"变成发波，
+     *       作者批 6 撤回了它并给了它自己的 {@link BowAstralBarrageConfigs}（星元波置，槽 2，
+     *       该表<b>仍在且仍是星界专属</b>）。今天星界<b>两条路并存</b>：槽 1 走本表（量波置换），
+     *       槽 2 走它自己的表（星元波置）——两张表各自独立、互不代替；</li>
+     *   <li><b>雷鸣弓 {@code true}</b>（<b>批 12 改</b>）：同理，新表的雷鸣槽 1 = 量波置换 ②
+     *       （原来的缴械风暴摘掉）。它槽 2 的「雷鸣神力」仍走
+     *       {@link BowThunderMightConfigs}（电荷 + 真雷，<b>一枚波都不发</b>）；</li>
+     *   <li><b>翠玉弓 {@code false}</b>：<b>恒为 false</b>（它的两条技能一个字不许动，
+     *       也没有量波置换这个槽）。</li>
      * </ul>
      *
-     * <p>⚠ <b>星界弓在批 5 曾经是第二档 {@code true}，作者 2026-10-05 批 6 把它撤了</b>
-     * （作者原话："<b>不是发射能量波哈，不是替换哈</b>，就是锚定我方前面 4 格的一块圆形区域…"）
-     * ⇒ 星界弓那一档回到 {@code false}：它按键那一发<b>不再走"发射一枚波 + 若干枚环绕伴随波"</b>
-     * 这条路，改走它自己的 {@code BowAstralBarrageConfigs} / {@code BowAstralBarrageLauncher}
-     * （区域弹幕）。这不是"放宽"：批 5 的关卡断言按<b>同一条口径</b>同步改成钉 {@code false}
-     * （见 {@code check-armor-sets.ps1} 的 {@code bow5-astral-tier} 与 {@code bow6-* }）。</p>
-     *
-     * <p>另外两档（翠玉 / 雷鸣）在这里恒为 {@code false}：翠玉之弓那两条技能一个字不许动；
-     * 雷鸣弓走的是<b>另一张表</b>（{@code BowThunderMightConfigs#appliesTo} —— 电荷 + 真劈雷，
-     * 与本表零共用的数值，而且它<b>一枚波都不发</b>）。三张表都是穷尽 switch ⇒
-     * 加一档新弓时<b>三处都会编译不过</b>，不会被任何一方静默吞掉。</p>
+     * <p>⚠ <b>三张表仍然两两不相交</b>（星空两条各占一槽是本批唯一新增的"同弓两表"形状）：
+     * 本表 / {@link BowAstralBarrageConfigs} / {@link BowThunderMightConfigs} 各管各的
+     * {@code appliesTo}，弓侧三道闸门的第二道判据是"这一发的标记是不是本技能写的"
+     * （{@code BowExclusiveShotItemSkill#matches}），所以同一次射击最多只被其中一条接管。
+     * 三处都是穷尽 switch ⇒ 加一档新弓时三处都会编译不过。</p>
      */
     public static boolean appliesTo(BowTier tier) {
         if (tier == null) {
@@ -187,8 +194,9 @@ public final class BowWaveShiftConfigs {
         }
         return switch (tier) {
             case SAPPHIRE_RUBY -> true;
-            case ASTRAL -> false;
-            case JADE_TOPAZ, THUNDER -> false;
+            case ASTRAL -> true;
+            case THUNDER -> true;
+            case JADE_TOPAZ -> false;
         };
     }
 
@@ -271,4 +279,32 @@ public final class BowWaveShiftConfigs {
      * <p>照抄星芒嬗震那条"眼睛 + 准心 × 1 格"（免得刚出生就撞上自己脚下的方块 / 自己的身体）。</p>
      */
     public static final double MUZZLE_FORWARD_OFFSET = 1.0D;
+
+    /**
+     * <b>本技能的波速修正量</b>（格/秒，<b>叠加语义</b>）—— 作者 2026-10-06 弓技能批 12：
+     * "量波置换的波速要<b>设快一些</b>"（数值由执行会话定，写在真源这一处）。</p>
+     *
+     * <p><b>为什么是 +4.0</b>（依据三条）：</p>
+     * <ol>
+     *   <li><b>它在每一个波级上都完整生效、不会被夹掉</b>：波实体的最终速度 =
+     *       {@code clamp(该波级基础速度 + 修正量, MIN_SPEED, }{@code WaveLevels#maxSpeed(波级))}
+     *       （唯一判据 {@code AbstractChargerWaveEntity#getSpeedBlocks()}）。五档基础速度
+     *       α2/β4/γ6/ε7/ω8 加上 4.0 分别是 <b>6 / 8 / 10 / 11 / 12</b>，而各自的上限是
+     *       10（α~γ）/ 12（ε/ω）⇒ <b>没有一档被截断</b>（γ 与 ω 正好压在上限上）。</li>
+     *   <li><b>"快一些"的幅度看得见但不改玩法结构</b>：最慢的 α 由 2 翻到 6 格/秒
+     *       （原来 200 tick 寿命里最多飞 20 格，现在 60 格），最快的 ω 由 8 到 12 ——
+     *       落在"波速调节器能调到的区间"内（它的上限就是 10/12，见 {@code WaveLevels#maxSpeed}），
+     *       所以这只是把技能波的默认速度抬到既有系统允许的上沿附近，不新增速度语义。</li>
+     *   <li><b>它是一个"叠加"要素而不是覆盖</b>：波实体只提供既有的
+     *       {@code AbstractChargerWaveEntity#addSpeedOffset(double)}（速度调节器 / 星界弹幕
+     *       用的是同一个要素，<b>本批对共享波实体零改动</b>）⇒ 数值住在这里、调用点按名读它，
+     *       与 {@code BowAstralBarrageConfigs#waveSpeedOffsetFor(int)} 同一形状。</li>
+     * </ol>
+     *
+     * <p>⚠ <b>只作用在主波上</b>（{@code BowWaveShiftLauncher#fire} 那一次调用）：伴随波的
+     * 位置每 tick 被环绕要素改写成"主波位置 + 环上一点"（{@code setOrbitAnchor}），
+     * 它自己的自走速度对观感与命中<b>都不可观测</b>，给它加修正量只会让实体的速度字段
+     * 与真实位移不一致（读数会骗人）。</p>
+     */
+    public static final double WAVE_SPEED_OFFSET_BLOCKS_PER_SECOND = 4.0D;
 }

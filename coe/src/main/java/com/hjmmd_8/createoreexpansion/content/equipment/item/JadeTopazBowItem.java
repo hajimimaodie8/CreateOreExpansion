@@ -69,7 +69,11 @@ import net.neoforged.neoforge.event.EventHooks;
  * 不新建 id、不新建技能条目、不动语言键），差异只在<b>起始等级</b>与<b>等级上限</b>，
  * 两者都取自 {@link BowTier#baseSkillLevel()} / {@link BowTier#maxSkillLevel()}
  * （绑定在 {@code CoeItems#inheritedBow}，运行时的唯一读取点是
- * {@link #effectiveSkillLevel(ItemStack)}）。翠玉之弓的两条技能与那四行注册链<b>一字未动</b>。</p>
+ * {@link #effectiveSkillLevel(ItemStack)}）。翠玉之弓的两条技能与那四行注册链<b>一字未动</b>。
+ * <br>⚠ <b>批 12 已按作者的新技能表重排，上面这段的一半不再成立</b>：三把弓<b>不再</b>一律继承
+ * 同一对 id —— 星界 / 雷鸣<b>摘掉了缴械风暴</b>、槽 1 换成共用的「量波置换」，等级也不再取
+ * {@code baseSkillLevel()}（那是 1/2/3/3，只服务元矢自生了）而是 {@code skillLevel()} /
+ * {@code thirdSkillLevel()}；helper 已改名为 {@code CoeItems#threeSkillBow}。见文末批 12 一节。</p>
  *
  * <p>本批同时补了两件事，都在本类：① 箭的来源标记 {@link #TAG_SOURCE_BOW}
  * （把基础概率效果收窄到本模组四把弓，见 {@link #isFromOurBow}）；
@@ -196,7 +200,8 @@ import net.neoforged.neoforge.event.EventHooks;
  *       那几句（它们描述的是当时的形状，不是现在的）；</li>
  *   <li><b>三套行为的表现一个字未改</b>：发波 / 降弹幕 / 落雷的数值表、发射点、等级来源
  *       （档位起始等级 {@link BowTier#baseSkillLevel()}）、耐久记账全部逐字不动 ——
- *       本批只改<b>显示与触发路径</b>（硬边界 2）；</li>
+ *       本批只改<b>显示与触发路径</b>（硬边界 2）。（⚠ 等级来源这半句已被批 12 改掉：
+ *       三条各读自己的列，见文末批 12。）</li>
  *   <li><b>翠玉之弓一个字节未改</b>：它只有槽位 0/1（没有第三条技能），按 G 什么也不发生；
  *       它那两条技能的释放路径与标记机制一个字没动。</li>
  * </ul>
@@ -247,11 +252,41 @@ import net.neoforged.neoforge.event.EventHooks;
  *       ⚠ 这<b>推翻</b>了上面批 4～7 里"等级 = 该弓的档位起始等级、三条技能都是这个口径"
  *       那几句 —— <b>只推翻「量波置换」这一条</b>：雷鸣（{@code fireThunderMightInsteadOfArrow}）
  *       与星界（{@code fireAstralBarrageInsteadOfArrow}）<b>继续</b>用档位起始等级，
- *       本批一个字节都没动它们；</li>
+ *       本批一个字节都没动它们；（⚠ <b>批 12 已把这两条也改了</b>：它们改读
+ *       {@code BowTier#thirdSkillLevel()} = 1，而「量波置换」的基准也从 2 变成 1。见文末批 12。）</li>
  *   <li><b>主波重力撤回</b>：波级与重力的数值都在 {@link BowWaveShiftConfigs}，本类只负责把
  *       等级读数交出去；重力那一句删在发射点（{@code BowWaveShiftLauncher}），本类无感；</li>
  *   <li><b>拉弓动画</b>：四个 {@code pull}/{@code pulling} item property 的注册住在
  *       {@code client/JadeTopazBowModelRegistration}（本批把另外三把弓一并注册），不在本类。</li>
+ * </ul>
+ *
+ * <p><b>2026-10-06 弓技能批 12（技能表重排 + 预选框两项调整）</b>：</p>
+ * <ul>
+ *   <li><b>作者给的三槽表</b>（逐把逐槽）：翠玉 凋零诅咒① ｜ 缴械风暴①；宝石 凋零诅咒① ｜
+ *       缴械风暴① ｜ 量波置换①；<b>星界 凋零诅咒② ｜ 量波置换② ｜ 星元波置①</b>；
+ *       <b>雷鸣 凋零诅咒② ｜ 量波置换② ｜ 雷鸣神力①</b>。⇒ ①「量波置换」由宝石专属变成
+ *       <b>宝石 / 星界 / 雷鸣共用</b>（等级 1/2/2），② 缴械风暴从"三把继承"变成
+ *       <b>只有翠玉 / 宝石</b>（星界 / 雷鸣摘掉它），③ 凋零诅咒 1/1/2/2。</li>
+ *   <li><b>本类改的三处 + 一处口径</b>：{@link #effectiveSkillLevel(ItemStack)} 的基准由
+ *       {@code baseSkillLevel()}（1/2/3/3）换成 {@link BowTier#skillLevel()}（1/1/2/2）；
+ *       {@link #fireThunderMightInsteadOfArrow} 与 {@link #fireAstralBarrageInsteadOfArrow}
+ *       由 {@code baseSkillLevel()} 换成 {@link BowTier#thirdSkillLevel()}（= 1 ⇒ 星界半径 2 /
+ *       滞留 4 秒，雷鸣 2×2 / 20%）。⛔ {@link #fireWaveShiftInsteadOfArrow} 一个字未改
+ *       （它读的 {@code effectiveSkillLevel} 自己换了基准）；⛔ 元矢自生那条
+ *       （{@link #rollMetaArrowEssence}）仍读 {@code baseSkillLevel()} —— 它的 10/20/30%
+ *       是硬边界，本批不许动。</li>
+ *   <li><b>槽位顺序 = 绑定顺序</b>：内核按主手技能表的下标派发
+ *       （{@code CoeSkillProvider#convert}，同类型技能按 {@code .addSkills} 的声明顺序落 0/1/2），
+ *       而本类客户端读数 {@link #detectSkillSlot()} 恒是"键一→0 / 键二→1 / 键三→2"。
+ *       批 12 之后星界 / 雷鸣的槽 1 由缴械风暴换成量波置换 ⇒ <b>键二改放量波置换</b>，
+ *       键三仍是各自的专属技能（{@code BowExclusiveShotItemSkill#ownSlot()} = 2 依旧成立）。</li>
+ *   <li><b>预选框两项</b>（纯客户端，都在 {@code BowAstralBarragePreviewRenderer} +
+ *       {@link BowAstralBarrageConfigs}）：能跑的距离上限 5 → <b>15</b> 格（推进速度
+ *       {@value BowAstralBarrageConfigs#PREVIEW_FORWARD_BLOCKS_PER_TICK} 格/tick 不动）；
+ *       边界外观由"一圈线"改成<b>闪烁的能量波样式粒子</b>。两处的数值/形状真源仍在
+ *       {@link BowAstralBarrageConfigs} 与那个渲染器里，本类只转交拉弓 tick 数。</li>
+ *   <li><b>本批没动的</b>：翠玉之弓那四行注册链、元矢自生、耐久记账、两道标记闸门、
+ *       服务端权威键位读数、三条技能的发射点与数值表（除上面那两处等级读数）。</li>
  * </ul>
  */
 public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
@@ -356,10 +391,17 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 * {@code BoomerangItem#effectiveSkillLevel(ItemStack, int)}，回旋镖那轮的同一件事）。
 	 *
 	 * <p>口径 = {@code SkillEnergyCost.effectiveLevel(stack, 基准, 上限)}：
-	 * 基准取 {@link BowTier#baseSkillLevel()}（1/2/3/3），上限取 {@link BowTier#maxSkillLevel()}
-	 * （翠玉 5 / 三把继承弓 3），两者都来自档位表 ⇒ 这一行里没有任何等级字面量。
+	 * 基准取 {@link BowTier#skillLevel()}（<b>批 12 起</b>；槽 0/1 的绑定等级 1/1/2/2），
+	 * 上限取 {@link BowTier#maxSkillLevel()}（翠玉 5 / 三把继承弓 3），两者都来自档位表
+	 * ⇒ 这一行里没有任何等级字面量。
 	 * 技艺提升 / 技艺回溯照旧由 {@code SkillEnergyCost} 从物品附魔读
 	 * （{@code skill_boostable} 标签含 {@code #createoreexpansion:skill_tools}，四把弓都在里面）。</p>
+	 *
+	 * <p>⚠ <b>批 12 把基准从 {@link BowTier#baseSkillLevel()}（1/2/3/3）换成了
+	 * {@link BowTier#skillLevel()}（1/1/2/2）</b>：前者现在只服务被动「元矢自生」
+	 * （{@link #rollMetaArrowEssence}），后者才是"凋零诅咒 / 缴械风暴 / 量波置换"这三条
+	 * <b>在不同弓上等级不同</b>的技能的共同基准。改这一行会同时移动这三条的取配置等级、
+	 * 能量费等级与箭上写的等级（三处读的就是本方法这一个值）。</p>
 	 *
 	 * <p><b>为什么等级上限住在档位表而不动 {@code AllSkills} 的 {@code .maxLevel(...)}</b>：
 	 * 两条弓技能是<b>复用同一对 id</b>绑到四把弓上的（作者第 3 条：不新建 id），而
@@ -373,7 +415,7 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 * —— <b>两段式必须同改，改一边不改另一边就是静默失效</b>。</p>
 	 */
 	public int effectiveSkillLevel(ItemStack stack) {
-		return SkillEnergyCost.effectiveLevel(stack, tier.baseSkillLevel(), tier.maxSkillLevel());
+		return SkillEnergyCost.effectiveLevel(stack, tier.skillLevel(), tier.maxSkillLevel());
 	}
 
 	public static float getPowerForTime(int charge) {
@@ -765,11 +807,12 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 *       那正是批 7 修掉的歧义；现在这里的 {@code matches(..)} 才是"只认自己那个键"的落点。</li>
 	 * </ol>
 	 *
-	 * <p><b>等级</b>：与另外两条弓技能<b>同一处真源</b> —— {@link BowTier#baseSkillLevel()}
-	 * （雷鸣 = 3）⇒ 范围 4×4、真雷 60%。刻意<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}
-	 * （那会读附魔）：作者给的"该弓的档位"是一个按弓固定的量。
-	 * ⚠ 批 10 只把<b>「量波置换」那一条</b>改成读技能等级（作者点名的就是它）；
-	 * 本条（雷鸣）与星界那条<b>继续</b>用档位起始等级 —— 三条闸门各有各的口径，别顺手一起改。</p>
+	 * <p><b>等级（批 12 改口径）</b>：{@link BowTier#thirdSkillLevel()}（雷鸣 = <b>1</b>）⇒
+	 * 范围 <b>2×2</b>、真雷 <b>20%</b>（表见 {@link BowThunderMightConfigs} 的 Lv1 行）。
+	 * 刻意<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}（那会读附魔）：作者批 12 给的是
+	 * "该弓那条技能的等级"（雷鸣神力 <b>①</b>），一个注册期固定、按弓不同的量。
+	 * ⚠ 批 12 之前这里读 {@link BowTier#baseSkillLevel()}（雷鸣 3 ⇒ 4×4 / 60%）；
+	 * 星界那条同批同改（星元波置 ①），宝石那条（读技能等级 {@code effectiveSkillLevel}）一个字未动。</p>
 	 *
 	 * <p><b>耐久</b>：与原版 {@code ProjectileWeaponItem#shoot} 同一笔账 —— 少了这一行，
 	 * 这条技能会静默变成"雷鸣弓按着技能键射击不再磨损弓"（白赚耐久）。</p>
@@ -790,8 +833,9 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		if (!BowExclusiveShotItemSkill.THUNDER_MIGHT.matches(pendingShot)) {
 			return false;
 		}
-		// 等级 = 该弓的档位起始等级（雷鸣 3 ⇒ 4×4 / 60%），与「元矢自生」「量波置换」同一处真源。
-		BowThunderMightLauncher.strike(level, shooter, this.tier.baseSkillLevel());
+		// 等级 = 该弓槽 2 那条技能的绑定等级（批 12：雷鸣 = 1 ⇒ 2×2 / 20%；批 12 之前是
+		// 档位起始等级 3 ⇒ 4×4 / 60%）。真源 = BowTier#thirdSkillLevel()，链上一个数字都不写。
+		BowThunderMightLauncher.strike(level, shooter, this.tier.thirdSkillLevel());
 		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
 		return true;
 	}
@@ -816,9 +860,12 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 *       那是批 7 修掉的歧义；三条闸门现在读的<b>都是同一个局部值</b>，谁也不再去问弓。</li>
 	 * </ol>
 	 *
-	 * <p><b>等级</b>：与另外三条弓技能<b>同一处真源</b> —— {@link BowTier#baseSkillLevel()}
-	 * （星界 = 3）⇒ 半径 4 格、滞留 120 tick。刻意<b>不</b>用
-	 * {@link #effectiveSkillLevel(ItemStack)}（那会读附魔）：作者给的"该弓的档位"是按弓固定的量。</p>
+	 * <p><b>等级（批 12 改口径）</b>：{@link BowTier#thirdSkillLevel()}（星界 = <b>1</b>）⇒
+	 * 半径 = 等级 + 1 = <b>2</b> 格、滞留 = <b>4 秒</b> = 80 tick（表见
+	 * {@link BowAstralBarrageConfigs} 的 Lv1 行；作者批 12 的表把「星元波置」定为 <b>①</b>）。
+	 * 刻意<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}（那会读附魔）：这是注册期按弓固定的量。
+	 * ⚠ 批 12 之前读 {@link BowTier#baseSkillLevel()}（星界 3 ⇒ 半径 4 / 120 tick）；
+	 * 客户端预选框的半径同批改成读<b>同一个</b> {@code thirdSkillLevel()} ⇒ 画的圈与落的盘仍是同一个数。</p>
 	 *
 	 * <p><b>耐久</b>：与原版 {@code ProjectileWeaponItem#shoot} 同一笔账 —— 少了这一行，
 	 * 这条技能会静默变成"星界弓按着技能键射击不再磨损弓"（白赚耐久）。</p>
@@ -840,9 +887,10 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		if (!BowExclusiveShotItemSkill.ASTRAL_BARRAGE.matches(pendingShot)) {
 			return false;
 		}
-		// 等级 = 该弓的档位起始等级（星界 3 ⇒ 半径 4 / 滞留 120 tick），与其余三条弓技能同一处真源。
+		// 等级 = 该弓槽 2 那条技能的绑定等级（批 12：星界 = 1 ⇒ 半径 2 / 滞留 80 tick；
+		// 批 12 之前是档位起始等级 3 ⇒ 半径 4 / 120 tick）。真源 = BowTier#thirdSkillLevel()。
 		// ★ 批 9：连"松手时拉了多久"一起转交 —— 弹幕圆心 = 预选框圆心，两边同一个规则方法算出来。
-		BowAstralBarrageLauncher.fire(level, shooter, this.tier.baseSkillLevel(), drawnTicks);
+		BowAstralBarrageLauncher.fire(level, shooter, this.tier.thirdSkillLevel(), drawnTicks);
 		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
 		return true;
 	}

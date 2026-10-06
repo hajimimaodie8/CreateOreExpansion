@@ -2,9 +2,11 @@ package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
 import com.hjmmd_8.createoreexpansion.client.render.types.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowTier;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowAstralBarrageConfigs;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -15,6 +17,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
@@ -45,6 +48,8 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *   <li><b>绘制形状</b>：两层线 —— 不透明 {@link RenderType#LINES} + 穿透
  *       {@link AllRenderTypes#LINES_TRANSPARENT}（alpha 再乘 0.3），顶点写法与
  *       {@code OutlineRenderer#renderEdge} 一字不差（{@code addVertex → setColor → setNormal}）；
+ *       ⚠ <b>批 12 起这一层退成"很淡的形状参考"</b>（alpha 再乘 {@link #GUIDE_ALPHA_FACTOR}），
+ *       边界的<b>外观</b>改由 {@link #emitBoundaryParticles} 的闪烁粒子承担 —— 见下面批 12 一节；
  *       冲刷方式照 {@code CoeBlockOutlineRenderer#flush}（<b>必须自己 endBatch</b>：
  *       框架不替我们冲刷，漏了这一步的症状是"算完了却什么都看不到"）；
  *       相机位移也照它（{@code translate(-camPos)}，漏了框会被画到大约两倍距离外）。</li>
@@ -87,13 +92,17 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *       {@code bow9-one-centre}：两个调用点都不许自己 {@code scale(} 视线、
  *       也不许提 {@code ANCHOR_FORWARD_BLOCKS} / {@code PREVIEW_MAX_FORWARD_BLOCKS} /
  *       {@code PREVIEW_FORWARD_BLOCKS_PER_TICK}）；</li>
- *   <li><b>半径</b>：{@code BowAstralBarrageConfigs#radiusFor(该弓档位起始等级)} —— 与发射处同一处
- *       真源（"半径等于技能等级加 1"）；</li>
+ *   <li><b>半径</b>：{@code BowAstralBarrageConfigs#radiusFor(BowTier#thirdSkillLevel())} —— 与发射处
+ *       同一处真源（"半径等于技能等级加 1"）。⚠ 批 12 之前这里读 {@code tier.baseSkillLevel()}
+ *       （星界 = 3 ⇒ 半径 4），现在读槽 2 的等级（= 1 ⇒ 半径 <b>2</b>）——
+ *       <b>两处同改</b>，否则画的圈与落的盘会差两格；</li>
  *   <li><b>粉色</b>：{@code BowTier#skillOutlineColor()} —— 也就是<b>星界那一档既有的描边色</b>
  *       （{@code SkillOutlineColors.STELLARSTONE_PINK}，仓库里五件星界工具用的同一色）。
  *       本类<b>不写任何 RGB / hex 字面量</b>，也不新造色值（作者："边界是一圈类似于能量波的
- *       粉色线条"——"粉色"取的就是弓自己那一色）；alpha 走既有的 {@link OutlineColors#ALPHA}
- *       （技能预览统一的 0.5）与既有的穿透层系数。</li>
+ *       粉色线条"——"粉色"取的就是弓自己那一色；批 12 换成粒子之后<b>这一条口径没变</b>：
+ *       粒子色仍由本类的 red/green/blue 三个字段给出，而它们只从 {@code skillOutlineColor()} 取）；
+ *       alpha 走既有的 {@link OutlineColors#ALPHA}（技能预览统一的 0.5）与既有的穿透层系数，
+ *       批 12 再乘一个"很淡的底线"系数 {@link #GUIDE_ALPHA_FACTOR}。</li>
  * </ul>
  *
  * <h2>★ 什么时候出现、什么时候消失（作者第 3 条）</h2>
@@ -113,14 +122,35 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * </ol>
  *
  * <h2>⛔ 零注册、零贴图、零模型、零语言键</h2>
- * <p>整条预选框是<b>代码画线</b>：不加物品/方块/实体/渲染器注册，不动任何
- * {@code textures/**} 或 {@code models/**}（用户资产红线），不写语言键、不跑 {@code runData}。</p>
+ * <p>整条预选框是<b>代码画线 + 既有粒子</b>（批 12 起后半句成立）：不加物品/方块/实体/渲染器注册，
+ * 不动任何 {@code textures/**} 或 {@code models/**}（用户资产红线），不写语言键、不跑 {@code runData}。
+ * <b>批 12 的粒子也没有新增任何注册</b> —— 它用的是波自己那个既有构造口
+ * （{@link ChargerWaveFx#waveParticle(WaveTrailStyle, Vec3, float)}，原版尘埃粒子）与既有的
+ * {@code Level#addParticle(..)}，见 {@link #emitBoundaryParticles}。</p>
+ *
+ * <h2>2026-10-06 弓技能批 12（作者原话，逐字）</h2>
+ * <blockquote>
+ * 1. 能跑的距离：上限 5 → <b>15</b>（推进速度不动）。<br>
+ * 2. 边界外观：从"一圈线"改成<b>闪烁的能量波样式粒子</b>（复用能量波那套粒子）。
+ * </blockquote>
+ * <p>本类承担两件事：</p>
+ * <ol>
+ *   <li><b>上限 15</b>：<b>本类一个字都没改</b> —— 圆心仍只问
+ *       {@code BowAstralBarrageConfigs#previewCenter}（上限住在那张表里，5.0D → 15.0D）；
+ *       ⚠ 推进速度也没动（{@code PREVIEW_FORWARD_BLOCKS_PER_TICK} 仍 0.05 格/tick）
+ *       ⇒ 推满 15 格需要 220 tick（11 秒）的持续拉弓（原版弓的使用时长足够）；</li>
+ *   <li><b>边界改成闪烁的粒子</b>：即 {@link #emitBoundaryParticles} —— 粒子类型与颜色口径
+ *       <b>都取自既有来源</b>（波自己的构造口 + 弓自己那一色），"闪烁"由<b>同一个相位</b>
+ *       驱动的尺寸脉动 + 概率性抽稀两条手段表达；原来那两层线退成
+ *       {@link #GUIDE_ALPHA_FACTOR} 系数的<b>很淡底线</b>（形状参考，同时是批 11 过渡环的
+ *       共用画法）。性能量级：期望 6 颗/tick，与一条波的拖尾同一量级。</li>
+ * </ol>
  *
  * <h2>⚠ 只有进游戏才看得见</h2>
  * <p>按 {@code AGENTS.md} 的"客户端渲染只有进游戏才看得见"：{@code compileJava} / {@code runData}
- * 都<b>不</b>跑渲染，本类的正确性最终只能在游戏里验收（按住专属键拉弓才看到粉色圆圈并向外推进、
- * 远端最多 5 格、平坡上圈贴地而飞在空中时留在准心平面、有落差处能看到过渡环、
- * 松手后箭与波几乎同时落地、放完圈才消失）。</p>
+ * 都<b>不</b>跑渲染，本类的正确性最终只能在游戏里验收（按住专属键拉弓才看到粉色边界并向外推进、
+ * 远端最多 <b>15</b> 格、边界是闪烁流动的粉色能量波粒子而底线很淡、平坡上圈贴地而飞在空中时留在
+ * 准心平面、有落差处能看到过渡环、松手后箭与波几乎同时落地、放完圈才消失）。</p>
  *
  * @since 1.0.0
  */
@@ -136,6 +166,56 @@ public final class BowAstralBarragePreviewRenderer {
      * 被地形挡住时也还看得见一圈淡淡的边。
      */
     private static final float TRANSPARENT_ALPHA_FACTOR = 0.3F;
+
+    // ==================== 批 12：边界 = 闪烁的能量波样式粒子 ====================
+    // 作者 2026-10-06："边界外观：从'一圈线'改成闪烁的能量波样式粒子（复用能量波那套粒子）"。
+    // 落法（四个表现参数全在本类 —— 与 RING_SEGMENTS / TRANSPARENT_ALPHA_FACTOR 同一分工：
+    // "数值真源放玩法数字、渲染器放表现参数"）：
+
+    /**
+     * <b>每 tick 在圆周边界上取几个采样点</b>（表现参数）。
+     *
+     * <p><b>性能量级</b>（作者要求"要限量、别每帧几百颗"）：{@value #WAVE_PARTICLE_COUNT} 个采样 ×
+     * {@link #FLICKER_KEEP_CHANCE} 的保留概率 ⇒ 期望 <b>6 颗/tick</b>，而粒子用的是
+     * <b>能量波拖尾的那一个</b>（同一套 {@code ChargerWaveFx#waveParticle} ⇒ 同一个原版尘埃粒子、
+     * 同一档寿命与尺寸）—— 也就是说本类稳态同屏的粒子数<b>与一条正在飞的波的拖尾同一量级</b>
+     * （波拖尾基线正是 6 颗/tick），远低于一次 5 级波爆炸的 ~213 颗瞬时量。</p>
+     */
+    private static final int WAVE_PARTICLE_COUNT = 8;
+
+    /**
+     * <b>边界粒子尺寸</b>（表现参数，{@value #WAVE_PARTICLE_SCALE}）= 能量波主波拖尾的调用基线
+     * （{@code AbstractChargerWaveEntity#trailScale} 那条 {@code 0.45f}）⇒ 圈的粒子与波的粒子
+     * <b>看起来是同一种东西</b>，这正是作者"能量波样式粒子"那句话的落点。
+     */
+    private static final float WAVE_PARTICLE_SCALE = 0.45F;
+
+    /**
+     * <b>闪烁周期</b>（tick，{@value #FLICKER_PERIOD_TICKS} = 半秒）："闪烁"= 存在感随时间脉动，
+     * 本类用<b>两个同相位的量</b>表达它 ——
+     * ① <b>尺寸脉动</b>（{@link #FLICKER_SCALE_AMPLITUDE}：尘埃粒子没有 alpha 参数，
+     *    而"亮度/存在感"在原版尘埃上最直观的可调量就是尺寸）；
+     * ② <b>概率性抽稀</b>（{@link #FLICKER_KEEP_CHANCE}：这一 tick 的某些采样点干脆不发）。
+     * 两者都由 {@link #flickerPhase} 驱动，相位每 tick 走 1。
+     */
+    private static final int FLICKER_PERIOD_TICKS = 10;
+
+    /** 尺寸脉动幅度（表现参数）：实际尺寸在 {@code 1 ± 本值} × {@link #WAVE_PARTICLE_SCALE} 之间摆动。 */
+    private static final float FLICKER_SCALE_AMPLITUDE = 0.35F;
+
+    /** 每个采样点这一 tick 被发出来的概率（表现参数；0.75 ⇒ 期望 6 颗/tick，见 {@link #WAVE_PARTICLE_COUNT}）。 */
+    private static final double FLICKER_KEEP_CHANCE = 0.75D;
+
+    /**
+     * <b>底线（形状参考）的透明度系数</b>（表现参数，{@value #GUIDE_ALPHA_FACTOR}）。
+     *
+     * <p>批 12 的边界外观由粒子承担，但那条线<b>刻意留了一圈很淡的</b>：它是"这个圈的边界到底在哪"
+     * 的形状参考（粒子有寿命、密度又按 {@link #FLICKER_KEEP_CHANCE} 抽稀 ⇒ 单靠粒子看边界会毛）；
+     * 同时批 11 的过渡环（{@code transitionRingYs}）走的是<b>同一个</b> {@code ring(..)} 画法，
+     * 留着这条线就用不着为过渡环另开一条渲染路径。透明度的绝对值由既有的
+     * {@link OutlineColors#ALPHA} 乘本系数给出，本类不写第二个颜色/透明度真源。</p>
+     */
+    private static final float GUIDE_ALPHA_FACTOR = 0.22F;
 
     private static final double TWO_PI = 2.0D * Math.PI;
 
@@ -162,6 +242,14 @@ public final class BowAstralBarragePreviewRenderer {
     private static float red;
     private static float green;
     private static float blue;
+
+    /**
+     * <b>闪烁相位</b>（每 tick +1）—— 批 12 边界粒子的唯一时间输入：它同时驱动
+     * ① 尺寸脉动（{@link #FLICKER_SCALE_AMPLITUDE} + {@link #FLICKER_PERIOD_TICKS}）与
+     * ② 采样点绕圈的前进量（每 tick 转过 {@code 360 / }{@value #WAVE_PARTICLE_COUNT} 度 ⇒
+     * 粒子看起来在边界上流动，而不是原地闪）。
+     */
+    private static int flickerPhase;
 
     private BowAstralBarragePreviewRenderer() {
     }
@@ -203,13 +291,19 @@ public final class BowAstralBarragePreviewRenderer {
             transitionYs = stickToGround
                 ? new double[0]
                 : BowAstralBarrageConfigs.transitionRingYs(center.y, nearbyGroundY);
-            radius = BowAstralBarrageConfigs.radiusFor(tier.baseSkillLevel());
+            // ★ 批 12：半径读的是"该弓槽 2 那条技能的等级"（BowTier#thirdSkillLevel）——
+            //   与服务端发射处（JadeTopazBowItem#fireAstralBarrageInsteadOfArrow）同一个读数，
+            //   所以画的圈与落的盘半径仍逐值相同（关卡 bow12-skill-table 钉着这条同源）。
+            radius = BowAstralBarrageConfigs.radiusFor(tier.thirdSkillLevel());
             SkillOutlineColors.SkillColor color = tier.skillOutlineColor();
             red = color.r();
             green = color.g();
             blue = color.b();
             holdTicks = BowAstralBarrageConfigs.barrageScheduleTicks();
             active = true;
+            // ★ 批 12：边界的闪烁粒子（每 tick 一组采样点，见 emitBoundaryParticles）。
+            flickerPhase++;
+            emitBoundaryParticles(level, center.y);
             return;
         }
 
@@ -220,7 +314,12 @@ public final class BowAstralBarragePreviewRenderer {
         holdTicks--;
         if (holdTicks <= 0) {
             clear();
+            return;
         }
+        // 松手之后圈还在（作者批 9："技能释放完之后，该预选框才会消失"）⇒ 边界粒子在这段时间里
+        // 照旧闪（圆心已冻结，粒子仍按 flickerPhase 脉动 / 绕圈），形状与位置都不变。
+        flickerPhase++;
+        emitBoundaryParticles(level, center.y);
     }
 
     /** 只在"圈该消失"时统一收尾（三处出口共用，免得留下一半个状态）。 */
@@ -228,6 +327,66 @@ public final class BowAstralBarragePreviewRenderer {
         active = false;
         holdTicks = 0;
         transitionYs = new double[0];
+        flickerPhase = 0;
+    }
+
+    /**
+     * <b>边界的那一圈"闪烁的能量波样式粒子"</b>（批 12，作者 2026-10-06："边界外观：从'一圈线'
+     * 改成闪烁的能量波样式粒子"）。
+     *
+     * <h2>粒子用的是哪一套（<b>不自创</b>）</h2>
+     * <p>就是<b>能量波自己的那一套</b>：{@link ChargerWaveFx#waveParticle(WaveTrailStyle, Vec3, float)}
+     * —— 波实体逐 tick 发拖尾用的<b>同一个</b>构造口（原版尘埃粒子 {@code DustParticleOptions}，
+     * 颜色经该风格的颜色变换）。这里风格传 {@link WaveTrailStyle#NORMAL}（未登记/无魔素的基线
+     * = <b>颜色原样使用入参</b>），入参色仍是弓自己那一色
+     * （{@link BowTier#skillOutlineColor()} = 星界的 {@code STELLARSTONE_PINK}）⇒
+     * 粒子类型与颜色口径<b>都不是本类自造的</b>：一个取自波，一个取自弓的既有档位表。</p>
+     *
+     * <h2>⛔ 零注册 / 零贴图 / 零新粒子类型</h2>
+     * <p>走的是原版 {@code Level#addParticle(ParticleOptions, ..)}（客户端本地发射，不落包、
+     * 不进存档）+ 既有的 {@link ChargerWaveFx} ⇒ 本批<b>没有</b>新增
+     * {@code ParticleType} 注册、<b>没有</b>新增贴图 / 粒子 JSON、也没有新实体或渲染器
+     * （关卡 {@code bow12-preview-particles} 把这三条钉成负向断言）。</p>
+     *
+     * <h2>"闪烁"= 存在感随时间脉动（两条同相位的手段）</h2>
+     * <ol>
+     *   <li><b>尺寸脉动</b>：尘埃粒子没有 alpha 参数 ⇒ "亮度/存在感"落在尺寸上：
+     *       实际尺寸 = {@link #WAVE_PARTICLE_SCALE} ×
+     *       {@code (1 + }{@link #FLICKER_SCALE_AMPLITUDE}{@code  × sin(2π × phase / }{@link #FLICKER_PERIOD_TICKS}{@code ))}，
+     *       半秒一个来回（人眼一眼能看出"在闪"而不刺眼）；</li>
+     *   <li><b>概率性抽稀</b>：每个采样点这一 tick 以 {@link #FLICKER_KEEP_CHANCE} 的概率才发出
+     *       ⇒ 密度本身也在抖（这是作者允许的"概率性跳过部分粒子"那条做法）。</li>
+     * </ol>
+     * <p>两条都读同一个 {@link #flickerPhase} ⇒ "闪"这件事只有一个相位来源，不会出现两个节奏。</p>
+     *
+     * <h2>性能</h2>
+     * <p>每 tick 期望 {@value #WAVE_PARTICLE_COUNT} × {@link #FLICKER_KEEP_CHANCE} ≈
+     * <b>6 颗</b>，粒子与寿命都是波拖尾那一套 ⇒ 稳态同屏量级与一条波的拖尾相同（同一条论证见
+     * {@link #WAVE_PARTICLE_COUNT}）。本方法<b>没有</b>循环里的第二次发射、也没有 tick 循环，
+     * 每次调用最多 {@value #WAVE_PARTICLE_COUNT} 次 {@code addParticle}。</p>
+     *
+     * @param level 客户端世界（{@code Minecraft#level}；粒子只在客户端存在）
+     * @param y     这一圈所在的 Y（主圈传 {@link #center} 的 Y；圆心已冻结时就是冻结那一刻的值）
+     */
+    private static void emitBoundaryParticles(ClientLevel level, double y) {
+        // 尺寸脉动：半秒一个来回（表现参数，见 FLICKER_PERIOD_TICKS / FLICKER_SCALE_AMPLITUDE）。
+        float pulse = 1.0F + FLICKER_SCALE_AMPLITUDE
+            * (float) Math.sin(TWO_PI * (double) flickerPhase / (double) FLICKER_PERIOD_TICKS);
+        // 粒子类型 + 颜色口径都取自既有来源：波自己的构造口 + 弓自己那一色（本类不写 RGB 字面量）。
+        ParticleOptions particle = ChargerWaveFx.waveParticle(
+            WaveTrailStyle.NORMAL, new Vec3(red, green, blue), WAVE_PARTICLE_SCALE * pulse);
+        for (int i = 0; i < WAVE_PARTICLE_COUNT; i++) {
+            // ② 概率性抽稀（"闪烁"的第二条手段）。
+            if (level.random.nextDouble() >= FLICKER_KEEP_CHANCE) {
+                continue;
+            }
+            // 采样点每 tick 沿圈前进一格（1 / WAVE_PARTICLE_COUNT 圈）⇒ 看起来在边界上流动。
+            double angle = TWO_PI * (double) (i + flickerPhase % WAVE_PARTICLE_COUNT)
+                / (double) WAVE_PARTICLE_COUNT;
+            level.addParticle(particle,
+                center.x + Math.cos(angle) * radius, y, center.z + Math.sin(angle) * radius,
+                0.0D, 0.0D, 0.0D);
+        }
     }
 
     /**
@@ -270,18 +429,20 @@ public final class BowAstralBarragePreviewRenderer {
         PoseStack.Pose pose = poseStack.last();
 
         VertexConsumer solid = buffer.getBuffer(RenderType.LINES);
-        ring(pose, solid, center.y, red, green, blue, OutlineColors.ALPHA);
+        ring(pose, solid, center.y, red, green, blue, OutlineColors.ALPHA * GUIDE_ALPHA_FACTOR);
 
         VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
-        ring(pose, transparent, center.y, red, green, blue, OutlineColors.ALPHA * TRANSPARENT_ALPHA_FACTOR);
+        ring(pose, transparent, center.y, red, green, blue,
+            OutlineColors.ALPHA * GUIDE_ALPHA_FACTOR * TRANSPARENT_ALPHA_FACTOR);
 
         // ★ 批 11④-2：有高度差时把落差"接"起来的那几道过渡环（真源给的 Y 列表；贴地时是空的）。
         //   画法与主圈逐字同形（同一个 ring(..)，只是 Y 更低），所以两层渲染的顶点格式与冲刷
-        //   路径一条都不新增。
+        //   路径一条都不新增。⚠ 批 12 起这几道环与主圈一样是"很淡的底线"（同一个 GUIDE 系数）：
+        //   边界的外观由粒子承担，线只做形状参考（见 GUIDE_ALPHA_FACTOR）。
         for (double transitionY : transitionYs) {
-            ring(pose, solid, transitionY, red, green, blue, OutlineColors.ALPHA);
+            ring(pose, solid, transitionY, red, green, blue, OutlineColors.ALPHA * GUIDE_ALPHA_FACTOR);
             ring(pose, transparent, transitionY, red, green, blue,
-                OutlineColors.ALPHA * TRANSPARENT_ALPHA_FACTOR);
+                OutlineColors.ALPHA * GUIDE_ALPHA_FACTOR * TRANSPARENT_ALPHA_FACTOR);
         }
 
         poseStack.popPose();
@@ -293,9 +454,13 @@ public final class BowAstralBarragePreviewRenderer {
     }
 
     /**
-     * 把预选框画成<b>水平面上的一圈线</b>（圆心 {@link #center} 的 XZ、半径 {@link #radius}、
+     * 把预选框的<b>很淡的底线</b>画成水平面上的一圈线（圆心 {@link #center} 的 XZ、半径 {@link #radius}、
      * 高度取调用方给的 {@code y} —— 主圈传 {@link #center} 的 Y，过渡环传真源给的那几道 Y；
      * 每一道都与弹幕圆盘在 XZ 上同心）。
+     *
+     * <p>⚠ <b>批 12 起这条线不再是"边界的外观"</b>（那是 {@link #emitBoundaryParticles} 的粒子），
+     * 它退成<b>形状参考</b>：alpha 由调用方乘 {@link #GUIDE_ALPHA_FACTOR}（很淡），
+     * 主圈与过渡环共用这一个画法（所以过渡环不用另开一条渲染路径）。</p>
      *
      * <p>顶点写法照 {@code OutlineRenderer#renderEdge}：{@code addVertex → setColor → setNormal}
      * （法线取该段的方向），两种渲染类型的格式差异（{@code RenderType.LINES} 是

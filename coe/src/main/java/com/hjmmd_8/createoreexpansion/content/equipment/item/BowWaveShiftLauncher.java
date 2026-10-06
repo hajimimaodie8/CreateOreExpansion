@@ -13,15 +13,18 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * <b>「发一枚攻击波 + 若干枚环绕伴随波」那一段</b> —— 弓技能批 4（宝石弓「量波置换」，
- * 作者 2026-10-05）把这件事做成一个<b>可复用形状</b>；今天<b>只有宝石弓</b>走它。
+ * 作者 2026-10-05）把这件事做成一个<b>可复用形状</b>；<b>批 12（2026-10-06）起三把弓共用</b>
+ * （宝石 ① / 星界 ② / 雷鸣 ②，见 {@code BowWaveShiftConfigs#appliesTo}）。
  *
  * <p>⚠ <b>批 5 曾经让星界弓「星元波置」原样复用它（只把星界档在
  * {@code BowWaveShiftConfigs#appliesTo} 上改成 {@code true}）；作者同日批 6 撤回了那条口径</b>
  * （"不是发射能量波哈，不是替换哈"），星界弓改走它自己的区域弹幕
- * （{@code BowAstralBarrageLauncher} / {@code BowAstralBarrageConfigs}）——
- * 于是本类里那句"星界弓已在批 5 这么做"的历史记录就此失效，<b>现行口径 = 只有宝石弓一档</b>。
- * 本类唯一被批 6 动过的地方是 {@link #nextBatch()} 的可见性（{@code private} → 包级私有），
- * 好让弹幕那一侧复用<b>同一个号源</b>；发射路径与要素一个字未动。</p>
+ * （{@code BowAstralBarrageLauncher} / {@code BowAstralBarrageConfigs}）。
+ * ⚠ <b>批 12 又让星界与雷鸣回来了 —— 但走的是另一条槽</b>：作者的新技能表把「量波置换」
+ * 放在它们的<b>槽 1</b>（原缴械风暴），而「星元波置」仍是星界的<b>槽 2</b>（它自己那张表）。
+ * ⇒ 同一把弓上两条路并存、各占一槽，由内核按槽位派发、由弓侧的标记闸门分辨
+ * （{@code BowExclusiveShotItemSkill#matches}）。本类唯一被批 6 / 批 12 动过的地方是
+ * {@link #nextBatch()} 的可见性与批 12 那一行速度修正，发射路径与要素其余部分一个字未动。</p>
  *
  * <h2>形状出处：照抄星芒嬗震的 {@code StarShockWaveLauncher}（不新造第二套）</h2>
  * <p>本类回答的只有一件事：<b>给定世界、施法者与技能等级，往世界里放哪一种波、放在哪、盖哪些要素</b>。
@@ -49,17 +52,17 @@ import net.minecraft.world.phys.Vec3;
  *       <td>一次发射一个<b>负号段</b>批次（见 {@link #nextBatch()} 的说明）</td></tr>
  * </table>
  *
- * <h2>怎么复用它（现行口径：只有宝石弓一档）</h2>
+ * <h2>怎么复用它（现行口径：宝石 / 星界 / 雷鸣三档）</h2>
  * <ol>
  *   <li>在 {@code BowWaveShiftConfigs#appliesTo(BowTier)} 里把那一档弓改成 {@code true}
- *       （穷尽 switch，少一个 case 编译不过）—— 今天<b>只有宝石弓那一行是 true</b>
- *       （星界弓批 5 曾为 true，作者批 6 已改回 false）；</li>
+ *       （穷尽 switch，少一个 case 编译不过）—— 今天<b>三档是 true</b>（宝石 / 星界 / 雷鸣），
+ *       翠玉那一档恒 false；</li>
  *   <li>在弓物品的发射闸门（{@code JadeTopazBowItem#shoot} 的 {@code fireWaveShiftInsteadOfArrow}）
- *       照旧生效 —— 它已经是"按档位问 {@code appliesTo}、按技能键问闸门"的形状，
- *       <b>不用改</b>；</li>
+ *       照旧生效 —— 它已经是"按档位问 {@code appliesTo}、按技能标记问闸门"的形状，<b>不用改</b>；</li>
  *   <li>等级传<b>该弓的技能等级</b> {@code this.effectiveSkillLevel(weapon)}（批 10 起；物品侧那一行
- *       由批 4 的 {@code this.tier.baseSkillLevel()} 改过来）—— 它含技艺提升 / 记忆回溯的附魔加成，
- *       上限 {@code BowTier#maxSkillLevel()} = 3 ⇒ 宝石弓（基准 2）在附魔后能到 Lv3。
+ *       由批 4 的 {@code this.tier.baseSkillLevel()} 改过来，<b>批 12 起它的基准是
+ *       {@code BowTier#skillLevel()}</b> = 宝石 1 / 星界 2 / 雷鸣 2）—— 它含技艺提升 / 记忆回溯的
+ *       附魔加成，上限 {@code BowTier#maxSkillLevel()} = 3 ⇒ 三把弓在附魔后都能到 Lv3。
  *       ⚠ 本类<b>不</b>为谁写死等级：写死数字就与"等级由物品侧那一个读数决定"这条唯一口径打架。
  *       等级随后只喂给 {@link BowWaveShiftConfigs#companionWaveCount(int)}（枚数）与
  *       {@link BowWaveShiftConfigs#rollWaveLevel(int, net.minecraft.util.RandomSource)}
@@ -67,8 +70,10 @@ import net.minecraft.world.phys.Vec3;
  * </ol>
  * <p>⚠ <b>雷鸣弓「雷鸣神力」不走本类</b>（作者批 5："不是发波，是另一套"）：它是电荷 + 原版闪电，
  * 数值住在 {@code BowThunderMightConfigs}、发射点住在 {@code BowThunderMightLauncher} ——
- * 两者与本类<b>零共用的数值</b>，只有键位 / 闸门 / 耐久那三件事同形。</p>
- * <p>⚠ <b>星界弓「星元波置」批 6 起也不走本类</b>（作者批 6："不是发射能量波哈，不是替换哈"）：
+ * 两者与本类<b>零共用的数值</b>，只有键位 / 闸门 / 耐久那三件事同形。
+ * ⚠ <b>批 12 之后同一把星界 / 雷鸣弓上两条路并存</b>：槽 1 走本类、槽 2 走各自的表，
+ * 两者仍是"零共用数值、各自一个发射点"，只是不再互斥于"哪把弓"。</p>
+ * <p>⚠ <b>星界弓「星元波置」仍不走本类</b>（批 6："不是发射能量波哈，不是替换哈"）：
  * 它改在锚定圆盘上<b>降下弹幕</b>（药水箭 + 随机魔素波），数值住在
  * {@code BowAstralBarrageConfigs}、发射点住在 {@code BowAstralBarrageLauncher}
  * —— 两处唯一与本类有关的是<b>共用号源</b> {@link #nextBatch()}（见它的说明）。</p>
@@ -142,7 +147,8 @@ public final class BowWaveShiftLauncher {
      * @param world   服务端世界（同时是随机源：{@code world.random}）
      * @param shooter 发射者（同时是波的<b>主人</b>：既有命中链会把他排除在命中之外）
      * @param level   技能等级（1~3，越界由 {@code BowWaveShiftConfigs#level} 夹取；
-     *                宝石弓传的是 {@code JadeTopazBowItem#effectiveSkillLevel}，含附魔提升）
+     *                三把弓（宝石 / 星界 / 雷鸣）传的都是 {@code JadeTopazBowItem#effectiveSkillLevel}，
+     *                含附魔提升 —— 它的基准是 {@code BowTier#skillLevel()} = 1 / 2 / 2）
      * @return 本次发射的批次号（&lt; 0），供日志 / 关卡核对
      */
     public static int fire(ServerLevel world, LivingEntity shooter, int level) {
@@ -169,6 +175,13 @@ public final class BowWaveShiftLauncher {
         main.setOwner(shooter);
         WaveTrailStyle mainEssence = BowMetaArrowTrait.randomEssence(world.random);
         main.trySetEssence(mainEssence);
+        // ★ 批 12（作者："量波置换的波速要设快一些"）：把主波的速度往上抬一个真源给的修正量。
+        //   用的是波实体**既有的**速度修正要素（addSpeedOffset，速度调节器与星界弹幕用的同一个）
+        //   ⇒ 波实体零改动；数值住在 BowWaveShiftConfigs.WAVE_SPEED_OFFSET_BLOCKS_PER_SECOND
+        //   （依据：它让五档基础速度 2/4/6/7/8 分别落到 6/8/10/11/12，逐档都不触各自的上限夹取）。
+        //   ⚠ 只加在主波上：伴随波的位置每 tick 被环绕要素改写成"主波位置 + 环上一点"，
+        //   它自己的自走速度不可观测（给它加只会让速度字段与真实位移不一致）。
+        main.addSpeedOffset(BowWaveShiftConfigs.WAVE_SPEED_OFFSET_BLOCKS_PER_SECOND);
         // ⛔ 批 10（作者裁定）：这里原来有一句
         //   main.setGravity(BowWaveShiftConfigs.GRAVITY_BLOCKS_PER_SECOND_SQUARED);
         // （批 4 的"空中有实体重力、水中走直线"）—— 作者批 10 撤回了重力那一半，主波自此

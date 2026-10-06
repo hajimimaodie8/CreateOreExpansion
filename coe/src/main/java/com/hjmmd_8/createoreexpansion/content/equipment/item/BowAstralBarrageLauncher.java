@@ -202,7 +202,8 @@ public final class BowAstralBarrageLauncher {
      * @param world   服务端世界
      * @param shooter 施放者（取<b>眼睛位置 + 视线</b>当锚点；同时是落下的箭与波的主人 =
      *                两者都据此把他排除在命中之外）
-     * @param level   技能等级（1~3，越界夹取；星界弓传的是 {@code BowTier#baseSkillLevel()} = 3）
+     * @param level   技能等级（1~3，越界夹取；星界弓传的是 {@code BowTier#thirdSkillLevel()} =
+     *                <b>1</b>（批 12；批 6~11 是 {@code baseSkillLevel()} = 3）⇒ 半径 2 / 滞留 4 秒）
      * @param drawnTicks <b>松手那一刻已经拉了多少 tick</b>（批 9）：预选框圆心与弹幕圆盘圆心
      *                都由它经 {@code BowAstralBarrageConfigs#previewCenter} 算出 ——
      *                客户端画圈用的是<b>同一个方法、同一个输入口径</b>（{@code #drawnTicks}），

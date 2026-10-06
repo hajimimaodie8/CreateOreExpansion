@@ -42,8 +42,12 @@ import net.minecraft.world.phys.Vec3;
  *       的"眼睛 + 准心 × N 格"，本表只把 N 换成作者给的 4）。⚠ <b>批 9 起这个 4 是"推进起点"</b>
  *       而不是固定的圆心：见下面批 9 那一节与 {@link #previewCenter}。</li>
  *   <li><b>"半径等于技能等级加 1"</b> ⇒ {@link #radiusFor(int)}（1 级 2 格 / 2 级 3 格 / 3 级 4 格）。
- *       等级取 {@link BowTier#baseSkillLevel()}（<b>星界 = 3</b> ⇒ 实机半径 <b>4</b> 格），
- *       与「元矢自生」「量波置换」「雷鸣神力」<b>同一处真源</b>，<b>不是</b>附魔加成的有效等级。</li>
+ *       等级取 {@link BowTier#thirdSkillLevel()}（<b>批 12 起</b>；作者新表把「星元波置」定为
+ *       <b>①</b> ⇒ 实机半径 <b>2</b> 格、滞留 <b>4 秒</b> = 80 tick。批 6~11 取的是
+ *       {@code BowTier#baseSkillLevel()} = 3 ⇒ 半径 4 / 120 tick；两者都按同一张等级表算，
+ *       改的只是"星界那条技能读几级"，见 {@link #level(int)}），
+ *       与「量波置换」读的 {@link BowTier#skillLevel()} <b>同一张档位表、不同的列</b>，
+ *       两列都是注册期固定量，<b>不是</b>附魔加成的有效等级。</li>
  *   <li><b>"空中落下无数"</b> ⇒ 条数 + 节拍两张数：{@value #ARROW_COUNT} 支药水箭、
  *       {@value #WAVE_COUNT} 枚能量波，每 {@value #SPAWN_INTERVAL_TICKS} tick 降一滴
  *       （"无数"没有确定数字 ⇒ 本表把它定成一个可配置的条数 + 持续节拍，见下"我独创"一节）。</li>
@@ -77,12 +81,16 @@ import net.minecraft.world.phys.Vec3;
  * <ul>
  *   <li><b>数量</b>：{@link #ARROW_COUNT} {@code 20 → 10}、{@link #WAVE_COUNT} {@code 10 → 20}；</li>
  *   <li><b>预选框</b>：圆心 = {@link #previewCenter}(眼睛, 视线, {@link #drawnTicks})，
- *       半径仍 = {@link #radiusFor(int)}（"技能等级 + 1"）。<b>颜色不在本表</b>——
+ *       半径仍 = {@link #radiusFor(int)}（"技能等级 + 1"，批 12 起等级读
+ *       {@link BowTier#thirdSkillLevel()} = 1 ⇒ 2 格）。<b>颜色不在本表</b>——
  *       走弓自己那套既有描边色（{@code BowTier#skillOutlineColor()}：星界 =
- *       {@code SkillOutlineColors.STELLARSTONE_PINK}），渲染器里一个 RGB 字面量都没有；</li>
+ *       {@code SkillOutlineColors.STELLARSTONE_PINK}），渲染器里一个 RGB 字面量都没有；
+ *       ⚠ <b>批 12 把边界外观改成"闪烁的能量波样式粒子"</b>（作者原话见下面批 12 一节）——
+ *       粒子类型与颜色口径取<b>波自己那一套</b>，做法与性能量级写在
+ *       {@code BowAstralBarragePreviewRenderer} 里，本表<b>不</b>新增任何粒子参数；</li>
  *   <li><b>移动</b>：{@link #previewForwardBlocks(int)} —— 起点 {@link #ANCHOR_FORWARD_BLOCKS}(4)、
  *       每 tick {@value #PREVIEW_FORWARD_BLOCKS_PER_TICK} 格、上限
- *       {@link #PREVIEW_MAX_FORWARD_BLOCKS}(5)；</li>
+ *       {@link #PREVIEW_MAX_FORWARD_BLOCKS}（批 9 = 5 ⇒ <b>批 12 作者改 15</b>）；</li>
  *   <li><b>释放</b>：松手按"那一刻"的圆心落（客户端与服务端<b>同一个</b>
  *       {@link #previewCenter}）；落下的波用既有的
  *       {@code AbstractChargerWaveEntity#addSpeedOffset(double)} 把速度设成
@@ -90,6 +98,23 @@ import net.minecraft.world.phys.Vec3;
  *       —— <b>箭一个字节没改</b>；</li>
  *   <li><b>存活</b>：{@link #barrageScheduleTicks()}（= 条数 × 节拍 = 80 tick）—— 客户端预选框据此
  *       在释放期间一直存在，数完才消失。</li>
+ * </ul>
+ *
+ * <h2>2026-10-06 弓技能批 12（作者原话，逐字；本表只承担其中两项）</h2>
+ * <blockquote>
+ * 1. 能跑的距离：上限 5 → <b>15</b>（推进速度不动，仍是每 tick 0.05 格）。<br>
+ * 2. 边界外观：从"一圈线"改成<b>闪烁的能量波样式粒子</b>（复用能量波那套粒子）。
+ * </blockquote>
+ * <p>逐条落地：</p>
+ * <ul>
+ *   <li><b>①"上限 15"</b>：只改 {@link #PREVIEW_MAX_FORWARD_BLOCKS} 这一个常量（5.0D → 15.0D），
+ *       {@link #previewForwardBlocks(int)} 那条"起点 + 速度 × tick 夹上限"的算式<b>一个字未改</b>
+ *       （推进速度仍 {@value #PREVIEW_FORWARD_BLOCKS_PER_TICK} 格/tick）。⇒ 拉弓到 220 tick
+ *       （11 秒）时圆心才推满 15 格；原版弓的使用时长是 72000 tick，玩家想推满就能推满。</li>
+ *   <li><b>②"闪烁的能量波粒子"</b>：<b>不在本表</b> —— 它是纯表现，住在
+ *       {@code BowAstralBarragePreviewRenderer}（那一侧刻意只放表现参数：段数 / 透明度系数 /
+ *       粒子条数 / 闪烁相位，与"数值真源只放玩法数字"的既有分工一致）。本表只提供它要读的
+ *       两件事：半径（{@link #radiusFor(int)}）与圆心（{@link #previewCenter}）。</li>
  * </ul>
  *
  * <h2>2026-10-06 弓技能批 11（作者原话，逐字）</h2>
@@ -206,8 +231,9 @@ import net.minecraft.world.phys.Vec3;
  *       与批 4 的 {@code BowWaveShiftConfigs} 同一条口径，只是本技能自己的表）。
  *       ⚠ 姊妹技能那张表在<b>批 10</b> 改成了"按技能等级掷一次分布"（并扩到 ε/ω），
  *       本表<b>不受影响</b>：星界弹幕仍按等级取一个固定波级（作者批 10 只点了「量波置换」）。</li>
- *   <li><b>批 9 新增的四个"作者没给"</b>：{@value #PREVIEW_MAX_FORWARD_BLOCKS}（作者只给了"最多 5 格"
- *       这个上限，没给"从几格开始推"⇒ 起点<b>沿用批 6 的 4</b>，松手越早越接近旧手感）、
+ *   <li><b>批 9 新增的四个"作者没给"</b>：{@link #PREVIEW_MAX_FORWARD_BLOCKS}（作者批 9 给了"最多 5 格"
+ *       这个上限、<b>批 12 改成 15</b>，但他没给"从几格开始推"⇒ 起点<b>沿用批 6 的 4</b>，
+ *       松手越早越接近旧手感）、
  *       {@value #PREVIEW_FORWARD_BLOCKS_PER_TICK}（"一点一点"的速度）、
  *       {@link #barrageScheduleTicks()}（"技能放完"的判据 = 排程总长 80 tick）、
  *       {@link #fallSpeedBlocksPerSecond()}（作者说"波速 = 箭速"但没说箭速是多少 ⇒
@@ -262,7 +288,7 @@ public final class BowAstralBarrageConfigs {
     /** Lv2 —— 半径 3 格、滞留 5 秒、波级 β。 */
     public static final Level LEVEL_2 = new Level(3, 5, WaveLevels.HIGH);
 
-    /** Lv3 —— 半径 4 格、滞留 6 秒、波级 γ（<b>星界弓走的就是这一档</b>：它的档位起始等级 = 3）。 */
+    /** Lv3 —— 半径 4 格、滞留 6 秒、波级 γ（批 12 起星界弓读 <b>Lv1</b>：作者新表把「星元波置」定为 ①）。 */
     public static final Level LEVEL_3 = new Level(4, 6, WaveLevels.GAMMA);
 
     /** 按等级取配置（与其余各条 {@code *Configs} 同名同形；越界先夹到 [1, 3]）。 */
@@ -274,13 +300,15 @@ public final class BowAstralBarrageConfigs {
      * <b>本技能对哪一档弓生效</b>（作者 2026-10-05 批 6："星界弓「星元波置」"）。
      *
      * <p>刻意写成<b>穷尽 switch（无 default）</b>：将来给枚举加一档弓，这里会<b>编译不过</b>，
-     * 而不是静默地让新弓"什么也不发生"。今天恰好只有星界弓这一档为 {@code true}
-     * ⇒ 翠玉 / 宝石 / 雷鸣三把弓的射击路径（含它们各自的技能）<b>一个字节都不变</b>。</p>
+     * 而不是静默地让新弓"什么也不发生"。今天只有星界弓这一档为 {@code true}
+     * ⇒ 翠玉 / 宝石 / 雷鸣三把弓的这条闸门恒不通过。</p>
      *
-     * <p>⚠ 与 {@link BowWaveShiftConfigs#appliesTo(BowTier)}（宝石弓发波）和
-     * {@link BowThunderMightConfigs#appliesTo(BowTier)}（雷鸣弓电荷 + 真雷）是<b>三张独立的表</b>：
-     * 今天三张表<b>两两不相交</b>（星界只在<b>本表</b>里为 true —— 批 5 那条"星界也走发波表"
-     * 已被作者批 6 撤回）。三处都是穷尽 switch ⇒ 加一档新弓时三处都会编译不过。</p>
+     * <p>⚠ 与 {@link BowWaveShiftConfigs#appliesTo(BowTier)}（量波置换：宝石 / 星界 / 雷鸣）
+     * 和 {@link BowThunderMightConfigs#appliesTo(BowTier)}（雷鸣神力：只有雷鸣）是<b>三张独立的表</b>：
+     * 批 12 之后<b>星界在两处都为 true</b> —— 但那是<b>两条不同的技能槽</b>（槽 1 = 量波置换、
+     * 槽 2 = 本表这个星元波置），弓侧三道闸门的第二道判据是"这一发的标记是不是本技能写的"
+     * （{@code BowExclusiveShotItemSkill#matches}）⇒ 同一次射击最多只被其中一条接管，两张表
+     * 不会互相顶替。三处都是穷尽 switch ⇒ 加一档新弓时三处都会编译不过。</p>
      */
     public static boolean appliesTo(BowTier tier) {
         if (tier == null) {
@@ -324,12 +352,9 @@ public final class BowAstralBarrageConfigs {
      * （{@code StarShockWaveLauncher#fireMainWave} 的 "眼睛 + 准心 × 1 格" /
      * {@code BowWaveShiftConfigs#MUZZLE_FORWARD_OFFSET}），本表只把那个前推量换成作者给的 4。</p>
      *
-     * <p><b>⚠ 批 9 起它不再是一个固定圆心，而是"推进的起点"</b>（作者 2026-10-05：
-     * "预选框会一点一点往远离视角的方向移动，边缘最多移动至距离玩家准心 5 格的位置"）：
-     * 拉弓期间圆心沿视线方向从本值一点一点往外推，上限 {@link #PREVIEW_MAX_FORWARD_BLOCKS}，
-     * 每 tick 推进 {@link #PREVIEW_FORWARD_BLOCKS_PER_TICK}。取"起点仍是 4"是刻意的：
-     * 松手越早越接近批 6 的既有手感（0 tick 时圆心与批 6 逐字同点），
-     * 作者要的那点移动量（4 → 5）也正好落在"一点一点"上。</p>
+     * <p>作者 2026-10-05："预选框会一点一点往远离视角的方向移动，边缘最多移动至距离玩家准心 5 格
+     * 的位置"；<b>批 12 把上限改成 15</b>（速度不动）⇒ 松手越晚圆心越远。取"起点仍是 4"是刻意的：
+     * 松手越早越接近批 6 的既有手感（0 tick 时圆心与批 6 逐字同点）。</p>
      */
     public static final double ANCHOR_FORWARD_BLOCKS = 4.0D;
 
@@ -339,13 +364,20 @@ public final class BowAstralBarrageConfigs {
 
     /**
      * <b>拉弓期间预选框圆心能推到的最远前推量</b>（格，{@value #PREVIEW_MAX_FORWARD_BLOCKS}）——
-     * 作者原话"边缘最多移动至距离玩家准心 <b>5</b> 格的位置"。
+     * 作者原话（批 9）"边缘最多移动至距离玩家准心 <b>5</b> 格的位置"，
+     * <b>批 12（2026-10-06）作者改口为 15</b>（原话："能跑的距离，翻 4 倍"；父会话追问后明确
+     * = <b>5 变 15</b>，且"推进速度不要动"）。
      *
      * <p>它同时是<b>实际落点</b>的上限：松手那一刻预选框在哪，弹幕的圆盘圆心就在哪
      * （客户端与服务端<b>同一个规则方法</b>算出来，见 {@link #previewCenter}）——
      * 所以"客户端看到的圈"和"服务端落的点"不可能分家。</p>
+     *
+     * <p>⚠ <b>推到 15 格要多久</b>：起点 4 格 + 速度 {@value #PREVIEW_FORWARD_BLOCKS_PER_TICK}
+     * 格/tick ⇒ 需要 {@code (15 - 4) / 0.05 = 220} tick = <b>11 秒</b>的持续拉弓。
+     * 这不是缺陷而是两个口径的合成结果：作者既要"最远 15"又要"速度别动"，
+     * 而原版弓的使用时长是 72000 tick（玩家想拉多久就拉多久）⇒ 想推满就推满。</p>
      */
-    public static final double PREVIEW_MAX_FORWARD_BLOCKS = 5.0D;
+    public static final double PREVIEW_MAX_FORWARD_BLOCKS = 15.0D;
 
     /**
      * <b>预选框圆心的推进速度</b>（格/tick，{@value #PREVIEW_FORWARD_BLOCKS_PER_TICK}）=
@@ -382,9 +414,10 @@ public final class BowAstralBarrageConfigs {
      * {@link #ANCHOR_FORWARD_BLOCKS} + 推进速度 × tick，<b>夹在</b>
      * {@link #PREVIEW_MAX_FORWARD_BLOCKS} 以内。
      *
-     * <p>"一点点往外推"与"最远 5 格"这两个作者口径<b>只有这一处实现</b>：客户端渲染器与服务端
+     * <p>"一点点往外推"与"最远 {@value #PREVIEW_MAX_FORWARD_BLOCKS} 格"这两个作者口径
+     * <b>只有这一处实现</b>：客户端渲染器与服务端
      * 发射器都只调 {@link #previewCenter}，谁也不自己写这两个数（关卡 {@code bow9-preview-cap} /
-     * {@code bow9-one-centre} 各钉一半）。</p>
+     * {@code bow12-preview-cap} / {@code bow9-one-centre} 各钉一块）。</p>
      */
     public static double previewForwardBlocks(int drawnTicks) {
         double travelled = ANCHOR_FORWARD_BLOCKS + Math.max(0, drawnTicks) * PREVIEW_FORWARD_BLOCKS_PER_TICK;

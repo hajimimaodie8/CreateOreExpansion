@@ -24,10 +24,13 @@ import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
  *       / {@code ENERGY_COLOR_DARK}，供文字/绑定行这类不画渐变的场合取用）。
  *       它<b>不是</b>能量条的色标：条的色标一律问护甲那张表
  *       （{@link #armorSet()} → {@code ArmorEnergyColors#stopsOf}，与回旋镖同一形态）。</li>
- *   <li><b>技能列（2026-10-03 弓技能批 1）</b> —— {@link #baseSkillLevel()}（起始等级 1/2/3/3）、
+ *   <li><b>技能列（2026-10-03 弓技能批 1；2026-10-06 弓技能批 12 重排）</b> ——
+ *       {@link #baseSkillLevel()}（<b>元矢自生</b>那个被动用的档位等级 1/2/3/3）、
+ *       {@link #skillLevel()}（槽 0/1 的绑定等级 1/1/2/2）、
+ *       {@link #thirdSkillLevel()}（槽 2 的绑定等级 1/1/1/1）、
  *       {@link #maxSkillLevel()}（上限 5/3/3/3）、{@link #skillOutlineColor()}（描边发光色）、
  *       {@link #perSkillCooldown()}（冷却载体：翠玉按物品记、三把继承弓按技能记）。
- *       四项都是 {@code switch (this)} 的派生量，<b>不进构造参数表</b>（那三项已被关卡 §30b 逐位钉住）。</li>
+ *       全部都是 {@code switch (this)} 的派生量，<b>不进构造参数表</b>（那三项已被关卡 §30b 逐位钉住）。</li>
  *   <li><b>不含</b>伤害 / 拉弓时间 / 初速 —— 那三项是 {@code JadeTopazBowItem} 里<b>写死的单档常量</b>
  *       （{@code DAMAGE_MULTIPLIER} / {@code MAX_PULL_TIME} / 发射初速 {@code power * 3.0F}），
  *       作者本轮没有给档位差异，因此<b>四把弓目前完全相同</b>。要按档拉开就往这里加列，
@@ -127,21 +130,82 @@ public enum BowTier {
     // 而构造参数表（energy, durability, color）已被关卡 §30b 逐位钉住，加参数会让那里一起动。
 
     /**
-     * <b>本档绑定技能的起始（基准）等级</b>（作者 2026-10-03 弓技能批 1 给死）：
+     * <b>本档的「档位起始等级」</b>（作者 2026-10-03 弓技能批 1 给死）：
      * 翠玉 <b>1</b> / 宝石 <b>2</b> / 星界 <b>3</b> / 雷鸣 <b>3</b>。
      *
-     * <p>三把继承弓在注册链上按它写入绑定等级（{@code CoeItems#inheritedBow}），运行时
-     * 也按它取基准（{@link JadeTopazBowItem#effectiveSkillLevel} 的读取点唯一）。</p>
+     * <p>⚠ <b>批 12 起它不再是「绑定技能的等级」</b>：技能的绑定等级搬到了
+     * {@link #skillLevel()}（槽 0/1）与 {@link #thirdSkillLevel()}（槽 2）两列，
+     * 于是本方法<b>只剩一个消费者</b> —— 被动「元矢自生」的中签概率
+     * （{@code JadeTopazBowItem#rollMetaArrowEssence} → {@code BowMetaArrowTrait#procs(int, ..)}，
+     * 表 = Lv1/2/3 ⇒ 10%/20%/30%）。改这条列就是改那个被动，与技能等级无关。</p>
      *
-     * <p>⚠ 翠玉之弓那一行同样是<b>活的</b>：它的绑定等级是注册处写死的字面量 {@code 1}
-     * （红线：那两行一个字不许动），而运行时的基准仍从本方法取 ⇒ 本行的 {@code 1}
-     * 必须与那一行逐字一致；关卡 {@code §30e} 就是钉这件事的。</p>
+     * <p><b>为什么保留它而不合并进新列</b>：作者批 3 给元矢自生的口径是"按该弓的<b>档位起始
+     * 等级</b>取概率"，而批 12 给技能的是另一张表（1/1/2/2 与 1/1/1/1）——两者在宝石弓
+     * （2 vs 1）与雷鸣弓（3 vs 2）上<b>不同值</b>，合成一列就会静默改掉那个被硬边界保护住的
+     * 被动（"元矢自生的表现数值不许改"）。关卡 {@code §30e-3} 把本方法的三条臂逐字钉住。</p>
      */
     public int baseSkillLevel() {
         return switch (this) {
             case JADE_TOPAZ -> 1;
             case SAPPHIRE_RUBY -> 2;
             case ASTRAL, THUNDER -> 3;
+        };
+    }
+
+    /**
+     * <b>槽 0 / 槽 1 的绑定等级</b>（弓技能批 12，作者 2026-10-06 给死）：
+     * 翠玉 <b>1</b> / 宝石 <b>1</b> / 星界 <b>2</b> / 雷鸣 <b>2</b>。
+     *
+     * <p>它服务的三条技能是"这一族共用"的那些 —— <b>槽 0 = 凋零诅咒</b>（四把弓），
+     * <b>槽 1 = 缴械风暴（翠玉 / 宝石）或量波置换（星界 / 雷鸣）</b>。三条都是
+     * {@code createoreexpansion:bow_curse} / {@code bow_disarm} / {@code bow_wave_shift} 这三个
+     * <b>被两把以上弓复用的 id</b>，所以它们的等级不能写在自己的 {@code AllSkills} 条目上
+     * （那会连别的弓一起改）——只能按弓落在本表这一列。</p>
+     *
+     * <p>三处消费点，都是"一处真源"：</p>
+     * <ol>
+     *   <li><b>注册链</b>：{@code CoeItems#threeSkillBow} 的槽 0 与槽 1 两行
+     *       （{@code .addSkills(.., tier.skillLevel())}）；</li>
+     *   <li><b>运行期</b>：{@link JadeTopazBowItem#effectiveSkillLevel(ItemStack)}
+     *       = {@code SkillEnergyCost.effectiveLevel(stack, tier.skillLevel(), tier.maxSkillLevel())}
+     *       —— 凋零诅咒 / 缴械风暴 / 量波置换三条<b>同值</b>（每把弓上这三条要么同为 1、
+     *       要么同为 2，见本类注释的表），所以一条读数就够；</li>
+     *   <li><b>关卡</b>：{@code check-armor-sets.ps1} 的 {@code bow12-skill-table} 逐把逐槽读它。</li>
+     * </ol>
+     *
+     * <p>⚠ 翠玉之弓那一行的 {@code 1} 同样要与它注册处写死的两个字面量 {@code 1}
+     * 逐字一致（红线：那两行一个字不许动）；它运行期的读数也走本方法。</p>
+     */
+    public int skillLevel() {
+        return switch (this) {
+            case JADE_TOPAZ, SAPPHIRE_RUBY -> 1;
+            case ASTRAL, THUNDER -> 2;
+        };
+    }
+
+    /**
+     * <b>槽 2 的绑定等级</b>（弓技能批 12，作者 2026-10-06 给死）：三把带槽 2 的弓<b>都是 1</b>
+     * —— 宝石「量波置换」① / 星界「星元波置」① / 雷鸣「雷鸣神力」①；翠玉之弓<b>没有槽 2</b>。</p>
+     *
+     * <p>它是"<b>本把弓槽 2 那条技能</b>的等级"（不是"某条技能的等级"）：槽 2 上放哪条技能由
+     * 注册处那一行决定（{@code CoeItems} 的声明处），而"放在槽 2 的那条读几级"由本列决定 ——
+     * 于是宝石的槽 2 是共用族的量波置换、星界/雷鸣的槽 2 是各自的专属技能，三条同读本列
+     * 却互不牵连。</p>
+     *
+     * <p>消费点三处：注册链（{@code CoeItems#threeSkillBow} 的第三行）、星界弹幕闸门
+     * （{@code JadeTopazBowItem#fireAstralBarrageInsteadOfArrow} → 半径 = 等级 + 1 = <b>2</b>、
+     * 滞留 <b>4 秒</b>）、雷鸣神力闸门（{@code #fireThunderMightInsteadOfArrow} → 范围 2×2、
+     * 真雷 20%），以及客户端预选框的半径读数（{@code BowAstralBarragePreviewRenderer}，必须与
+     * 服务端同一个数）。</p>
+     *
+     * <p>⚠ 三条技能<b>不再读</b> {@link #baseSkillLevel()}（批 4~11 读的就是它：宝石 2 / 星界 3 /
+     * 雷鸣 3）⇒ 本列是批 12 唯一一处改了这三条技能<b>等级口径</b>的地方。翠玉那一行的 {@code 1}
+     * 不被任何调用点消费（它没有槽 2），留着是为了让 {@code switch (this)} 保持穷尽、并让关卡能把
+     * "三把带槽 2 的弓都是 1"当成一条直读事实（形状照 {@link #skillOutlineColor()} 的翠玉行）。</p>
+     */
+    public int thirdSkillLevel() {
+        return switch (this) {
+            case JADE_TOPAZ, SAPPHIRE_RUBY, ASTRAL, THUNDER -> 1;
         };
     }
 
