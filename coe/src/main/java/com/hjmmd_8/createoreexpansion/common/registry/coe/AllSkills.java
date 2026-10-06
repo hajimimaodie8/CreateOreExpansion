@@ -114,8 +114,10 @@ public final class AllSkills {
      *
      * <p>范围：</p>
      * <ul>
-     *   <li><b>数值</b>在 {@link BloodPactConfigs}（消耗 = 100 × 等级；冷却 600 tick = 30 秒，
-     *       1~5 级恒定；<b>交换比例与等级无关</b> ⇒ 比例不进等级表，需求 §六 #4）；</li>
+     *   <li><b>数值</b>在 {@link BloodPactConfigs}（<b>一级消耗 100</b>
+     *       = {@link BloodPactConfigs#ENERGY_COST_PER_LEVEL}，实扣 = 100 × <b>有效等级</b>
+     *       ⇒ 100 / 200 / 300 / 400 / 500；冷却 600 tick = 30 秒，1~5 级恒定；
+     *       <b>交换比例与等级无关</b> ⇒ 比例不进等级表，需求 §六 #4）；</li>
      *   <li><b>执行体</b>（交换 → 照常伤害 → 扣能 → 冷却）在 {@code BloodPactItemSkill}；</li>
      *   <li><b>冷却载体</b> = 按技能记的 {@code PerSkillCooldown}（作者 2026-10-03 裁定 B）——
      *       同一把剑上的剥取 / 夺取不受它影响；</li>

@@ -14,7 +14,14 @@ import java.util.List;
  */
 public class BloodPactConfig extends AutoSkillConfig {
 
-    /** 单次技能能量消耗（= 100 × 等级，见 {@link BloodPactConfigs}）。 */
+    /**
+     * <b>一级消耗</b>（= {@link BloodPactConfigs#ENERGY_COST_PER_LEVEL} = 100，见该类）。
+     *
+     * <p>实扣 = <b>本值 × 有效等级</b>（100 / 200 / 300 / 400 / 500），"乘等级"发生在
+     * {@code CoeSkillSupport#cost} ← {@code SkillEnergyCost#compute} 里 —— 所以<b>本字段不写等级总额</b>
+     * （批 1~13 写的是 100/200/300/400/500，于是实扣被二次乘成 100/400/900/1600/2500；
+     * 作者 2026-10-06 批 14 裁定实扣 = 100 × 等级）。</p>
+     */
     public int energyCost;
 
     /**

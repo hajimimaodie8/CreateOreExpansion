@@ -126,7 +126,10 @@ public final class BloodPactItemSkill implements ItemSkill<HitSkillContext> {
 
     /**
      * 消耗：冷却通过 + 这次真的会交换 ⇒ 扣 {@code 一级消耗 × 有效等级 × 减耗折扣}
-     * （{@code BloodPactConfig#energyCost} = 100 × 等级；资源 = {@code tool_energy}）。
+     * （{@code BloodPactConfig#energyCost} = <b>一级消耗 100</b>
+     * = {@code BloodPactConfigs#ENERGY_COST_PER_LEVEL}，乘等级由
+     * {@code SkillEnergyCost#compute} 完成 ⇒ 实扣 100 / 200 / 300 / 400 / 500；
+     * 资源 = {@code tool_energy}）。
      *
      * <p>能量不够由内核统一裁决（{@code DelayConsumable#canConsume} 不过 ⇒ 不扣不释放），
      * 提示由 {@link CoeSkillSupport#consume} 补（与剥取 / 夺取同一条路径）。</p>
