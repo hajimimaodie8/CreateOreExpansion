@@ -343,6 +343,9 @@ public final class CoeItems {
             .build()
             .addSkills(AllSkills.SKIN, 3) // 剑技能一：剥取Lv3（键一，一技能多等级：addSkills(SKIN,3)）
             .addSkills(AllSkills.PLUNDER, 2) // 剑技能二：夺取Lv2（键二，一技能多等级：addSkills(PLUNDER,2)）
+            // 剑技能三：血契置换Lv1（键三 —— 2026-10-06 批 13 补绑定，作者需求
+            // coe-pact_blood-pact-swap：蓝宝石剑给 1、星辉石剑给 2，都落在槽 2 = 键三）
+            .addSkills(AllSkills.BLOOD_PACT, 1)
             .skillColor(SkillOutlineColors.SAPPHIRE_BLUE)
             .build()
             .register();
@@ -483,6 +486,8 @@ public final class CoeItems {
             .build()
             .addSkills(AllSkills.SKIN, 4) // 剑技能一：剥取Lv4（键一，一技能多等级：addSkills(SKIN,4)）
             .addSkills(AllSkills.PLUNDER, 3) // 剑技能二：夺取Lv3（键二，一技能多等级：addSkills(PLUNDER,3)）
+            // 剑技能三：血契置换Lv2（键三 —— 2026-10-06 批 13 补绑定；需求书里就写"星辉石剑给 2"）
+            .addSkills(AllSkills.BLOOD_PACT, 2)
             .skillColor(SkillOutlineColors.STELLARSTONE_PINK)
             .build()
             .register();

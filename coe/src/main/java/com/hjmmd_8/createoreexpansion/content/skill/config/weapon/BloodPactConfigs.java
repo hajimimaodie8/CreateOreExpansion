@@ -54,7 +54,7 @@ public final class BloodPactConfigs {
     public record Level(int energyCost, int cooldownTicks) {
     }
 
-    // ========== 五个等级（两把剑的基准等级绑定 = coe-pact 批 3，本批不绑） ==========
+    // ========== 五个等级（两把剑的基准等级绑定 = 2026-10-06 COE 批 13 已补：蓝宝石剑 Lv1 / 星辉石剑 Lv2） ==========
 
     /** Lv1 —— 消耗 100 × 1 = 100；冷却 600 tick（30 秒） */
     public static final Level LEVEL_1 = new Level(100, COOLDOWN_TICKS);

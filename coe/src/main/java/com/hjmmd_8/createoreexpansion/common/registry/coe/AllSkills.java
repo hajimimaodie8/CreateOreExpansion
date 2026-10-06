@@ -119,8 +119,9 @@ public final class AllSkills {
      *   <li><b>执行体</b>（交换 → 照常伤害 → 扣能 → 冷却）在 {@code BloodPactItemSkill}；</li>
      *   <li><b>冷却载体</b> = 按技能记的 {@code PerSkillCooldown}（作者 2026-10-03 裁定 B）——
      *       同一把剑上的剥取 / 夺取不受它影响；</li>
-     *   <li><b>两把剑的基准等级绑定</b>（蓝宝石剑 / 星辉石剑，键三）<b>仍未绑</b>，属 coe-pact
-     *       批 3 —— 所以现在没有任何物品携带本技能；</li>
+     *   <li><b>两把剑的基准等级绑定</b>（蓝宝石剑 Lv1 / 星辉石剑 Lv2，键三）<b>已于 2026-10-06
+     *       COE 批 13 补上</b>（{@code CoeItems} 的 {@code SAPPHIRE_SWORD} / {@code STELLARSTONE_SWORD}
+     *       各一条 {@code .addSkills(BLOOD_PACT, 1/2)}，落在槽 2 = 键三）—— 此前"零绑定"的缺口已闭合；</li>
      *   <li><b>内核白名单</b>已登记（{@code SkillerIntegration#registerHitSkills}，
      *       实现槽位 = {@code BloodPactItemSkill}）：漏登记 ⇒ 物品上这个技能实例
      *       反序列化返回 null，症状是"看着接好了、其实没绑上"。</li>
