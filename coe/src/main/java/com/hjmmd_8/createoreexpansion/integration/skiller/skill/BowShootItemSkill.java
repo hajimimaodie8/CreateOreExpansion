@@ -55,6 +55,23 @@ import java.util.function.ToIntFunction;
  *       允许两条并存是作者明确裁定（第 6 条），边界就是那一个 switch。</li>
  * </ol>
  *
+ * <h2>2026-10-05 弓技能批 8 ②：被专属技能接管的那一发，本技能一分钱不付</h2>
+ * <p>作者裁定：同一发里<b>专属技能优先</b>，被专属接管的那一发继承的技能<b>不得扣能量、
+ * 不得进冷却</b>。起因是同时按专属键（键三）与继承键（键一 / 键二）时内核两条都放
+ * （每个槽位各答各的按键），而这一发最终只有专属那条作数（弓的 {@code shoot} 读标记
+ * ⇒ 整支箭都不造）⇒ 继承那条白付两笔账。</p>
+ * <p>判据只有一处：{@link BowExclusiveShotItemSkill#claimsShot}（"本把弓的第三个技能槽
+ * 已绑定且此刻被按住"，服务端权威）。判定位置照<b>冷却判定的既有惯例</b>——
+ * {@link #consumeResource} 与 {@link #release} <b>两处同判</b>：</p>
+ * <ul>
+ *   <li>{@code consumeResource} 里 return ⇒ 本实例不往 {@code DelayConsumable} 累加 ⇒
+ *       {@code releaseBundle} 的落账里没有它 ⇒ <b>不扣能</b>；</li>
+ *   <li>{@code release} 里 return ⇒ 不进冷却、也不写弓上的技能标记（那条箭不会造出来）。</li>
+ * </ul>
+ * <p>⚠ 翠玉之弓（只有槽位 0/1）在本判据下恒为 false ⇒ 它的两条技能逐字不动；
+ * ⚠ 装备段（槽位 3/4/5）与工具段并存那条既有裁定与本判据互不相干（那是"两段"，
+ * 本判据管的是"同一把弓上的两条技能"）。</p>
+ *
  * @param <C> 该弓技能的配置类型（两个技能各一份分级数值表）
  * @since 1.0.0
  */
@@ -83,6 +100,14 @@ public class BowShootItemSkill<C extends AutoSkillConfig> implements ItemSkill<B
         Player player = context.getPlayer();
         ItemStack bow = context.bow();
         if (player == null || bow.isEmpty()) {
+            return;
+        }
+        // ★ 批 8 ②：本发若已被**专属技能**接管（键三 / 槽位 2 按下且本把弓带专属技能），
+        //   继承这一条一律不执行。判据只有一处（BowExclusiveShotItemSkill#claimsShot），
+        //   判定位置与下面那条冷却判定**同一个惯例：consumeResource 与 release 两处同判**
+        //   —— 少了 release 这一处，那一发会照旧进冷却；少了 consumeResource 那一处，
+        //   会照旧扣能量（落账在 releaseBundle 里，早于 release）。
+        if (BowExclusiveShotItemSkill.claimsShot(player)) {
             return;
         }
         // 本技能实例的注册 id：冷却的"按技能记"分支与弓/箭上的技能标记都用它。
@@ -118,6 +143,12 @@ public class BowShootItemSkill<C extends AutoSkillConfig> implements ItemSkill<B
         Player player = context.getPlayer();
         ItemStack bow = context.bow();
         if (player == null || bow.isEmpty()) {
+            return;
+        }
+        // ★ 批 8 ②：与 release(..) 逐个同判（同一个判据、同一个位置惯例）。
+        //   这里 return ⇒ 本实例一个 DelayConsumable 都不累加 ⇒ releaseBundle 的"全有或全无"
+        //   落账里没有它 ⇒ 被专属技能接管的那一发不扣能量（只判 release 那一处是不够的）。
+        if (BowExclusiveShotItemSkill.claimsShot(player)) {
             return;
         }
         ResourceLocation skillId = CoeSkillSupport.skillIdOf(instance);

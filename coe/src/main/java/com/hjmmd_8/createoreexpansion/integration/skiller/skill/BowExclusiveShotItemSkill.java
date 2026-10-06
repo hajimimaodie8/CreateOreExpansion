@@ -1,12 +1,14 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.skill;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.integration.skiller.CoeSkillProvider;
 import com.hjmmd_8.createoreexpansion.integration.skiller.context.BowShootSkillContext;
 import com.leaf.skiller.foundation.Consumable;
 import com.leaf.skiller.foundation.skill.ISkillInstance;
 import com.leaf.skiller.foundation.skill.ItemSkill;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -88,6 +90,40 @@ public final class BowExclusiveShotItemSkill implements ItemSkill<BowShootSkillC
 
     /** 本技能在内核注册表（{@code skiller:skill}）里的 id —— 必须与 {@code AllSkills} 那条一字不差。 */
     private final ResourceLocation id;
+
+    /**
+     * <b>三条专属技能在"自己那把弓"上的按键槽位号</b>（键三，默认 G ⇒ 槽位 2）。
+     *
+     * <p>它与弓侧客户端读数里那行 {@code if (AllKeys.SKILL_RELEASE_3.isPressed()) return 2;}
+     * 是<b>同一个事实</b>（槽位 = 该物品技能表里的下标，见 {@code CoeSkillProvider#convert}）：
+     * 弓类四把里只有<b>带专属技能的那三把</b>有这个槽位，翠玉之弓只有 0/1。</p>
+     */
+    private static final int SLOT = 2;
+
+    /**
+     * <b>本发是否已被「专属技能」接管</b>（2026-10-05 弓技能批 8 ②）—— 服务端权威、只读。
+     *
+     * <h2>它在修什么</h2>
+     * <p>同时按<b>专属键（键三）</b>与<b>继承键（键一 / 键二）</b>时，内核会<b>两条都放</b>
+     * （每个槽位各答各的按键），而这一发最终<b>只有专属那条作数</b>（弓的 {@code shoot}
+     * 读标记 ⇒ 整支箭都不造）⇒ 继承那条的能量与冷却<b>白付</b>（效果一个字没生效）。</p>
+     *
+     * <p>判据只有一条：本把弓的第三个技能槽位（{@link #SLOT}）<b>已绑定技能且此刻被按住</b>
+     * （{@link CoeSkillProvider#slotPressed}：与释放路径同一份绑定表 + 同一个键位来源）。
+     * 继承那两条在 {@code BowShootItemSkill} 的 {@code consumeResource} 与 {@code release}
+     * <b>两处同判</b>（与"冷却类技能两处同判"的既有惯例同形）⇒ 被接管的那一发<b>既不扣能、
+     * 也不进冷却</b>，标记也不写（那条箭根本不会造出来）。</p>
+     *
+     * <p>⚠ 翠玉之弓不受影响：它没有第三个技能槽 ⇒ {@code slotPressed} 恒 false
+     * ⇒ 两条继承技能的既有行为一个字节未改。⚠ 装备段（槽位 3/4/5）与工具段<b>并存</b>是作者
+     * 既有裁定（一个键同时触发两个<b>段</b>），与本方法处理的"同一把弓上的两条技能"是两件事。</p>
+     *
+     * @param player 触发者；非服务端（客户端预测）恒 {@code false}
+     */
+    public static boolean claimsShot(Player player) {
+        return player instanceof ServerPlayer serverPlayer
+                && CoeSkillProvider.slotPressed(serverPlayer, SLOT);
+    }
 
     private BowExclusiveShotItemSkill(String path) {
         this.id = ResourceLocation.fromNamespaceAndPath(CoeCore.REGISTRY_NAMESPACE, path);
