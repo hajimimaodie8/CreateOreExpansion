@@ -42,12 +42,13 @@ import net.minecraft.world.phys.Vec3;
  *       的"眼睛 + 准心 × N 格"，本表只把 N 换成作者给的 4）。⚠ <b>批 9 起这个 4 是"推进起点"</b>
  *       而不是固定的圆心：见下面批 9 那一节与 {@link #previewCenter}。</li>
  *   <li><b>"半径等于技能等级加 1"</b> ⇒ {@link #radiusFor(int)}（1 级 2 格 / 2 级 3 格 / 3 级 4 格）。
- *       等级取 {@link BowTier#thirdSkillLevel()}（<b>批 12 起</b>；作者新表把「星元波置」定为
- *       <b>①</b> ⇒ 实机半径 <b>2</b> 格、滞留 <b>4 秒</b> = 80 tick。批 6~11 取的是
- *       {@code BowTier#baseSkillLevel()} = 3 ⇒ 半径 4 / 120 tick；两者都按同一张等级表算，
- *       改的只是"星界那条技能读几级"，见 {@link #level(int)}），
- *       与「量波置换」读的 {@link BowTier#skillLevel()} <b>同一张档位表、不同的列</b>，
- *       两列都是注册期固定量，<b>不是</b>附魔加成的有效等级。</li>
+ *       等级由 {@code JadeTopazBowItem} 从 {@link BowTier#thirdSkillEffectiveLevel(net.minecraft.world.item.ItemStack)}
+ *       读出来传进来（<b>批 14 起</b>：槽 2 那条技能的<b>有效</b>等级 = 绑定 + 技艺提升 − 技艺回溯，
+ *       按 {@code BowTier#maxSkillLevel()} 钳到 3）。⚠ 批 12~13 读的是
+ *       {@link BowTier#thirdSkillLevel()}——<b>注册期常量 ①</b>，于是实机半径恒 2 格、滞留恒 4 秒：
+ *       费用随有效等级涨而效果冻住，作者批 14 的"这两个玩意儿只能一级？他们不是封顶三级吗"
+ *       点的就是这个。现在<b>效果与费用同源</b>（Lv1/2/3 ⇒ 半径 2/3/4、滞留 4/5/6 秒、波级 α/β/γ），
+ *       与「量波置换」读的 {@link BowTier#skillLevel()} <b>同一张档位表、不同的列</b>。</li>
  *   <li><b>"空中落下无数"</b> ⇒ 条数 + 节拍两张数：{@value #ARROW_COUNT} 支药水箭、
  *       {@value #WAVE_COUNT} 枚能量波，每 {@value #SPAWN_INTERVAL_TICKS} tick 降一滴
  *       （"无数"没有确定数字 ⇒ 本表把它定成一个可配置的条数 + 持续节拍，见下"我独创"一节）。</li>
@@ -81,8 +82,9 @@ import net.minecraft.world.phys.Vec3;
  * <ul>
  *   <li><b>数量</b>：{@link #ARROW_COUNT} {@code 20 → 10}、{@link #WAVE_COUNT} {@code 10 → 20}；</li>
  *   <li><b>预选框</b>：圆心 = {@link #previewCenter}(眼睛, 视线, {@link #drawnTicks})，
- *       半径仍 = {@link #radiusFor(int)}（"技能等级 + 1"，批 12 起等级读
- *       {@link BowTier#thirdSkillLevel()} = 1 ⇒ 2 格）。<b>颜色不在本表</b>——
+ *       半径仍 = {@link #radiusFor(int)}（"技能等级 + 1"，批 14 起等级由服务端与客户端
+ *       <b>同一个</b> {@code BowTier#thirdSkillEffectiveLevel(stack)} 读出 ⇒ 1..3 ⇒ 2/3/4 格）。
+ *       <b>颜色不在本表</b>——
  *       走弓自己那套既有描边色（{@code BowTier#skillOutlineColor()}：星界 =
  *       {@code SkillOutlineColors.STELLARSTONE_PINK}），渲染器里一个 RGB 字面量都没有；
  *       ⚠ <b>批 12 把边界外观改成"闪烁的能量波样式粒子"</b>（作者原话见下面批 12 一节）——

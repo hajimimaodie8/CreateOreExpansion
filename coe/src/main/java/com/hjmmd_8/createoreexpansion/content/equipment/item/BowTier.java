@@ -2,9 +2,11 @@ package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
 
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
 /**
@@ -30,10 +32,12 @@ import net.minecraft.world.item.crafting.Ingredient;
  *   <li>{@link #repairIngredient()} —— <b>本档的修复材料</b>（2026-10-06 批 13 新增，作者裁定）：
  *       三套融合套 = 同档护甲那一对锭（<b>任一即可</b>）、雷鸣 = 单一雷鸣合金锭（非融合）。
  *       唯一消费点是 {@code JadeTopazBowItem#isValidRepairItem}（覆写 + 回落 {@code super}）。</li>
- *   <li><b>技能列（2026-10-03 弓技能批 1；2026-10-06 弓技能批 12 重排）</b> ——
+ *   <li><b>技能列（2026-10-03 弓技能批 1；2026-10-06 批 12 重排 / 批 14 补"有效等级"读数）</b> ——
  *       {@link #baseSkillLevel()}（<b>元矢自生</b>那个被动用的档位等级 1/2/3/3）、
  *       {@link #skillLevel()}（槽 0/1 的绑定等级 1/1/2/2）、
  *       {@link #thirdSkillLevel()}（槽 2 的绑定等级 1/1/1/1）、
+ *       {@link #thirdSkillEffectiveLevel(ItemStack)}（槽 2 那条技能的<b>有效</b>等级
+ *       1..{@link #maxSkillLevel()}，批 14 起效果侧的唯一读数）、
  *       {@link #maxSkillLevel()}（上限 5/3/3/3）、{@link #skillOutlineColor()}（描边发光色）、
  *       {@link #perSkillCooldown()}（冷却载体：翠玉按物品记、三把继承弓按技能记）。
  *       全部都是 {@code switch (this)} 的派生量，<b>不进构造参数表</b>（那三项已被关卡 §30b 逐位钉住）。</li>
@@ -223,29 +227,84 @@ public enum BowTier {
     }
 
     /**
-     * <b>槽 2 的绑定等级</b>（弓技能批 12，作者 2026-10-06 给死）：三把带槽 2 的弓<b>都是 1</b>
-     * —— 宝石「量波置换」① / 星界「星元波置」① / 雷鸣「雷鸣神力」①；翠玉之弓<b>没有槽 2</b>。</p>
+     * <b>槽 2 的「绑定（基准）等级」</b>（弓技能批 12，作者 2026-10-06 给死）：三把带槽 2 的弓
+     * <b>都是 1</b> —— 宝石「量波置换」① / 星界「星元波置」① / 雷鸣「雷鸣神力」①；
+     * 翠玉之弓<b>没有槽 2</b>。</p>
      *
      * <p>它是"<b>本把弓槽 2 那条技能</b>的等级"（不是"某条技能的等级"）：槽 2 上放哪条技能由
-     * 注册处那一行决定（{@code CoeItems} 的声明处），而"放在槽 2 的那条读几级"由本列决定 ——
-     * 于是宝石的槽 2 是共用族的量波置换、星界/雷鸣的槽 2 是各自的专属技能，三条同读本列
+     * 注册处那一行决定（{@code CoeItems} 的声明处），而"放在槽 2 的那条"的<b>绑定等级</b>由本列
+     * 决定 —— 于是宝石的槽 2 是共用族的量波置换、星界/雷鸣的槽 2 是各自的专属技能，三条同读本列
      * 却互不牵连。</p>
      *
-     * <p>消费点三处：注册链（{@code CoeItems#threeSkillBow} 的第三行）、星界弹幕闸门
-     * （{@code JadeTopazBowItem#fireAstralBarrageInsteadOfArrow} → 半径 = 等级 + 1 = <b>2</b>、
-     * 滞留 <b>4 秒</b>）、雷鸣神力闸门（{@code #fireThunderMightInsteadOfArrow} → 范围 2×2、
-     * 真雷 20%），以及客户端预选框的半径读数（{@code BowAstralBarragePreviewRenderer}，必须与
-     * 服务端同一个数）。</p>
+     * <p>⚠ <b>批 14（2026-10-06）厘清了"绑定等级"与"实际等级"两件事</b>：本列是<b>基准</b>
+     * （= 物品出生时写进技能组件的 {@code Level}），<b>实际生效的等级</b>是
+     * {@link #thirdSkillEffectiveLevel(ItemStack)} ——
+     * 基准 + 技艺提升 − 技艺回溯，按 {@link #maxSkillLevel()}（三把继承弓 = <b>3</b>）钳位，
+     * 与全仓其余每一条弓技能<b>同一条口径</b>（{@code SkillEnergyCost#effectiveLevel}）。
+     * ⇒ 槽 2 的可达范围是 <b>1..3</b>：不附魔 = ①（作者批 12 的表），附魔拉满 = ③
+     * （"所有的弓的技能等级最高也是 3 级"）。</p>
+     *
+     * <p>消费点<b>只剩一处</b>：注册链（{@code CoeItems#threeSkillBow} 的第三行
+     * {@code .addSkills(thirdSkill, tier.thirdSkillLevel())}），以及批 14 新增的那个读数方法
+     * 自己（{@link #thirdSkillEffectiveLevel} 拿它当基准）。⚠ <b>批 4~13 的效果侧读的就是本列</b>
+     * （星界弹幕闸门 {@code JadeTopazBowItem#fireAstralBarrageInsteadOfArrow}、
+     * 雷鸣神力闸门 {@code #fireThunderMightInsteadOfArrow}、客户端预选框
+     * {@code BowAstralBarragePreviewRenderer}）—— 那是"星元波置 / 雷鸣神力恒 ①"的<b>根因</b>：
+     * 一个注册期常量被当成等级读数，于是费用随有效等级走（1..3）、效果却冻在 ①。
+     * 批 14 把这三处全部改读 {@link #thirdSkillEffectiveLevel}（效果与费用同源），
+     * <b>本列本身不动</b>（作者批 12 的表就是 ①，它是基准、不是上限）。</p>
      *
      * <p>⚠ 三条技能<b>不再读</b> {@link #baseSkillLevel()}（批 4~11 读的就是它：宝石 2 / 星界 3 /
      * 雷鸣 3）⇒ 本列是批 12 唯一一处改了这三条技能<b>等级口径</b>的地方。翠玉那一行的 {@code 1}
      * 不被任何调用点消费（它没有槽 2），留着是为了让 {@code switch (this)} 保持穷尽、并让关卡能把
-     * "三把带槽 2 的弓都是 1"当成一条直读事实（形状照 {@link #skillOutlineColor()} 的翠玉行）。</p>
+     * "三把带槽 2 的弓的绑定等级都是 1"当成一条直读事实（形状照 {@link #skillOutlineColor()} 的翠玉行）。</p>
      */
     public int thirdSkillLevel() {
         return switch (this) {
             case JADE_TOPAZ, SAPPHIRE_RUBY, ASTRAL, THUNDER -> 1;
         };
+    }
+
+    /**
+     * <b>槽 2 那条技能的「有效等级」—— 唯一读取点</b>（2026-10-06 批 14 新增，作者裁定）。
+     *
+     * <h2>它在修什么</h2>
+     * <p>作者原话（批 14 的触发点）：</p>
+     * <blockquote>「这两个玩意儿只能一级？他们不是封顶三级吗」</blockquote>
+     * <p>症状：星元波置 / 雷鸣神力的<b>费用</b>随有效等级走（150 × 1/2/3 = 450 封顶），
+     * 而<b>效果</b>（半径 / 滞留 / 波级 / 范围 / 真雷概率）读的是注册期常量
+     * {@link #thirdSkillLevel()} = ① ⇒ "付 450 拿 ① 效果"，且那两张三行等级表的
+     * Lv2 / Lv3 行<b>永远够不到</b>。根因就是"等级读数取错了来源"：常量 ≠ 等级。
+     * 批 14 把效果侧改成读本方法，与费用侧（{@code CoeSkillSupport#effectiveLevel} 那条既有口径）
+     * <b>同源</b>。</p>
+     *
+     * <h2>口径（没有任何新算式）</h2>
+     * <p>= {@code SkillEnergyCost.effectiveLevel(stack, }{@link #thirdSkillLevel()}{@code ,
+     * }{@link #maxSkillLevel()}{@code )}：基准取本表的槽 2 列、上限取本表的技能上限列，
+     * 附魔（技艺提升 / 技艺回溯）由 {@code SkillEnergyCost} 从物品读，结果恒夹在
+     * {@code [1, maxSkillLevel()]} 内。三把带槽 2 的弓的上限都是 {@code 3}
+     * ⇒ 本方法在这三把弓上恒返回 <b>1 / 2 / 3</b>（"封顶三级"）。</p>
+     *
+     * <h2>消费点（三处，都是"效果"）</h2>
+     * <ol>
+     *   <li>星界弹幕闸门 {@code JadeTopazBowItem#fireAstralBarrageInsteadOfArrow}
+     *       ⇒ 半径 = 等级 + 1（2/3/4）、滞留 4/5/6 秒、落下的波级 α/β/γ；</li>
+     *   <li>雷鸣神力闸门 {@code JadeTopazBowItem#fireThunderMightInsteadOfArrow}
+     *       ⇒ 水平方形 2×2/3×3/4×4、真雷概率 20%/40%/60%；</li>
+     *   <li>客户端预选框 {@code BowAstralBarragePreviewRenderer} 的半径读数 ——
+     *       <b>必须与服务端同一个数</b>（红线"客户端与服务端同源"：圈大小 ≠ 实际半径
+     *       就是画一个圈、落另一个盘）。</li>
+     * </ol>
+     * <p>⚠ <b>宝石弓槽 2 的「量波置换」不读本方法</b>（它的效果本来就随等级：走
+     * {@code JadeTopazBowItem#effectiveSkillLevel} → {@link #skillLevel()} 那一列），
+     * 批 14 一个字节都没动它。</p>
+     *
+     * <p>⚠ 本方法<b>不参与注册</b>：物品出生时写进技能组件的仍是 {@link #thirdSkillLevel()}
+     * （基准等级，作者批 12 的表）。把基准调高只会让"冻住的那个值"从 ① 挪到 ②，
+     * 永远到不了 ③ —— 所以修的是"读哪一列"，不是"那一列写几"。</p>
+     */
+    public int thirdSkillEffectiveLevel(ItemStack stack) {
+        return SkillEnergyCost.effectiveLevel(stack, thirdSkillLevel(), maxSkillLevel());
     }
 
     /**

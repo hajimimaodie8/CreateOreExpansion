@@ -883,9 +883,14 @@ public final class CoeItems {
      *       （关卡 {@code bow12-skill-table} 逐把逐槽钉住那张表，交换两把的实参立刻红）；</li>
      *   <li>{@code .addSkills(thirdSkill, tier.thirdSkillLevel())} —— 槽 2，
      *       等级取自 {@link BowTier#thirdSkillLevel()}（三把都 = <b>1</b>：量波置换① / 星元波置① /
-     *       雷鸣神力①）。它<b>不是</b>共用 id 的等级：三把弓槽 2 上放的三条技能各自只被一把弓携带，
-     *       所以上限写在那条技能自己的注册条目上（{@code AllSkills} 的 {@code .maxLevel(3)}）——
-     *       与槽 0/1 那两条"共用 id、上限只能住档位表"是两回事；</li>
+     *       雷鸣神力①）。⚠ <b>批 14 起这是"绑定（基准）等级"，不是效果读数</b>：星元波置 / 雷鸣神力
+     *       的效果（半径 / 滞留 / 波级 / 范围 / 真雷概率）改读
+     *       {@link BowTier#thirdSkillEffectiveLevel(net.minecraft.world.item.ItemStack)}
+     *       （基准 + 技艺提升 − 技艺回溯，钳到 {@link BowTier#maxSkillLevel()} = 3）——
+     *       批 12~13 那两条读的就是本行写下的常量，于是费用随等级涨、效果冻在 ①
+     *       （"付 450 拿 ① 效果"）。它<b>不是</b>共用 id 的等级：三把弓槽 2 上放的三条技能各自
+     *       只被一把弓携带，所以上限写在那条技能自己的注册条目上（{@code AllSkills} 的
+     *       {@code .maxLevel(3)}）—— 与槽 0/1 那两条"共用 id、上限只能住档位表"是两回事；</li>
      *   <li>{@code .skillColor(tier.skillOutlineColor())} —— 描边发光色取<b>同档工具已经在用的那一色</b>
      *       （宝石 {@code SAPPHIRE_BLUE} / 星界 {@code STELLARSTONE_PINK} / 雷鸣 {@code THUNDER_PURPLE}），
      *       弓侧不新造色值；</li>

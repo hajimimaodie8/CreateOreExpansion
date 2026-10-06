@@ -829,10 +829,16 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 *       那正是批 7 修掉的歧义；现在这里的 {@code matches(..)} 才是"只认自己那个键"的落点。</li>
 	 * </ol>
 	 *
-	 * <p><b>等级（批 12 改口径）</b>：{@link BowTier#thirdSkillLevel()}（雷鸣 = <b>1</b>）⇒
-	 * 范围 <b>2×2</b>、真雷 <b>20%</b>（表见 {@link BowThunderMightConfigs} 的 Lv1 行）。
-	 * 刻意<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}（那会读附魔）：作者批 12 给的是
-	 * "该弓那条技能的等级"（雷鸣神力 <b>①</b>），一个注册期固定、按弓不同的量。
+	 * <p><b>等级（批 12 改口径；<b>批 14 改读数</b>）</b>：{@link BowTier#thirdSkillLevel()}（雷鸣的<b>绑定</b>
+	 * 等级 = <b>1</b>）⇒ 批 12 的实机是范围 <b>2×2</b>、真雷 <b>20%</b>（表见
+	 * {@link BowThunderMightConfigs} 的 Lv1 行）。⚠ <b>批 14 起这里读的是
+	 * {@link BowTier#thirdSkillEffectiveLevel(ItemStack)}</b>（= 绑定等级 + 技艺提升 − 技艺回溯，
+	 * 按 {@link BowTier#maxSkillLevel()} 钳到 3）：批 12~13 读的就是上面那个<b>注册期常量</b>，
+	 * 于是费用随有效等级涨（150 × 3 = 450 封顶）、效果却冻在 ① —— 作者批 14 的
+	 * "这两个玩意儿只能一级？他们不是封顶三级吗"点名的就是这个。现在效果与费用同源：
+	 * Lv1/2/3 ⇒ 2×2/3×3/4×4 与 20%/40%/60%。
+	 * 仍然<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}（那一列是槽 0/1 的基准，
+	 * 槽 2 有自己的绑定列）。
 	 * ⚠ 批 12 之前这里读 {@link BowTier#baseSkillLevel()}（雷鸣 3 ⇒ 4×4 / 60%）；
 	 * 星界那条同批同改（星元波置 ①），宝石那条（读技能等级 {@code effectiveSkillLevel}）一个字未动。</p>
 	 *
@@ -855,9 +861,10 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		if (!BowExclusiveShotItemSkill.THUNDER_MIGHT.matches(pendingShot)) {
 			return false;
 		}
-		// 等级 = 该弓槽 2 那条技能的绑定等级（批 12：雷鸣 = 1 ⇒ 2×2 / 20%；批 12 之前是
-		// 档位起始等级 3 ⇒ 4×4 / 60%）。真源 = BowTier#thirdSkillLevel()，链上一个数字都不写。
-		BowThunderMightLauncher.strike(level, shooter, this.tier.thirdSkillLevel());
+		// 等级 = 该弓槽 2 那条技能的**有效**等级（批 14；批 12~13 读的是注册期常量
+		// BowTier#thirdSkillLevel() = 1 ⇒ 2×2 / 20% 冻死）。真源 = BowTier#thirdSkillEffectiveLevel，
+		// 与费用侧（CoeSkillSupport#effectiveLevel）同一条口径，链上一个数字都不写。
+		BowThunderMightLauncher.strike(level, shooter, this.tier.thirdSkillEffectiveLevel(weapon));
 		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
 		return true;
 	}
@@ -882,12 +889,16 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 *       那是批 7 修掉的歧义；三条闸门现在读的<b>都是同一个局部值</b>，谁也不再去问弓。</li>
 	 * </ol>
 	 *
-	 * <p><b>等级（批 12 改口径）</b>：{@link BowTier#thirdSkillLevel()}（星界 = <b>1</b>）⇒
-	 * 半径 = 等级 + 1 = <b>2</b> 格、滞留 = <b>4 秒</b> = 80 tick（表见
-	 * {@link BowAstralBarrageConfigs} 的 Lv1 行；作者批 12 的表把「星元波置」定为 <b>①</b>）。
-	 * 刻意<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}（那会读附魔）：这是注册期按弓固定的量。
+	 * <p><b>等级（批 12 改口径；<b>批 14 改读数</b>）</b>：{@link BowTier#thirdSkillLevel()}（星界的<b>绑定</b>
+	 * 等级 = <b>1</b>）⇒ 批 12 的实机是半径 = 等级 + 1 = <b>2</b> 格、滞留 = <b>4 秒</b> = 80 tick
+	 * （表见 {@link BowAstralBarrageConfigs} 的 Lv1 行；作者批 12 的表把「星元波置」定为 <b>①</b>）。
+	 * ⚠ <b>批 14 起这里读的是 {@link BowTier#thirdSkillEffectiveLevel(ItemStack)}</b>
+	 * （= 绑定等级 + 技艺提升 − 技艺回溯，按 {@link BowTier#maxSkillLevel()} 钳到 3）——
+	 * 与费用侧同源：Lv1/2/3 ⇒ 半径 2/3/4、滞留 4/5/6 秒、落下的波级 α/β/γ。
+	 * 仍然<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}（那一列是槽 0/1 的基准）。
 	 * ⚠ 批 12 之前读 {@link BowTier#baseSkillLevel()}（星界 3 ⇒ 半径 4 / 120 tick）；
-	 * 客户端预选框的半径同批改成读<b>同一个</b> {@code thirdSkillLevel()} ⇒ 画的圈与落的盘仍是同一个数。</p>
+	 * 客户端预选框的半径同批同改，批 14 也一起改到<b>同一个</b>读数
+	 * ⇒ 画的圈与落的盘仍是同一个数。</p>
 	 *
 	 * <p><b>耐久</b>：与原版 {@code ProjectileWeaponItem#shoot} 同一笔账 —— 少了这一行，
 	 * 这条技能会静默变成"星界弓按着技能键射击不再磨损弓"（白赚耐久）。</p>
@@ -909,10 +920,11 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		if (!BowExclusiveShotItemSkill.ASTRAL_BARRAGE.matches(pendingShot)) {
 			return false;
 		}
-		// 等级 = 该弓槽 2 那条技能的绑定等级（批 12：星界 = 1 ⇒ 半径 2 / 滞留 80 tick；
-		// 批 12 之前是档位起始等级 3 ⇒ 半径 4 / 120 tick）。真源 = BowTier#thirdSkillLevel()。
+		// 等级 = 该弓槽 2 那条技能的**有效**等级（批 14；批 12~13 读的是注册期常量
+		// BowTier#thirdSkillLevel() = 1 ⇒ 半径 2 / 滞留 80 tick 冻死）。
+		// 真源 = BowTier#thirdSkillEffectiveLevel，与费用侧同一条口径。
 		// ★ 批 9：连"松手时拉了多久"一起转交 —— 弹幕圆心 = 预选框圆心，两边同一个规则方法算出来。
-		BowAstralBarrageLauncher.fire(level, shooter, this.tier.thirdSkillLevel(), drawnTicks);
+		BowAstralBarrageLauncher.fire(level, shooter, this.tier.thirdSkillEffectiveLevel(weapon), drawnTicks);
 		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
 		return true;
 	}

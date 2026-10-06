@@ -93,10 +93,12 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *       {@code bow9-one-centre}：两个调用点都不许自己 {@code scale(} 视线、
  *       也不许提 {@code ANCHOR_FORWARD_BLOCKS} / {@code PREVIEW_MAX_FORWARD_BLOCKS} /
  *       {@code PREVIEW_FORWARD_BLOCKS_PER_TICK}）；</li>
- *   <li><b>半径</b>：{@code BowAstralBarrageConfigs#radiusFor(BowTier#thirdSkillLevel())} —— 与发射处
- *       同一处真源（"半径等于技能等级加 1"）。⚠ 批 12 之前这里读 {@code tier.baseSkillLevel()}
- *       （星界 = 3 ⇒ 半径 4），现在读槽 2 的等级（= 1 ⇒ 半径 <b>2</b>）——
- *       <b>两处同改</b>，否则画的圈与落的盘会差两格；</li>
+ *   <li><b>半径</b>：{@code BowAstralBarrageConfigs#radiusFor(BowTier#thirdSkillEffectiveLevel(stack))} ——
+ *       与发射处同一处真源（"半径等于技能等级加 1"）。⚠ 批 12 之前这里读 {@code tier.baseSkillLevel()}
+ *       （星界 = 3 ⇒ 半径 4）；批 12 读槽 2 的<b>绑定</b>等级（= 1 ⇒ 半径 <b>2</b>，冻死）；
+ *       <b>批 14 起读槽 2 那条技能的「有效」等级</b>（绑定 1 + 技艺提升/回溯，钳到 3
+ *       ⇒ 半径 <b>2/3/4</b>）—— 与服务端<b>同一个方法</b>，否则"付 450 拿 ① 效果"会以另一种形式
+ *       回来（画的圈与落的盘差两格）；</li>
  *   <li><b>粉色</b>：{@code BowTier#skillOutlineColor()} —— 也就是<b>星界那一档既有的描边色</b>
  *       （{@code SkillOutlineColors.STELLARSTONE_PINK}，仓库里五件星界工具用的同一色）。
  *       本类<b>不写任何 RGB / hex 字面量</b>，也不新造色值（作者："边界是一圈类似于能量波的
@@ -163,7 +165,8 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *       而粒子的存在感远远盖不过它。</li>
  * </ol>
  * <p>批 13 的落法（只动外观，<b>几何三项一个字节没动</b>：圆心仍只问
- * {@code previewCenter} + {@code landingCentre}，半径仍只问 {@code radiusFor(thirdSkillLevel())}，
+ * {@code previewCenter} + {@code landingCentre}，半径仍只问
+ * {@code radiusFor(thirdSkillEffectiveLevel(stack))}（批 14 换的是那个读数，不是几何算式），
  * 上限 15 与速率 0.05 仍只住 {@code BowAstralBarrageConfigs}）：</p>
  * <ol>
  *   <li><b>密度</b>：{@link #WAVE_PARTICLE_COUNT} 8 → 12，并且每一道子环都发 ⇒
@@ -384,10 +387,12 @@ public final class BowAstralBarragePreviewRenderer {
             transitionYs = stickToGround
                 ? new double[0]
                 : BowAstralBarrageConfigs.transitionRingYs(center.y, nearbyGroundY);
-            // ★ 批 12：半径读的是"该弓槽 2 那条技能的等级"（BowTier#thirdSkillLevel）——
-            //   与服务端发射处（JadeTopazBowItem#fireAstralBarrageInsteadOfArrow）同一个读数，
-            //   所以画的圈与落的盘半径仍逐值相同（关卡 bow12-skill-table 钉着这条同源）。
-            radius = BowAstralBarrageConfigs.radiusFor(tier.thirdSkillLevel());
+            // ★ 批 12 起半径读的是"该弓槽 2 那条技能的等级"；★ 批 14 起读的是那条技能的
+            //   **有效**等级（BowTier#thirdSkillEffectiveLevel = 绑定 + 技艺提升/回溯，钳到 3）——
+            //   与服务端发射处（JadeTopazBowItem#fireAstralBarrageInsteadOfArrow）**同一个方法**，
+            //   所以画的圈与落的盘半径仍逐值相同（关卡 bow12-preview-particles / bow13-geometry /
+            //   bow14-third-slot-level 三处钉着这条同源）。
+            radius = BowAstralBarrageConfigs.radiusFor(tier.thirdSkillEffectiveLevel(using));
             SkillOutlineColors.SkillColor color = tier.skillOutlineColor();
             red = color.r();
             green = color.g();

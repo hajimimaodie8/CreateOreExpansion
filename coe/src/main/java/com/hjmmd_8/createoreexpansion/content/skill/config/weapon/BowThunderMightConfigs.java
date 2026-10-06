@@ -32,16 +32,19 @@ import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
  *       而且只在技能那一发判定<b>一次</b>（没有 tick 循环、不看天气 ⇒ 雷雨天也不会无限刷）。</li>
  * </ol>
  *
- * <h2>★ 等级取哪一套（批 12 改口径，与「星元波置」同批同改）</h2>
- * <p>发射等级 = <b>该弓槽 2 那条技能的绑定等级</b> {@link BowTier#thirdSkillLevel()}（走
+ * <h2>★ 等级取哪一套（批 12 改口径，与「星元波置」同批同改；<b>批 14 改读数</b>）</h2>
+ * <p>发射等级 = <b>该弓槽 2 那条技能的「有效」等级</b>
+ * {@link BowTier#thirdSkillEffectiveLevel(net.minecraft.world.item.ItemStack)}（走
  * {@code JadeTopazBowItem#fireThunderMightInsteadOfArrow} 传
- * {@code this.tier.thirdSkillLevel()}），<b>不是</b>玩家的附魔加成等级
- * （{@code effectiveSkillLevel}）—— 理由与「元矢自生」那条相同：作者给的是按弓固定的注册期量
- * （批 12 的表：雷鸣神力 <b>①</b>），附魔不该移动它。</p>
- * <p>⚠ <b>批 5~11 读的是 {@link BowTier#baseSkillLevel()}（雷鸣 = 3）</b>，作者批 12 的表把这条技能
- * 定为 <b>①</b> ⇒ 实机上<b>恒走 Lv1 那一行</b>（2×2 / 20%）。Lv2 / Lv3 两行不是死代码：它们是这张表的
- * 完整口径（作者原话给了三档），并且随"该弓槽 2 的等级"这个读数走 —— 将来若把那一列调高、
- * 或再挂一把新弓到这张表上，三行会各自生效，调用点一个字都不用改。</p>
+ * {@code this.tier.thirdSkillEffectiveLevel(weapon)}）—— 基准是槽 2 的绑定等级
+ * {@link BowTier#thirdSkillLevel()}（作者批 12 的表：雷鸣神力 <b>①</b>），再按既有口径
+ * 叠加技艺提升 / 技艺回溯，按 {@link BowTier#maxSkillLevel()}（雷鸣 = 3）钳位。</p>
+ * <p>⚠ <b>批 12~13 读的是注册期常量 {@code thirdSkillLevel()} = ①</b> ⇒ 实机上<b>恒走 Lv1 那一行</b>
+ * （2×2 / 20%），而费用却随有效等级涨到 450 —— 作者批 14 的"这两个玩意儿只能一级？他们不是
+ * 封顶三级吗"点的就是这个。现在三行全部可达：Lv1/2/3 ⇒ <b>2×2 / 3×3 / 4×4</b> 与
+ * <b>20% / 40% / 60%</b>，且与费用同源。</p>
+ * <p>⚠ <b>批 5~11 读的是 {@link BowTier#baseSkillLevel()}（雷鸣 = 3）</b>，那是"元矢自生"那个被动的
+ * 档位起始等级，与技能等级无关 —— 它在批 12 被换掉，批 14 之后仍然<b>不是</b>本技能的等级来源。</p>
  *
  * <h2>「n×n」的读法（本批唯一一处需要写清楚的几何口径）</h2>
  * <p>作者写的是「以命中点为中心、边长 n 的<b>水平方形</b>」⇒ 本批按<b>方形而不是立方体</b>实现：</p>
