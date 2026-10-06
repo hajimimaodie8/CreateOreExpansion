@@ -1,10 +1,12 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item;
 
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.block.Block;
 
 /**
@@ -26,6 +28,9 @@ import net.minecraft.world.level.block.Block;
  *       「不立即归零、不当场销毁，等回程批量结算」；读写走 {@code BoomerangItem} 自己的
  *       {@code getDurability / setDurability / addWear}。
  *       <br>⚠ 同一处旧口径（{@code mineCost} 上的「耐久 → 能量：这就是"耐久"的替代品」）也被本轮推翻。</li>
+ *   <li>{@link #repairIngredient()} —— <b>本档的修复材料</b>（2026-10-06 批 13 新增，作者裁定）：
+ *       三套融合套 = 同档护甲那一对锭（<b>任一即可</b>）、雷鸣 = 单一雷鸣合金锭（非融合）。
+ *       唯一消费点是 {@code BoomerangItem#isValidRepairItem}（覆写 + 回落 {@code super}）。</li>
  *   <li>{@link #miningLevel()} / {@link #incorrectBlocks()} —— 与 {@code AllTiers} <b>同一条原版标签</b>：
  *       翠玉用 {@code INCORRECT_FOR_DIAMOND_TOOL}（= 钻石级，与 {@code AllTiers.JADE/TOPAZ} 一致），
  *       其余三档用 {@code INCORRECT_FOR_NETHERITE_TOOL}（= 下界合金级，与 {@code AllTiers.SAPPHIRE/
@@ -195,6 +200,38 @@ public enum BoomerangTier {
      */
     public int durability() {
         return durability;
+    }
+
+    /**
+     * <b>本档回旋镖的修复材料</b>（作者 2026-10-06 批 13 裁定）—— 铁砧里「用材料修」的那一档，
+     * 唯一消费点是 {@code BoomerangItem#isValidRepairItem}（覆写 + 回落 {@code super}）。
+     *
+     * <p>口径 = <b>同档护甲那一对</b>（融合规则，与 {@code CoeArmorMaterials} /
+     * {@link com.hjmmd_8.createoreexpansion.content.equipment.item.BowTier#repairIngredient()}
+     * 三处逐条同源）：</p>
+     * <ul>
+     *   <li>翠玉 = {@code jade_ingot} + {@code topaz_ingot}；</li>
+     *   <li>宝石 = {@code sapphire_ingot} + {@code ruby_ingot}；</li>
+     *   <li>星界 = {@code stellarstone_ingot} + {@code sanctstone_ingot}；</li>
+     *   <li>雷鸣 = <b>只认</b> {@code thunderite_ingot}（作者原话「雷鸣不是融合」）。</li>
+     * </ul>
+     *
+     * <p>多材料用原版 {@code Ingredient#of(ItemLike...)} 表达 ⇒ <b>任一即可</b>，
+     * <b>不自造合并类</b>（形态与 {@code AllTiers#getRepairIngredient()} 的工具 Tier 同义）。</p>
+     *
+     * <p>⚠ 与 {@link #armorSet()} / {@link #crossMine()} 那类派生量<b>同形</b>：用 {@code switch (this)}
+     * 表达「四档 → 四种材料」，<b>绝不</b>加成第 12 个构造参数 —— 本枚举的 11 项构造参数表被
+     * 关卡 §29h-1 / §29k 逐位钉住。</p>
+     *
+     * <p>⚠ 它<b>不</b>影响"两把同名镖合耐久"那条原版路：本批补的是<b>缺失的</b>「用材料修」。</p>
+     */
+    public Ingredient repairIngredient() {
+        return switch (this) {
+            case JADE_TOPAZ -> Ingredient.of(CoeItems.JADE_INGOT.get(), CoeItems.TOPAZ_INGOT.get());
+            case SAPPHIRE_RUBY -> Ingredient.of(CoeItems.SAPPHIRE_INGOT.get(), CoeItems.RUBY_INGOT.get());
+            case ASTRAL -> Ingredient.of(CoeItems.STELLARSTONE_INGOT.get(), CoeItems.SANCTSTONE_INGOT.get());
+            case THUNDER -> Ingredient.of(CoeItems.THUNDERITE_INGOT.get());
+        };
     }
 
     public float maxHardness() {

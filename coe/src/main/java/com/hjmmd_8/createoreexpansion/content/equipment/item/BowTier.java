@@ -1,8 +1,11 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.item;
 
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnergyColorConfig;
 import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
+
+import net.minecraft.world.item.crafting.Ingredient;
 
 /**
  * <b>弓四档材质的数值真源</b>（唯一出处：物品注册读它写能量/耐久/配色）。
@@ -24,6 +27,9 @@ import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
  *       / {@code ENERGY_COLOR_DARK}，供文字/绑定行这类不画渐变的场合取用）。
  *       它<b>不是</b>能量条的色标：条的色标一律问护甲那张表
  *       （{@link #armorSet()} → {@code ArmorEnergyColors#stopsOf}，与回旋镖同一形态）。</li>
+ *   <li>{@link #repairIngredient()} —— <b>本档的修复材料</b>（2026-10-06 批 13 新增，作者裁定）：
+ *       三套融合套 = 同档护甲那一对锭（<b>任一即可</b>）、雷鸣 = 单一雷鸣合金锭（非融合）。
+ *       唯一消费点是 {@code JadeTopazBowItem#isValidRepairItem}（覆写 + 回落 {@code super}）。</li>
  *   <li><b>技能列（2026-10-03 弓技能批 1；2026-10-06 弓技能批 12 重排）</b> ——
  *       {@link #baseSkillLevel()}（<b>元矢自生</b>那个被动用的档位等级 1/2/3/3）、
  *       {@link #skillLevel()}（槽 0/1 的绑定等级 1/1/2/2）、
@@ -92,6 +98,39 @@ public enum BowTier {
     /** 这一档的耐久上限（口径 = 1000 / 2000 / 3500 / 3500；见类注释）。 */
     public int durability() {
         return durability;
+    }
+
+    /**
+     * <b>本档弓的修复材料</b>（作者 2026-10-06 批 13 裁定）—— 铁砧里「用材料修」的那一档，
+     * 唯一消费点是 {@code JadeTopazBowItem#isValidRepairItem}（覆写 + 回落 {@code super}）。
+     *
+     * <p>口径 = <b>同档护甲那一对</b>（融合规则，与 {@code CoeArmorMaterials} 逐条同源）：</p>
+     * <ul>
+     *   <li>翠玉 = {@code jade_ingot} + {@code topaz_ingot}；</li>
+     *   <li>宝石 = {@code sapphire_ingot} + {@code ruby_ingot}；</li>
+     *   <li>星界 = {@code stellarstone_ingot} + {@code sanctstone_ingot}；</li>
+     *   <li>雷鸣 = <b>只认</b> {@code thunderite_ingot}（作者原话「雷鸣不是融合」⇔ 单一材料，
+     *       与雷鸣套那行逐字同一条口径）。</li>
+     * </ul>
+     *
+     * <p>多材料用原版 {@code Ingredient#of(ItemLike...)} 表达
+     * ⇒ <b>任一即可</b>（原版 {@code ArmorItem#isValidRepairItem} 用的就是同一个
+     * {@code Ingredient#test}），因此<b>不自造合并类</b>；这与
+     * {@code AllTiers#getRepairIngredient()}（工具走原版 {@code Tier} 接口）是同一件事的两种载体。</p>
+     *
+     * <p>⚠ 与 {@link #armorSet()} / {@link #skillLevel()} 那类派生量<b>同形</b>：用 {@code switch (this)}
+     * 表达「四档 → 四种材料」，<b>绝不</b>加成构造参数 —— 本枚举的三项构造参数表被关卡 §30b 逐位钉住。</p>
+     *
+     * <p>⚠ 它<b>不</b>影响"两把同名弓合耐久"那条原版路（{@code AnvilMenu} 里是另一个分支）：
+     * 本批补的是<b>缺失的</b>「用材料修」，不是替换任何既有修复途径。</p>
+     */
+    public Ingredient repairIngredient() {
+        return switch (this) {
+            case JADE_TOPAZ -> Ingredient.of(CoeItems.JADE_INGOT.get(), CoeItems.TOPAZ_INGOT.get());
+            case SAPPHIRE_RUBY -> Ingredient.of(CoeItems.SAPPHIRE_INGOT.get(), CoeItems.RUBY_INGOT.get());
+            case ASTRAL -> Ingredient.of(CoeItems.STELLARSTONE_INGOT.get(), CoeItems.SANCTSTONE_INGOT.get());
+            case THUNDER -> Ingredient.of(CoeItems.THUNDERITE_INGOT.get());
+        };
     }
 
     /** 这一档的单一能量色（注册期写进 {@code ENERGY_COLOR} / {@code ENERGY_COLOR_DARK}）。 */

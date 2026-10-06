@@ -309,6 +309,30 @@ public class BoomerangItem extends Item implements EnergyGradientTool {
 		return tier;
 	}
 
+	/**
+	 * <b>铁砧里「用材料修」本把镖</b>（2026-10-06 批 13 新增，作者裁定）。
+	 *
+	 * <p>作者原话：「雷鸣不是融合 ⇒ 只认雷鸣合金锭」—— 融合套认两种锭、雷鸣套认一种。四档的名单
+	 * 唯一真源 = {@link BoomerangTier#repairIngredient()}（本方法<b>一个材料名都不写</b>），与
+	 * {@code CoeArmorMaterials} / {@code JadeTopazBowItem#isValidRepairItem} 三处同源。</p>
+	 *
+	 * <p><b>为什么必须覆写</b>：原版 {@code Item#isValidRepairItem} 直接 {@code return false}
+	 * （{@code Item.java}），四把镖在本批之前<b>完全没有</b>「用材料修」这条途径；它们<b>一直能</b>
+	 * 用"两把同名镖合耐久"（{@code AnvilMenu} 里是另一个分支，不经本方法）⇒ 本批补的是缺失的那条。</p>
+	 *
+	 * <p>⚠ 它修的正是本类的<b>原版 DAMAGE 组件</b>（{@link #getDurability} / {@link #setDurability}
+	 * 读写的就是 {@code MAX_DAMAGE}/{@code DAMAGE}）⇒ 铁砧那份「用材料修回 1/4 上限」的既有算术
+	 * 对本族天然成立，不需要另写一条修复路径。</p>
+	 *
+	 * <p>回落 {@code super}（形状照原版 {@code ArmorItem#isValidRepairItem}）：本档材料不命中时
+	 * 交还父类裁决 —— 今天父类恒 {@code false}，但把回落写出来，"以后父类长出新判据被静默吃掉"
+	 * 这件事就不可能发生。</p>
+	 */
+	@Override
+	public boolean isValidRepairItem(ItemStack stack, ItemStack repairCandidate) {
+		return tier.repairIngredient().test(repairCandidate) || super.isValidRepairItem(stack, repairCandidate);
+	}
+
 	// ========== 两模式：按下 / 每 tick / 松手（2026-10-02 批 2） ==========
 
 	/**
