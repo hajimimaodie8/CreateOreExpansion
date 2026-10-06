@@ -219,6 +219,23 @@ import net.neoforged.neoforge.event.EventHooks;
  *       {@code BowShootItemSkill} + {@code BowExclusiveShotItemSkill}，不在本类；
  *       ③（删零调用的 {@code anyHeldItemSkillKeyPressed}）在 {@code CoeSkillRelease}。</li>
  * </ul>
+ *
+ * <p><b>2026-10-05 弓技能批 9（星界弓「星元波置」：数量 + 预选框 + 箭波同速）</b>：</p>
+ * <ul>
+ *   <li><b>数量</b>：药水箭 {@code 20 → 10}、能量波 {@code 10 → 20} —— 两个数只改数值真源
+ *       {@link BowAstralBarrageConfigs}，本类与发射处<b>一个字都没动</b>；</li>
+ *   <li><b>本类只多了一条"暂存"</b>：{@link #TAG_DRAW_TICKS}（<b>私有</b>）——
+ *       {@link #releaseUsing} 把松手那一刻的 {@code pullTime} 写进去，
+ *       {@link #shoot} 顶部由 {@link #consumeDrawTicks} 读一次并清掉，转交给星界那条闸门
+ *       → {@code BowAstralBarrageLauncher#fire}。它喂的是<b>预选框 / 弹幕圆心的同一处算法</b>
+ *       （{@code BowAstralBarrageConfigs#previewCenter}），因此"客户端画的圈"与"服务端落的点"
+ *       不可能分家；</li>
+ *   <li><b>预选框本身不在本类</b>：它是<b>纯客户端</b>的渲染
+ *       （{@code BowAstralBarragePreviewRenderer}），颜色取本把弓档位表里那一色
+ *       （{@code BowTier#skillOutlineColor()}：星界 = 星辉石粉），<b>零新增贴图 / 模型</b>；</li>
+ *   <li><b>其它三把弓、两条翠玉技能、三条专属技能的触发通道一个字节未改</b>：
+ *       本类那三道闸门、两段式标记、服务端权威键位读数全部照旧（关卡 §43/§46/§47 仍在守）。</li>
+ * </ul>
  */
 public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 
@@ -264,6 +281,27 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 * 它只可能由本模组四把弓的"无箭射击"写上 ⇒ 原版弓 / 别家模组的弓射出的箭永远没有这个键。</p>
 	 */
 	public static final String TAG_META_ESSENCE = "jade_topaz_meta_essence";
+
+	/**
+	 * <b>弓 {@code CUSTOM_DATA} 上的"这一次松手时已经拉了多少 tick"暂存键</b>（弓技能批 9）。
+	 *
+	 * <p>它存在的唯一理由：星界弓「星元波置」的<b>预选框 / 弹幕圆心</b>是"松手那一刻的拉弓时长"的
+	 * 函数（{@code BowAstralBarrageConfigs#previewCenter}），而这个时长只在一个地方是权威的 ——
+	 * {@link #releaseUsing} 的形参 {@code timeLeft}（{@code pullTime = getUseDuration - timeLeft}）。
+	 * 真正发射发生在{@link #shoot}（{@code ProjectileWeaponItem#shoot} 的签名不能加参数），
+	 * 两处之间只有这一个栈上的 {@code ItemStack} 可以携带它。</p>
+	 *
+	 * <p><b>形状照 {@code PendingSkillSlot}</b>（同一个两段式：{@code releaseUsing} 写、
+	 * {@code shoot} 读一次并清掉），并且<b>刻意不猜原版 {@code stopUsingItem()} 的调用序</b>：
+	 * 在 {@code shoot} 里去问 {@code shooter.getUseItemRemainingTicks()} 能不能读到值，
+	 * 取决于原版是先 {@code releaseUsing} 还是先清 {@code useItem} —— 那是一个静默回归
+	 * （读到 0 ⇒ 圆心退回 4 格的起点、和客户端画的圈差一格），所以这里用显式携带。</p>
+	 *
+	 * <p>⛔ 键名<b>只在本文件出现</b>（写它、读它、清它的都是本类），因此它不会变成第二个判据：
+	 * 弓侧不读按键、别的技能也看不见它。它<b>不是</b>技能标记、不参与技能分发，
+	 * 也<b>不是</b> {@link #TAG_SOURCE_BOW} 那种"来源"标记（弹幕箭根本不带来源标记）。</p>
+	 */
+	private static final String TAG_DRAW_TICKS = "jade_topaz_draw_ticks";
 
 	/** 无箭时发射魔法箭消耗的能量 */
 	public static final int NO_ARROW_COST = 10;
@@ -367,6 +405,9 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 					tag.remove(TAG_SKILL);
 					tag.remove(TAG_SKILL_LEVEL);
 					tag.remove(TAG_META_ESSENCE);
+					// ★ 批 9：与上面三道同形的防泄漏回闸 —— 上一次松手写下的"拉弓时长"若没被
+					// 那一发消费掉（例如客户端那一份：shoot 只在服务端跑），在新的一次拉弓起点清掉。
+					tag.remove(TAG_DRAW_TICKS);
 				}));
 		BowExclusiveShotItemSkill.clearPendingShot(stack);
 		player.startUsingItem(hand);
@@ -400,8 +441,17 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 					? CoeSkillProvider.pressedSlot(serverPlayer)
 					: detectSkillSlot();
 		}
+		// ★ 批 9：这一次松手的"拉弓时长"（= 上面那个 pullTime，事件钩子之后的值）。
+		//   下面那个 lambda 只捕获等价 final 的局部量，所以先落成一个 final 副本。
+		int drawTicksForShot = pullTime;
 		stack.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
-				data -> data.update(tag -> tag.remove("PendingSkillSlot")));
+				data -> data.update(tag -> {
+					tag.remove("PendingSkillSlot");
+					// ★ 批 9：把"这一刻已经拉了多少 tick"留给 shoot（同一个栈、同一发）。
+					//   它同时是客户端预选框的输入口径（BowAstralBarrageConfigs#drawnTicks），
+					//   于是服务端落的点与客户端画的圈同源。
+					tag.putInt(TAG_DRAW_TICKS, drawTicksForShot);
+				}));
 		releaseSkillIfRequested(player, stack, pendingSlot);
 
 		// 3. 准备弹药
@@ -547,6 +597,28 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	}
 
 	/**
+	 * <b>读一次并清掉"这一发松手时已经拉了多少 tick"</b>（弓技能批 9）—— 与
+	 * {@link #consumePendingShot} <b>逐字同形</b>的两段式读侧：同一个 {@code persistentData}
+	 * 思路（这里是 {@code CUSTOM_DATA}）上的一个整数键，写侧唯一（{@link #releaseUsing}），
+	 * 读 + 清唯一（本方法，由 {@link #shoot} 在三条专属闸门之前调一次）。
+	 *
+	 * <p>为什么必须"读一次并清掉"而不是"读一下就算了"：这个键是<b>暂存</b>，不是状态。
+	 * 留着它，弓就变成"带着上一次拉弓时长"的物品 —— 一是它会被同步/存档（形状与
+	 * {@code PendingSkillSlot} 同一个理由），二是"这一发到底拉了多久"就不再只有一个来源。
+	 * 键名 {@link #TAG_DRAW_TICKS} <b>只在本文件出现</b>（写、读、清都在这一个类里）。</p>
+	 *
+	 * @param weapon 本次射击所用的弓
+	 * @return 松手那一刻的拉弓 tick 数（键不存在时= 0，与 {@code getInt} 的默认一致）
+	 */
+	private static int consumeDrawTicks(ItemStack weapon) {
+		int ticks = weapon.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY)
+				.copyTag().getInt(TAG_DRAW_TICKS);
+		weapon.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
+				custom -> custom.update(tag -> tag.remove(TAG_DRAW_TICKS)));
+		return ticks;
+	}
+
+	/**
 	 * <b>客户端读数</b>：检测本次射击请求的技能键位 —— 键一=0（凋零诅咒）、键二=1（缴械风暴）、
 	 * <b>键三=2（本把弓的专属技能，批 7）</b>、无= -1。
 	 *
@@ -611,6 +683,10 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		// ★ 批 7：唯一一次读取并清除「这一发要换成哪个专属技能」的标记
 		//   （读 + 清在同一次调用里 ⇒ 标记最多只能影响一发；弓侧不认识那个键名）。
 		String pendingShot = consumePendingShot(weapon);
+		// ★ 批 9：同一次调用里读一次并清掉「松手时已经拉了多少 tick」（形状与上面逐字同形）。
+		//   它只喂给星界那条闸门，由它转交给 BowAstralBarrageLauncher#fire —— 圆心由此与
+		//   客户端预选框同源（BowAstralBarrageConfigs#previewCenter）。
+		int drawnTicks = consumeDrawTicks(weapon);
 		if (fireWaveShiftInsteadOfArrow(level, shooter, hand, weapon, pendingShot)) {
 			return;
 		}
@@ -621,7 +697,7 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		}
 		// 批 6：星界弓「星元波置」（作者按新定义返工：不发射波、不替换箭 ⇒ 在锚定区域降下弹幕）。
 		// 三张档位表两两不相交（宝石 / 雷鸣在这张表里是 false），所以三条闸门里最多只有一条为真。
-		if (fireAstralBarrageInsteadOfArrow(level, shooter, hand, weapon, pendingShot)) {
+		if (fireAstralBarrageInsteadOfArrow(level, shooter, hand, weapon, pendingShot, drawnTicks)) {
 			return;
 		}
 		super.shoot(level, shooter, hand, weapon, projectileItems, velocity, inaccuracy, isCrit, target);
@@ -726,10 +802,12 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 * 实际降下在 {@code BowAstralBarrageLauncher#fire}。本方法只回答"这一发该不该换成弹幕"。</p>
 	 *
 	 * @param pendingShot {@link #consumePendingShot} 读出来并已清掉的值（空串 = 这一发不是专属技能）
+	 * @param drawnTicks  {@link #consumeDrawTicks} 读出来并已清掉的"松手时已拉弓 tick 数"（批 9）：
+	 *                    圆心是它的函数，本方法<b>只转交不算</b>（算圆心的只有数值真源一处）
 	 * @return {@code true} = 这一发已经由星元波置接管（调用方<b>不得</b>再走 {@code super.shoot}）
 	 */
 	private boolean fireAstralBarrageInsteadOfArrow(ServerLevel level, LivingEntity shooter, InteractionHand hand,
-													ItemStack weapon, String pendingShot) {
+													ItemStack weapon, String pendingShot, int drawnTicks) {
 		if (!BowAstralBarrageConfigs.appliesTo(this.tier)) {
 			return false;
 		}
@@ -737,7 +815,8 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 			return false;
 		}
 		// 等级 = 该弓的档位起始等级（星界 3 ⇒ 半径 4 / 滞留 120 tick），与其余三条弓技能同一处真源。
-		BowAstralBarrageLauncher.fire(level, shooter, this.tier.baseSkillLevel());
+		// ★ 批 9：连"松手时拉了多久"一起转交 —— 弹幕圆心 = 预选框圆心，两边同一个规则方法算出来。
+		BowAstralBarrageLauncher.fire(level, shooter, this.tier.baseSkillLevel(), drawnTicks);
 		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
 		return true;
 	}

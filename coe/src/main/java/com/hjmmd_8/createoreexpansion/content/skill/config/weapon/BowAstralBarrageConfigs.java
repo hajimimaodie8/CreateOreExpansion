@@ -6,6 +6,8 @@ import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -32,7 +34,8 @@ import net.minecraft.world.phys.Vec3;
  *   <li><b>"锚定我方前面 4 格"</b> ⇒ 圆心 = 施放者<b>眼睛位置</b> + <b>视线方向</b> ×
  *       {@value #ANCHOR_FORWARD_BLOCKS} 格（形状照抄既有那条唯一口径
  *       {@code StarShockWaveLauncher#fireMainWave} / {@code BowWaveShiftConfigs#MUZZLE_FORWARD_OFFSET}
- *       的"眼睛 + 准心 × N 格"，本表只把 N 换成作者给的 4）。</li>
+ *       的"眼睛 + 准心 × N 格"，本表只把 N 换成作者给的 4）。⚠ <b>批 9 起这个 4 是"推进起点"</b>
+ *       而不是固定的圆心：见下面批 9 那一节与 {@link #previewCenter}。</li>
  *   <li><b>"半径等于技能等级加 1"</b> ⇒ {@link #radiusFor(int)}（1 级 2 格 / 2 级 3 格 / 3 级 4 格）。
  *       等级取 {@link BowTier#baseSkillLevel()}（<b>星界 = 3</b> ⇒ 实机半径 <b>4</b> 格），
  *       与「元矢自生」「量波置换」「雷鸣神力」<b>同一处真源</b>，<b>不是</b>附魔加成的有效等级。</li>
@@ -54,6 +57,34 @@ import net.minecraft.world.phys.Vec3;
  *   <li><b>"射中之后会造成滞留效果，时间 4 秒、5 秒、6 秒"</b> ⇒ {@link #immobilizeTicksFor(int)}
  *       （Lv1/2/3 = 4/5/6 秒；秒 × {@link ChargeConfigs#TICKS_PER_SECOND} = <b>80 / 100 / 120 tick</b>，
  *       "一秒 = 多少 tick"取全仓唯一换算因数，本表不写 20）。</li>
+ * </ul>
+ *
+ * <h2>2026-10-05 弓技能批 9（作者原话，逐字）</h2>
+ * <blockquote>
+ * 1. 把箭的数量改少一点，能量波的数量翻一倍。<br>
+ * 2. 下优化：当他拉弓时，应该会看到一个圆形技能范围的预选框。<br>
+ * &nbsp;&nbsp;1. 预选框外观：边界是一圈类似于能量波的粉色线条。<br>
+ * &nbsp;&nbsp;2. 移动机制：预选框会一点一点往远离视角的方向移动，边缘最多移动至距离玩家准心 5 格的位置。<br>
+ * &nbsp;&nbsp;3. 释放机制：确定位置后松手，开始释放技能。释放的过程中，箭和能量波应该同步落下，两者落下速度应该一致，
+ * 能量波的速度和箭的速度就是一样的，你这个意思就这么调整。波速是它里面的一个参数。技能释放完之后，该预选框才会消失。
+ * </blockquote>
+ * <p>逐条落地（<b>数值全部只在</b>本表）：</p>
+ * <ul>
+ *   <li><b>数量</b>：{@link #ARROW_COUNT} {@code 20 → 10}、{@link #WAVE_COUNT} {@code 10 → 20}；</li>
+ *   <li><b>预选框</b>：圆心 = {@link #previewCenter}(眼睛, 视线, {@link #drawnTicks})，
+ *       半径仍 = {@link #radiusFor(int)}（"技能等级 + 1"）。<b>颜色不在本表</b>——
+ *       走弓自己那套既有描边色（{@code BowTier#skillOutlineColor()}：星界 =
+ *       {@code SkillOutlineColors.STELLARSTONE_PINK}），渲染器里一个 RGB 字面量都没有；</li>
+ *   <li><b>移动</b>：{@link #previewForwardBlocks(int)} —— 起点 {@link #ANCHOR_FORWARD_BLOCKS}(4)、
+ *       每 tick {@value #PREVIEW_FORWARD_BLOCKS_PER_TICK} 格、上限
+ *       {@link #PREVIEW_MAX_FORWARD_BLOCKS}(5)；</li>
+ *   <li><b>释放</b>：松手按"那一刻"的圆心落（客户端与服务端<b>同一个</b>
+ *       {@link #previewCenter}）；落下的波用既有的
+ *       {@code AbstractChargerWaveEntity#addSpeedOffset(double)} 把速度设成
+ *       {@link #fallSpeedBlocksPerSecond()}（= 箭的下落速度，见 {@link #waveSpeedOffsetFor(int)}）
+ *       —— <b>箭一个字节没改</b>；</li>
+ *   <li><b>存活</b>：{@link #barrageScheduleTicks()}（= 条数 × 节拍 = 80 tick）—— 客户端预选框据此
+ *       在释放期间一直存在，数完才消失。</li>
  * </ul>
  *
  * <h2>「滞留」为什么是"缓慢 + 跳跃削弱"而不是"定身"</h2>
@@ -98,6 +129,12 @@ import net.minecraft.world.phys.Vec3;
  *       {@code 6} 让缓慢的移速乘数与跳跃强度都归 0，即"几乎无法移动"）。</li>
  *   <li>波级 —— 作者没给，本表按<b>与姊妹技能同一条规则</b>取"波级随技能等级"（Lv1/2/3 → α/β/γ，
  *       与 {@code BowWaveShiftConfigs#mainWaveLevelFor} 同一条口径，只是本技能自己的表）。</li>
+ *   <li><b>批 9 新增的四个"作者没给"</b>：{@value #PREVIEW_MAX_FORWARD_BLOCKS}（作者只给了"最多 5 格"
+ *       这个上限，没给"从几格开始推"⇒ 起点<b>沿用批 6 的 4</b>，松手越早越接近旧手感）、
+ *       {@value #PREVIEW_FORWARD_BLOCKS_PER_TICK}（"一点一点"的速度）、
+ *       {@link #barrageScheduleTicks()}（"技能放完"的判据 = 排程总长 80 tick）、
+ *       {@link #fallSpeedBlocksPerSecond()}（作者说"波速 = 箭速"但没说箭速是多少 ⇒
+ *       箭速仍取批 6 的 {@value #ARROW_INITIAL_FALL_SPEED} 格/tick，波被设成同一个速度）。</li>
  * </ul>
  *
  * @since 1.0.0
@@ -186,24 +223,161 @@ public final class BowAstralBarrageConfigs {
     // ==================================================================================
 
     /**
-     * <b>锚点前推量</b>（格）：圆心 = 施放者眼睛 + 视线 × 本值（作者："锚定我方前面 <b>4</b> 格"）。
+     * <b>锚点前推量（= 拉弓起点的前推量）</b>（格）：圆心 = 施放者眼睛 + 视线 × 本值。
      *
-     * <p>形状照抄仓里那条唯一口径（{@code StarShockWaveLauncher#fireMainWave} 的
-     * "眼睛 + 准心 × 1 格" / {@code BowWaveShiftConfigs#MUZZLE_FORWARD_OFFSET}），
-     * 本表只把那个前推量换成作者给的 4。</p>
+     * <p>作者批 6 原话"锚定我方前面 <b>4</b> 格"；形状照抄仓里那条唯一口径
+     * （{@code StarShockWaveLauncher#fireMainWave} 的 "眼睛 + 准心 × 1 格" /
+     * {@code BowWaveShiftConfigs#MUZZLE_FORWARD_OFFSET}），本表只把那个前推量换成作者给的 4。</p>
+     *
+     * <p><b>⚠ 批 9 起它不再是一个固定圆心，而是"推进的起点"</b>（作者 2026-10-05：
+     * "预选框会一点一点往远离视角的方向移动，边缘最多移动至距离玩家准心 5 格的位置"）：
+     * 拉弓期间圆心沿视线方向从本值一点一点往外推，上限 {@link #PREVIEW_MAX_FORWARD_BLOCKS}，
+     * 每 tick 推进 {@link #PREVIEW_FORWARD_BLOCKS_PER_TICK}。取"起点仍是 4"是刻意的：
+     * 松手越早越接近批 6 的既有手感（0 tick 时圆心与批 6 逐字同点），
+     * 作者要的那点移动量（4 → 5）也正好落在"一点一点"上。</p>
      */
     public static final double ANCHOR_FORWARD_BLOCKS = 4.0D;
 
+    // ==================================================================================
+    // 批 9：技能预选框（拉弓时的圆形范围预览）—— 推进 / 上限 / 存活
+    // ==================================================================================
+
     /**
-     * 一次「星元波置」降下的<b>嬗乱药水箭</b>支数（作者只说"无数"⇒ 本批定成一个可配置的条数）。
+     * <b>拉弓期间预选框圆心能推到的最远前推量</b>（格，{@value #PREVIEW_MAX_FORWARD_BLOCKS}）——
+     * 作者原话"边缘最多移动至距离玩家准心 <b>5</b> 格的位置"。
+     *
+     * <p>它同时是<b>实际落点</b>的上限：松手那一刻预选框在哪，弹幕的圆盘圆心就在哪
+     * （客户端与服务端<b>同一个规则方法</b>算出来，见 {@link #previewCenter}）——
+     * 所以"客户端看到的圈"和"服务端落的点"不可能分家。</p>
+     */
+    public static final double PREVIEW_MAX_FORWARD_BLOCKS = 5.0D;
+
+    /**
+     * <b>预选框圆心的推进速度</b>（格/tick，{@value #PREVIEW_FORWARD_BLOCKS_PER_TICK}）=
+     * 一格 / 一秒：拉满弓（{@code JadeTopazBowItem#MAX_PULL_TIME} = 25 tick）之前就推到上限，
+     * 肉眼看得见"一点一点往外挪"。
+     *
+     * <p>作者没给数（只说"一点一点"）⇒ 本表定死；调参只改这一处（关卡 {@code bow9-preview-cap}
+     * 钉着"上限与速度都只住真源、两个调用点一个数字都不写"）。</p>
+     */
+    public static final double PREVIEW_FORWARD_BLOCKS_PER_TICK = 0.05D;
+
+    /**
+     * <b>拉弓已经多少 tick</b> —— "蓄力时长"的唯一算式，<b>两端共用这一条</b>。
+     *
+     * <p>形状与 {@code JadeTopazBowItem#releaseUsing} 里既有的
+     * {@code getUseDuration(stack, entity) - timeLeft} 逐字同形（客户端把它写成
+     * {@code stack.getUseDuration(entity) - entity.getUseItemRemainingTicks()}，
+     * 与 {@code JadeTopazBowModelRegistration} 里拉弓进度那一段同一个减式）。</p>
+     *
+     * <p>刻意收进数值真源：预选框的推进量是 {@code drawnTicks} 的函数，两端必须用<b>同一条</b>
+     * 蓄力口径喂它，否则"客户端画的圈"与"服务端落的点"会各自漂移。</p>
+     *
+     * @param stack    正在被拉的那把弓
+     * @param entity   拉弓者
+     * @param timeLeft 剩余使用 tick（服务端传 {@code releaseUsing} 的形参 timeLeft，
+     *                 客户端传 {@code getUseItemRemainingTicks()}）
+     */
+    public static int drawnTicks(ItemStack stack, LivingEntity entity, int timeLeft) {
+        return stack.getUseDuration(entity) - timeLeft;
+    }
+
+    /**
+     * 拉弓 {@code drawnTicks} tick 之后预选框圆心的<b>前推量</b>（格）：
+     * {@link #ANCHOR_FORWARD_BLOCKS} + 推进速度 × tick，<b>夹在</b>
+     * {@link #PREVIEW_MAX_FORWARD_BLOCKS} 以内。
+     *
+     * <p>"一点点往外推"与"最远 5 格"这两个作者口径<b>只有这一处实现</b>：客户端渲染器与服务端
+     * 发射器都只调 {@link #previewCenter}，谁也不自己写这两个数（关卡 {@code bow9-preview-cap} /
+     * {@code bow9-one-centre} 各钉一半）。</p>
+     */
+    public static double previewForwardBlocks(int drawnTicks) {
+        double travelled = ANCHOR_FORWARD_BLOCKS + Math.max(0, drawnTicks) * PREVIEW_FORWARD_BLOCKS_PER_TICK;
+        return Math.min(travelled, PREVIEW_MAX_FORWARD_BLOCKS);
+    }
+
+    /**
+     * <b>预选框 / 弹幕圆盘圆心 —— 全仓唯一一处算法</b>：眼睛 + 视线 ×
+     * {@link #previewForwardBlocks}(drawnTicks)。
+     *
+     * <p>退化视线（俯仰 ±90° 之类）回落到 +Z 的兜底也在这里——原先它写在
+     * {@code BowAstralBarrageLauncher#fire} 里，批 9 收进真源，于是"圆心怎么算"这件事
+     * <b>在调用点上彻底没有第二个版本可写</b>（关卡 {@code bow9-one-centre} 的负向断言：
+     * 两个调用点都不许出现 {@code scale(} / {@code getEyePosition().add(}）。</p>
+     *
+     * @param eye        眼睛位置（{@code LivingEntity#getEyePosition()}）
+     * @param look       视线单位向量（{@code LivingEntity#getLookAngle()}）
+     * @param drawnTicks 拉弓已持续的 tick 数（见 {@link #drawnTicks}）
+     */
+    public static Vec3 previewCenter(Vec3 eye, Vec3 look, int drawnTicks) {
+        Vec3 direction = look;
+        if (direction == null || direction.lengthSqr() < 1.0E-6D) {
+            direction = new Vec3(0.0D, 0.0D, 1.0D);
+        }
+        return eye.add(direction.normalize().scale(previewForwardBlocks(drawnTicks)));
+    }
+
+    /**
+     * <b>一次弹幕的排程总 tick 数</b> = 两支成分里条数多的那一边 × {@link #SPAWN_INTERVAL_TICKS}
+     * （γ 档实机 = {@code max(}{@value #ARROW_COUNT}{@code , }{@value #WAVE_COUNT}{@code ) × }
+     * {@value #SPAWN_INTERVAL_TICKS}{@code } = 80 tick = 4 秒）。
+     *
+     * <p>它是客户端预选框的<b>存活时长</b>：作者要"技能释放完之后，该预选框才会消失"，
+     * 而客户端没有"弹幕放完了"的包可收 ⇒ 只能按排程时长自己数。排程时长与发射处的
+     * {@code i * SPAWN_INTERVAL_TICKS} 同源（同两个常量），所以"最后一滴落下"之前圈不会先没。</p>
+     */
+    public static int barrageScheduleTicks() {
+        return Math.max(ARROW_COUNT, WAVE_COUNT) * SPAWN_INTERVAL_TICKS;
+    }
+
+    /**
+     * <b>落下的能量波必须飞多快</b>（格/秒）= 药水箭的落速，也就是
+     * {@link #ARROW_INITIAL_FALL_SPEED}（<b>格/tick</b>）÷ {@link ChargeConfigs#perTickFactor()}
+     * （仓里唯一的"格/秒 ↔ 格/tick"换算因数，本表不写 20）。
+     *
+     * <p>作者 2026-10-05："释放的过程中，箭和能量波应该同步落下，<b>两者落下速度应该一致，
+     * 能量波的速度和箭的速度就是一样的</b>……波速是它里面的一个参数。"</p>
+     */
+    public static double fallSpeedBlocksPerSecond() {
+        return ARROW_INITIAL_FALL_SPEED / ChargeConfigs.perTickFactor();
+    }
+
+    /**
+     * <b>让一枚落下的波与药水箭同速所需的"速度修正量"</b>（格/秒，叠加语义）=
+     * {@link #fallSpeedBlocksPerSecond()} − {@link WaveLevels#baseSpeed(int)}（该波级的等级基础速度）。
+     *
+     * <p>为什么是"差值"而不是"直接设速度"：波实体只提供既有的
+     * {@code AbstractChargerWaveEntity#addSpeedOffset(double)}（速度调节器用的同一个要素、
+     * <b>本批对波实体零改动</b>），而它的语义是<b>在等级基础速度上叠加</b> ⇒ 想让最终速度等于
+     * 箭速，就必须把基础速度减掉。γ 档实机：基础 6 + 修正 4 = <b>10 格/秒</b> = 0.5 格/tick，
+     * 与箭的初速逐值相同（且 10 = {@code WaveLevels.maxSpeed(γ)}，不触夹取）。</p>
+     *
+     * <p>两边同源于 {@link #ARROW_INITIAL_FALL_SPEED} 一个常量 ⇒ <b>只改箭速</b>时波速自动跟着走，
+     * 不存在"只改了一边"的写法（关卡 {@code bow9-wave-speed} 钉着这条）。</p>
+     */
+    public static double waveSpeedOffsetFor(int waveLevel) {
+        return fallSpeedBlocksPerSecond() - WaveLevels.baseSpeed(waveLevel);
+    }
+
+    /**
+     * 一次「星元波置」降下的<b>嬗乱药水箭</b>支数（作者只说"无数"⇒ 批 6 定成一个可配置的条数）。
      *
      * <p>与 {@link #SPAWN_INTERVAL_TICKS} 一起表达"无数"：整场弹幕的持续 tick 数 =
      * 条数 × 节拍（两支成分各自算），所以条数不是"一次性刷一堆"而是"一滴一滴落"。</p>
+     *
+     * <p><b>⚠ 批 9（作者 2026-10-05）：箭"改少一点" ⇒ 20 → </b>{@value #ARROW_COUNT}<b>，
+     * 能量波"翻一倍" ⇒ 10 → </b>{@link #WAVE_COUNT}。作者原话："把箭的数量改少一点，能量波的数量
+     * 翻一倍。"两个数<b>只住本表这一处</b>：发射处（{@code BowAstralBarrageLauncher}）与物品侧
+     * 一个真源数字都不写（关卡 {@code bow9-counts} 钉着这条负向）。</p>
      */
-    public static final int ARROW_COUNT = 20;
+    public static final int ARROW_COUNT = 10;
 
-    /** 一次降下的<b>随机魔素能量波</b>枚数（与 {@link #ARROW_COUNT} 同一口径）。 */
-    public static final int WAVE_COUNT = 10;
+    /**
+     * 一次降下的<b>随机魔素能量波</b>枚数（与 {@link #ARROW_COUNT} 同一口径）。
+     *
+     * <p>⚠ 批 9：{@code 10 → }{@value #WAVE_COUNT}（作者："能量波的数量翻一倍"）。</p>
+     */
+    public static final int WAVE_COUNT = 20;
 
     /** 相邻两滴之间的间隔（tick）——"持续落下"的节拍；条数与它共同决定弹幕时长。 */
     public static final int SPAWN_INTERVAL_TICKS = 4;

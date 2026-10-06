@@ -54,10 +54,11 @@ import java.util.Optional;
  *
  * <h2>落点怎么算（三个数全在 {@link BowAstralBarrageConfigs}，本类一个都不写）</h2>
  * <ol>
- *   <li><b>圆心</b> = 施放者<b>眼睛位置</b> + <b>视线方向</b> ×
- *       {@code BowAstralBarrageConfigs.ANCHOR_FORWARD_BLOCKS}（作者的"我方前面 4 格"；
- *       形状照抄既有那条唯一口径 —— {@code StarShockWaveLauncher} 的"眼睛 + 准心 × N 格"，
- *       退化视线回落到 +Z 也照抄它）；</li>
+ *   <li><b>圆心</b> = {@code BowAstralBarrageConfigs#previewCenter}(施放者眼睛, 视线, 松手时的拉弓
+ *       tick 数) —— <b>批 9 起这是全仓唯一一处圆心算法</b>（形状仍是既有那条唯一口径
+ *       {@code StarShockWaveLauncher} 的"眼睛 + 准心 × N 格"，退化视线回落到 +Z 的兜底也一起
+ *       搬进了真源）。它同时是<b>客户端预选框</b>画的那个圆心 ⇒ 客户端与服务端不可能有两套算法
+ *       （关卡 {@code bow9-one-centre}：两个调用点都不许自己 {@code scale(} 视线）；</li>
  *   <li><b>半径</b> = {@code BowAstralBarrageConfigs.radiusFor(level)}（作者："半径等于技能等级加 1"；
  *       实机星界弓的档位起始等级 = 3 ⇒ <b>4</b> 格）；</li>
  *   <li><b>降下高度</b> = {@code rainOriginY(..)}：从锚点正上方
@@ -115,7 +116,30 @@ import java.util.Optional;
  *   <li><b>不</b>扣能量、<b>不</b>碰冷却、<b>不</b>扣耐久（耐久与原版同一笔账在物品侧扣）；</li>
  *   <li><b>不</b>碰共享波实体的形状（批 6 对 {@code AbstractChargerWaveEntity} <b>零改动</b>：
  *       本类只用它<b>已经</b>有的 {@code setOwner} / {@code trySetWaveType} / {@code trySetEssence} /
- *       {@code setHitEffect} / {@code setFiringBatch}）。</li>
+ *       {@code setHitEffect} / {@code setFiringBatch}）。⚠ <b>批 9 也照这条办</b>："波速 = 箭速"
+ *       用的是它<b>已经</b>有的速度修正要素 {@code addSpeedOffset(double)}（波速调节器用的同一个），
+ *       共享波实体仍然<b>一个字节都没动</b>（关卡 {@code bow6-public-shape} 照旧守着这条）。</li>
+ * </ul>
+ *
+ * <h2>2026-10-05 弓技能批 9（作者原话，逐字）</h2>
+ * <blockquote>
+ * 1. 把箭的数量改少一点，能量波的数量翻一倍。<br>
+ * 2. 下优化：当他拉弓时，应该会看到一个圆形技能范围的预选框。……移动机制：预选框会一点一点往远离
+ * 视角的方向移动，边缘最多移动至距离玩家准心 5 格的位置。……释放机制：确定位置后松手，开始释放技能。
+ * 释放的过程中，箭和能量波应该同步落下，两者落下速度应该一致，能量波的速度和箭的速度就是一样的……
+ * 波速是它里面的一个参数。技能释放完之后，该预选框才会消失。
+ * </blockquote>
+ * <ul>
+ *   <li><b>数量</b>：{@code ARROW_COUNT 20 → 10}、{@code WAVE_COUNT 10 → 20} —— 本类的两个循环
+ *       仍是按名读真源的那两行，<b>一个数字都不写</b>；</li>
+ *   <li><b>圆心</b>：{@link #fire} 多收一个 {@code drawnTicks}（松手那一刻的拉弓时长），
+ *       圆心交给真源的 {@code previewCenter} ⇒ 与客户端预选框<b>同源</b>；</li>
+ *   <li><b>波速 = 箭速</b>：落下的每一枚波都按名调
+ *       {@code wave.addSpeedOffset(BowAstralBarrageConfigs.waveSpeedOffsetFor(waveLevel))}
+ *       —— 目标速度由 {@code ARROW_INITIAL_FALL_SPEED}（箭的落速，<b>箭本身没改</b>）经仓里唯一的
+ *       格/秒换算得出；</li>
+ *   <li><b>本类不画圈</b>：预选框是<b>客户端</b>的事（{@code BowAstralBarragePreviewRenderer}），
+ *       它只问真源要圆心与半径。</li>
  * </ul>
  *
  * @since 1.0.0
@@ -151,17 +175,19 @@ public final class BowAstralBarrageLauncher {
      * @param shooter 施放者（取<b>眼睛位置 + 视线</b>当锚点；同时是落下的箭与波的主人 =
      *                两者都据此把他排除在命中之外）
      * @param level   技能等级（1~3，越界夹取；星界弓传的是 {@code BowTier#baseSkillLevel()} = 3）
+     * @param drawnTicks <b>松手那一刻已经拉了多少 tick</b>（批 9）：预选框圆心与弹幕圆盘圆心
+     *                都由它经 {@code BowAstralBarrageConfigs#previewCenter} 算出 ——
+     *                客户端画圈用的是<b>同一个方法、同一个输入口径</b>（{@code #drawnTicks}），
+     *                所以"圈在哪"与"落在哪"不可能分家。调用点传的是 {@code releaseUsing} 里
+     *                已经算好的 {@code pullTime}（经弓上的私有暂存键搬过来的），
+     *                <b>本类不自己猜</b>。
      * @return 本次弹幕的批次号（&lt; 0，供日志 / 关卡核对）
      */
-    public static int fire(ServerLevel world, LivingEntity shooter, int level) {
-        Vec3 look = shooter.getLookAngle();
-        if (look.lengthSqr() < 1.0E-6D) {
-            // 退化视线（俯仰 ±90° 时原版也会给单位向量，这里只是形状保底）：与星芒嬗震 / 批 4 同一处兜底
-            look = new Vec3(0.0D, 0.0D, 1.0D);
-        }
-        look = look.normalize();
-        Vec3 anchor = shooter.getEyePosition()
-            .add(look.scale(BowAstralBarrageConfigs.ANCHOR_FORWARD_BLOCKS));
+    public static int fire(ServerLevel world, LivingEntity shooter, int level, int drawnTicks) {
+        // 批 9：圆心不再在本类现算 —— 它只住数值真源那一处（眼睛 + 视线 × 推进量），
+        // 于是"客户端画的圈"与"服务端落的点"共用同一个算法（退化视线的兜底也在那里）。
+        Vec3 anchor = BowAstralBarrageConfigs.previewCenter(
+            shooter.getEyePosition(), shooter.getLookAngle(), drawnTicks);
 
         double radius = BowAstralBarrageConfigs.radiusFor(level);
         double dropY = rainOriginY(world, shooter, anchor);
@@ -189,10 +215,12 @@ public final class BowAstralBarrageLauncher {
         // 这一行让"锚点在哪、圆盘多大、降下多少、排程多久、滞留多长"在日志里可查 ——
         // 作者只有日志可验收（在场内也能靠它区分"生成了没有 / 为什么没有"）。
         WaveDiag.trace(
-            "星元波置：技能 {} 级 → 锚点 {}（眼睛 + 视线前推 {} 格），半径 {} 格的圆盘，落点高度 {}；排程降下 {} 支嬗乱药水箭（{} tick 时长）+ {} 枚随机魔素 {} 级波（命中附加滞留缓慢，{} tick），每 {} tick 一滴，滞留 {} tick，批次 {}",
-            level, anchor, fmt2(BowAstralBarrageConfigs.ANCHOR_FORWARD_BLOCKS), fmt2(radius), fmt2(dropY),
-            arrows, BowAstralBarrageConfigs.DISORDER_TICKS, waves, waveLevel, immobilizeTicks,
-            interval, immobilizeTicks, batch);
+            "星元波置：技能 {} 级 → 锚点 {}（眼睛 + 视线前推 {} 格，松手时已拉弓 {} tick），半径 {} 格的圆盘，落点高度 {}；排程降下 {} 支嬗乱药水箭（{} tick 时长）+ {} 枚随机魔素 {} 级波（下落速度 = 箭速 {} 格/秒，命中附加滞留缓慢，{} tick），每 {} tick 一滴，滞留 {} tick，预选框释放后再存活 {} tick，批次 {}",
+            level, anchor, fmt2(BowAstralBarrageConfigs.previewForwardBlocks(drawnTicks)), drawnTicks,
+            fmt2(radius), fmt2(dropY),
+            arrows, BowAstralBarrageConfigs.DISORDER_TICKS, waves, waveLevel,
+            fmt2(BowAstralBarrageConfigs.fallSpeedBlocksPerSecond()), immobilizeTicks,
+            interval, immobilizeTicks, BowAstralBarrageConfigs.barrageScheduleTicks(), batch);
         return batch;
     }
 
@@ -276,6 +304,10 @@ public final class BowAstralBarrageLauncher {
      *   <li><b>共用一个批次号</b>：本次弹幕的全部波（以及本技能同一次发射的其它波）互相豁免碰撞
      *       —— 它们出生在同一片空域里，不豁免就是"出生瞬间互相湮灭"。</li>
      * </ol>
+     *
+     * <p><b>批 9 加的第五件</b>（与上面四件同层、也走既有面）：<b>波速 = 箭速</b> ——
+     * {@code wave.addSpeedOffset(真源给的差值)}，用的是波实体<b>已经</b>有的速度修正要素
+     * （"波速是它里面的一个参数"）。目标速度与差值都在数值真源里算，本方法只按名调用。</p>
      */
     private static void dropEssenceWave(ServerLevel world, LivingEntity shooter, Vec3 anchor, double radius,
                                         double dropY, int waveLevel, int immobilizeTicks, int batch) {
@@ -284,6 +316,11 @@ public final class BowAstralBarrageLauncher {
         ChargerWaveEntity wave = new ChargerWaveEntity(world, pos, BowAstralBarrageConfigs.FALL_DIRECTION, waveLevel);
         wave.trySetWaveType(WaveTypes.ATTACK);
         wave.setOwner(shooter);
+        // ★ 批 9：波速 = 箭速（作者："两者落下速度应该一致，能量波的速度和箭的速度就是一样的……
+        //   波速是它里面的一个参数"）。用既有的"速度修正量"要素把落下的波设成与药水箭同速
+        //   （目标速度与其差值全在数值真源里算，本类不写速度数字、更不改箭）：
+        //   波实体只提供 addSpeedOffset（叠加语义），所以真源给的是"目标 − 该波级基础速度"。
+        wave.addSpeedOffset(BowAstralBarrageConfigs.waveSpeedOffsetFor(waveLevel));
         WaveTrailStyle essence = BowMetaArrowTrait.randomEssence(world.random);
         wave.trySetEssence(essence);
         // 命中附加"滞留"的主成分：高等级缓慢（唯一槽位；跳跃削弱半条由同一片区域里落下的药水箭给出）
@@ -291,8 +328,9 @@ public final class BowAstralBarrageLauncher {
             BowAstralBarrageConfigs.STAGNATION_AMPLIFIER);
         wave.setFiringBatch(batch);
         world.addFreshEntity(wave);
-        WaveDiag.trace("星元波置落波：{} 级波（{}），魔素={}，落点 {}（半径 {} 格的圆盘），滞留缓慢 {} tick，批次 {}",
-            waveLevel, WaveLevels.glyph(waveLevel), essence.name(), pos, fmt2(radius), immobilizeTicks, batch);
+        WaveDiag.trace("星元波置落波：{} 级波（{}），魔素={}，落点 {}（半径 {} 格的圆盘），下落速度 {} 格/秒（= 箭速），滞留缓慢 {} tick，批次 {}",
+            waveLevel, WaveLevels.glyph(waveLevel), essence.name(), pos, fmt2(radius),
+            fmt2(wave.getWaveSpeed()), immobilizeTicks, batch);
     }
 
     /**
