@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 
 /**
@@ -57,8 +59,13 @@ public final class FieldChargeConfigs {
         throw new AssertionError("This class should not be instantiated");
     }
 
-    /** 三档（装备技能 3 级封顶，与 {@link LastStandConfigs#MAX_LEVEL} 同口径）。 */
-    public static final int MAX_LEVEL = 3;
+    /**
+     * 三档（装备技能 3 级封顶，与 {@link LastStandConfigs#MAX_LEVEL} 同口径）。
+     *
+     * <p>批 15 收敛：唯一字面量在 {@link ArmorSkillRuntime#EQUIPMENT_SKILL_MAX_LEVEL}
+     * （真实等级的钳位处），本常量是它的<b>别名</b>，值逐位不变（仍是 3）。</p>
+     */
+    public static final int MAX_LEVEL = ArmorSkillRuntime.EQUIPMENT_SKILL_MAX_LEVEL;
 
     /**
      * 单级临域充力定义（规格 §2.2 表格的五行，逐行一个字段）。
@@ -79,7 +86,7 @@ public final class FieldChargeConfigs {
 
         /** 按满整段的总 tick 数（时长上限）。 */
         public int durationTicks() {
-            return Math.max(0, durationSeconds) * 20;
+            return Math.max(0, durationSeconds) * ChargeConfigs.TICKS_PER_SECOND;
         }
 
         /** 判定立方体的边长（2×radius+1）。 */
@@ -116,7 +123,7 @@ public final class FieldChargeConfigs {
         int maxTicks = config.durationTicks();
         int ticks = maxTicks <= 0 ? heldTicks : Math.min(heldTicks, maxTicks);
         // long 乘法：heldTicks（最长 60×20=1200）与 eps（最长 100）都小，但按纪律一律防溢出。
-        return (int) ((long) ticks * config.energyPerSecond() / 20L);
+        return (int) ((long) ticks * config.energyPerSecond() / ChargeConfigs.TICKS_PER_SECOND);
     }
 
     /**

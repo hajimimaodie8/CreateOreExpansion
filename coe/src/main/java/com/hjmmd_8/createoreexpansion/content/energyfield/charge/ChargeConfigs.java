@@ -1,6 +1,8 @@
 package com.hjmmd_8.createoreexpansion.content.energyfield.charge;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
+import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleOptions;
@@ -89,7 +91,8 @@ public final class ChargeConfigs {
 
 	/** 把任意等级夹进 {@code [MIN_LEVEL, MAX_LEVEL]}（四条途径各自的等级来源都过这一道）。 */
 	public static int clampLevel(int level) {
-		return Mth.clamp(level, MIN_LEVEL, MAX_LEVEL);
+		// 批 15：夹取算术的唯一实现在 core 的 SkillEnergyCost#clamp（全仓 5 处同一表达式收敛成一处）。
+		return SkillEnergyCost.clamp(level, MAX_LEVEL);
 	}
 
 	// ==================================================================================
@@ -239,8 +242,15 @@ public final class ChargeConfigs {
 	 */
 	public static final double RESIDUE_BASE_SECONDS = 5.0D;
 
-	/** 一秒的 tick 数：<b>20</b>（原版）。公式里「秒 → tick」的换算用。 */
-	public static final int TICKS_PER_SECOND = 20;
+	/**
+	 * 一秒的 tick 数（原版 {@code 20}）—— 本类是<b>既有的引用路径</b>，
+	 * 而<b>唯一真源在 core 的 {@link SkillCooldowns#TICKS_PER_SECOND}</b>
+	 * （2026-10-06 批 15 收敛：{@code core} 里的 {@code ToolSkillCooldown} 也要做这个换算，
+	 * 而 {@code core} 不许 import {@code :coe} ⇒ 常量必须住在共享库，本行是它的别名）。
+	 *
+	 * <p>公式里「秒 → tick」的换算一律用本名字或那个 core 名字，<b>不许再写字面量 20</b>。</p>
+	 */
+	public static final int TICKS_PER_SECOND = SkillCooldowns.TICKS_PER_SECOND;
 
 	/** 残留寿命（tick）= {@code round((5 + ln(L+1)) × 20)}（需求 §3.5 #6，作者裁定按公式）。 */
 	public static int residueLifetimeTicks(int explosionLevel) {

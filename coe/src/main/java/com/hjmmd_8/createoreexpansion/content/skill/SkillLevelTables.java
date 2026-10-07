@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill;
 
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
+
 /**
  * <b>技能等级 → 档位定义</b>的查表工具（各 {@code *Configs} 的等级表统一走这里）。
  *
@@ -62,7 +64,8 @@ public final class SkillLevelTables {
      * @return 命中的那一档
      */
     public static <T> T pick3Clamped(int level, int maxLevel, T level1, T level2, T level3) {
-        return switch (Math.max(1, Math.min(maxLevel, level))) {
+        // 批 15：夹取算术只此一处（core 的 SkillEnergyCost#clamp）；原来这里又写了一遍同一表达式。
+        return switch (SkillEnergyCost.clamp(level, maxLevel)) {
             case 1 -> level1;
             case 2 -> level2;
             default -> level3;

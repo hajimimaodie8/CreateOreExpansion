@@ -1,10 +1,7 @@
 package com.hjmmd_8.createoreexpansion.foundation.item.skill;
 
-import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -86,24 +83,6 @@ public class SkillsComponent implements OwnedBySkills {
     public Map<SkillType, List<ItemSkill>> skills() {
         // groupSkillsByType 已构建不可变视图，直接返回
         return skillsMap;
-    }
-
-    /**
-     * 按有效等级（基础等级 + 技能提升附魔，受技能满级限制）更新技能配置。
-     *
-     * <p>保留为静态工具：调用方（如工具/武器侧）需要按当前等级取配置时使用。
-     * 2026-09-30 第 4 阶段后，<b>技能执行本身不再经过本类</b>——释放由 Skiller 新内核的
-     * {@code CoeSkillRelease} 负责，本方法只剩「取该等级配置并记回 {@link DataSkill#config}」。</p>
-     */
-    public static void applySkillBoost(ItemStack stack, DataSkill data) {
-        if (data == null) return;
-        AllSkills.RegisteredDataSkill registered = AllSkills.getData(data.id);
-        if (registered == null) return;
-        int effective = SkillEnergySpend.effectiveLevel(stack, data);
-        SkillConfig levelConfig = registered.configForLevel(effective);
-        if (levelConfig != null) {
-            data.config = levelConfig;
-        }
     }
 
     // ========== 实用查询方法 ==========

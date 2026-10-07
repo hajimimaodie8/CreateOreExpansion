@@ -2,9 +2,9 @@ package com.hjmmd_8.createoreexpansion.content.energyfield.charge;
 
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.energyfield.ChargeApi;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 
@@ -37,8 +37,9 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
  *       {@link ChargeConfigs#MAX_LEVEL}）⇒ 不同取法的差别只在 1..上限之间，取最高者是最保守的
  *       「按最强技能算」。</li>
  * </ol>
- * <p>每个技能的等级走 {@link SkillEnergySpend#effectiveLevel(ItemStack, DataSkill)}——本仓
- * 「技能有效等级」的<b>唯一</b>口径（基准等级 + 技艺提升 − 技艺回溯，再夹到技能满级），
+ * <p>每个技能的等级走 {@link AllSkills#effectiveLevel(ItemStack, DataSkill)}——本仓
+ * 「技能有效等级」的<b>唯一</b>入口（它把注册满级取出来、算术委托给 core 的
+ * {@code SkillEnergyCost#effectiveLevel}；基准等级 + 技艺提升 − 技艺回溯，再夹到技能满级），
  * 也就是 tooltip 上显示的那个数 ⇒ 玩家看到的 Lv 与实际染电的 Lv 永远一致。</p>
  *
  * <h2>「必须真的挂了攻击类技能」才算这一条</h2>
@@ -121,7 +122,7 @@ public final class ThunderiteHitChargeHandler {
         }
         int best = NO_HIT_SKILL;
         for (DataSkill data : skillStack.getSkillsHolder().getDataSkills(SkillType.HIT_SKILL)) {
-            best = Math.max(best, SkillEnergySpend.effectiveLevel(stack, data));
+            best = Math.max(best, AllSkills.effectiveLevel(stack, data));
         }
         return best;
     }

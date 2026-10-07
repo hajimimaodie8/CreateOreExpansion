@@ -184,8 +184,13 @@ public final class StarShockRuntime {
         if (!ArmorEnergy.consume(player, config.tapCost())) {
             return false;
         }
-        StarShockCast cast = new StarShockCast(player, nextBatch(), config,
-            Math.max(1, Math.min(StarShockConfigs.MAX_LEVEL, level)));
+        // 2026-10-06 批 15：这里<b>不再</b>钳位。上面 config(level) 内部已经用同一个上限
+        // （StarShockConfigs.MAX_LEVEL）钳过一次，而本方法唯一的调用点
+        // （ArmorSkillHoldLoop 传 ArmorSkillRuntime.effectiveLevel(player, set, skill)）
+        // 本身就恒落在 [1, EQUIPMENT_SKILL_MAX_LEVEL] ⇒ 第二道钳位是纯多余的一份算术
+        // （批 15 之前它在这里又抄了一遍 Math.max(1, Math.min(..))）。
+        // 去掉之后，"技能等级夹取"全仓只剩 core 的 SkillEnergyCost#clamp 一处实现。
+        StarShockCast cast = new StarShockCast(player, nextBatch(), config, level);
         cast.paid = config.tapCost();
         CASTS.put(player.getUUID(), cast);
         // 点按那一 tick：t = 0 ⇒ 1 枚主波（需求 §3.3(b)"点按（t ≈ 0）⇒ 1 枚"）。

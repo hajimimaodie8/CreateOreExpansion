@@ -88,6 +88,40 @@ public enum BowTier {
     /** 本档注册进物品的单一能量色（文字/绑定行用；能量条色标走 {@link #armorSet()}）。 */
     private final ToolEnergyColorConfig color;
 
+    // ══════════════════════════════════════════════════════════════════════════════════
+    // 技能等级上限：两个数各只有一处（2026-10-06 批 15 真源收敛）
+    // ──────────────────────────────────────────────────────────────────────────────────
+    // 为什么这两个常量住在<b>枚举常量之后</b>：JLS 8.9.3 要求枚举常量必须是类体里的
+    // 第一批评分 —— 写在它们上面编译不过（批 15 实测报"此处需要枚举常量"）。
+    //
+    // 为什么需要它们：共享弓技能（bow_curse / bow_disarm）被四把弓共用 ⇒ 它们的
+    // maxLevel 只能按技能注册一次（AllSkills 那两条），而"哪把弓的上限是几"住在本表。
+    // 批 15 之前 AllSkills 那两条<b>不写</b> maxLevel，吃构建器默认 5 —— 于是同一个数
+    // 在两个文件里各存一份（默认值一份、本表翠玉行一份），改一处另一处不跟着动。
+    // 现在两边都引用同一个 static final int ⇒ JLS 编译期常量内联，不会因为 AllSkills
+    // 引用它而触发本枚举的初始化（与 BoomerangSkillConfigs.MAX_SKILL_LEVEL 同一机制）。
+    // ══════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * <b>共享弓技能（{@code bow_curse} / {@code bow_disarm}）的等级上限 = 5</b>。
+     *
+     * <p>两处消费点：{@code AllSkills.BOW_CURSE} / {@code BOW_DISARM} 的
+     * {@code .maxLevel(...)}（同一个数，不再是"隐式默认值"）与 {@link #maxSkillLevel()}
+     * 的 {@code JADE_TOPAZ} 臂。</p>
+     */
+    public static final int SHARED_SKILL_CAP = 5;
+
+    /**
+     * <b>三把继承弓（宝石 / 星界 / 雷鸣）的档位技能上限 = 3</b>（作者 2026-10-03 给死
+     * 「新绑的两条技能上限 3 级」）。
+     *
+     * <p>两处消费点：{@link #maxSkillLevel()} 的三档臂，以及 {@code AllSkills} 三条
+     * <b>专属</b>弓技能条目（{@code bow_wave_shift} / {@code bow_astral_barrage} /
+     * {@code bow_thunder_might}）的 {@code .maxLevel(...)} ⇒「登记值 == 运行时档位值」
+     * 不再靠两处各写一个 3 来维持。</p>
+     */
+    public static final int INHERITED_TIER_SKILL_CAP = 3;
+
     BowTier(int energy, int durability, ToolEnergyColorConfig color) {
         this.energy = energy;
         this.durability = durability;
@@ -324,10 +358,11 @@ public enum BowTier {
      */
     public int maxSkillLevel() {
         return switch (this) {
-            // 翠玉弓：保持注册默认 5（它的绑定链不写等级上限，见 CoeItems:748-751 那四行）。
-            case JADE_TOPAZ -> 5;
+            // 翠玉弓：保持注册默认 5（批 15 起那个 5 = 本表的 SHARED_SKILL_CAP，
+            // AllSkills 那两条共享技能条目也引用它 ⇒ 一个数只有一处）。
+            case JADE_TOPAZ -> SHARED_SKILL_CAP;
             // 三把继承弓：作者给死 3（配置表仍保留 5 档，Lv4/Lv5 只是够不到）。
-            case SAPPHIRE_RUBY, ASTRAL, THUNDER -> 3;
+            case SAPPHIRE_RUBY, ASTRAL, THUNDER -> INHERITED_TIER_SKILL_CAP;
         };
     }
 

@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 
 /**
@@ -42,7 +44,13 @@ public final class LastStandConfigs {
     }
 
     /** 三档（装备技能 3 级封顶，用户 2026-10-01 明确"和工具的五级封顶不一样"）。 */
-    public static final int MAX_LEVEL = 3;
+    /**
+     * 三档（装备技能 3 级封顶；与工具的五级封顶不同）。
+     *
+     * <p>批 15 收敛：唯一字面量在 {@link ArmorSkillRuntime#EQUIPMENT_SKILL_MAX_LEVEL}
+     * （真实等级的钳位处），本常量是它的<b>别名</b>，值逐位不变（仍是 3）。</p>
+     */
+    public static final int MAX_LEVEL = ArmorSkillRuntime.EQUIPMENT_SKILL_MAX_LEVEL;
 
     /**
      * 单级绝境守护定义。
@@ -91,7 +99,7 @@ public final class LastStandConfigs {
         if (config == null || config.segments() <= 0) {
             return 1;
         }
-        int maxTicks = Math.max(1, config.holdSeconds() * 20);
+        int maxTicks = Math.max(1, config.holdSeconds() * ChargeConfigs.TICKS_PER_SECOND);
         int clamped = Math.max(1, Math.min(heldTicks, maxTicks));
         int segments = config.segments();
         int segment = (int) (((long) clamped * segments + maxTicks - 1) / maxTicks);

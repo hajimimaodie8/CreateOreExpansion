@@ -15,6 +15,9 @@ import net.minecraft.world.item.ItemStack;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.EquipCooldownPayload;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 
 /**
  * <b>装备技能的长按运行时</b>（用户 2026-10-01 要求的新骨架）。
@@ -365,7 +368,7 @@ public final class ArmorSkillRuntime {
         String key = player.getUUID() + "#" + slot;
         Integer last = BLOCK_NOTIFY_TICK.get(key);
         int now = player.tickCount;
-        if (last != null && now - last < 20) {
+        if (last != null && now - last < ChargeConfigs.TICKS_PER_SECOND) {
             return;
         }
         BLOCK_NOTIFY_TICK.put(key, now);
@@ -391,7 +394,7 @@ public final class ArmorSkillRuntime {
         if (heldTicks <= 0 || maxSeconds <= 0 || totalCost <= 0) {
             return 0;
         }
-        int maxTicks = maxSeconds * 20;
+        int maxTicks = maxSeconds * ChargeConfigs.TICKS_PER_SECOND;
         long cost = (long) Math.min(heldTicks, maxTicks) * totalCost / maxTicks;
         return (int) cost;
     }
@@ -402,7 +405,7 @@ public final class ArmorSkillRuntime {
             return;
         }
         player.getPersistentData().putLong(COOLDOWN_PREFIX + skillId,
-            player.level().getGameTime() + seconds * 20L);
+            player.level().getGameTime() + seconds * (long) ChargeConfigs.TICKS_PER_SECOND);
         // 同步给客户端（持久数据不同步 ⇒ HUD 读不到冷却；用户 2026-10-01 报"HUD 那行没被替换"）
         if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
             net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(serverPlayer,
@@ -453,18 +456,18 @@ public final class ArmorSkillRuntime {
             if (stack.isEmpty() || ArmorSet.of(stack) == null) {
                 continue;
             }
-            // 与工具侧口径**逐字一致**（{@code SkillEnergyCost#effectiveLevel:34-35} 的
-            // {@code Math.min(..., 2)}）：技艺提升/记忆回溯 3 级及以上，提升量/削减量一律按 2 计。
+            // 与工具侧口径**逐字一致**（{@code SkillEnergyCost#effectiveLevel} 的
+            // {@code Math.min(..., MAX_ENCHANT_BOOST)}）：技艺提升/记忆回溯 3 级及以上，提升量/削减量一律按 2 计。
             // 合法附魔等级只有 0/1/2（{@code data/createoreexpansion/enchantment/skill_boost.json}
             // 的 {@code max_level} = 2）⇒ 这是**零数值变化**的健壮性补丁；防的是"存档/命令塞进来的
             // 越级附魔"把加减量放大（例如 +9 让"基准 + 提升"早就越过钳位，掩盖钳位本身是否生效）。
-            int boost = Math.min(com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-                .skillBoostLevel(stack), 2);
-            int regression = Math.min(com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-                .skillRegressionLevel(stack), 2);
+            // 批 15：那两个 2 收敛成 core 的 SkillEnergyCost.MAX_ENCHANT_BOOST（全仓唯一真源）。
+            int boost = Math.min(ToolEnchantments.skillBoostLevel(stack), SkillEnergyCost.MAX_ENCHANT_BOOST);
+            int regression = Math.min(ToolEnchantments.skillRegressionLevel(stack),
+                SkillEnergyCost.MAX_ENCHANT_BOOST);
             best = Math.max(best, base + boost - regression);
         }
-        return Math.max(1, Math.min(EQUIPMENT_SKILL_MAX_LEVEL, best));
+        return SkillEnergyCost.clamp(best, EQUIPMENT_SKILL_MAX_LEVEL);
     }
 
     /**
@@ -525,12 +528,11 @@ public final class ArmorSkillRuntime {
         }
         int base = ArmorSkillLevels.baseLevelOf(set,
             com.hjmmd_8.createoreexpansion.common.CoeCore.modLoc(skillId));
-        // 与 effectiveLevel 同一处的 2 级封顶口径（越级附魔不放大加减量）
-        int boost = Math.min(com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-            .skillBoostLevel(stack), 2);
-        int regression = Math.min(com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments
-            .skillRegressionLevel(stack), 2);
-        return Math.max(1, Math.min(EQUIPMENT_SKILL_MAX_LEVEL, base + boost - regression));
+        // 与 effectiveLevel 同一处的 2 级封顶口径（越级附魔不放大加减量；批 15 起取 core 的唯一常量）
+        int boost = Math.min(ToolEnchantments.skillBoostLevel(stack), SkillEnergyCost.MAX_ENCHANT_BOOST);
+        int regression = Math.min(ToolEnchantments.skillRegressionLevel(stack),
+            SkillEnergyCost.MAX_ENCHANT_BOOST);
+        return SkillEnergyCost.clamp(base + boost - regression, EQUIPMENT_SKILL_MAX_LEVEL);
     }
 
 }

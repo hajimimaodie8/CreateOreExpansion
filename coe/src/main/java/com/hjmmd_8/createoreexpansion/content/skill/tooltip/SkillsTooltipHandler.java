@@ -1,7 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.tooltip;
 
+import com.hjmmd_8.createoreexpansion.common.registry.coe.AllSkills;
 import com.hjmmd_8.createoreexpansion.content.skill.input.AllKeys;
-import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillEnergySpend;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.DataSkill;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillItemStack;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
@@ -66,7 +66,8 @@ public class SkillsTooltipHandler {
      * 等级取有效等级（含技能提升附魔）。
      */
     private static Component skillLine(Component key, ItemStack stack, DataSkill data) {
-        int level = SkillEnergySpend.effectiveLevel(stack, data);
+        // 批 15：本类只问注册表要「有效等级」（算术唯一实现在 core 的 SkillEnergyCost#effectiveLevel）。
+        int level = AllSkills.effectiveLevel(stack, data);
         return Component.literal("  [")
                 .append(key)
                 .append("] ")

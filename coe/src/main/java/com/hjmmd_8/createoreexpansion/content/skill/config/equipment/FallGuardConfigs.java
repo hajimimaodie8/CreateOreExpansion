@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 
 /**
@@ -28,8 +29,13 @@ public final class FallGuardConfigs {
     private FallGuardConfigs() {
     }
 
-    /** 三档（装备技能 3 级封顶，用户 2026-10-01 明确"和工具的五级封顶不一样"）。 */
-    public static final int MAX_LEVEL = 3;
+    /**
+     * 三档（装备技能 3 级封顶，用户 2026-10-01 明确"和工具的五级封顶不一样"）。
+     *
+     * <p>批 15 收敛：唯一字面量在 {@link ArmorSkillRuntime#EQUIPMENT_SKILL_MAX_LEVEL}
+     * （真实等级的钳位处），本常量是它的<b>别名</b>，值逐位不变（仍是 3）。</p>
+     */
+    public static final int MAX_LEVEL = ArmorSkillRuntime.EQUIPMENT_SKILL_MAX_LEVEL;
 
     /**
      * 单级虚衡坠护定义。

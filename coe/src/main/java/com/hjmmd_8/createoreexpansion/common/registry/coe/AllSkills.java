@@ -4,6 +4,8 @@ import com.google.common.collect.Maps;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item.BoomerangSkillConfigs;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.BowTier;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BloodPactConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowCurseConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowDisarmConfigs;
@@ -19,6 +21,7 @@ import com.hjmmd_8.createoreexpansion.foundation.item.skill.SkillType;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.Map;
 import java.util.function.Consumer;
@@ -148,11 +151,17 @@ public final class AllSkills {
     // 将来启用时 addSkills(HOE, 4/5) 即可，无需新增注册。
 
     // ========== 翠玉之弓技能（传说武器：能量上限 2000，一技能多等级，数值统一在 BowCurseConfigs/BowDisarmConfigs 修改） ==========
+    // 2026-10-06 批 15（真源收敛）：这两条<b>曾经刻意不写</b> maxLevel（吃构建器默认 5），
+    // 理由是"上限住在 BowTier#maxSkillLevel()"。但"默认 5"与"档位表翠玉行的 5"是<b>两个</b>
+    // 各自独立的数（改一处另一处不动）⇒ 现在两边都引用同一个常量
+    // BowTier.SHARED_SKILL_CAP（= 5，静态常量、编译期内联，不引入运行期初始化顺序问题）。
+    // 三把继承弓的 3 是"哪把弓"的属性，仍住在档位表（BowTier.INHERITED_TIER_SKILL_CAP）。
     /** 凋零诅咒（弓技能一：命中附加凋零+缓慢+药水云） */
     public static final RegisteredDataSkill BOW_CURSE =
             skill("bow_curse", SkillType.USE_SKILL)
                     .config(BowCurseConfigs.config(BowCurseConfigs.LEVEL_1))
                     .configsByLevel(level -> BowCurseConfigs.config(BowCurseConfigs.level(level)))
+                    .maxLevel(BowTier.SHARED_SKILL_CAP)
                     .register();
     // 凋零诅咒 Lv4/Lv5 为预留等级：数值已在 BowCurseConfigs 定义，
     // 将来启用时 addSkills(BOW_CURSE, 4/5) 即可，无需新增注册。
@@ -161,6 +170,7 @@ public final class AllSkills {
             skill("bow_disarm", SkillType.USE_SKILL)
                     .config(BowDisarmConfigs.config(BowDisarmConfigs.LEVEL_1))
                     .configsByLevel(level -> BowDisarmConfigs.config(BowDisarmConfigs.level(level)))
+                    .maxLevel(BowTier.SHARED_SKILL_CAP)
                     .register();
     // 缴械风暴 Lv4/Lv5 为预留等级：数值已在 BowDisarmConfigs 定义，
     // 将来启用时 addSkills(BOW_DISARM, 4/5) 即可，无需新增注册。
@@ -169,9 +179,9 @@ public final class AllSkills {
     // 它们与上面那对<b>不同</b>：上面那对 id 被四把弓复用（所以等级上限只能住在 BowTier），
     // 这三条<b>各自只被一把弓携带</b>（宝石 / 星界 / 雷鸣），因此等级上限可以、也应该写在这里。
     //
-    // 为什么写 maxLevel(3)：作者明令三条技能都是<b>3 级封顶</b>；而三条各自的档位行里
-    // BowTier#maxSkillLevel() 也正好是 3（SAPPHIRE_RUBY / ASTRAL / THUNDER），
-    // 两处同值 ⇒ <b>不冲突</b>（关卡 §30e-6 把这条一致性逐条钉住）。
+    // 为什么上限<b>也</b>写在这里（批 15 起与档位表同一个常量）：三个 id <b>各自只被一把弓携带</b>
+    // （宝石 / 星界 / 雷鸣），所以等级上限可以、也应该与它们的携带者同源 ——
+    // BowTier.INHERITED_TIER_SKILL_CAP（= 3，与 BowTier#maxSkillLevel() 的三档臂同一个数）。
     //
     // 为什么<b>不挂</b> .config(...) / .configsByLevel(...)：三张数值表的类型是
     // BowWaveShiftConfigs / BowAstralBarrageConfigs / BowThunderMightConfigs（静态表，
@@ -181,17 +191,17 @@ public final class AllSkills {
     /** 量波置换（宝石弓专属 · 键三 G） */
     public static final RegisteredDataSkill BOW_WAVE_SHIFT =
             skill("bow_wave_shift", SkillType.USE_SKILL)
-                    .maxLevel(3)
+                    .maxLevel(BowTier.INHERITED_TIER_SKILL_CAP)
                     .register();
     /** 星元波置（星界弓专属 · 键三 G） */
     public static final RegisteredDataSkill BOW_ASTRAL_BARRAGE =
             skill("bow_astral_barrage", SkillType.USE_SKILL)
-                    .maxLevel(3)
+                    .maxLevel(BowTier.INHERITED_TIER_SKILL_CAP)
                     .register();
     /** 雷鸣神力（雷鸣弓专属 · 键三 G） */
     public static final RegisteredDataSkill BOW_THUNDER_MIGHT =
             skill("bow_thunder_might", SkillType.USE_SKILL)
-                    .maxLevel(3)
+                    .maxLevel(BowTier.INHERITED_TIER_SKILL_CAP)
                     .register();
 
     // ========== 装备（护甲）技能 —— 数值统一在各自的 *Configs 里改 ==========
@@ -359,6 +369,32 @@ public final class AllSkills {
         return skill == null ? null : SKILL_IDS.get(skill);
     }
 
+    /**
+     * 技能的<b>有效等级</b>（显示与消耗统一以此为准）= {@code clamp(基准等级 + 技艺提升 − 技艺回溯, 1, 注册满级)}。
+     * 技艺提升 / 记忆回溯 3 级及以上提升量 / 削减量一律按 {@code 2} 计（越级附魔不放大加减量），
+     * 两件附魔可共存（净效果 = 提升量 − 削减量）。
+     *
+     * <p><b>2026-10-06 COE 批 15（真源收敛）</b>：本方法<b>只有"取数"</b>这一步 ——
+     * 从 {@link DataSkill} 取出基准等级（{@code Level} 键）、从本注册表取出该 id 的注册满级，
+     * 算术本身<b>唯一实现</b>在 core 的 {@link SkillEnergyCost#effectiveLevel(ItemStack, int, int)}。
+     * 它住在注册表里，是因为「有效等级」的两个入参一个来自注册条目（{@code maxLevel()}）、
+     * 一个来自条目 id 的反查（{@link #getData}/{@link #getId}）——这两件事都是本类的职责；
+     * 换核前它住在 {@code foundation.item.skill.SkillEnergySpend}，那是一个只剩一行转发的壳类，
+     * 批 15 收敛时删掉，调用点直接问注册表（同一个数不会再出现第二个入口）。
+     * <b>不是</b> core 的活：{@link DataSkill} / {@link AllSkills} 都是 {@code :coe} 的类型，
+     * 而 core 不许 import {@code :coe}（分层红线）。</p>
+     *
+     * @param stack 携带技能的物品栈（技艺提升 / 记忆回溯两件附魔从它身上读）
+     * @param data  该技能在物品上的数据条目
+     * @return 有效等级，恒 ≥ 1
+     */
+    public static int effectiveLevel(ItemStack stack, DataSkill data) {
+        int base = data.nbt != null ? data.nbt.getInt("Level") : 1;
+        RegisteredDataSkill registered = getData(data.id != null ? data.id : getId(data.skill));
+        int maxLevel = registered != null ? registered.maxLevel() : 5;
+        return SkillEnergyCost.effectiveLevel(stack, base, maxLevel);
+    }
+
     public static class SkillBuilder<T extends ItemSkill, S> {
         private final ResourceLocation id;
         private final Class<T> skillType;
@@ -512,7 +548,8 @@ public final class AllSkills {
          */
         public SkillConfig configForLevel(int level) {
             if (configsByLevel == null) return config;
-            SkillConfig levelConfig = configsByLevel.apply(Math.max(1, level));
+            // 批 15：夹取算术只此一处（core 的 SkillEnergyCost#clamp）；原来这里写的是 Math.max(1, level)。
+            SkillConfig levelConfig = configsByLevel.apply(SkillEnergyCost.clamp(level, maxLevel));
             return levelConfig != null ? levelConfig : config;
         }
 

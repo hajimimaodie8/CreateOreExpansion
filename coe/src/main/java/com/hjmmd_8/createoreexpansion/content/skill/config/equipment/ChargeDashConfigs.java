@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 
 /**
@@ -24,8 +26,14 @@ public final class ChargeDashConfigs {
     private ChargeDashConfigs() {
     }
 
-    /** 三档（装备技能 3 级封顶；与工具的五级封顶不同）。 */
-    public static final int MAX_LEVEL = 3;
+    /**
+     * 三档（装备技能 3 级封顶；与工具的五级封顶不同）。
+     *
+     * <p>批 15 收敛：装备技能等级上限的唯一字面量在
+     * {@link ArmorSkillRuntime#EQUIPMENT_SKILL_MAX_LEVEL}（真实等级的钳位处），
+     * 本常量是它的<b>别名</b>，值逐位不变（仍是 3）。</p>
+     */
+    public static final int MAX_LEVEL = ArmorSkillRuntime.EQUIPMENT_SKILL_MAX_LEVEL;
 
     /**
      * 单级蓄能疾骋定义。
@@ -64,7 +72,7 @@ public final class ChargeDashConfigs {
         if (config == null || config.segments() <= 0) {
             return 1;
         }
-        int maxTicks = Math.max(1, config.holdSeconds() * 20);
+        int maxTicks = Math.max(1, config.holdSeconds() * ChargeConfigs.TICKS_PER_SECOND);
         int clamped = Math.max(1, Math.min(heldTicks, maxTicks));
         int segments = config.segments();
         int segment = (int) (((long) clamped * segments + maxTicks - 1) / maxTicks);

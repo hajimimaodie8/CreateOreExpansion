@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.armor.energy;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.energy.ToolDataComponents;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
 import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.ToolEnchantments;
 
 import net.minecraft.world.entity.EquipmentSlot;
@@ -47,8 +48,14 @@ public final class ArmorEnergy {
     /** 带「散构聚能」的单件容量（用户定稿：一律 2500，含本模组件）。 */
     public static final int LOOSE_CONVERGENCE_CAPACITY = 2500;
 
-    /** 附魔叠加后的<b>折扣下限</b>（总折扣封顶 50%）：消耗与冷却都不低于这个倍数。 */
-    public static final double DISCOUNT_FLOOR = 0.5;
+    /**
+     * 附魔叠加后的<b>折扣下限</b>（总折扣封顶 50%）：消耗与冷却都不低于这个倍数。
+     *
+     * <p>批 15：这个 {@code 0.5} 与折扣斜率 {@code 1 - 0.1L} 的唯一真源搬到了 core 的
+     * {@link SkillEnergyCost#discountMultiplier(int)}（工具侧 {@code SkillEnergyCost#compute}
+     * 用的是同一个数）；本常量是它的<b>别名</b>，值逐位不变（仍是 0.5）。</p>
+     */
+    public static final double DISCOUNT_FLOOR = SkillEnergyCost.DISCOUNT_FLOOR;
 
     /** 护甲只有四个槽位：<b>顺序的唯一来源</b>是 {@link ArmorSet#armorSlots()}（分摊语义依赖它）。 */
     private static final List<EquipmentSlot> ARMOR_SLOTS = ArmorSet.armorSlots();
@@ -230,7 +237,8 @@ public final class ArmorEnergy {
                 ? ToolEnchantments.reduceConsumptionLevel(piece)
                 : ToolEnchantments.swiftStartLevel(piece);
             if (level > 0) {
-                multiplier *= Math.max(DISCOUNT_FLOOR, 1.0 - 0.1 * level);
+                // 批 15：折扣除法只此一处（core 的 SkillEnergyCost#discountMultiplier = max(0.5, 1 - 0.1L)）。
+                multiplier *= SkillEnergyCost.discountMultiplier(level);
             }
         }
         return Math.max(DISCOUNT_FLOOR, multiplier);

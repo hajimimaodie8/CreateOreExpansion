@@ -1,5 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.boomerang.item;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
+import com.hjmmd_8.createoreexpansion.content.equipment.tool.energy.SkillEnergyCost;
+import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
+
 /**
  * <b>回旋镖技能的数值真源</b>（穿刺 + 环绕）—— 与 {@code FellingConfigs} / {@code SkinConfigs}
  * 同形：本类只写数字与纯算术，<b>不进任何 Minecraft 类型</b>，每一个魔数在这里只出现一次。
@@ -83,7 +87,8 @@ public final class BoomerangSkillConfigs {
 
     /** 把任意等级钳进 {@code 1..}{@link #MAX_SKILL_LEVEL}（额度与消耗共用同一条钳位）。 */
     public static int clampLevel(int level) {
-        return Math.min(Math.max(1, level), MAX_SKILL_LEVEL);
+        // 批 15：夹取算术的唯一实现在 core 的 SkillEnergyCost#clamp（与 SkillLevelTables#pick3Clamped 同一处）。
+        return SkillEnergyCost.clamp(level, MAX_SKILL_LEVEL);
     }
 
     /**
@@ -144,14 +149,17 @@ public final class BoomerangSkillConfigs {
     public static final double ORBIT_TURNS_PER_SECOND = 1.0D;
 
     /**
-     * <b>环绕角速度（弧度/tick）</b> = 2π × 圈/秒 ÷ 20；1 圈/秒 时 = <b>2π/20 ≈ 0.3142</b>。
+     * <b>环绕角速度（弧度/tick）</b> = 2π × 圈/秒 ÷ {@link ChargeConfigs#TICKS_PER_SECOND}；
+     * 1 圈/秒 时 = <b>2π/20 ≈ 0.3142</b>。
      *
-     * <p>与 {@code StarShockRuntime} 的同名常量<b>同一个算式、同一个值</b>
+     * <p>与 {@code StarShockWaveLauncher} 的同名常量<b>同一个算式、同一个值</b>
      * （需求 §六 推断值 #7："沿用现有 {@code applyOrbitElement()} 的值"）——
-     * 刻意<b>不</b>跨类引用 StarShockRuntime 的私有常量（那是星界套的类，
-     * 回旋镖不该依赖它），而是让两处算式逐字相同、并由关卡各自钉住这个值。</p>
+     * 刻意<b>不</b>跨类引用 StarShockWaveLauncher 的私有常量（那是星界套的类，
+     * 回旋镖不该依赖它），而是让两处算式逐字相同（都除<b>同一个</b>换算因数）、
+     * 并由关卡各自钉住这个值。</p>
      */
-    public static final double ORBIT_ANGULAR_SPEED = 2.0D * Math.PI * ORBIT_TURNS_PER_SECOND / 20.0D;
+    public static final double ORBIT_ANGULAR_SPEED =
+        2.0D * Math.PI * ORBIT_TURNS_PER_SECOND / (double) ChargeConfigs.TICKS_PER_SECOND;
 
     /**
      * <b>环绕初始相位</b>（弧度；需求 §3.6 第 2 条给死 <b>0</b>）。

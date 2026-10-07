@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.equipment;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
+import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
 import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
@@ -78,8 +80,13 @@ public final class StarShockConfigs {
         throw new AssertionError("This class should not be instantiated");
     }
 
-    /** 三档（装备技能 3 级封顶，与其它四条装备技能同口径）。 */
-    public static final int MAX_LEVEL = 3;
+    /**
+     * 三档（装备技能 3 级封顶）。
+     *
+     * <p>批 15 收敛：<b>装备技能等级上限的唯一真源 = {@link ArmorSkillRuntime#EQUIPMENT_SKILL_MAX_LEVEL}</b>
+     * （那里是真实等级的钳位处）。本常量是那个上限在本表里的<b>别名</b>，值逐位不变（仍是 3）。</p>
+     */
+    public static final int MAX_LEVEL = ArmorSkillRuntime.EQUIPMENT_SKILL_MAX_LEVEL;
 
     /**
      * 分叉点（{@code t} 的下标常量）：第 {@code i} 个分叉点 = {@code FORK_POINTS[i]}。
@@ -104,9 +111,9 @@ public final class StarShockConfigs {
     public record Config(int cooldownSeconds, int chargeSeconds, float mainDamage, int maxMainWaves,
                          double orbitChanceCap, int tapCost, int holdCostPerSecond) {
 
-        /** 蓄力上限的 tick 数（{@code chargeSeconds × 20}）。 */
+        /** 蓄力上限的 tick 数（{@code chargeSeconds × }{@link ChargeConfigs#TICKS_PER_SECOND}）。 */
         public int chargeTicks() {
-            return Math.max(1, chargeSeconds * 20);
+            return Math.max(1, chargeSeconds * ChargeConfigs.TICKS_PER_SECOND);
         }
     }
 
@@ -309,6 +316,6 @@ public final class StarShockConfigs {
             return 0;
         }
         int chargedTicks = Math.min(heldTicks, config.chargeTicks());
-        return (int) ((long) chargedTicks * config.holdCostPerSecond() / 20L);
+        return (int) ((long) chargedTicks * config.holdCostPerSecond() / ChargeConfigs.TICKS_PER_SECOND);
     }
 }
