@@ -72,8 +72,11 @@ import java.util.List;
  *       本类<b>不读施放者的位置</b>（没有 {@code shooter.position()} / {@code shooter.getX()}）；
  *       范围查询也把施放者排除在外（同 {@code BowHitEffects#applyDisarm} 那条"自己的范围效果不落在
  *       自己身上"的既有形状）。⚠ 批 19 起"落点"是箭打中的那只生物 ⇒ 若箭打中的<b>正是施放者本人</b>
- *       （例如朝正上方射、箭落回自己头上），落点就是他自己 —— 那条极端形状本批<b>没有</b>加判据，
- *       见批 19 报告的"没做 / 拿不准"一节；</li>
+ *       （例如朝正上方射、箭落回自己头上），落点就会是他自己 —— 那条极端形状批 19 <b>没有</b>加判据
+ *       （作者 2026-10-07 实机踩到），<b>批 20 已补上</b>：闸门落在<b>调用方</b>
+ *       （{@code JadeTopazBowEventHandler#onProjectileImpact} 在"本技能的箭命中主人"时直接
+ *       {@code setCanceled(true)} 并返回 ⇒ 本类根本不会被调到），本类因此仍然只需要"看 impact"
+ *       这一个动作；</li>
  *   <li><b>原版闪电</b>：刻意<b>不</b>调 {@code setVisualOnly(true)} —— 作者明确选了会点燃、
  *       会破坏地形的原版闪电（视觉版闪电什么都不做）。</li>
  * </ul>

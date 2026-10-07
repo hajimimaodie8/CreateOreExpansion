@@ -45,6 +45,9 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  *         {@code BowAstralBarrageLauncher#isBarrageArrow} 为真且命中者就是箭的主人时，
  *         <b>取消这一次命中</b>（原版语义：这次命中不处理、箭继续飞）。判据与施加面都在
  *         那一处，本类不重复写"谁是主人"。</li>
+ *     <li><b>雷鸣弓「雷鸣神力」那一发同样不许命中施放者</b>（2026-10-07 批 20）：
+ *         同一处、同形的一支 —— 箭上登记着本技能的 id 且命中者就是箭的主人时，
+ *         <b>取消这一次命中</b>。理由与逐环链见下面「批 20」那段。</li>
  * </ul>
  *
  * <p><b>基础效果的生效范围（2026-10-03 弓技能批 1 第 5 条）</b>：原先"任何玩家的任何箭"都会滚
@@ -76,6 +79,25 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  * <p>⚠ <b>打空 / 打墙没有表现</b>：本处理器最上面那几道闸门要求事件结果是
  * {@code EntityHitResult} 且命中一个 {@link LivingEntity} ⇒ 触发条件就是作者那句
  * "击中生物之后"（箭照原版那样继续飞 / 插在地上）。</p>
+ *
+ * <p><b>2026-10-07 批 20：把批 19 留下的那道缝补上 —— 施放者本人不是本技能的目标</b>
+ * （作者原话，逐字）：</p>
+ * <blockquote>「我闲得没事，用雷鸣弓，背包里没有箭，按住 H 往天空里射了一箭，最后相当于这一箭
+ * 自己射自己。结果出现了一堆闪电、一堆霹雳、一堆缓慢，一堆带正电、带负电，又一堆爆炸……」</blockquote>
+ * <p>批 19 的报告里<b>自己点名过</b>这条极端形状（"朝正上方射、箭落回自己头上时，落点就是施放者
+ * 自己 —— 那一批没加判据"）⇒ 本批就修它。链是（逐环都有代码出处）：箭飞出去再落回施放者 ⇒
+ * 命中事件命中一个 {@link LivingEntity}（就是他自己）⇒ ① 下面的基础概率效果落在他自己身上
+ * （{@link #applyBaseEffects}，20% 缓慢那一支就是作者说的"一堆缓慢"）；
+ * ② 雷鸣神力那一支在 {@code hit.getLocation()}（他自己的包围盒）释放 ⇒
+ * {@code BowThunderMightLauncher#strikeAt} 的范围查询把他排除在<b>电荷</b>之外，但<b>真雷</b>正好
+ * 劈在他脚下 ⇒ 原版雷击给他染一笔随机电荷（{@code LightningEventHandler}）⇒ 下一次自击掷出
+ * 相反极性时当场中和（{@code ChargeApi#apply} 的异极分支：伤害 + 两色尘埃 + 一颗闪光 = 作者说的
+ * "一堆爆炸"，再留一条电荷残留给四周染电）。</p>
+ * <p>修法与上面星界那条<b>同形、同一处</b>：{@code arrow.getOwner() == target} 且这一发被登记成
+ * 雷鸣神力（{@link #BOW_THUNDER_MIGHT_ID} 与箭上那个 {@code TAG_SKILL} 相等）⇒
+ * {@code event.setCanceled(true)} 并返回 —— 这一次命中不处理、箭继续飞。
+ * ⚠ <b>只排除施放者本人</b>：队友 / 宠物 / 其余生物照旧有效；⚠ 判据只认<b>本技能</b>那个 id，
+ * 不按技能键的普通射击仍是原版形状（本批不动它）。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class JadeTopazBowEventHandler {
@@ -129,6 +151,41 @@ public class JadeTopazBowEventHandler {
 		if (!JadeTopazBowItem.isFromOurBow(arrow))
 			return;
 
+		// 技能标记的三个读数<b>提前到这里</b>（2026-10-07 批 20）：紧接着的那道"施放者不许被
+		// 自己的雷鸣神力打中"的闸门要用它。键仍只有这一对（{@link JadeTopazBowItem#TAG_SKILL} /
+		// {@code TAG_SKILL_LEVEL}），而<b>读数也仍然只有这一处</b>——原来那两个"没有技能就什么都不做"
+		// 的提前返回留在下面的分发处（⇒ 普通箭的基础概率效果一个字未变）。
+		// ⚠ 空串经 {@code tryParse} 得到 {@code null}，而下面每一处比较都是 {@code 常量.equals(id)}
+		// ⇒ 天然为 false，不需要在这里补一道"没有 id 就返回"。
+		String skillId = arrow.getPersistentData().getString(JadeTopazBowItem.TAG_SKILL);
+		ResourceLocation id = ResourceLocation.tryParse(skillId);
+		int level = arrow.getPersistentData().getInt(JadeTopazBowItem.TAG_SKILL_LEVEL);
+
+		// ★ 2026-10-07 批 20：<b>雷鸣神力那一发不许命中施放者本人</b>——与上面"星界弹幕"那一支
+		//   <b>同形、同一处</b>，只有判据不同：星界那条必须坐在来源闸门<b>之前</b>（弹幕箭不是弓射出来的、
+		//   不带来源标记），这一条坐在来源闸门<b>之后</b>（本技能的箭一定带来源标记），因为它的判据是
+		//   "这一发被登记成了雷鸣神力"（箭上那个 {@code TAG_SKILL} 的字符串等于本技能的注册 id）。
+		//   <p><b>为什么必须有这一条</b>（批 19 留下的接缝，作者 2026-10-07 实机踩到：<i>"按住 H 往天空里
+		//   射了一箭，最后相当于这一箭自己射自己"</i>）：批 19 把结算点从"松手那一刻的射线"搬到
+		//   "<b>箭的命中点</b>"之后，朝正上方射出的那一箭落回施放者头上时，这个命中点<b>就是他自己</b> ⇒
+		//   ① 紧跟着的基础概率效果（20% 缓慢 / 20% 凋零 / 10% 嬗乱 + 缴械主手）落在他自己身上；
+		//   ② 真雷那 20% / 40% / 60% 劈在他自己脚下 —— {@code BowThunderMightLauncher#strikeAt}
+		//      的范围查询虽然排除了施放者（电荷不会落到他头上），但真雷的落点是形参 {@code impact}，
+		//      而那正是他本人 ⇒ 原版雷击经既有 {@code LightningEventHandler} 给他染一笔随机电荷；
+		//      下一次自击若掷出相反极性，当场走 {@code ChargeApi#apply} 的异极分支中和
+		//      （伤害 + 两色尘埃 + 一颗闪光 + 一条电荷残留），残留再给四周染电 ⇒
+		//      作者看到的那一串"一堆闪电 / 一堆霹雳 / 一堆缓慢 / 一堆正电负电 / 一堆爆炸"。
+		//   <p>取消的语义与上面那一支<b>逐字相同</b>：{@code event.setCanceled(true)} ⇒ 这次命中不处理、
+		//   箭继续飞（照原版落在地上、插进地里）——"施放者被自己的技能打"在代码里不再有入口。
+		//   ⚠ <b>只排除施放者本人</b>（与星界那条同一条口径）：队友 / 宠物 / 其余生物照旧是该技能的
+		//   有效目标，本批一个字不动。⚠ 判据只认<b>本技能</b>那个 id：不按技能键的普通射击在这一点上
+		//   仍是原版形状（自己的箭落回自己头上照原版结算），本批不动它（见批 20 报告的
+		//   "没做 / 拿不准"一节）。
+		if (arrow.getOwner() == target && BOW_THUNDER_MIGHT_ID.equals(id)) {
+			event.setCanceled(true);
+			return;
+		}
+
 		// 基础概率效果（普通箭与技能箭均触发）
 		applyBaseEffects(player, target);
 
@@ -138,13 +195,12 @@ public class JadeTopazBowEventHandler {
 		applyMetaArrowEssence(arrow, target);
 
 		// 技能效果分发：按箭上携带的技能 id 与等级（一技能多等级，等级决定效果数值）
-		String skillId = arrow.getPersistentData().getString(JadeTopazBowItem.TAG_SKILL);
+		// ⚠ 这两个闸门（"没有技能标记" / "标记认不出来"）必须留在<b>这里</b>：它们上面那三件事
+		//   （来源闸门、基础概率效果、元矢自生的魔素）对普通箭照样要发生。
 		if (skillId.isEmpty())
 			return;
-		ResourceLocation id = ResourceLocation.tryParse(skillId);
 		if (id == null)
 			return;
-		int level = arrow.getPersistentData().getInt(JadeTopazBowItem.TAG_SKILL_LEVEL);
 
 		if (BOW_CURSE_ID.equals(id)) {
 			BowCurseConfig config = configFor(id, level, BowCurseConfig.class);
