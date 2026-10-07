@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.weapon;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.AutoSkillConfig;
 
 import java.util.List;
@@ -44,13 +45,13 @@ public class BloodPactConfig extends AutoSkillConfig {
     }
 
     /**
-     * 冷却秒数（= {@link #cooldownTicks} / 20）。
+     * 冷却秒数（= {@link #cooldownTicks} / {@link ChargeConfigs#TICKS_PER_SECOND}）。
      *
      * <p>存在的理由：批 2 无论选哪个冷却载体都要换算（{@code CoeSkillSupport.cooldownTicks}
      * 收的是秒、{@code ToolSkillCooldown.startTicks} 收的是 tick），换算只留这一处。</p>
      */
     public int cooldownSeconds() {
-        return cooldownTicks / 20;
+        return cooldownTicks / ChargeConfigs.TICKS_PER_SECOND;
     }
 
     @Override

@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.equipment.armor.skill;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.StarShockConfigs;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
@@ -70,12 +71,14 @@ final class StarShockWaveLauncher {
     private static final double ORBIT_TURNS_PER_SECOND = 1.0D;
 
     /**
-     * <b>环绕角速度（弧度/tick）</b> = 2π × 圈/秒 ÷ 20；1 圈/秒 时 = <b>2π/20 ≈ 0.3142</b>。
+     * <b>环绕角速度（弧度/tick）</b> = 2π × 圈/秒 ÷ {@link ChargeConfigs#TICKS_PER_SECOND}；
+     * 1 圈/秒 时 = <b>2π/20 ≈ 0.3142</b>。
      *
      * <p>单位是<b>弧度/tick</b>（不是度/tick）：位置公式里直接进 {@code Math.cos/sin}，
      * 少一次单位换算、少一个"度还是弧度"的歧义点。</p>
      */
-    private static final double ORBIT_ANGULAR_SPEED = 2.0D * Math.PI * ORBIT_TURNS_PER_SECOND / 20.0D;
+    private static final double ORBIT_ANGULAR_SPEED =
+        2.0D * Math.PI * ORBIT_TURNS_PER_SECOND / (double) ChargeConfigs.TICKS_PER_SECOND;
 
     /** <b>环绕初始相位</b>（弧度）：需求 §3.3(b) 给的是 <b>0</b>（出生在基向量 u 正方向一侧）。 */
     private static final double ORBIT_PHASE = 0.0D;

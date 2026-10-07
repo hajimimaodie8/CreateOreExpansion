@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllModItemTags;
 import com.hjmmd_8.createoreexpansion.common.SeriesTraits;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.util.RandomSource;
@@ -48,7 +49,7 @@ public class TransmutationDisorderEffect extends MobEffect {
 
 		int level = amplifier + 1;
 
-		if (entity.tickCount % 20 == 0)
+		if (entity.tickCount % ChargeConfigs.TICKS_PER_SECOND == 0)
 			applyDamage(entity, level);
 
 		if (entity instanceof Player player) {
@@ -91,7 +92,7 @@ public class TransmutationDisorderEffect extends MobEffect {
 	}
 
 	private void reduceInventoryItems(Player player, int level) {
-		int interval = Math.max(1, 20 / level);
+		int interval = Math.max(1, ChargeConfigs.TICKS_PER_SECOND / level);
 		if (player.tickCount % interval != 0)
 			return;
 

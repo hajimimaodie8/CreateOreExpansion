@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.charger.block;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
 import com.hjmmd_8.createoreexpansion.util.SpeedBands;
 import java.awt.Color;
@@ -180,7 +181,8 @@ public abstract class AbstractCreateChargerBlockEntity extends KineticBlockEntit
 	protected int getIntervalTicks() {
 		float rpm = Math.abs(getSpeed());
 		float interval = Mth.clamp(10f - 9f * (rpm - 1) / 255f, 1f, 10f);
-		return Math.max(1, Math.round(interval * 20f));
+		// 批 15：interval 是"秒"，乘的是一秒的 tick 数（问唯一换算因数，与原来的 *20f 逐位相同）。
+		return Math.max(1, Math.round(interval * (float) ChargeConfigs.TICKS_PER_SECOND));
 	}
 
 	/**

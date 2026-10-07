@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.armor.skill;
 
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.StarShockConfigs;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
@@ -54,7 +55,8 @@ final class StarShockReport {
                 + "共发 {} 枚主波；环绕波：掷骰 {} 次（本次最高概率 {}）命中 {} 次 → 生成 {} 枚；"
                 + "本次总耗能 {} 点（点按 {} + 长按 {}）",
             reason, cast.level, waveLevel, WaveLevels.glyph(waveLevel),
-            heldTicks, StarShockRuntime.fmt2(heldTicks / 20.0D), cast.config.chargeSeconds(),
+            heldTicks, StarShockRuntime.fmt2(heldTicks / (double) ChargeConfigs.TICKS_PER_SECOND),
+            cast.config.chargeSeconds(),
             StarShockRuntime.fmt2(t),
             cast.fired,
             cast.orbitRolls, StarShockRuntime.fmt2(cast.orbitPeakChance), cast.orbitHits, cast.orbitSpawned,

@@ -9,6 +9,7 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorCooldownClient;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.tooltip.SkillsTooltipHandler;
 import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.FallGuardConfigs;
@@ -301,7 +302,7 @@ public final class EquipmentSkillHud {
                 ? StarShockRuntime.holdCost(level, held) + StarShockConfigs.config(level).tapCost()
                 : ArmorSkillRuntime.holdCost(held, holdSeconds, holdTotalCost);
             lines.add(new Line(Component.translatable(HOLD_PREVIEW_KEY,
-                oneDecimal(held / 20.0F),
+                oneDecimal(held / (float) ChargeConfigs.TICKS_PER_SECOND),
                 oneDecimal(holdSeconds),
                 cost, holdTotalCost), COLOR_SKILL));
         }

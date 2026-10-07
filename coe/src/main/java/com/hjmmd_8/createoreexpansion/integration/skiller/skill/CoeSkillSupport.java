@@ -160,7 +160,7 @@ public final class CoeSkillSupport {
      *
      * <h2>三态（为什么不是"小于等于 0 就回落"）</h2>
      * <ol>
-     *   <li><b>{@code cooldownSeconds > 0}</b> ⇒ {@code 秒数 × 20} tick。四条调用方
+     *   <li><b>{@code cooldownSeconds > 0}</b> ⇒ {@code 秒数 × }{@link SkillCooldowns#TICKS_PER_SECOND} tick。四条调用方
      *       （剥取 / 夺取 / 弓那两条 / 三条弓专属）今天<b>全部</b>走这一支
      *       （3~12 秒，一个 0 都没有）⇒ <b>本批行为零变化</b>；</li>
      *   <li><b>{@code cooldownSeconds == 0}</b> ⇒ <b>0 tick = 显式"无冷却"</b>，调用方不写冷却。
@@ -189,7 +189,8 @@ public final class CoeSkillSupport {
      */
     public static int cooldownTicks(ItemStack stack, int cooldownSeconds) {
         if (cooldownSeconds > 0) {
-            return cooldownSeconds * 20;
+            // 批 15：秒 → tick 走 core 的唯一换算因数（SkillCooldowns.TICKS_PER_SECOND）。
+            return cooldownSeconds * SkillCooldowns.TICKS_PER_SECOND;
         }
         if (cooldownSeconds == 0) {
             return 0;

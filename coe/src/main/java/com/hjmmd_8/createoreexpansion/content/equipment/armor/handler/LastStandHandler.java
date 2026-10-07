@@ -4,6 +4,7 @@ import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillFx;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.skill.ArmorSkillRuntime;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.LastStandConfigs;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -152,7 +153,7 @@ public final class LastStandHandler {
         if (seconds <= 0) {
             return;
         }
-        int ticks = seconds * 20;
+        int ticks = seconds * ChargeConfigs.TICKS_PER_SECOND;
         int lift = clamped - 1;
         // 原版不死图腾那一组（LivingEntity#checkTotemDeathProtection，逐字同 amplifier）：
         player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, ticks, 1 + lift));

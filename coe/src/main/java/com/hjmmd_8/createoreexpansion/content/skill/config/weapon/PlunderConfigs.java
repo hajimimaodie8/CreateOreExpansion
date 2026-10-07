@@ -1,5 +1,6 @@
 package com.hjmmd_8.createoreexpansion.content.skill.config.weapon;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 
 /**
@@ -55,23 +56,23 @@ public final class PlunderConfigs {
 
     /** Lv1 黄玉剑 —— 50%空/25%武器/25%装备；吸血3；吸收II·3秒；冷却4秒 */
     public static final Level LEVEL_1 = new Level(25, 25, 0, false, 0F,
-            DISP_DROP, DISP_DROP, 3, 3 * 20, 1, 4, 100);
+            DISP_DROP, DISP_DROP, 3, 3 * ChargeConfigs.TICKS_PER_SECOND, 1, 4, 100);
 
     /** Lv2 蓝宝石剑 —— 40%空/30%武器/30%装备；吸血4；吸收II·5秒；冷却6秒 */
     public static final Level LEVEL_2 = new Level(30, 30, 0, false, 0F,
-            DISP_DROP, DISP_DROP, 4, 5 * 20, 1, 6, 100);
+            DISP_DROP, DISP_DROP, 4, 5 * ChargeConfigs.TICKS_PER_SECOND, 1, 6, 100);
 
     /** Lv3 预留 —— 30%空/30%武器/30%装备/10%两者；吸血5；吸收III·7秒；冷却8秒 */
     public static final Level LEVEL_3 = new Level(30, 30, 10, false, 0F,
-            DISP_DROP, DISP_DROP, 5, 7 * 20, 2, 8, 100);
+            DISP_DROP, DISP_DROP, 5, 7 * ChargeConfigs.TICKS_PER_SECOND, 2, 8, 100);
 
     /** Lv4 预留 —— 武器100%夺 + 装备50%夺；吸血6；吸收III·9秒；冷却10秒 */
     public static final Level LEVEL_4 = new Level(0, 0, 0, true, 0.5F,
-            DISP_DROP, DISP_DROP, 6, 9 * 20, 2, 10, 100);
+            DISP_DROP, DISP_DROP, 6, 9 * ChargeConfigs.TICKS_PER_SECOND, 2, 10, 100);
 
     /** Lv5 预留 —— 武器100%收缴背包；装备25%收缴/50%只夺/25%空；吸血7；吸收IV·11秒；冷却12秒 */
     public static final Level LEVEL_5 = new Level(0, 0, 0, true, 0.75F,
-            DISP_PICKUP, DISP_PICKUP, 7, 11 * 20, 3, 12, 100);
+            DISP_PICKUP, DISP_PICKUP, 7, 11 * ChargeConfigs.TICKS_PER_SECOND, 3, 12, 100);
 
     /**
      * 由等级定义构造 {@link PlunderConfig}，供 {@code AllSkills} 注册夺取技能使用。

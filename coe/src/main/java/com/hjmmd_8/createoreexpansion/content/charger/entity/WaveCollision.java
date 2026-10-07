@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 import net.minecraft.world.phys.Vec3;
@@ -62,7 +63,7 @@ final class WaveCollision {
 		if (sameFiringBatch(host, other)) {
 			// 诊断日志：豁免不是"没撞上"，而是"撞上了但按同批跳过"——出事时这一行能直接区分两者。
 			// 节流：并排飞的多枚波彼此一直在命中盒里，若每 tick 打一行会把事件流日志刷爆。
-			if (host.tickCount % 20 == 0) {
+			if (host.tickCount % ChargeConfigs.TICKS_PER_SECOND == 0) {
 				WaveDiag.trace("波波碰撞豁免（同一次发射，批次 {}）：{} 级 × {} 级 相遇但互不爆炸、互不湮灭",
 					host.getFiringBatch(), WaveLevels.glyph(host.waveLevel), WaveLevels.glyph(other.waveLevel));
 			}

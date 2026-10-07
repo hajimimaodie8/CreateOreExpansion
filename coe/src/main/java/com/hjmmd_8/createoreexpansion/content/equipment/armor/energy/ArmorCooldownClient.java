@@ -3,6 +3,8 @@ package com.hjmmd_8.createoreexpansion.content.equipment.armor.energy;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
+
 import net.minecraft.client.Minecraft;
 
 /**
@@ -36,7 +38,7 @@ public final class ArmorCooldownClient {
         }
         Minecraft minecraft = Minecraft.getInstance();
         long now = minecraft.level == null ? 0L : minecraft.level.getGameTime();
-        UNTIL.put(skillId, now + seconds * 20L);
+        UNTIL.put(skillId, now + seconds * (long) ChargeConfigs.TICKS_PER_SECOND);
     }
 
     /** 该技能还剩几秒（向上取整；没冷却或已到点返回 0）。 */
@@ -57,7 +59,8 @@ public final class ArmorCooldownClient {
             UNTIL.remove(skillId);
             return 0;
         }
-        return (int) ((left + 19) / 20);
+        // 向上取整（原式 (left + 19) / 20 的等价改写）：除以唯一换算因数，加数 = 除数 − 1。
+        return (int) ((left + ChargeConfigs.TICKS_PER_SECOND - 1) / ChargeConfigs.TICKS_PER_SECOND);
     }
 
     /** 离开世界时清空（下次进来由服务端重新通知）。 */

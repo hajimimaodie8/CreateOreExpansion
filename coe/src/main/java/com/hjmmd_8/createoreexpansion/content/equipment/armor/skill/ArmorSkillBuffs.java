@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.handler.LastStandHandler;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.ChargeDashConfigs;
 import com.hjmmd_8.createoreexpansion.content.skill.config.equipment.LastStandConfigs;
 
@@ -90,7 +91,7 @@ final class ArmorSkillBuffs {
             // 登记"拖尾存续到什么时候"：拖尾要覆盖整个迅捷 buff，而不只是按住的那几 tick。
             // 同时把**这一刻生效的那一套**记住（DashTrail）：松手后拖尾按它上色，换甲不变色。
             long now = player.level().getGameTime();
-            long until = now + seconds * 20L;
+            long until = now + seconds * (long) ChargeConfigs.TICKS_PER_SECOND;
             DashTrail registered = DASH_TRAIL.get(player.getUUID());
             if (registered == null || registered.until() <= until) {
                 // 与旧口径一致地取"最长的那个到期时刻"（段位越高给得越久 ⇒ 真的会往后延）；
@@ -99,7 +100,7 @@ final class ArmorSkillBuffs {
             }
             player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                 net.minecraft.world.effect.MobEffects.MOVEMENT_SPEED,
-                seconds * 20, segment - 1, false, true, true));
+                seconds * ChargeConfigs.TICKS_PER_SECOND, segment - 1, false, true, true));
         }
     }
 

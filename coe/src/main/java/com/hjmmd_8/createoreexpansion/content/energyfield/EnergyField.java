@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.energyfield;
 
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
+
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -141,7 +143,8 @@ public final class EnergyField {
 			case ACCELERATION -> {
 				// 电场式：沿场方向加速（正电荷沿 direction，负电荷反向）。
 				// 力度 = 每 tick 增量 ≈ s/20 格/秒（1 秒内把沿场速度分量推到 s）。
-				return vel.add(direction.scale(q * s / 20.0));
+				// 批 15：格/秒 → 格/tick 问唯一换算因数（除数写作 (double) 常量，与原来的 /20.0 逐位相同）。
+				return vel.add(direction.scale(q * s / (double) ChargeConfigs.TICKS_PER_SECOND));
 			}
 			case DEFLECTION -> {
 				// 磁场式（洛伦兹）：力 = q·v×B，恒 ⊥ 速度 → 磁场不做功，速率严格不变。
@@ -153,7 +156,9 @@ public final class EnergyField {
 				Vec3 axis = direction; // 单位向量（构造时已归一化）
 				double vPar = vel.dot(axis);
 				// 平行分量原样保留；仅旋转垂直分量（等价于整体旋转后自动保留平行分量）
-				double theta = -charge.sign() * (s / 20.0) / 20.0; // 每 tick 旋转角 = ω·(1/20s)
+				double theta = -charge.sign()
+					* (s / (double) ChargeConfigs.TICKS_PER_SECOND)
+					/ (double) ChargeConfigs.TICKS_PER_SECOND; // 每 tick 旋转角 = ω·(1/20s)
 				double cos = Math.cos(theta);
 				double sin = Math.sin(theta);
 				// Rodrigues：v' = v·cosθ + (axis×v)·sinθ + axis·(axis·v)·(1−cosθ)

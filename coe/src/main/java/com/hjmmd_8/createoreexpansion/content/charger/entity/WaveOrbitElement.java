@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 
 import net.minecraft.server.level.ServerLevel;
@@ -163,7 +164,7 @@ final class WaveOrbitElement {
 				"环绕波出生：{} 级波（{}），父波 UUID {}，批次 {}（继承父波），半径 {} 格、角速度 {} 弧度/tick（{} 圈/秒）、起始相位 {}；位置 = 父波位置 + r×(u·cosθ + v·sinθ) 逐 tick 改写",
 				host.waveLevel, WaveLevels.glyph(host.waveLevel), host.orbitAnchorUuid, host.getFiringBatch(),
 				fmt2(host.orbitRadius), fmt2(host.orbitAngularSpeed),
-				fmt2(host.orbitAngularSpeed * 20.0D / (Math.PI * 2.0D)),
+				fmt2(host.orbitAngularSpeed * (double) ChargeConfigs.TICKS_PER_SECOND / (Math.PI * 2.0D)),
 				fmt2(host.orbitPhase));
 		} else if (host.tickCount % ORBIT_HEARTBEAT_TICKS == 0) {
 			WaveDiag.trace(

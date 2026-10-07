@@ -9,6 +9,7 @@ import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeItems;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationFluids;
 import com.hjmmd_8.createoreexpansion.content.equipment.medallion.IMedallion;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.player.Player;
@@ -71,7 +72,7 @@ public final class TransmutationEventHandler {
 			if (IMedallion.isWearing(player, CoeItems.STELLARSTONE_STRESS_MEDALLION.get()))
 				return;
 			int contactTicks = FLUID_CONTACT_TICKS.merge(player.getUUID(), 1, Integer::sum);
-			int level = 1 + contactTicks / (15 * 20);
+			int level = 1 + contactTicks / (15 * ChargeConfigs.TICKS_PER_SECOND);
 			player.addEffect(new MobEffectInstance(TransmutationEffects.TRANSMUTATION_DISORDER, 60, level - 1));
 		} else {
 			FLUID_CONTACT_TICKS.remove(player.getUUID());

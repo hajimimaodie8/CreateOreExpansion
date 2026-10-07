@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.common.AllConfig;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.util.BarTooltipRender;
 import com.hjmmd_8.createoreexpansion.util.GoggleUtil;
@@ -213,7 +214,8 @@ public class SapphireStressChargerBlockEntity extends AbstractCreateChargerBlock
 	protected int getIntervalTicks() {
 		float rpm = Math.abs(getSpeed());
 		float interval = Mth.clamp(6.0F - 5.5F * (rpm - 1.0F) / 254.0F, 0.5F, 6.0F);
-		return Math.max(1, Math.round(interval * 20.0F));
+		// 批 15：interval 是"秒"，乘的是一秒的 tick 数（问唯一换算因数，与原来的 *20.0F 逐位相同）。
+		return Math.max(1, Math.round(interval * (float) ChargeConfigs.TICKS_PER_SECOND));
 	}
 
 	/**

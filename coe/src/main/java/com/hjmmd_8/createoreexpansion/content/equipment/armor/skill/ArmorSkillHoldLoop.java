@@ -8,6 +8,7 @@ import org.jetbrains.annotations.Nullable;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.ArmorSet;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.field.FieldChargeRuntime;
+import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.leaf.skiller.server.PlayerPressedKeys;
 
 import net.minecraft.server.level.ServerPlayer;
@@ -69,7 +70,8 @@ final class ArmorSkillHoldLoop {
                 // 不生效、松开也没给" —— 就是被这两条静默挡掉的，玩家只能感到"随机失效"）。
                 if (!ArmorSkillRuntime.isReady(player, skill)) {
                     ArmorSkillRuntime.notifyBlocked(player, slot, "createoreexpansion.equip_skill.cooldown",
-                        Math.max(1, ArmorSkillRuntime.cooldownLeft(player, skill) / 20));
+                        Math.max(1, ArmorSkillRuntime.cooldownLeft(player, skill)
+                            / ChargeConfigs.TICKS_PER_SECOND));
                     return;
                 }
                 if (ArmorEnergy.totalEnergy(player) <= 0) {
