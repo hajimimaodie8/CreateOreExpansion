@@ -978,7 +978,9 @@ public final class BowAstralBarrageConfigs {
      * <b>主圈下方那几道过渡环的 Y</b>（世界坐标）—— 有高度差时把落差"接"起来。
      *
      * <p>画法：从圆心正下方按 {@link #TRANSITION_RING_SPACING} 等距排
-     * {@link #TRANSITION_RING_COUNT} 道环（与主圈同半径、同色，只是每一道更淡），
+     * {@link #TRANSITION_RING_COUNT} 道环（与主圈同半径、同色、<b>同一种粒子带、同一个闪烁相位</b>
+     * —— 2026-10-07 批 18 起它们和主圆环一样是粒子，不再画线；见
+     * {@code BowAstralBarragePreviewRenderer#emitPreviewParticles}），
      * <b>落进地面以下就停</b>（不会把环画进地里）。</p>
      *
      * <p>只在<b>不贴地</b>时才有内容：贴地时圈本来就在地面上，没有落差不需衔接

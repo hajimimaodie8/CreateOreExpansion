@@ -1,6 +1,5 @@
 package com.hjmmd_8.createoreexpansion.integration.skiller.client;
 
-import com.hjmmd_8.createoreexpansion.client.render.types.AllRenderTypes;
 import com.hjmmd_8.createoreexpansion.common.CoeCore;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowTier;
@@ -9,14 +8,9 @@ import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowAstralBarra
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.foundation.util.SkillOutlineColors;
 
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -25,7 +19,6 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 /**
  * <b>星界弓「星元波置」的圆形技能范围预选框</b>（弓技能批 9，作者 2026-10-05）。
@@ -45,22 +38,22 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *       的 {@link RenderLevelStageEvent.Stage#AFTER_TRANSLUCENT_BLOCKS} 自绘 —— 与
  *       {@code content/energyfield/EnergyFieldGoggleOutlineRenderer} <b>逐条同形</b>
  *       （那条是"场区域预览框"，跟本类同一件事：把一块区域画成线框）；</li>
- *   <li><b>绘制形状</b>：批 12 起<b>主边界不再画线</b>，外观由 {@link #emitBoundaryParticles}
- *       的粒子环带承担（批 13 起是"有宽度"的环带）—— 见下面的批 12 / 批 13 两节。
- *       仍然保留的那条线渲染路径（不透明 {@link RenderType#LINES} + 穿透
- *       {@link AllRenderTypes#LINES_TRANSPARENT}，alpha 再乘 0.3）<b>只服务批 11 的过渡环</b>
- *       （alpha 再乘 {@link #TRANSITION_RING_ALPHA_FACTOR}），顶点写法与
- *       {@code OutlineRenderer#renderEdge} 一字不差（{@code addVertex → setColor → setNormal}）；
- *       冲刷方式照 {@code CoeBlockOutlineRenderer#flush}（<b>必须自己 endBatch</b>：
- *       框架不替我们冲刷，漏了这一步的症状是"算完了却什么都看不到"）；
- *       相机位移也照它（{@code translate(-camPos)}，漏了框会被画到大约两倍距离外）。</li>
+ *   <li><b>绘制形状</b>：批 12 起主边界不再画线，<b>批 18 起连批 11 的过渡环也不画线</b> ——
+ *       整条预选框的外观<b>全部</b>由 {@link #emitBoundaryParticles} 的粒子环带承担
+ *       （主圆环与每一道过渡环都走同一个方法、同一套采样 / 子环 / 半宽 / 尺寸 / 抽稀 / 相位，
+ *       入口是 {@link #emitPreviewParticles}）—— 见下面的批 12 / 批 13 / 批 18 三节。
+ *       ⛔ 本类<b>没有任何自绘几何</b>：不取顶点缓冲、不写顶点、不 {@code endBatch} ——
+ *       批 17 那个 {@code java.lang.IllegalStateException: Not building!}（两个 consumer
+ *       同时活着，第二次 {@code getBuffer} 已把第一个判死）因此在结构上不可能回来。</li>
  * </ul>
  * <p>⚠ <b>为什么不是 Skiller 的 {@code StrategyRenderer}</b>：那条管线只调度
  * {@code ClientSkillCache} 里<b>实现 {@code StrategySkill} 的技能</b>（
  * {@code CoeBlockOutlineRenderer} / {@code CoeEntityOutlineRenderer} 就是这么被驱动的），
  * 而星界弓这条专属技能是 {@code BowExclusiveShotItemSkill implements
- * ItemSkill<BowShootSkillContext>} —— 它进不了那条桶，所以本类自己订阅游戏总线，
- * 但<b>用同一套渲染类型、同一个阶段、同一个顶点写法</b>。</p>
+ * ItemSkill<BowShootSkillContext>} —— 它进不了那条桶，所以本类自己订阅游戏总线。
+ * ⚠ 那条路给的是原版 {@code MultiBufferSource}（<b>框架不替你冲刷</b>，用它的渲染器必须
+ * 自己 {@code endBatch}，见 {@code CoeBlockOutlineRenderer#flush}）；<b>本类批 18 起
+ * 一个缓冲都不取</b>，所以那条契约与本类无关 —— 本类的"画"完全由客户端粒子承担。</p>
  *
  * <h2>2026-10-06 弓技能批 11（作者原话，逐字）</h2>
  * <blockquote>
@@ -103,11 +96,12 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *       （{@code SkillOutlineColors.STELLARSTONE_PINK}，仓库里五件星界工具用的同一色）。
  *       本类<b>不写任何 RGB / hex 字面量</b>，也不新造色值（作者："边界是一圈类似于能量波的
  *       粉色线条"——"粉色"取的就是弓自己那一色；批 12 换成粒子之后<b>这一条口径没变</b>：
- *       粒子色仍由本类的 red/green/blue 三个字段给出，而它们只从 {@code skillOutlineColor()} 取）；
- *       alpha 走既有的 {@link OutlineColors#ALPHA}（技能预览统一的 0.5）与既有的穿透层系数，
- *       批 12 起只由<b>过渡环</b>用（再乘 {@link #TRANSITION_RING_ALPHA_FACTOR}）——
- *       ⚠ 批 13 把主边界那条线删掉之后，{@code OutlineColors.ALPHA} 仍然被用着
- *       （批 9 的关卡 {@code bow9-preview-pink} 钉着这个名字，删掉这个名字就是删掉那条断言的一半）。</li>
+ *       粒子色仍由本类的 red / green / blue 三个字段给出，而它们只从
+ *       {@code skillOutlineColor()} 取一次）。
+ *       ⚠ <b>批 18 起本类不再有任何 alpha</b>：原版染色尘埃粒子（{@code DustParticleOptions}）
+ *       <b>没有 alpha 参数</b>，而最后一条自绘线（批 11 的过渡环）本批换成了同一种粒子带
+ *       ⇒ 那个 alpha 常量与两个 alpha 系数一并删除，"存在感"改由<b>尺寸脉动 + 概率抽稀</b>
+ *       这两条既有的表现手段表达（见 {@link #FLICKER_KEEP_CHANCE}）。</li>
  * </ul>
  *
  * <h2>★ 什么时候出现、什么时候消失（作者第 3 条）</h2>
@@ -127,9 +121,10 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * </ol>
  *
  * <h2>⛔ 零注册、零贴图、零模型、零语言键</h2>
- * <p>整条预选框是<b>代码画线 + 既有粒子</b>（批 12 起后半句成立）：不加物品/方块/实体/渲染器注册，
+ * <p>整条预选框<b>只剩既有粒子</b>（批 12 起主边界是粒子，<b>批 18 起过渡环也是粒子</b>，
+ * 自绘几何已整条删除）：不加物品/方块/实体/渲染器注册，
  * 不动任何 {@code textures/**} 或 {@code models/**}（用户资产红线），不写语言键、不跑 {@code runData}。
- * <b>批 12 的粒子也没有新增任何注册</b> —— 它用的是波自己那个既有构造口
+ * <b>批 12 / 批 18 的粒子都没有新增任何注册</b> —— 用的是波自己那个既有构造口
  * （{@link ChargerWaveFx#waveParticle(WaveTrailStyle, Vec3, float)}，原版尘埃粒子）与既有的
  * {@code Level#addParticle(..)}，见 {@link #emitBoundaryParticles}。</p>
  *
@@ -146,9 +141,9 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *       ⇒ 推满 15 格需要 220 tick（11 秒）的持续拉弓（原版弓的使用时长足够）；</li>
  *   <li><b>边界改成闪烁的粒子</b>：即 {@link #emitBoundaryParticles} —— 粒子类型与颜色口径
  *       <b>都取自既有来源</b>（波自己的构造口 + 弓自己那一色），"闪烁"由<b>同一个相位</b>
- *       驱动的尺寸脉动 + 概率性抽稀两条手段表达；原来那两层线退成
- *       {@link #TRANSITION_RING_ALPHA_FACTOR} 系数的<b>很淡底线</b>（形状参考，同时是批 11
- *       过渡环的共用画法）。性能量级：期望 6 颗/tick。</li>
+ *       驱动的尺寸脉动 + 概率性抽稀两条手段表达；⚠ 当时主边界那条线退成了"很淡底线"
+ *       （同时是批 11 过渡环的共用画法），而<b>批 18 把包括过渡环在内的最后一层线也删掉了</b>
+ *       （见下面批 18 一节）。性能量级：期望 6 颗/tick。</li>
  * </ol>
  *
  * <h2>2026-10-06 弓技能批 13（作者实测反馈，逐字）</h2>
@@ -178,8 +173,9 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  *   <li><b>尺寸</b>：{@link #WAVE_PARTICLE_SCALE} 0.45f → 0.62f（取仓里既有的
  *       {@code ChargerWaveFx#ORBIT_TRAIL_SCALE}，<b>没有自造新尺寸</b>）；</li>
  *   <li><b>线的去留</b>：<b>主边界那条线删掉</b>（作者看到的就是它）；
- *       {@link #ring} 这条渲染路径<b>保留给批 11 的过渡环</b>（那只在空中且有落差时出现）
- *       ⇒ 不新增第二条渲染路径，{@code OutlineColors.ALPHA} 也仍然被引用。</li>
+ *       当时那条 {@code ring(..)} 渲染路径<b>保留给批 11 的过渡环</b>（那只在空中且有落差时
+ *       出现）⇒ 不新增第二条渲染路径。⚠ <b>批 18 把这条剩下的线也换成了同一种粒子带，
+ *       整条渲染路径随之删除</b>（作者实测反馈：下面那两道过渡环还是"直接机械绘制的圆框"）。</li>
  * </ol>
  * <p>关卡：{@code bow13-density}（粒子密度下限，从源码里的三个常量与波自己的拖尾基数算出来）、
  * {@code bow13-band}（有宽度的环带）、{@code bow13-no-main-line}（主边界那条线不许回来）、
@@ -209,28 +205,61 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * 系数与段数未变（不许用"删掉穿透层/删掉过渡环"当修法），{@code bow17-other-two-consumer-site}
  * 钉住仓里另一处双 consumer 的写序。写序即修复本身，所以这三条都只能钉住"形状"，
  * <b>真正"不再崩"必须进游戏按原操作复验</b>（见本节末）。</p>
+ * <p>⚠ <b>批 18 之后这条写序不再是需要维护的东西</b>：那两层线连同 {@code ring(..)} /
+ * {@code vertex(..)} / 一切缓冲取用已被整条删除（过渡环改成同一种粒子带）——
+ * 崩溃的<b>形态</b>（两个 consumer 同时活着）因此结构上不可能出现。关卡
+ * {@code bow17-flush-between-layers} 随之改成钉"本文件零 {@code getBuffer} / 零 {@code endBatch} /
+ * 零线路径"，而 {@code bow17-other-two-consumer-site}（{@code CoeBlockOutlineRenderer} 那一处）
+ * <b>一个字节未动</b> —— 它是仓里仅剩的双 consumer 现场，也是"写完一层再取下一层"仍然
+ * 必须成立的证据。</p>
+ *
+ * <h2>2026-10-07 弓技能批 18（作者实测反馈，逐字）</h2>
+ * <blockquote>
+ * 就是飞在空中之后，上面一个圈是正常的粒子效果，为什么下面两个圈都是那种直接机械绘制的圆框
+ * </blockquote>
+ * <p>作者说的是批 11 那两道<b>过渡环</b>：批 13 把主圆环换成了粒子带，而过渡环照旧走
+ * {@code ring(..)} 画线（批 17 刚把它的写序修好）⇒ 悬空时"上面一圈是粒子、下面两圈是机械线框"。
+ * 本批<b>只动外观</b>（圆心 / 半径 / 上限 15 / 速率 0.05 / 弹幕条数 / 落差阈值 2.0 /
+ * 过渡环 2 道 × 间隔 1.5 格 一个都没动，全部仍只住 {@code BowAstralBarrageConfigs}）：</p>
+ * <ol>
+ *   <li><b>过渡环改用与主圆环同一套粒子带</b>：与主圆环<b>共用同一个发射实现</b>
+ *       {@link #emitBoundaryParticles}({@link ClientLevel}, {@code y})（它本来就收 Y），
+ *       由 {@link #emitPreviewParticles} 逐道 Y 调用 —— 采样数 / 子环数 / 半宽 / 尺寸 /
+ *       抽稀概率 / 相位<b>一个都没变</b>（同一条圆周、同一个半径，密度必须同值才"看起来是
+ *       同一种东西"）；相位仍是同一个 {@link #flickerPhase}（每 tick 只 +1 一次，
+ *       三道环同步呼吸 ⇒ 三层是同一个东西）；</li>
+ *   <li><b>线路径整条删除</b>：{@code ring(..)} / {@code vertex(..)} / {@code onRender} /
+ *       段数常量 / 两个 alpha 系数 / 全部渲染相关 import 一并消失
+ *       ⇒ 本类不再订阅 {@code RenderLevelStageEvent}、不再取任何顶点缓冲。
+ *       ⚠ 判据：<b>没有任何"取了 buffer 却没写 / 没冲刷"的形状残留</b>（那正是批 17 的病根）；
+ *       代码里连 {@code getBuffer} 这个词都不再出现，所以那种形状不可能复活 ——
+ *       关卡 {@code bow18-no-buffer} 钉着这条，并保留 {@code CoeBlockOutlineRenderer} 那条
+ *       影响面断言；</li>
+ *   <li><b>性能</b>：每道环仍是 {@value #WAVE_PARTICLE_COUNT} × {@link #WAVE_BAND_RINGS} ×
+ *       {@link #FLICKER_KEEP_CHANCE} = 27 颗/tick 期望、36 颗/tick 硬上限（逐道）；
+ *       悬空且两道过渡环都在时同时有 3 道环（1 主 + 真源 {@code TRANSITION_RING_COUNT} = 2）
+ *       ⇒ 合计<b>期望 81 颗/tick、硬上限 108 颗/tick</b>（见 {@link #FLICKER_KEEP_CHANCE}
+ *       里那条与波自己的拖尾 / 爆炸量级对标的算式）。</li>
+ * </ol>
+ * <p>关卡：{@code bow18-transition-particles}（过渡环也走粒子，负向：不许回到"过渡环只有
+ * {@code ring(..)} 没有粒子"）、{@code bow18-single-emitter}（粒子发射只有一处实现，
+ * 负向：复制第二份必红）、{@code bow18-no-buffer}（批 17 的崩溃形态不可能再出现，
+ * 负向：任何 {@code getBuffer} 复活必红）、{@code bow18-density}（主圆环 + 两道过渡环的
+ * 合计下限与硬上限，真源的过渡环条数逐值读入）、{@code bow18-geometry}（圆心 / 半径 /
+ * 上限 15 / 速率 0.05 / 落差阈值 2.0 / 过渡环 2 道 × 间隔 1.5 格 全部未变）。</p>
  *
  * <h2>⚠ 只有进游戏才看得见</h2>
  * <p>按 {@code AGENTS.md} 的"客户端渲染只有进游戏才看得见"：{@code compileJava} / {@code runData}
  * 都<b>不</b>跑渲染，本类的正确性最终只能在游戏里验收（按住专属键拉弓才看到粉色边界并向外推进、
  * 远端最多 <b>15</b> 格、<b>远看就是一枚平面上的粉色能量波：边界有宽度、粒子明显在闪烁流动，
- * 而不再是一圈细线</b>、平坡上圈贴地而飞在空中时留在准心平面、有落差处能看到过渡环、
+ * 而不再是一圈细线</b>、平坡上圈贴地而飞在空中时留在准心平面、
+ * <b>飞在空中时上面那一圈与下面两道过渡环是同一套闪烁粒子、不再有任何机械线框</b>、
  * 松手后箭与波几乎同时落地、放完圈才消失）。</p>
  *
  * @since 1.0.0
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID, value = Dist.CLIENT)
 public final class BowAstralBarragePreviewRenderer {
-
-    /** 圆环的段数（画得足够圆、顶点又少；纯表现参数，不进数值真源）。 */
-    private static final int RING_SEGMENTS = 64;
-
-    /**
-     * 穿透层的 alpha 系数（= {@code CoeBlockOutlineRenderer#TRANSPARENT_ALPHA_FACTOR} 同值）：
-     * 第二层用 {@link AllRenderTypes#LINES_TRANSPARENT}（无深度测试）画同样的圈，
-     * 被地形挡住时也还看得见一圈淡淡的边。
-     */
-    private static final float TRANSPARENT_ALPHA_FACTOR = 0.3F;
 
     // ==================== 批 13：边界 = 一条「有宽度、在流动」的平面能量波 ====================
     // 作者 2026-10-06（批 12 之后实测反馈，逐字）："预选框它还是一个圆形的，不应该是像能量波
@@ -249,8 +278,8 @@ public final class BowAstralBarragePreviewRenderer {
     // 0.2 格**里（于是亮成一团），而这个圈把 6 颗/tick 摊在 2π × 2 ≈ 12.6 格的圆周上
     // （半径 2 = BowAstralBarrageConfigs#radiusFor(1)）= 每格圆周约 3 颗、每颗目视只有约 0.05 格
     // ⇒ 线性覆盖率约 17%，远看就是"几个点"；而那条 0.22 系数的底线（见本批的取舍）带着完整的
-    // 圆周形状，人眼自然把它读成"一个圈"。
-    // 本批的画法（三个表现参数，全在本类 —— 与 RING_SEGMENTS / TRANSPARENT_ALPHA_FACTOR 同分工：
+    // 圆周形状，人眼自然把它读成"一个圈"（⚠ 那条线批 18 也已经删掉）。
+    // 本批的画法（表现参数全在本类 —— 与批 9 / 批 11 那些表现参数同分工：
     // "数值真源放玩法数字、渲染器放表现参数"）：
 
     /**
@@ -311,30 +340,26 @@ public final class BowAstralBarragePreviewRenderer {
     /**
      * 每个采样点这一 tick 被发出来的概率（表现参数）。
      *
-     * <p>0.75 ⇒ 期望每 tick <b>{@value #WAVE_PARTICLE_COUNT} × {@value #WAVE_BAND_RINGS} × 0.75
-     * = 27 颗</b>，硬上限（概率只减不增）<b>36 颗/tick</b>。稳态同屏期望约 27 × 10 ≈ 270 颗
-     * （0.62f 的尘埃期望寿命约 10 tick），仍然<b>低于本模组自己一次 5 级波爆炸的单发量</b>
-     * （{@code ChargerWaveFx#boomParticleCount(5)} = 155 主色 + 77 第二色 + 58 点缀 ≈ 348 颗），
-     * 约等于一次 20 枚波的弹幕拖尾总量（20 × 6 颗 × 7 tick ≈ 864）的三分之一。</p>
+     * <p><b>逐道环</b>：0.75 ⇒ 期望每 tick <b>{@value #WAVE_PARTICLE_COUNT} ×
+     * {@value #WAVE_BAND_RINGS} × 0.75 = 27 颗</b>，硬上限（概率只减不增）<b>36 颗/tick</b>；
+     * 稳态同屏期望约 27 × 10 ≈ 270 颗（0.62f 的尘埃期望寿命约 10 tick）。</p>
      *
-     * <p>概率 <b>只决定"这一颗发不发"</b>（不是决定每 tick 的总量），所以 36 是结构上限。</p>
+     * <p><b>★ 批 18：主圆环 + 两道过渡环的合计</b>（这是作者"上面一个圈是粒子、下面两个圈是
+     * 机械线框"那句话的代价面，也是本类现在的性能口径）：过渡环与主圆环<b>同参</b>
+     * ⇒ 悬空且两道过渡环都在时同时有 <b>3 道环</b>（1 主 + 真源
+     * {@code BowAstralBarrageConfigs#TRANSITION_RING_COUNT} = 2）：
+     * 期望 <b>27 × 3 = 81 颗/tick</b>、<b>硬上限 36 × 3 = 108 颗/tick</b>，
+     * 稳态同屏期望约 81 × 10 ≈ 810 颗。依据（对标模组自己既有的量级，不是凭空定的）：
+     * 本模组一次 <b>5 级波爆炸</b>的单发主批就是 {@code ChargerWaveFx#boomParticleCount(5)}
+     * = 155 颗（有第二色时再来一批、再加点缀）；一次 <b>20 枚波的弹幕拖尾</b>
+     * 稳态约 20 × 6 颗 × 7 tick ≈ 840 颗 ⇒ 本类的 810 颗<b>与一次满编弹幕同量级</b>，
+     * 而它只在"拉弓 + 悬空 + 有落差"这一小段时间里出现（贴地时 {@code transitionYs} 为空
+     * ⇒ 只剩 27 颗/tick，与批 13 逐值相同）。⚠ 概率<b>只减不增</b>，
+     * 所以 {@code 采样数 × 子环数 × 环数} 就是最坏情况（108），不是均值。</p>
+     *
+     * <p>概率 <b>只决定"这一颗发不发"</b>（不是决定每 tick 的总量），所以 36 是单道环的结构上限。</p>
      */
     private static final double FLICKER_KEEP_CHANCE = 0.75D;
-
-    /**
-     * <b>过渡环（批 11 那个"衔接落差"的环）的透明度系数</b>（表现参数，
-     * {@value #TRANSITION_RING_ALPHA_FACTOR}）。
-     *
-     * <p>⚠ <b>批 13 起这个系数只服务过渡环</b>：主边界那条线<b>已被删掉</b>（见
-     * {@link #onRender} 与类注释的批 13 一节 —— 作者看到的那"一圈很细的粉色线"就是它）。
-     * 过渡环<b>保留</b>它、也保留 {@link #ring} 这条渲染路径，理由是过渡环表达的是完全另一件事
-     * （悬在空中时把 15 格远处的圈与地面接起来的那几道参考环，只在
-     * {@code BowAstralBarrageConfigs#transitionRingYs} 非空 = 空中且有落差时才出现），
-     * 而作者抱怨的是"主边界读起来是个圈"。透明度的绝对值仍由既有的
-     * {@link OutlineColors#ALPHA} 乘本系数给出，本类不写第二个颜色/透明度真源
-     * （批 9 的 {@code bow9-preview-pink} 仍钉着 {@code OutlineColors.ALPHA} 这个名字）。</p>
-     */
-    private static final float TRANSITION_RING_ALPHA_FACTOR = 0.22F;
 
     private static final double TWO_PI = 2.0D * Math.PI;
 
@@ -354,6 +379,10 @@ public final class BowAstralBarragePreviewRenderer {
      * <b>主圈下方那几道过渡环的 Y</b>（批 11④-2，作者："如果有高度差，圈的显示最好在衔接的地方
      * 加入一些预选框"）—— 由真源 {@code BowAstralBarrageConfigs#transitionRingYs} 给出：
      * 不贴地时才非空，且不会落进地面以下。贴地时是空数组（圈本来就在地面上，没有落差要衔接）。
+     *
+     * <p>⚠ <b>批 18 起这几道环也走主圆环那一套粒子带</b>（{@link #emitPreviewParticles} 逐道
+     * 调用同一个 {@link #emitBoundaryParticles}）：本字段仍是它们<b>唯一</b>的几何输入
+     * （XZ 与半径都与主圈同源），本类不自己算过渡环的高度。</p>
      */
     private static double[] transitionYs = new double[0];
 
@@ -368,6 +397,10 @@ public final class BowAstralBarragePreviewRenderer {
      * ① 尺寸脉动（{@link #FLICKER_SCALE_AMPLITUDE} + {@link #FLICKER_PERIOD_TICKS}）与
      * ② 每一道子环采样点绕圈的前进量（每 tick 转过 {@code 360 / }{@value #WAVE_PARTICLE_COUNT} 度
      * ⇒ 粒子看起来在边界上流动，而不是原地闪）。
+     *
+     * <p>⚠ <b>批 18 起主圆环与每一道过渡环共用这一个相位</b>（{@link #emitPreviewParticles} 在
+     * 同一次自增之后逐道调用发射方法）⇒ 三层<b>同步</b>脉动、同步流动，看起来是同一种东西；
+     * 若给过渡环另起一个相位，三层就会各闪各的。</p>
      */
     private static int flickerPhase;
 
@@ -423,9 +456,10 @@ public final class BowAstralBarragePreviewRenderer {
             blue = color.b();
             holdTicks = BowAstralBarrageConfigs.barrageScheduleTicks();
             active = true;
-            // ★ 批 13：边界的平面能量波环带（每 tick 12 × 3 个采样点，见 emitBoundaryParticles）。
+            // ★ 批 13 / 批 18：整条预选框的外观（主圆环 + 每一道过渡环）都是粒子 ——
+            //   一次 flickerPhase 自增之后由 emitPreviewParticles 逐道发射，见那里。
             flickerPhase++;
-            emitBoundaryParticles(level, center.y);
+            emitPreviewParticles(level);
             return;
         }
 
@@ -441,7 +475,7 @@ public final class BowAstralBarragePreviewRenderer {
         // 松手之后圈还在（作者批 9："技能释放完之后，该预选框才会消失"）⇒ 边界粒子在这段时间里
         // 照旧闪（圆心已冻结，粒子仍按 flickerPhase 脉动 / 绕圈），形状与位置都不变。
         flickerPhase++;
-        emitBoundaryParticles(level, center.y);
+        emitPreviewParticles(level);
     }
 
     /** 只在"圈该消失"时统一收尾（三处出口共用，免得留下一半个状态）。 */
@@ -453,9 +487,46 @@ public final class BowAstralBarragePreviewRenderer {
     }
 
     /**
-     * <b>边界的那条"平面能量波"</b>（批 12 起是粒子，批 13 起是<b>有宽度的环带</b>，
+     * <b>本 tick 要发的那几道环</b> —— 主圆环 + 真源给的每一道过渡环，<b>全部</b>走同一个
+     * {@link #emitBoundaryParticles}（批 18 的落点，作者 2026-10-07 实测反馈：
+     * "就是飞在空中之后，上面一个圈是正常的粒子效果，为什么下面两个圈都是那种直接机械绘制的圆框"）。
+     *
+     * <p><b>为什么这样就是"同一种东西"</b>：
+     * ① 同一个发射<b>实现</b>（不是复制第二份代码）；
+     * ② 同一套参数（采样数 / 子环数 / 半宽 / 尺寸 / 抽稀概率 —— 过渡环与主圆环同半径、同色，
+     * 密度若要不同就会一眼看出"不是一个东西"）；
+     * ③ 同一个 {@link #flickerPhase}（调用方在进本方法之前只自增一次）⇒ 三层同步脉动、同步流动。</p>
+     *
+     * <p><b>每道环的 Y 从哪来</b>：主圆环取 {@link #center} 的 Y（真源
+     * {@code BowAstralBarrageConfigs#landingCentre} 已经收口过，冻结时就是冻结那一刻的值）；
+     * 过渡环取 {@link #transitionYs}（真源 {@code BowAstralBarrageConfigs#transitionRingYs}，
+     * 只在悬空且有落差时非空 ⇒ 贴地时本方法只发一道，与批 13 逐值相同）。
+     * ⚠ 本类<b>不</b>自己算过渡环的 XZ / 半径 / 高度 —— XZ 与半径仍是主圆环那两个字段。</p>
+     *
+     * <p><b>为什么不是"给过渡环写第二个发射方法"</b>：那会让"三道环看起来是同一种东西"
+     * 退化成两处各自调参的约定；而且第二份发射正是本仓反复踩过的形状
+     * （关卡 {@code bow18-single-emitter} 的负向：复制第二份 ⇒ 必红）。</p>
+     *
+     * @param level 客户端世界（粒子只在客户端存在）
+     */
+    private static void emitPreviewParticles(ClientLevel level) {
+        emitBoundaryParticles(level, center.y);
+        for (double transitionY : transitionYs) {
+            emitBoundaryParticles(level, transitionY);
+        }
+    }
+
+    /**
+     * <b>一道环的那条"平面能量波"</b>（批 12 起是粒子，批 13 起是<b>有宽度的环带</b>；
+     * <b>批 18 起主圆环与每一道过渡环都只走这一个实现</b>，入口是 {@link #emitPreviewParticles}）——
      * 作者 2026-10-06："边界外观：从'一圈线'改成闪烁的能量波样式粒子"，同日实测反馈
-     * "它还是一个圆形的，不应该是像能量波那样吗"）。
+     * "它还是一个圆形的，不应该是像能量波那样吗"；2026-10-07 实测反馈"为什么下面两个圈
+     * 都是那种直接机械绘制的圆框"（⇒ 批 18 把过渡环也接到这个方法上）。
+     *
+     * <p>⚠ <b>"只有一处实现"就是本方法存在的形式</b>：过渡环<b>不是</b>第二份发射代码，
+     * 而是同一个方法换一个 {@code y}（XZ / 半径 / 采样 / 相位全部共享本类的字段）——
+     * 关卡 {@code bow18-single-emitter} 钉着"全类只有一个 {@link ChargerWaveFx#waveParticle} 调用、
+     * 一个 {@code addParticle} 调用、一次子环循环"。</p>
      *
      * <h2>粒子用的是哪一套（<b>不自创</b>）</h2>
      * <p>就是<b>能量波自己的那一套</b>：{@link ChargerWaveFx#waveParticle(WaveTrailStyle, Vec3, float)}
@@ -494,13 +565,16 @@ public final class BowAstralBarragePreviewRenderer {
      * {@code ParticleType} 注册、<b>没有</b>新增贴图 / 粒子 JSON、也没有新实体或渲染器
      * （关卡 {@code bow12-preview-particles} / {@code bow13-no-new-assets} 把这几条钉成负向断言）。</p>
      *
-     * <h2>性能（有界）</h2>
-     * <p>每 tick 期望 {@value #WAVE_PARTICLE_COUNT} × {@value #WAVE_BAND_RINGS} ×
+     * <h2>性能（有界，逐道）</h2>
+     * <p><b>每次调用（= 一道环）</b>期望 {@value #WAVE_PARTICLE_COUNT} × {@value #WAVE_BAND_RINGS} ×
      * {@link #FLICKER_KEEP_CHANCE} = <b>27 颗</b>；概率只减不增 ⇒ <b>硬上限 36 颗/tick</b>。
-     * 0.62f 的尘埃期望寿命约 10 tick（见 {@link #WAVE_PARTICLE_SCALE}）⇒ 稳态同屏期望约 270 颗，
-     * 仍低于本模组自己一次 5 级波爆炸的单发量（≈348 颗）与一次 20 枚波弹幕的拖尾总量（≈864 颗）
-     * —— 同一条论证见 {@link #FLICKER_KEEP_CHANCE}。本方法只有一个发射点、没有 tick 循环，
-     * 每次调用最多 {@value #WAVE_PARTICLE_COUNT} × {@value #WAVE_BAND_RINGS} 次 {@code addParticle}。</p>
+     * 0.62f 的尘埃期望寿命约 10 tick（见 {@link #WAVE_PARTICLE_SCALE}）⇒ 单道稳态同屏期望约 270 颗，
+     * 低于本模组自己一次 5 级波爆炸的单发主批（155 颗）与一次 20 枚波弹幕的拖尾总量（≈840 颗）。
+     * ⚠ <b>批 18 起本方法一 tick 会被调用 1~3 次</b>（主圆环 + 两道过渡环；贴地时只 1 次）
+     * ⇒ 稳态与硬上限的<b>合计</b>口径写在 {@link #FLICKER_KEEP_CHANCE} 里
+     * （期望 81 颗/tick、硬上限 108 颗/tick），关卡 {@code bow18-density} 钉着那一条。
+     * 本方法自身没有 tick 循环，每次调用最多 {@value #WAVE_PARTICLE_COUNT} ×
+     * {@value #WAVE_BAND_RINGS} 次 {@code addParticle}。</p>
      *
      * <h2>⚠ 刻意<b>没有</b>给粒子初速</h2>
      * <p>速度传 0（与仓里既有的"用尘埃画环"写法 {@code ChargerWaveFx#sendOrbitMarks} 一致，
@@ -510,7 +584,8 @@ public final class BowAstralBarragePreviewRenderer {
      * {@link #WAVE_BAND_HALF_WIDTH}。</p>
      *
      * @param level 客户端世界（{@code Minecraft#level}；粒子只在客户端存在）
-     * @param y     这一圈所在的 Y（主圈传 {@link #center} 的 Y；圆心已冻结时就是冻结那一刻的值）
+     * @param y     这一道环所在的 Y（主圆环传 {@link #center} 的 Y；过渡环传
+     *              {@link #transitionYs} 里的每一道；圆心已冻结时就是冻结那一刻的值）
      */
     private static void emitBoundaryParticles(ClientLevel level, double y) {
         // 尺寸脉动：半秒一个来回（表现参数，见 FLICKER_PERIOD_TICKS / FLICKER_SCALE_AMPLITUDE）。
@@ -560,116 +635,20 @@ public final class BowAstralBarragePreviewRenderer {
         return BowAstralBarrageConfigs.appliesTo(bow.tier()) ? bow.tier() : null;
     }
 
-    // ========== 自绘渲染（每帧） ==========
-
-    @SubscribeEvent
-    public static void onRender(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS || !active) {
-            return;
-        }
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) {
-            return;
-        }
-
-        PoseStack poseStack = event.getPoseStack();
-        Vec3 camera = event.getCamera()
-            .getPosition();
-
-        MultiBufferSource.BufferSource buffer = mc.renderBuffers()
-            .bufferSource();
-
-        // **必须做相机位移**（照 CoeBlockOutlineRenderer）：这一步漏掉的症状是把世界坐标当成
-        // 相机相对坐标画 → 圈被画到大约两倍距离的地方，又远又小、几乎看不见。
-        poseStack.pushPose();
-        poseStack.translate(-camera.x, -camera.y, -camera.z);
-        PoseStack.Pose pose = poseStack.last();
-
-        // ★ 批 13：主边界**不再画线**（作者 2026-10-06 的实测反馈就是"它还是一个圆形的"，而他
-        //   只看到"一圈很细的粉色线"）：那条 0.22 系数的底线带着完整的圆周形状，人眼自然把它
-        //   读成"一个圈"并盖过粒子。边界的外观现在**完全**由 {@link #emitBoundaryParticles}
-        //   的环带承担 —— 见类注释的批 13 一节与 {@link #TRANSITION_RING_ALPHA_FACTOR}。
-        //   ⚠ 取舍：{@link #ring} 这条渲染路径**保留**，因为批 11 的过渡环照旧走它（见下面的 for）
-        //   ⇒ 既不用为过渡环另开一条渲染路径，{@code OutlineColors.ALPHA} 也仍是那几道环的唯一
-        //   透明度真源（批 9 的关卡 bow9-preview-pink 钉着这个名字）。
-        //
-        // ★ 批 11④-2：有高度差时把落差"接"起来的那几道过渡环（真源给的 Y 列表；贴地时是空的）。
-        //   画法与批 12 逐字同形（同一个 ring(..)，只是 Y 更低），所以两层渲染的顶点格式与冲刷
-        //   路径一条都不新增。它们<b>只在空中且与地面有落差时出现</b>（贴地时 transitionYs 为空），
-        //   因此不会在作者站的平地上重新画出一个"细线圆圈"。
-        if (transitionYs.length > 0) {
-            // ★★ 批 17（2026-10-07 崩溃修复，作者实测：拉弓（星界弓预选框亮着）+ 按 H 同时放
-            //   装备段技能 ⇒ java.lang.IllegalStateException: Not building!）。
-            //   唯一改动 = **两层不再交替写**：一层写完、立刻冲刷，才去取下一层的 consumer。
-            //   原写法是"先把两个 consumer 都取出来，再在同一个 for 里逐 Y 交替写"——第二次
-            //   getBuffer 本身就已经把第一次拿到的 LINES BufferBuilder 判了死刑：
-            //   MultiBufferSource.BufferSource#getBuffer 在共享缓冲上换 RenderType 时，会先
-            //   endBatch(lastSharedType)（该文件 56-58 行），而 endBatch 走 BufferBuilder#build()
-            //   把 building 置 false（BufferBuilder.java:52）⇒ 再往那个死 builder addVertex 就是
-            //   BufferBuilder#ensureBuilding 第 68 行抛出的 "Not building!"。
-            //   ⚠ 只要 transitionYs 非空（悬空且与地面有落差）就 100% 必崩；贴地平坡时这段根本
-            //   进不来，这正是它一直没被试出来的原因。形状照 CoeBlockOutlineRenderer#draw/#flush
-            //   （那里同样是"写完一层再取下一层"，所以它不会崩）。
-            VertexConsumer solid = buffer.getBuffer(RenderType.LINES);
-            for (double transitionY : transitionYs) {
-                ring(pose, solid, transitionY, red, green, blue,
-                    OutlineColors.ALPHA * TRANSITION_RING_ALPHA_FACTOR);
-            }
-            // **必须自己冲刷**：接口给的是原版 buffer source，没有人替我们 endBatch
-            // （形状照 CoeBlockOutlineRenderer#flush，按 RenderType 立即结算这批）。
-            // ⚠ 这一句不能挪到第二个 getBuffer 之后 —— 那正是本批修掉的那个崩溃。
-            buffer.endBatch(RenderType.LINES);
-
-            VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
-            for (double transitionY : transitionYs) {
-                ring(pose, transparent, transitionY, red, green, blue,
-                    OutlineColors.ALPHA * TRANSITION_RING_ALPHA_FACTOR * TRANSPARENT_ALPHA_FACTOR);
-            }
-            buffer.endBatch(AllRenderTypes.LINES_TRANSPARENT);
-        }
-
-        poseStack.popPose();
-    }
-
-    /**
-     * 把一个水平圆环画成圈线（圆心 {@link #center} 的 XZ、半径 {@link #radius}、
-     * 高度取调用方给的 {@code y}）—— 每一道都与弹幕圆盘在 XZ 上同心。
-     *
-     * <p>⚠ <b>批 13 起<u>唯一的调用方是批 11 的过渡环</u></b>（真源给的
-     * {@code transitionYs}，只在空中且有落差时非空）：主边界那条线已经删掉（见 {@link #onRender}
-     * 与类注释的批 13 一节 —— 作者看到的那"一圈很细的粉色线"就是它）。alpha 由调用方乘
-     * {@link #TRANSITION_RING_ALPHA_FACTOR}（很淡）。保留这条路径的全部理由就是<b>不要为过渡环
-     * 另开第二条渲染路径</b>，同时也让 {@code OutlineColors.ALPHA} 继续有一个真实读者
-     * （批 9 的关卡 {@code bow9-preview-pink} 钉着那个名字）。</p>
-     *
-     * <p>顶点写法照 {@code OutlineRenderer#renderEdge}：{@code addVertex → setColor → setNormal}
-     * （法线取该段的方向），两种渲染类型的格式差异（{@code RenderType.LINES} 是
-     * POSITION_COLOR_NORMAL、穿透层是 POSITION_COLOR）在这里与既有渲染器处理方式完全一致。</p>
-     */
-    private static void ring(PoseStack.Pose pose, VertexConsumer consumer, double y,
-                             float r, float g, float b, float a) {
-        for (int i = 0; i < RING_SEGMENTS; i++) {
-            double from = TWO_PI * i / RING_SEGMENTS;
-            double to = TWO_PI * (i + 1) / RING_SEGMENTS;
-            double x0 = center.x + Math.cos(from) * radius;
-            double z0 = center.z + Math.sin(from) * radius;
-            double x1 = center.x + Math.cos(to) * radius;
-            double z1 = center.z + Math.sin(to) * radius;
-            double dx = x1 - x0;
-            double dz = z1 - z0;
-            double length = Math.sqrt(dx * dx + dz * dz);
-            float nx = length > 1.0E-9D ? (float) (dx / length) : 1.0F;
-            float nz = length > 1.0E-9D ? (float) (dz / length) : 0.0F;
-            vertex(pose, consumer, x0, y, z0, nx, nz, r, g, b, a);
-            vertex(pose, consumer, x1, y, z1, nx, nz, r, g, b, a);
-        }
-    }
-
-    /** 圈上的一个顶点（Y 取该道环自己的高度 ⇒ 每一道都是水平圆环）。 */
-    private static void vertex(PoseStack.Pose pose, VertexConsumer consumer, double x, double y, double z,
-                               float nx, float nz, float r, float g, float b, float a) {
-        consumer.addVertex(pose, (float) x, (float) y, (float) z)
-            .setColor(r, g, b, a)
-            .setNormal(pose, nx, 0.0F, nz);
-    }
+    // ========== 自绘渲染（每帧）—— ★ 批 18 起整条删除 ==========
+    // 批 11 的过渡环原本在这里走批 13 留下的那条线路径（批 17 刚把它的两层写序修好）。
+    // 作者 2026-10-07 实测反馈"下面两个圈都是那种直接机械绘制的圆框"⇒ 过渡环改成与主圆环
+    // 同一套粒子带（见 emitPreviewParticles），于是：
+    //   · onRender（RenderLevelStageEvent）—— 删；
+    //   · ring(..) / vertex(..) —— 删；
+    //   · RING_SEGMENTS / TRANSPARENT_ALPHA_FACTOR / TRANSITION_RING_ALPHA_FACTOR —— 删；
+    //   · PoseStack / VertexConsumer / MultiBufferSource / RenderType / AllRenderTypes /
+    //     RenderLevelStageEvent 这些 import —— 删。
+    // ⚠ 判据（批 18 的要求）：**不许留下"取了 buffer 却没写 / 没冲刷"的形状** ——
+    //   那是批 17 的病根（两个 consumer 同时活着，第二个 getBuffer 把第一个判死）。
+    //   本类现在<b>一个缓冲都不取</b>（去注释后的源码里连 getBuffer / endBatch 这两个词都不再
+    //   出现 —— 上面这几行注释本身是"删掉了什么"的清单，关卡读的是去注释后的源码），
+    //   所以那个崩溃形态在结构上不可能复活；关卡 bow18-no-buffer 钉着这条，
+    //   而仓里另一处双 consumer（CoeBlockOutlineRenderer#draw，写完一层再取下一层）
+    //   一个字节未动 —— 见 bow17-other-two-consumer-site。
 }
