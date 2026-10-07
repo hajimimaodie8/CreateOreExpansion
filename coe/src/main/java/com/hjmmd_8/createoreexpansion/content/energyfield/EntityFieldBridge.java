@@ -71,6 +71,17 @@ import net.minecraft.world.phys.Vec3;
  *       {@code ClientboundSetEntityMotionPacket}，客户端 {@code lerpMotion} =
  *       {@code setDeltaMovement}，它才会照这一笔移动。</li>
  * </ol>
+ * <p>⚠ <b>2026-10-06 更正（写回必须"加增量"，不是"换速度"）</b>：上面第 2 条只说了
+ * "客户端怎么收到这一笔"，<b>没规定写的是什么</b> —— 而这一点正是本类出过 bug 的地方。
+ * 批 8 修正（{@code ec404c6e}）改完<b>读</b>那一侧之后，<b>写</b>那一侧仍是
+ * "把场算出的整个速度写回实体" ⇒ 对玩家等于<b>每 tick 把他自己上报的位移重灌成权威速度</b>：
+ * 作者实测表现是"<b>无输入却持续漂移，方向垂直于场线</b>"（漂移方向 = 他自己上一次的移动方向），
+ * 而场真正的那一笔（tier 1 = {@code 4 × 0.05 ÷ 20 = 0.01} 格/秒 每 tick）被完全淹没。
+ * ⇒ 句柄现在只叠加 {@code 增量 = 场速度 − 实体自己的速度}：对波 / AI 生物
+ * （它们的 {@code getKnownMovement()} 就是 {@code getDeltaMovement()}）<b>逐位等价</b>，
+ * 对玩家则不再自我重放。逐条机理见
+ * {@link LivingFieldHandle#setFieldVelocity(Vec3)} 的 javadoc。</p>
+ *
  * <p><b>两条都只在真的改了位移时做</b>：位移没变（场没覆盖这一点 / 增量被夹成 0 / 偏转场里
  * 静止的实体）⇒ {@code setDeltaMovement} 都不调，{@code hurtMarked} 也就不置 ——
  * 免得"带电但站在场外"的玩家每 tick 白挨一个位移包。</p>
@@ -301,9 +312,50 @@ public final class EntityFieldBridge {
 				.scale(ChargeConfigs.TICKS_PER_SECOND);
 		}
 
+		/**
+		 * <b>只把"场这一 tick 给的增量"叠加到实体自身的位移上</b>——<b>绝不</b>用场算出的速度
+		 * 替换实体自己的速度。
+		 *
+		 * <p>⚠ <b>2026-10-06 更正</b>（作者实测：「带电玩家在场里<b>无输入也持续漂移</b>，
+		 * 且漂移方向<b>垂直于场线</b>」）。本方法原先是一句
+		 * {@code entity.setDeltaMovement(velocity.scale(perTickFactor()))} —— 把场算出来的
+		 * <b>整个速度</b>写回实体。批 8 的修正（{@code ec404c6e}）只改了<b>读</b>的那一侧
+		 * （改用 {@link Entity#getKnownMovement()} 读玩家真实速度），<b>写</b>这一侧没跟着改，
+		 * 于是紧接出一个结构性错误：</p>
+		 * <ul>
+		 *   <li>{@code getKnownMovement()} 对玩家是<b>客户端上一次上报的位移</b>
+		 *       （{@code ServerGamePacketListenerImpl#handleMovePlayer} 里的
+		 *       {@code vec3 = 玩家位置 − 上一位置}）⇒ {@code ×20} 得到的是
+		 *       <b>玩家自己上一次的运动</b>，<b>不是</b>场的产物；</li>
+		 *   <li>把"玩家自己的运动 + 场增量"整套写回、并置 {@code hurtMarked} 推给客户端，
+		 *       等于<b>每 tick 把玩家自己的运动重灌成他的权威速度</b> ⇒ 观察到的方向
+		 *       就是他<b>上一次移动的方向</b>（横穿场时即<b>垂直于场线</b>），
+		 *       而且不需要任何输入就会持续；</li>
+		 *   <li>场真正的那一份增量小得多（tier 1：{@code strength 4 × 0.05 ÷ 20 = 0.01 格/秒}
+		 *       每 tick）⇒ 被完全淹没，玩家<b>感受不到"沿场线被推"</b>。</li>
+		 * </ul>
+		 *
+		 * <p>⇒ 现在计算 {@code 增量 = 场算出的速度 − 实体自己的速度}，只把它叠加到
+		 * {@code entity.getDeltaMovement()} 上（格子↔秒仍按名取自 {@link ChargeConfigs}）。
+		 * 三类实体的行为：</p>
+		 * <ul>
+		 *   <li><b>波 / AI 生物</b>：它们的 {@code getKnownMovement()} <b>逐字就是</b>
+		 *       {@code getDeltaMovement()} ⇒ 旧式 {@code dv + Δ/20} 与新式 {@code dv + Δ/20}
+		 *       <b>逐位相同</b>，行为零变化（关卡 {@code charge-field-living-impulse} 钉着这一条）；</li>
+		 *   <li><b>玩家</b>：只多出"场的那一笔"（加速场 = 沿场线；偏转场 = 绕场轴），
+		 *       不再把自己的位移当成场的产物重放 ⇒ 自激漂移消失；</li>
+		 *   <li><b>骑乘中的玩家</b>：{@code getKnownMovement()} 可能是<b>载具</b>的运动
+		 *       （{@code ServerPlayer#getKnownMovement}）—— 旧式会把载具速度灌进玩家自己，
+		 *       新式只叠增量，危害面缩到"力律读的是载具速度"这一点。</li>
+		 * </ul>
+		 */
 		@Override
 		public void setFieldVelocity(Vec3 velocity) {
-			entity.setDeltaMovement(velocity.scale(ChargeConfigs.perTickFactor()));
+			Vec3 selfVelocity = entity.getKnownMovement()
+				.scale(ChargeConfigs.TICKS_PER_SECOND);
+			Vec3 step = velocity.subtract(selfVelocity);
+			entity.setDeltaMovement(entity.getDeltaMovement()
+				.add(step.scale(ChargeConfigs.perTickFactor())));
 		}
 
 		@Override
