@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.equipment.tool.energy;
 
 import com.hjmmd_8.createoreexpansion.common.energy.ToolDataComponents;
+import com.hjmmd_8.createoreexpansion.common.SkillCooldowns;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -24,9 +25,9 @@ public final class ToolSkillCooldown {
 		return until == null || until <= player.level().getGameTime();
 	}
 
-	/** 以秒为单位开启冷却（内部应用迅启附魔减冷却） */
+	/** 以秒为单位开启冷却（内部应用迅启附魔减冷却；秒 → tick 走全仓唯一换算因数） */
 	public static void start(Player player, ItemStack stack, int seconds) {
-		startTicks(player, stack, seconds * 20);
+		startTicks(player, stack, seconds * SkillCooldowns.TICKS_PER_SECOND);
 	}
 
 	/** 以 tick 为单位开启冷却（内部应用迅启附魔减冷却） */
