@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.hjmmd_8.createoreexpansion.integration.skiller.settings.SkillCreativeSwitch;
 import com.hjmmd_8.createoreexpansion.integration.skiller.settings.SkillSettings;
 
 /**
@@ -38,6 +39,23 @@ import com.hjmmd_8.createoreexpansion.integration.skiller.settings.SkillSettings
  * 行为<b>可由玩家在游戏内开关</b>。{@code SkillBundle} 属内核、<b>不许改</b>，
  * 所以本类把那段编排<b>照抄过来</b>，只在"要不要消耗"这一个判据上换成
  * {@link SkillSettings#consumeInCreative}（详见 {@link #releaseBundle}）。</p>
+ *
+ * <p><b>2026-10-07 批 16 补充（作者当日裁定「不要直接改那个 skiller 内核，你要改的话，
+ * 你可以用注入之类的方式」）</b>：内核那两处 {@code if (!player.isCreative())} 现在已被
+ * {@code mixin/SkillBundleCreativeConsumeMixin} <b>注入</b>成读
+ * {@link SkillCreativeSwitch}（注入侧持有者，见该 mixin 的类注释）—— 也就是说
+ * <b>内核那条路径从今天起也认这个开关了，而且内核本体一个字节都没改</b>。</p>
+ *
+ * <p>但这<b>不等于</b>本类可以删掉：本类与内核 {@code releaseSkills} 之间还差着
+ * <b>四条</b>语义（见 {@link #releaseBundle} 的编号清单：返回值语义、null 工厂/上下文的跳过、
+ * 「不消耗时仍要调 {@code consumeResource}」、空资源的防御性跳过），
+ * 删掉它会把这些差异一起带回来。而且今天内核那条路径对本模组的技能<b>根本走不到落账</b>：
+ * 它只由 {@code PlayerPressedKeys#setKeyPressed} → {@code SkillReleaser} 以
+ * {@code AllSkillTypes.KEY_PRESSED} 触发，而本模组注册的技能全是
+ * {@link CoeSkillTypes#EXCAVATION}/{@link CoeSkillTypes#HIT}/{@link CoeSkillTypes#USE}
+ * ⇒ {@code skillData.get(KEY_PRESSED)} 为 null、方法在触碰落账段之前就 return true
+ * （这一条由 {@code tools/check-armor-sets.ps1} 的 §55 钉着）。
+ * 两条路径因此<b>互斥</b>，本类那一次 {@code consumable.apply()} 仍是本模组技能唯一的落账点。</p>
  *
  * <h2>按键来源</h2>
  * <p>按键状态取自 {@link PlayerPressedKeys}——它由客户端的按键包写入，是
@@ -129,7 +147,8 @@ public final class CoeSkillRelease {
      *         多个技能会互相踩 scratch。工厂拿不到（未注册）或 create 返回 null 的实例
      *         <b>跳过</b>，不消耗也不释放。</li>
      *     <li><b>要不要消耗</b>：内核写死 {@code !player.isCreative()}；这里换成
-     *         {@code !player.isCreative() || consumeInCreative}。
+     *         {@link SkillCreativeSwitch#consumeFor(net.minecraft.world.entity.player.Player, boolean)}
+     *         —— <b>判据的唯一实现</b>（批 16 起内核那两处也注入成同一个方法）。
      *         {@code consumeInCreative == false} 时<b>整段校验与落账都跳过</b>，
      *         但<b>仍然调用 {@code consumeResource}</b>——技能靠它算随机数/优先级/选目标等
      *         scratch，不调的话 {@code release} 里读不到结果（会有空指针或行为错乱）。</li>
@@ -189,7 +208,9 @@ public final class CoeSkillRelease {
         }
 
         // 3) 累加资源（无论耗不耗都要做：技能靠 consumeResource 写 scratch 来算结果）
-        boolean consume = !player.isCreative() || consumeInCreative;
+        // 判据唯一实现搬到 SkillCreativeSwitch#consumeFor —— 内核那两处同款表达式已被
+        // mixin 注入成同一个方法（批 16），两条路径因此不会各自漂移。
+        boolean consume = SkillCreativeSwitch.consumeFor(player, consumeInCreative);
         Map<ResourceKey<SkillResource>, SkillResource.DelayConsumable> consumables = new HashMap<>();
         for (ISkillInstance<SkillContext> instance : instances) {
             SkillResource resource = instance.getResource();

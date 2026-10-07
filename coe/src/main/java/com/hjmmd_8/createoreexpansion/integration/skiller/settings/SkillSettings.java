@@ -31,9 +31,15 @@ import net.minecraft.world.level.saveddata.SavedData;
  * <b>归一到主世界的 DataStorage</b>——在下界切换开关，回主世界依然是同一个值，
  * 玩家不会遇到"换个维度开关自己变了"。</p>
  *
- * <p><b>生效点唯一</b>：{@link CoeSkillRelease#releaseBundle} 里那一次
- * {@code consume = !player.isCreative() || SkillSettings.consumeInCreative(...)}。
- * 其它任何地方都不该再读这个值。</p>
+ * <p><b>判据唯一实现</b>：{@link SkillCreativeSwitch#consumeFor(net.minecraft.world.entity.player.Player, boolean)}
+ * —— {@link CoeSkillRelease#releaseBundle}（本模组自己的释放编排）与
+ * {@code com.leaf.skiller.foundation.skill.SkillBundle}（内核那两处被 mixin 注入的
+ * {@code if (!player.isCreative())}）都从这一个方法取判据。
+ * 其它任何地方都不该再自己写 {@code !player.isCreative() || ...} 这种表达式。</p>
+ *
+ * <p><b>值的两个出口</b>（2026-10-07 批 16）：本类仍是唯一真源（存档侧服务端权威），
+ * 但它每次<b>读</b>（{@link #consumeInCreative}）与每次<b>写</b>（{@link #setConsumeInCreative}）
+ * 都会把值推给 {@link SkillCreativeSwitch} —— 那是「注入侧持有者」，供被注入的内核读。</p>
  *
  * @since 1.0.0
  */
@@ -66,7 +72,11 @@ public final class SkillSettings {
      */
     public static boolean consumeInCreative(ServerLevel level) {
         Data data = data(level);
-        return data == null ? DEFAULT_CONSUME_IN_CREATIVE : data.consumeInCreative;
+        boolean value = data == null ? DEFAULT_CONSUME_IN_CREATIVE : data.consumeInCreative;
+        // 2026-10-07 批 16：顺手把值推给注入侧持有者（内核那两处 isCreative 判据由 mixin
+        // 改成读它）。本模组每次释放技能都会先经过这里，所以镜像不会漂移。
+        SkillCreativeSwitch.push(value);
+        return value;
     }
 
     /**
@@ -82,6 +92,8 @@ public final class SkillSettings {
         }
         data.consumeInCreative = value;
         data.setDirty();
+        // 与读路径同款：写的时候也立刻推给注入侧持有者，不必等下一次读。
+        SkillCreativeSwitch.push(value);
     }
 
     /** 取主世界那份存档数据（一个存档一份值）；拿不到服务端时返回 null。 */

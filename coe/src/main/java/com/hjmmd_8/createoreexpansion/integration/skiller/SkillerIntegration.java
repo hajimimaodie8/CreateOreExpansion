@@ -35,6 +35,7 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
 import com.hjmmd_8.createoreexpansion.integration.skiller.resource.CoeArmorEnergyResource;
 import com.hjmmd_8.createoreexpansion.integration.skiller.resource.CoeToolEnergyResource;
+import com.hjmmd_8.createoreexpansion.integration.skiller.settings.SkillCreativeSwitch;
 
 /**
  * Skiller 内核接线入口（mod 事件总线）。
@@ -56,6 +57,9 @@ public final class SkillerIntegration {
 
     /** 一次性初始化（Provider 注册、迁移闸门接线）只做一次——RegisterEvent 会为每张注册表各触发一次。 */
     private static boolean initialized;
+
+    /** 内核注入自检日志也只打一次（同样因为 RegisterEvent 会触发很多次）。 */
+    private static boolean loggedKernelInjection;
 
     private SkillerIntegration() {
         throw new AssertionError("This class should not be instantiated");
@@ -81,6 +85,17 @@ public final class SkillerIntegration {
             // 2026-09-30 第 4 阶段：迁移闸门（SkillMigrationGate）已删除 ——
             // 旧框架的执行入口（SkillsComponent#releaseSkills/releaseSkillAt）与两个旧触发点
             // 一并拔掉了，没有"旧路径可能重复执行"的窗口，闸门不再需要。
+        }
+
+        // 2026-10-07 批 16：内核 Skiller 是 META-INF/jarjar/ 里的嵌套 jar，
+        // 「创造模式豁免可开关」这件事靠 SkillBundleCreativeConsumeMixin 注入进去；
+        // 注入有没有真的落到那个类上，静态关卡看不出来，只能靠这条运行期证据。
+        // 放在 onRegister 而不是 onCommonSetup：datagen（runData）根本不走 common setup，
+        // 而 RegisterEvent 两种形态都会触发；此刻所有 mod 构造器都已跑完，
+        // SkillBundle 必然已随 AllDataComponents -> SkillComponent.CODEC 加载过。
+        if (!loggedKernelInjection) {
+            loggedKernelInjection = true;
+            reportKernelInjection();
         }
 
         ResourceKey<? extends Registry<?>> registryKey = event.getRegistryKey();
@@ -314,6 +329,34 @@ public final class SkillerIntegration {
         event.register(SkillerRegistries.SKILL, id,
                 () -> new ItemSkillRegistration<ExcavationSkillContext>(
                         CoeSkillTypes.EXCAVATION, ExcavationContextFactory.KEY, new FellingItemSkill()));
+    }
+
+    /**
+     * 内核注入自检（2026-10-07 批 16，只打一次）。
+     *
+     * <p>内核 Skiller 住在 {@code META-INF/jarjar/skiller-1.0.0.jar} 这个<b>嵌套 jar</b> 里，
+     * 「创造模式豁免可开关」全靠
+     * {@link com.hjmmd_8.createoreexpansion.mixin.SkillBundleCreativeConsumeMixin}
+     * 把那两处 {@code Player#isCreative()} 重定向到
+     * {@link SkillCreativeSwitch#consumeFor(net.minecraft.world.entity.player.Player)}。
+     * 「注入有没有真的落到那个类上」在静态关卡里看不出来（它是一个 jar 里的字节码），
+     * 所以这里留一条<b>运行期证据</b>：{@code SkillBundle} 的无参构造器被注入后会把标记置真，
+     * 而它的静态初始化（{@code EMPTY}）由 {@code AllDataComponents → SkillComponent.CODEC →
+     * SkillBundle.CODEC} 在 skiller 的 {@code @Mod} 构造器里触发 —— 一定早于本方法。</p>
+     *
+     * <p>标记为假时打 ERROR：那样内核那条释放路径会退回"创造模式一律豁免"，
+     * 与本模组开关不一致（今天它还走不到落账，但这条不一致必须立刻看得见）。</p>
+     */
+    private static void reportKernelInjection() {
+        boolean kernelInjected = SkillCreativeSwitch.kernelInjected();
+        CoeCore.LOGGER.info(
+                "[Skiller] 内核创造模式豁免注入：{}（true = 嵌套 jar 里的 SkillBundle 已被 mixin 变换，开关对内核路径同样生效）",
+                kernelInjected);
+        if (!kernelInjected) {
+            CoeCore.LOGGER.error(
+                    "[Skiller] 内核注入似乎没生效：SkillBundle 未被 SkillBundleCreativeConsumeMixin 变换，"
+                            + "创造模式开关对内核那条释放路径（SkillReleaser）不会起作用");
+        }
     }
 
     /** 注册自检日志：确认 Skiller 的自定义注册表真的收到了 RegisterEvent，以及当前条目数。 */
