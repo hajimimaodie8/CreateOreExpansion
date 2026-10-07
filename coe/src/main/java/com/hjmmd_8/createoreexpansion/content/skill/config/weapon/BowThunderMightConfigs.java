@@ -6,9 +6,14 @@ import com.hjmmd_8.createoreexpansion.content.skill.SkillLevelTables;
 /**
  * <b>雷鸣弓专属主动技能「雷鸣神力」（作者 2026-10-05 弓技能批 5）的数值真源</b> ——
  * 与 {@link BowWaveShiftConfigs} / {@link BowCurseConfigs} / {@link BowDisarmConfigs} 同形，
- * 是这条技能<b>唯一</b>写数字的地方：等级表（范围边长 / 真雷概率）、落点射程、区域容差、
- * 扫掠外扩量全部只在这里写一遍，发射点（{@code BowThunderMightLauncher}）与物品侧
+ * 是这条技能<b>唯一</b>写数字的地方：等级表（范围边长 / 真雷概率）、区域容差、以及那条方形的
+ * 水平半边长，全部只在这里写一遍，发射点（{@code BowThunderMightLauncher}）与物品侧
  * （{@code JadeTopazBowItem}）<b>一个数字都不写</b>。
+ *
+ * <p><b>批 19（2026-10-07）删掉了什么</b>：{@code MAX_IMPACT_RANGE} 与 {@code PICK_SWEEP_INFLATE}
+ * 两个常量随"松手那一刻的射线 hitscan"一起退役（见下面它们原来的位置留下的说明）——
+ * 本批把触发时机改成"箭命中生物时、落点 = 箭的命中点"，于是"射线能打多远""扫掠盒外扩多少"
+ * 两个参数<b>不再有消费者</b>；留着它们就是留第二个算落点的地方。</p>
  *
  * <h2>作者原话（逐字）</h2>
  * <blockquote>
@@ -192,21 +197,17 @@ public final class BowThunderMightConfigs {
 	 */
 	public static final double AREA_VERTICAL_HALF_EXTENT = 1.0D;
 
-	/**
-	 * <b>落点射程</b>（格）：命中点射线的最远长度 —— 打空（天上 / 无方块方向）时落点就取这个距离。
-	 *
-	 * <p>⚠ <b>这个数是本项目自定的第一版射程</b>（作者只给了"以命中点为中心"，没给数）：
-	 * 口径 = <b>与波引擎的飞行预算同量级</b>（{@code AbstractChargerWaveEntity#MAX_TRAVEL_DISTANCE}
-	 * = 64 格，"一条能量波飞多远"这条既有约定），不引入新的量级。太短会让"瞄准远处目标"这一发
-	 * 落在半空（那一支箭已经被技能换掉了），太长没有代价（射线本来就会先撞上地形）。
-	 * 要调只改这一行（本类是全仓唯一取值点）。</p>
-	 */
-	public static final double MAX_IMPACT_RANGE = 64.0D;
-
-	/**
-	 * <b>落点射线的扫掠外扩量</b>（格）：照抄回旋镖那条"实体射线 + 方块射线"的扫掠盒
-	 * （{@code BoomerangImpact#checkImpact} 的 {@code inflate(1.0D)}）—— 射线是一条零宽度的线，
-	 * 不外扩就擦不到生物的包围盒边缘。
-	 */
-	public static final double PICK_SWEEP_INFLATE = 1.0D;
+	// ══════════════════════════════════════════════════════════════════════════════════
+	// 批 19（2026-10-07）：这里原本还有两个常量，随"松手射线 hitscan"一起删除 ——
+	//
+	//   MAX_IMPACT_RANGE     （64.0D）—— 那条射线的最大长度，"朝天上打也仍有落点"靠它；
+	//   PICK_SWEEP_INFLATE   （1.0D） —— 那条射线扫掠盒的外扩量（照抄回旋镖的形状）。
+	//
+	// 为什么删：本批把触发时机改成"箭命中生物时，落点 = 箭的命中点"
+	// （作者 2026-10-07 裁定：「先给它暂时改成那种特殊的剑，击中生物之后会释放电荷效果」），
+	// 落点由命中处理器把 EntityHitResult#getLocation() 交给
+	// BowThunderMightLauncher#strikeAt(..)，两个参数<b>不再有消费者</b>。
+	// 留着它们的唯一效果是让"落点怎么算"重新长出第二个来源 —— 而本批的全部内容就是
+	// "落点只有一个来源"。⚠ 范围口径（边长 2/3/4 与垂直容差 1.0）一个字未改。
+	// ══════════════════════════════════════════════════════════════════════════════════
 }

@@ -288,6 +288,38 @@ import net.neoforged.neoforge.event.EventHooks;
  *   <li><b>本批没动的</b>：翠玉之弓那四行注册链、元矢自生、耐久记账、两道标记闸门、
  *       服务端权威键位读数、三条技能的发射点与数值表（除上面那两处等级读数）。</li>
  * </ul>
+ *
+ * <p><b>2026-10-07 弓技能批 19（雷鸣神力改成"箭照常飞 + 命中生物才释放电荷" + 免掉无箭那 10 点）</b>：
+ * 作者原话（逐字）「<b>先给它暂时改成那种特殊的剑，击中生物之后会释放电荷效果。</b>
+ * 之后的话，我打算再往里面做一些新的东西，比如说雷鸣箭，这样可以彻底解决这个问题」，
+ * 以及另一问的裁定「<b>免掉</b>」（无箭那 10 点）。逐条落法：</p>
+ * <ul>
+ *   <li><b>① 箭照常飞</b>：{@link #fireThunderMightInsteadOfArrow}（"替换 + {@code return true}"）
+ *       改成 {@link #stampThunderMightForArrow}（"<b>登记 + 放行</b>"）—— 判据一个字未改
+ *       （同一张档位表 + 同一个被消费掉的标记），只是通过之后把
+ *       {@link #TAG_SKILL} / {@link #TAG_SKILL_LEVEL} 写进弓（值 = 内核写下的技能 id 与
+ *       {@link BowTier#thirdSkillEffectiveLevel}）而<b>不</b> {@code return} ⇒
+ *       {@code super.shoot(..)} 照常执行，{@link #shootProjectile} 照既有形状把标记搬上箭。
+ *       ⇒ 那一发<b>是一支真正的、看得见的原版箭</b>（零新增贴图 / 粒子 / 注册项）；</li>
+ *   <li><b>② 电荷与真雷改到命中段</b>：结算点从"松手那一刻的射线 hitscan"搬到
+ *       {@code JadeTopazBowEventHandler#onProjectileImpact} 那条<b>既有分发</b>
+ *       （按箭上 {@code TAG_SKILL}），落点 = <b>箭的命中点</b>
+ *       （{@code EntityHitResult#getLocation()}），触发条件 = <b>命中生物</b>
+ *       ⇒ 打空 / 打墙没有表现（作者原话为准）。范围口径<b>未变</b>（边长 2/3/4 的水平方形内
+ *       每只生物各染一笔电荷 + 按等级概率劈一道原版雷）；</li>
+ *   <li><b>⚠ 耐久只扣一次</b>：放行之后耐久由原版 {@code ProjectileWeaponItem#shoot}
+ *       在 per-projectile 那一轮里扣一次 ⇒ 本批<b>删掉</b>了原来闸门里那行
+ *       {@code weapon.hurtAndBreak(..)}（不删就是双扣）。另外两条专属技能仍自己扣一笔
+ *       （它们仍然"整支箭都不造"，{@code super.shoot} 不会被调）；</li>
+ *   <li><b>③ 免掉无箭那 10 点</b>：{@link #prepareProjectiles} 里
+ *       {@code boolean exclusiveTakesOver = BowExclusiveShotItemSkill.hasPendingShot(bow);}
+ *       ⇒ 外层条件改成 {@code exclusiveTakesOver || ToolEnergy.canAfford(bow, NO_ARROW_COST)}，
+ *       扣能 + 物品栏同步 + 剩余能量提示整段包进 {@code if (!exclusiveTakesOver)}；
+ *       <b>魔法箭照造</b>（它是这一发走到 {@link #shoot} 的唯一载体，见方法里的注释）。</li>
+ *   <li><b>四条硬边界一个字未改</b>：能量 150×有效等级 / 冷却 3·4·5 秒 / 方形 2·3·4 /
+ *       真雷 20·40·60% / 耐久上限 3500 —— 本批改的是<b>触发时机</b>，不是数值；
+ *       也没有新增任何语言键或注册项（因此不需要跑 {@code runData}）。</li>
+ * </ul>
  */
 public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 
@@ -592,24 +624,37 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		}
 
 		// 无箭但能量够 → 魔法箭（消耗能量，不区分创造模式）
-		if (ToolEnergy.canAfford(bow, NO_ARROW_COST)) {
-			ToolEnergy.setEnergy(bow, ToolEnergy.getEnergy(bow) - NO_ARROW_COST);
-			// 强制物品栏同步，确保客户端立即看到能量变化（与技能消耗逻辑一致）
-			player.getInventory().setChanged();
-			// 消耗提示（护目镜限定，与技能消耗统一格式：凝能佩行/工具行，佩用佩色、弓用黄→绿渐变）
-			ToolEnergy.sendRemainingEnergyWithMedallion(player, bow,
-				IMedallion.findBoundMedallion(player, bow));
-			// ★ 被动技能「元矢自生」（2026-10-04 弓技能批 3）：补给照旧，之后按<b>该弓的档位起始等级</b>
-			// 掷一次骰子 —— 中签就给这一发魔法箭附一种随机魔素（不额外扣能、无冷却）。
-			// ⚠ 抽取点只有这一处：有箭的普通射击根本走不到这个分支 ⇒ 那条路一个字未变。
-			// ★ 与主动技能（宝石「量波置换」/ 星界「星元波置」/ 雷鸣「雷鸣神力」）的<b>互斥</b>
-			// （2026-10-05 批 4 返工、批 7 换判据）：作者口径是"只有原始自身是被动技能，
-			// 只要检测到没有键，就会触发" ⇒ 这一发<b>已被专属技能接管</b>时被动<b>不再掷骰子</b>
-			// （掷了也没用：那支魔法箭不发射，魔素标记会留在弓上、泄漏到下一发）。
-			// ⚠ 判据只有一处：专属技能自己的 release 写在弓上的那个标记
-			// （{@code BowExclusiveShotItemSkill#hasPendingShot} —— 只问"有没有"，<b>不读值、
-			// 不消费</b>；真消费在 {@link #shoot} 那一次）。批 7 起这里<b>不再</b>读任何按键。
-			if (!BowExclusiveShotItemSkill.hasPendingShot(bow)) {
+		// ★ 批 19（作者 2026-10-07 裁定「免掉」）：无箭的那一发若<b>已被专属技能接管</b>，
+		//   那 10 点<b>免掉</b> —— 现状是"先扣 10 点、造一支魔法箭，而闸门随后把它丢弃"
+		//   （作者的原话："而那支箭根本不会造"）。判据与下面那道被动互斥闸门<b>逐字同源</b>：
+		//   同一个 {@code hasPendingShot}，<b>只问存在性</b>、不读值、不消费。
+		//   ⚠ 魔法箭<b>照造</b>（下面那句一字未改）：它是这一发走到 {@link #shoot} 的唯一载体
+		//   —— {@link #releaseUsing} 在"投射物列表为空"时会提前 return（`:540`），
+		//   而批 19 起雷鸣神力那一发<b>正要靠这支箭真的飞出去</b>。
+		boolean exclusiveTakesOver = BowExclusiveShotItemSkill.hasPendingShot(bow);
+		if (exclusiveTakesOver || ToolEnergy.canAfford(bow, NO_ARROW_COST)) {
+			// ⚠ 这一道守卫现在同时管两件事（判据<b>同一个</b>，所以合成一个块，不再写第二遍）：
+			//   ① 批 19 的"免掉那 10 点"；② 批 7 的被动互斥。顺序与批 3/7 逐字相同
+			//   （扣能 → 同步 → 提示 → 掷骰子），只是整段都只在"没被接管"时才跑。
+			if (!exclusiveTakesOver) {
+				ToolEnergy.setEnergy(bow, ToolEnergy.getEnergy(bow) - NO_ARROW_COST);
+				// 强制物品栏同步，确保客户端立即看到能量变化（与技能消耗逻辑一致）
+				player.getInventory().setChanged();
+				// 消耗提示（护目镜限定，与技能消耗统一格式：凝能佩行/工具行，佩用佩色、弓用黄→绿渐变）
+				ToolEnergy.sendRemainingEnergyWithMedallion(player, bow,
+					IMedallion.findBoundMedallion(player, bow));
+				// ★ 被动技能「元矢自生」（2026-10-04 弓技能批 3）：补给照旧，之后按<b>该弓的档位起始等级</b>
+				// 掷一次骰子 —— 中签就给这一发魔法箭附一种随机魔素（不额外扣能、无冷却）。
+				// ⚠ 抽取点只有这一处：有箭的普通射击根本走不到这个分支 ⇒ 那条路一个字未变。
+				// ★ 与主动技能（宝石「量波置换」/ 星界「星元波置」/ 雷鸣「雷鸣神力」）的<b>互斥</b>
+				// （2026-10-05 批 4 返工、批 7 换判据）：作者口径是"只有原始自身是被动技能，
+				// 只要检测到没有键，就会触发" ⇒ 这一发<b>已被专属技能接管</b>时被动<b>不再掷骰子</b>
+				// （掷了也没用：那支魔法箭不发射，魔素标记会留在弓上、泄漏到下一发）。
+				// ⚠ 判据只有一处：专属技能自己的 release 写在弓上的那个标记
+				// （{@code BowExclusiveShotItemSkill#hasPendingShot} —— 只问"有没有"，<b>不读值、
+				// 不消费</b>；真消费在 {@link #shoot} 那一次）。批 7 起这里<b>不再</b>读任何按键。
+				// ★ 批 19：它现在与本分支顶上那次"免 10 点"的判定<b>共用同一个局部量</b>
+				//   （同一个读数 ⇒ 两道闸门不可能分家；{@code hasPendingShot} 仍只有一处调用点）。
 				rollMetaArrowEssence(bow, player);
 			}
 			ItemStack magicArrow = Items.ARROW.getDefaultInstance();
@@ -760,6 +805,13 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	 * 它是个<b>歧义判据</b>：按 Shift / R 同样命中它 ⇒ 那一发被专属技能接管，而内核已经先放出了
 	 * 继承的 {@code bow_curse} / {@code bow_disarm}（能量与冷却白付、效果一个字没生效）。
 	 * 现在本文件<b>一个按键都不读</b>。</p>
+	 *
+	 * <p><b>⚠ 批 19（2026-10-07）起"会吞掉这一发"的只剩两条</b>：{@link #fireWaveShiftInsteadOfArrow}
+	 * （发波替代箭）与 {@link #fireAstralBarrageInsteadOfArrow}（降下弹幕）。<b>雷鸣神力不再吞</b> ——
+	 * 它在同一个位置调 {@link #stampThunderMightForArrow}（<b>登记 + 放行</b>），
+	 * 于是这一发照常走到本方法最后那行 {@code super.shoot(..)}：箭真的生成、真的飞出去，
+	 * 效果改由命中段结算。三张档位表两两不相交这件事一个字未改 ⇒ "一次释放只放一个主动技能"
+	 * 仍然只由那一个被消费掉的标记回答。</p>
 	 */
 	@Override
 	protected void shoot(ServerLevel level, LivingEntity shooter, InteractionHand hand, ItemStack weapon,
@@ -775,13 +827,14 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 		if (fireWaveShiftInsteadOfArrow(level, shooter, hand, weapon, pendingShot)) {
 			return;
 		}
-		// 批 5：雷鸣弓「雷鸣神力」（另一套：电荷 + 按概率的真雷）。两把弓各问各的档位表，互不相干
-		// （宝石 / 星界在那张表里是 false，雷鸣在这张表里是 false 的那一边）。
-		if (fireThunderMightInsteadOfArrow(level, shooter, hand, weapon, pendingShot)) {
-			return;
-		}
+		// ★ 批 19：雷鸣弓「雷鸣神力」<b>不再吞掉这一发</b>（作者 2026-10-07：
+		//   "先给它暂时改成那种特殊的剑，击中生物之后会释放电荷效果"）——
+		//   这里只<b>登记</b>（把这一发是雷鸣神力 + 它的有效等级写进既有的技能标记通道），
+		//   <b>不 return</b> ⇒ 下面照旧落到 super.shoot(..)：箭真的会生成、真的会飞出去，
+		//   电荷与真雷改由命中段在<b>箭的命中点</b>结算（JadeTopazBowEventHandler）。
+		stampThunderMightForArrow(weapon, pendingShot);
 		// 批 6：星界弓「星元波置」（作者按新定义返工：不发射波、不替换箭 ⇒ 在锚定区域降下弹幕）。
-		// 三张档位表两两不相交（宝石 / 雷鸣在这张表里是 false），所以三条闸门里最多只有一条为真。
+		// 三张档位表两两不相交（宝石 / 雷鸣在这张表里是 false），所以三条专属技能里最多只有一条为真。
 		if (fireAstralBarrageInsteadOfArrow(level, shooter, hand, weapon, pendingShot, drawnTicks)) {
 			return;
 		}
@@ -816,57 +869,80 @@ public class JadeTopazBowItem extends BowItem implements EnergyGradientTool {
 	}
 
 	/**
-	 * <b>雷鸣弓「雷鸣神力」的发射闸门</b>（2026-10-05 弓技能批 5；作者："不是发波，是另一套"）。
+	 * <b>雷鸣弓「雷鸣神力」这一发：只登记 + 放行，不再吞掉投射物</b>
+	 * （2026-10-05 弓技能批 5 建立；<b>2026-10-07 批 19 按作者裁定改触发时机</b>）。
 	 *
-	 * <p>形状与 {@link #fireWaveShiftInsteadOfArrow} <b>逐条同构</b>（同一个 {@code shoot} 覆写里调用、
-	 * 同样的两个闸门、同样扣一笔耐久、同样"整支箭都不造"），差别只在"换成了什么"与数值表：</p>
+	 * <p>作者原话（批 19，逐字）：</p>
+	 * <blockquote>「<b>先给它暂时改成那种特殊的剑，击中生物之后会释放电荷效果。</b>
+	 * 之后的话，我打算再往里面做一些新的东西，比如说雷鸣箭，这样可以彻底解决这个问题」</blockquote>
+	 * <p>⇒ 这一发<b>照常飞出一支可见的箭</b>，"电荷 + 按概率的真雷"改在<b>那支箭命中生物时</b>
+	 * 于<b>箭的命中点</b>结算（"像那把特殊的剑"= 雷鸣合金剑的既有机制：
+	 * {@code ThunderiteHitChargeHandler} 也是"命中生物才施加电荷"）。</p>
+	 *
+	 * <h2>批 19 的形状：登记 + 放行（不是"替换 + return true"）</h2>
+	 * <p>两道判据与批 5/7 的闸门<b>逐字相同</b>，变的只是"通过之后做什么"：</p>
 	 * <ol>
-	 *   <li><b>档位闸门</b>：{@link BowThunderMightConfigs#appliesTo(BowTier)} —— 只有雷鸣弓这一档
-	 *       （宝石 / 星界走另一张表的另一条路，翠玉两处都是 false ⇒ 它那两条技能与普通射击一字未动）；</li>
-	 *   <li><b>技能键闸门</b>（批 7 换判据）：<b>同一个</b>标记读数（{@code pendingShot}，
-	 *       由 {@link #consumePendingShot} 在本条闸门之前读一次并清掉）——必须<b>正好等于本技能的
-	 *       注册 id</b>。⚠ 批 5 当时读的是"任一技能键"（{@code waveShiftKeyHeld}），
-	 *       那正是批 7 修掉的歧义；现在这里的 {@code matches(..)} 才是"只认自己那个键"的落点。</li>
+	 *   <li><b>档位闸门</b>：{@link BowThunderMightConfigs#appliesTo(BowTier)} —— 只有雷鸣弓这一档；</li>
+	 *   <li><b>标记闸门</b>：{@code pendingShot} 必须<b>正好等于本技能的注册 id</b>
+	 *       （{@code BowExclusiveShotItemSkill.THUNDER_MIGHT.matches(..)}；那个局部值由
+	 *       {@link #shoot} 里的 {@link #consumePendingShot} 在所有闸门之前读一次并清掉）；</li>
+	 *   <li><b>通过之后（批 19 改的就是这一条）</b>：把这一发<b>登记进既有的技能标记通道</b> ——
+	 *       {@link #TAG_SKILL} 写 {@code pendingShot}（<b>就是内核写下的那个技能 id 字符串</b>，
+	 *       本方法<b>不写任何 id 字面量</b>），{@link #TAG_SKILL_LEVEL} 写
+	 *       {@link BowTier#thirdSkillEffectiveLevel(ItemStack)}（与费用侧同源，批 14 口径）。
+	 *       这两个键随后由 {@link #shootProjectile} <b>照既有形状</b>搬上箭
+	 *       （它本来就读弓上的同一对键），命中段据此分发。
+	 *       ⚠ <b>本方法不 return</b>：调用方<b>必须</b>继续走 {@code super.shoot(..)}。</li>
 	 * </ol>
 	 *
-	 * <p><b>等级（批 12 改口径；<b>批 14 改读数</b>）</b>：{@link BowTier#thirdSkillLevel()}（雷鸣的<b>绑定</b>
-	 * 等级 = <b>1</b>）⇒ 批 12 的实机是范围 <b>2×2</b>、真雷 <b>20%</b>（表见
-	 * {@link BowThunderMightConfigs} 的 Lv1 行）。⚠ <b>批 14 起这里读的是
-	 * {@link BowTier#thirdSkillEffectiveLevel(ItemStack)}</b>（= 绑定等级 + 技艺提升 − 技艺回溯，
-	 * 按 {@link BowTier#maxSkillLevel()} 钳到 3）：批 12~13 读的就是上面那个<b>注册期常量</b>，
-	 * 于是费用随有效等级涨（150 × 3 = 450 封顶）、效果却冻在 ① —— 作者批 14 的
-	 * "这两个玩意儿只能一级？他们不是封顶三级吗"点名的就是这个。现在效果与费用同源：
-	 * Lv1/2/3 ⇒ 2×2/3×3/4×4 与 20%/40%/60%。
-	 * 仍然<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}（那一列是槽 0/1 的基准，
-	 * 槽 2 有自己的绑定列）。
-	 * ⚠ 批 12 之前这里读 {@link BowTier#baseSkillLevel()}（雷鸣 3 ⇒ 4×4 / 60%）；
-	 * 星界那条同批同改（星元波置 ①），宝石那条（读技能等级 {@code effectiveSkillLevel}）一个字未动。</p>
+	 * <p><b>与"一次释放只放一个主动技能"的关系</b>：判据仍是那个被消费掉的标记，
+	 * 三张档位表两两不相交、三重 {@code matches(..)} 互斥 —— 本批<b>没有</b>新增任何"这一发归谁"
+	 * 的判据，只是把"归雷鸣神力"之后的结果从"整支箭都不造"改成"登记在箭上"。
+	 * ⛔ 弓侧仍然<b>一个按键都不读</b>（批 7 的红线）。</p>
 	 *
-	 * <p><b>耐久</b>：与原版 {@code ProjectileWeaponItem#shoot} 同一笔账 —— 少了这一行，
-	 * 这条技能会静默变成"雷鸣弓按着技能键射击不再磨损弓"（白赚耐久）。</p>
+	 * <p><b>耐久（批 19 必须改对的一处）</b>：批 5~18 这条闸门自己扣一笔
+	 * {@code weapon.hurtAndBreak(..)} 然后 {@code return true}（{@code super.shoot} 不会被调）；
+	 * 批 19 放行之后，耐久由原版 {@code ProjectileWeaponItem#shoot} 在<b>每个投射物</b>那一轮里
+	 * 扣一次（本路恰好一个投射物）⇒ <b>这里必须一个字都不扣</b>，否则就是双扣。
+	 * ⇒ 原批 5 那行 {@code weapon.hurtAndBreak(..)} 已随本次改动<b>删除</b>。</p>
 	 *
-	 * <p>⚠ <b>本方法一个数字都不写</b>（连等级都不是字面量）：范围边长 / 真雷概率 / 射程 /
-	 * 垂直容差全部按名取自 {@link BowThunderMightConfigs}，实际发射在
-	 * {@code BowThunderMightLauncher#strike}。本方法只回答"这一发该不该换成雷鸣神力"。</p>
+	 * <p><b>等级（批 14 改读数）</b>：读 {@link BowTier#thirdSkillEffectiveLevel(ItemStack)}
+	 * （= 槽 2 的绑定等级 1 + 技艺提升 − 技艺回溯，按 {@link BowTier#maxSkillLevel()} 钳到 3）
+	 * ⇒ Lv1/2/3 = 2×2/3×3/4×4 与 20%/40%/60%，与费用侧同源。
+	 * 仍然<b>不</b>用 {@link #effectiveSkillLevel(ItemStack)}（那一列是槽 0/1 的基准）。</p>
 	 *
+	 * <p>⚠ <b>本方法一个真源数字都不写</b>（连等级都不是字面量）：范围边长 / 真雷概率全部按名取自
+	 * {@link BowThunderMightConfigs}，实际结算在 {@code BowThunderMightLauncher#strikeAt}</p>
+	 *
+	 * <p>⚠ <b>为什么返回 {@code void} 而不是 {@code boolean}</b>：批 5~18 那个闸门用返回值告诉调用方
+	 * "这一发已被替换、<b>不得</b>再造箭"。批 19 之后这个答案<b>没有第二种结果</b>（认出来了就必须
+	 * 放行），留一个恒被忽略的 {@code boolean} 只会让下一个人重新把它写成
+	 * {@code if (stampThunderMightForArrow(..)) { return; }} —— 而那正是本批要拆掉的形状。
+	 * 去掉返回值 ⇒ "拿它当闸门"这件事<b>编译期就写不出来</b>（最硬的钉子）。</p>
+	 *
+	 * @param weapon      本次射击所用的弓（登记就写在这把弓的 {@code CUSTOM_DATA} 上）
 	 * @param pendingShot {@link #consumePendingShot} 读出来并已清掉的值（空串 = 这一发不是专属技能）
-	 * @return {@code true} = 这一发已经由雷鸣神力接管（调用方<b>不得</b>再走 {@code super.shoot}）
 	 */
-	private boolean fireThunderMightInsteadOfArrow(ServerLevel level, LivingEntity shooter, InteractionHand hand,
-												   ItemStack weapon, String pendingShot) {
+	private void stampThunderMightForArrow(ItemStack weapon, String pendingShot) {
 		if (!BowThunderMightConfigs.appliesTo(this.tier)) {
-			return false;
+			return;
 		}
 		// 与「量波置换」同一个标记读数（唯一一次读取在 shoot 里，这里只比较局部值）。
 		if (!BowExclusiveShotItemSkill.THUNDER_MIGHT.matches(pendingShot)) {
-			return false;
+			return;
 		}
 		// 等级 = 该弓槽 2 那条技能的**有效**等级（批 14；批 12~13 读的是注册期常量
 		// BowTier#thirdSkillLevel() = 1 ⇒ 2×2 / 20% 冻死）。真源 = BowTier#thirdSkillEffectiveLevel，
 		// 与费用侧（CoeSkillSupport#effectiveLevel）同一条口径，链上一个数字都不写。
-		BowThunderMightLauncher.strike(level, shooter, this.tier.thirdSkillEffectiveLevel(weapon));
-		weapon.hurtAndBreak(getDurabilityUse(weapon), shooter, LivingEntity.getSlotForHand(hand));
-		return true;
+		int level = this.tier.thirdSkillEffectiveLevel(weapon);
+		// ★ 批 19：登记进**既有**的技能标记通道（TAG_SKILL / TAG_SKILL_LEVEL）——
+		//   值就是内核写下的那个 id 字符串（pendingShot），弓侧不写 id 字面量；
+		//   下一站是 shootProjectile（它本来就按这一对键把技能搬上箭）与命中段的分发。
+		weapon.update(DataComponents.CUSTOM_DATA, CustomData.EMPTY,
+			data -> data.update(tag -> {
+				tag.putString(TAG_SKILL, pendingShot);
+				tag.putInt(TAG_SKILL_LEVEL, level);
+			}));
 	}
 
 	/**

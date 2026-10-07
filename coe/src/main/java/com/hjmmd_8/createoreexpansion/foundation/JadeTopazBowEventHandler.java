@@ -7,6 +7,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveEssenceEffects;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowAstralBarrageLauncher;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowHitEffects;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.BowMetaArrowTrait;
+import com.hjmmd_8.createoreexpansion.content.equipment.item.BowThunderMightLauncher;
 import com.hjmmd_8.createoreexpansion.content.equipment.item.JadeTopazBowItem;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowCurseConfig;
 import com.hjmmd_8.createoreexpansion.content.skill.config.weapon.BowDisarmConfig;
@@ -14,6 +15,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.foundation.item.skill.config.SkillConfig;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -31,7 +33,9 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  *
  * <p>职责：</p>
  * <ul>
- *     <li>读取箭上携带的技能标记（发射时写入），命中生物实体后分发到对应效果；</li>
+ *     <li>读取箭上携带的技能标记（发射时写入），命中生物实体后分发到对应效果
+ *         （凋零诅咒 / 缴械风暴 / <b>雷鸣神力</b> —— 最后这条是 2026-10-07 批 19 加进来的，
+ *         见下面「批 19」那段）；</li>
  *     <li>本模组四把弓射出的箭（箭上有 {@link JadeTopazBowItem#TAG_SOURCE_BOW} 来源标记）命中时
  *         滚动一次基础概率效果（凋零/缓慢/转化紊乱+缴械）；</li>
  *     <li>被动技能「元矢自生」（2026-10-04 批 3）：箭上带着魔素标记
@@ -57,6 +61,21 @@ import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
  * <p><b>存档兼容</b>：箭上的标记键 {@link JadeTopazBowItem#TAG_SKILL} 与
  * {@link JadeTopazBowItem#TAG_SKILL_LEVEL} 一字未动，老存档里的飞行中箭矢照旧生效；
  * 等级仍经 {@link AllSkills#getData(ResourceLocation)} 取该等级的实际配置。</p>
+ *
+ * <p><b>2026-10-07 批 19：雷鸣神力（「像那把特殊的剑」）</b>—— 作者原话（逐字）：
+ * 「<b>先给它暂时改成那种特殊的剑，击中生物之后会释放电荷效果。</b>」⇒ 雷鸣弓那一发
+ * <b>不再</b>在松手那一刻用射线结算，而是<b>照常飞出一支可见的箭</b>；电荷与真雷改在
+ * <b>这支箭命中生物时</b>、于<b>箭的命中点</b>结算。落法：本处理器新增
+ * {@link #BOW_THUNDER_MIGHT_ID} 一支（与上面两条继承技能<b>同一个</b> {@code TAG_SKILL} 分发），
+ * 把 {@code hit.getLocation()}（{@code EntityHitResult} 的精确命中点）交给
+ * {@code BowThunderMightLauncher#strikeAt}。</p>
+ * <p>⚠ <b>"引爆的那个点"与"施加的那个面"分工没变</b>：范围（边长 2/3/4 的水平方形）、
+ * 垂直容差、真雷概率、以及"电荷一律经 {@code LightningEssenceHitCharge#applyOnHit} →
+ * {@code ChargeApi.applyRandom}"这条唯一施加面，全部一个字未改（那就是雷鸣合金剑那条既有途径
+ * 用的同一个面）；变的只有<b>谁在什么时候把落点交出来</b>。</p>
+ * <p>⚠ <b>打空 / 打墙没有表现</b>：本处理器最上面那几道闸门要求事件结果是
+ * {@code EntityHitResult} 且命中一个 {@link LivingEntity} ⇒ 触发条件就是作者那句
+ * "击中生物之后"（箭照原版那样继续飞 / 插在地上）。</p>
  */
 @EventBusSubscriber(modid = CoeCore.MOD_ID)
 public class JadeTopazBowEventHandler {
@@ -65,6 +84,16 @@ public class JadeTopazBowEventHandler {
 	private static final ResourceLocation BOW_CURSE_ID = CoeCore.modLoc("bow_curse");
 	/** 缴械风暴技能 id（原 {@code BowDisarmSkill}）。 */
 	private static final ResourceLocation BOW_DISARM_ID = CoeCore.modLoc("bow_disarm");
+	/**
+	 * <b>雷鸣神力技能 id</b>（{@code AllSkills.BOW_THUNDER_MIGHT}，批 7 起是正式条目）。
+	 *
+	 * <p>2026-10-07 批 19 新增这一支：作者把雷鸣神力改成"像那把特殊的剑 —— 击中生物之后才释放
+	 * 电荷效果"，于是这一发的技能标记（弓的 {@code stampThunderMightForArrow} 写、
+	 * {@code shootProjectile} 搬上箭）从"发射侧自己结算"变成"在这里按 id 分发"。
+	 * 判据与上面两条继承技能<b>逐字同形</b>（同一个 {@code TAG_SKILL} + 同一个
+	 * {@code TAG_SKILL_LEVEL}），所以它落进的是<b>既有分发</b>，不是第二条通道。</p>
+	 */
+	private static final ResourceLocation BOW_THUNDER_MIGHT_ID = CoeCore.modLoc("bow_thunder_might");
 
 	@SubscribeEvent
 	public static void onProjectileImpact(ProjectileImpactEvent event) {
@@ -125,6 +154,21 @@ public class JadeTopazBowEventHandler {
 			BowDisarmConfig config = configFor(id, level, BowDisarmConfig.class);
 			if (config != null)
 				BowHitEffects.applyDisarm(player, target, config);
+		} else if (BOW_THUNDER_MIGHT_ID.equals(id) && arrow.level() instanceof ServerLevel serverLevel) {
+			// ★ 2026-10-07 批 19：雷鸣弓「雷鸣神力」的<b>结算点</b>（作者原话："先给它暂时改成
+			//   那种特殊的剑，击中生物之后会释放电荷效果"）—— 从"松手那一刻的射线 hitscan"
+			//   搬到这里：这一发<b>照常飞出一支可见的箭</b>（弓物品侧的 stampThunderMightForArrow
+			//   只登记、不吞），等这支箭<b>命中生物</b>时，在<b>箭的命中点</b>结算电荷与真雷。
+			//
+			//   落点 = hit.getLocation()（EntityHitResult 的精确命中点）：不是施放者坐标，
+			//   也不再由发射侧现算射线（那个 pickImpact 已随本批删除）。
+			//   触发条件 = 本处理器最上面那几道闸门：事件的结果必须是 EntityHitResult
+			//   且命中一个 LivingEntity ⇒ 打空 / 打墙走不到这一支（作者原话为准）；
+			//   目标是不是玩家由 ChargeApi / 电荷面自己的既有口径回答，本处理器不重复写。
+			//
+			//   范围与真雷概率一个字未改：全部按名取自 BowThunderMightConfigs（弓侧传下来的
+			//   那个等级就是槽 2 的有效等级，与费用侧同源）。
+			BowThunderMightLauncher.strikeAt(serverLevel, player, hit.getLocation(), level);
 		}
 	}
 
