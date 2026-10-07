@@ -186,6 +186,30 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
  * {@code bow13-geometry}（圆心 / 半径 / 上限 15 / 速率 0.05 四项未变）、
  * {@code bow13-no-new-assets}（零新增粒子类型 / 贴图 / 注册 / 语言键），各带负向与反空转。</p>
  *
+ * <h2>2026-10-07 弓技能批 17（作者实测崩溃，唯一改动 = 过渡环两层的写序）</h2>
+ * <blockquote>
+ * 触发了神秘bug，在穿着星界套的同时手持星界弓，然后按 H 键同时进行拉弓与释放星界套的技能，结果崩了。
+ * </blockquote>
+ * <p>崩溃报告 {@code run/crash-reports/crash-2026-10-07_13.11.26-client.txt} 的栈顶是
+ * {@code java.lang.IllegalStateException: Not building!}，栈里属于本模组的三帧全在本类：
+ * {@code onRender}（第 580 行 = 过渡环 for 里第一次调用 {@link #ring}）→ {@link #ring} →
+ * {@link #vertex} → {@code BufferBuilder#ensureBuilding}。<b>与技能释放本身、与批 16 的内核注入
+ * 都没有关系</b>：栈里没有任何 {@code SkillBundle} / mixin 生成类，日志里两段技能（星元波置、
+ * 星芒嬗震）也都正常结算完了 —— 崩的是一帧渲染。</p>
+ * <p>根因（不在几何、不在键位、不在并发）：{@code MultiBufferSource.BufferSource#getBuffer} 在
+ * <b>同一条共享缓冲上换 RenderType</b> 时会先 {@code endBatch(lastSharedType)}，把上一个
+ * RenderType 的 {@code BufferBuilder} 直接 {@code build()} 掉（该 builder 的 {@code building}
+ * 立刻变 false）。批 11 那版是"先把两个 consumer 一次取齐、再逐 Y 交替写" ⇒ 取第二个的时候
+ * 第一个已经死了，紧接着第一次往它写顶点就抛 "Not building!"。所以<b>只要过渡环出现
+ * （悬空且有落差）就 100% 必崩</b>，而贴地平坡时这段根本进不来 —— 这就是它一直没被试出来的原因。</p>
+ * <p>修法（最小）：一层写完 + {@code endBatch} 冲刷，<b>然后</b>才取下一层的 consumer
+ * （形状照 {@code CoeBlockOutlineRenderer} 的 draw/flush）。几何、颜色、两个 alpha 系数、
+ * 渲染类型、顶点写法<b>一个字节没动</b>。关卡 {@code bow17-flush-between-layers} 钉住
+ * "两个 consumer 之间必须有一次冲刷"，{@code bow17-layers-intact} 钉住两层都还在、两个 alpha
+ * 系数与段数未变（不许用"删掉穿透层/删掉过渡环"当修法），{@code bow17-other-two-consumer-site}
+ * 钉住仓里另一处双 consumer 的写序。写序即修复本身，所以这三条都只能钉住"形状"，
+ * <b>真正"不再崩"必须进游戏按原操作复验</b>（见本节末）。</p>
+ *
  * <h2>⚠ 只有进游戏才看得见</h2>
  * <p>按 {@code AGENTS.md} 的"客户端渲染只有进游戏才看得见"：{@code compileJava} / {@code runData}
  * 都<b>不</b>跑渲染，本类的正确性最终只能在游戏里验收（按住专属键拉弓才看到粉色边界并向外推进、
@@ -574,17 +598,33 @@ public final class BowAstralBarragePreviewRenderer {
         //   路径一条都不新增。它们<b>只在空中且与地面有落差时出现</b>（贴地时 transitionYs 为空），
         //   因此不会在作者站的平地上重新画出一个"细线圆圈"。
         if (transitionYs.length > 0) {
+            // ★★ 批 17（2026-10-07 崩溃修复，作者实测：拉弓（星界弓预选框亮着）+ 按 H 同时放
+            //   装备段技能 ⇒ java.lang.IllegalStateException: Not building!）。
+            //   唯一改动 = **两层不再交替写**：一层写完、立刻冲刷，才去取下一层的 consumer。
+            //   原写法是"先把两个 consumer 都取出来，再在同一个 for 里逐 Y 交替写"——第二次
+            //   getBuffer 本身就已经把第一次拿到的 LINES BufferBuilder 判了死刑：
+            //   MultiBufferSource.BufferSource#getBuffer 在共享缓冲上换 RenderType 时，会先
+            //   endBatch(lastSharedType)（该文件 56-58 行），而 endBatch 走 BufferBuilder#build()
+            //   把 building 置 false（BufferBuilder.java:52）⇒ 再往那个死 builder addVertex 就是
+            //   BufferBuilder#ensureBuilding 第 68 行抛出的 "Not building!"。
+            //   ⚠ 只要 transitionYs 非空（悬空且与地面有落差）就 100% 必崩；贴地平坡时这段根本
+            //   进不来，这正是它一直没被试出来的原因。形状照 CoeBlockOutlineRenderer#draw/#flush
+            //   （那里同样是"写完一层再取下一层"，所以它不会崩）。
             VertexConsumer solid = buffer.getBuffer(RenderType.LINES);
-            VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
             for (double transitionY : transitionYs) {
                 ring(pose, solid, transitionY, red, green, blue,
                     OutlineColors.ALPHA * TRANSITION_RING_ALPHA_FACTOR);
+            }
+            // **必须自己冲刷**：接口给的是原版 buffer source，没有人替我们 endBatch
+            // （形状照 CoeBlockOutlineRenderer#flush，按 RenderType 立即结算这批）。
+            // ⚠ 这一句不能挪到第二个 getBuffer 之后 —— 那正是本批修掉的那个崩溃。
+            buffer.endBatch(RenderType.LINES);
+
+            VertexConsumer transparent = buffer.getBuffer(AllRenderTypes.LINES_TRANSPARENT);
+            for (double transitionY : transitionYs) {
                 ring(pose, transparent, transitionY, red, green, blue,
                     OutlineColors.ALPHA * TRANSITION_RING_ALPHA_FACTOR * TRANSPARENT_ALPHA_FACTOR);
             }
-            // **必须自己冲刷**：接口给的是原版 buffer source，没有人替我们 endBatch
-            // （形状照 CoeBlockOutlineRenderer#flush，按 RenderType 立即结算这两批）。
-            buffer.endBatch(RenderType.LINES);
             buffer.endBatch(AllRenderTypes.LINES_TRANSPARENT);
         }
 
