@@ -1,6 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.grinding.block;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeBlockEntityTypes;
+import com.hjmmd_8.createoreexpansion.common.registry.coe.CoeMachines;
 import com.hjmmd_8.createoreexpansion.common.AllTags;
 import com.simibubi.create.AllSoundEvents;
 import com.simibubi.create.content.equipment.wrench.IWrenchable;
@@ -23,6 +24,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
@@ -41,10 +43,20 @@ import net.neoforged.neoforge.items.ItemHandlerHelper;
  * 见 {@link #onWrenched}）。</p>
  *
  * <p><b>盖那一格的双向保护</b>（{@link #coverPos} 是这一格的唯一出处）：
- * ① 开盖前——那一格被不可替换方块挡住 ⇒ 拒绝开盖 + 提示；
- * ② 开盖后——盖翻起后那一格是纯 AIR（盖是同一个方块的模型部件，不占邻格），
- * 玩家本可往里放方块 ⇒ 由 {@link #isOpenCoverCell} 判据 + 服务端放置事件取消，
- * 并提示"已经开盖，无法在盖侧放置方块！"。关盖时那一格照常可放。</p>
+ * ① 开盖前——那一格被不可替换方块挡住 ⇒ 拒绝开盖 + 提示（{@link #isCoverBlocked}，
+ * <b>只豁免本模组自己的占位方块</b>）；
+ * ② 开盖后——盖翻起后那一格原本是纯 AIR（盖是同一个方块的模型部件，不占邻格），
+ * 但本批（COE 批 22）改成：开盖时<b>在那一格放一个真正的占位方块</b>
+ * （{@link GrinderCoverPlaceholderBlock}，无碰撞、不可替换、{@code PushReaction.BLOCK}、
+ * 挡流体、不掉落、无物品）。于是「不许放置」「活塞推不动」「流体进不来」三件事
+ * <b>一次解决</b>，不再需要任何事件取消（批 21 的放置守卫已随之删除）。
+ * 关盖时把占位方块移除，那一格照常可放。
+ *
+ * <p><b>占位方块的生命周期</b>（放/清的唯一出处 {@link #syncCoverPlaceholder}）：
+ * 开盖 ⇒ {@link #placeCoverPlaceholder}；关盖 ⇒ {@link #clearCoverPlaceholder}；
+ * 机器被拆掉 ⇒ {@link #onRemove} 清；机器还开着但占位方块被抹掉（爆炸 / {@code /setblock}）
+ * ⇒ {@link PowerAngleGrinderBlockEntity#tick} 每一 tick 补回来；机器不存在了的孤儿
+ * ⇒ {@link GrinderCoverPlaceholderBlockEntity} 自己删。</p>
  */
 public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IBE<PowerAngleGrinderBlockEntity>, com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction {
 
@@ -114,7 +126,12 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 		}
 
 		// 切换开盖状态
-		KineticBlockEntity.switchToBlockState(level, pos, state.cycle(OPEN));
+		BlockState toggled = state.cycle(OPEN);
+		KineticBlockEntity.switchToBlockState(level, pos, toggled);
+		// 开盖 ⇒ 在盖那一格放占位方块；关盖 ⇒ 移除它。
+		// 顺序承重：必须在这一句<b>之后</b>放——占位方块自己的存活判据
+		// （isOpenCoverCell）要求邻机此刻已经是 OPEN，先放会被判成孤儿。
+		syncCoverPlaceholder(level, pos, toggled);
 		if (!level.isClientSide) {
 			AllSoundEvents.WRENCH_ROTATE.playOnServer(level, pos, 1, level.random.nextFloat() + .5f);
 		}
@@ -122,54 +139,107 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 	}
 
 	/**
+	 * 机器被换成别的方块时（被挖掉 / 被爆炸清掉 / 被别的模组替换 / 被 {@code /setblock}），
+	 * 把盖那一格的占位方块一起清掉，<b>绝不留孤儿</b>。
+	 *
+	 * <p><b>⚠ 为什么必须判 {@code !newState.is(this)} 而不能无条件清</b>：
+	 * {@code LevelChunk#setBlockState:272-274} 在服务端<b>无条件</b>调用
+	 * {@code blockstate.onRemove(...)}——只要状态真的变了，{@code cycle(OPEN)}
+	 * 这种"同一个方块换状态"也走这里。若在这里无条件清占位方块，就会出现
+	 * 「开盖刚放好、下一句 onRemove 又把它清掉」的自相矛盾（表现是那一格永远占不住）。</p>
+	 *
+	 * <p>跨区块：只有在盖那一格所在区块<b>已载入</b>时才动手（{@code level.getBlockState}
+	 * 对未载入区块会同步载入它，在方块移除路径里强载邻区块是不可接受的）。
+	 * 没载入就不清——那一格所在区块下次载入时，占位方块自己的方块实体会发现无人认领并自删。</p>
+	 */
+	@Override
+	public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+		if (!newState.is(this)) {
+			BlockPos cover = coverPos(pos, state);
+			if (level.isLoaded(cover)) {
+				clearCoverPlaceholder(level, cover);
+			}
+		}
+		super.onRemove(state, level, pos, newState, isMoving);
+	}
+
+	/**
 	 * <b>盖板那一格</b>（本仓唯一出处）：盖板在 FACING 对面一侧，所以它就是本机
 	 * 朝 FACING 反方向相邻的那一格。
 	 *
-	 * <p>开盖前的空间检查（{@link #isCoverBlocked}）与开盖后的放置保护
-	 * （{@link #isOpenCoverCell}）读的都是这一格，必须共用这一个定义——两处各写一遍
-	 * {@code getOpposite()} 迟早会分家，而分家的表现是静默的（开盖被拒却允许放置，
-	 * 或反过来）。</p>
+	 * <p>开盖前的空间检查（{@link #isCoverBlocked}）、占位方块的放/清
+	 * （{@link #syncCoverPlaceholder}）与孤儿判据的参照点（{@link #isOpenCoverCell}）
+	 * 读的都是这一格，必须共用这一个定义——两处各写一遍 {@code getOpposite()} 迟早会分家，
+	 * 而分家的表现是静默的（开盖被拒却允许放置，或反过来）。</p>
 	 */
 	public static BlockPos coverPos(BlockPos pos, BlockState state) {
 		return pos.relative(state.getValue(HORIZONTAL_FACING)
 			.getOpposite());
 	}
 
-	/** 盖板那一格是否被不可替换方块阻挡（开盖前的空间检查；只读，不改世界） */
+	/**
+	 * <b>开盖前的空间检查</b>：盖板那一格是不是被别的方块挡住了（只读，不改世界）。
+	 *
+	 * <p><b>⚠ 本模组自己的占位方块是唯一的豁免</b>（COE 批 22）：
+	 * 不豁免的话，「占位方块还在 + 盖的状态是 CLOSED」这一态会让 {@code !open &&
+	 * isCoverBlocked(...)} 恒真 ⇒ <b>那一台角磨床此后永远开不了盖</b>。
+	 * 而这一态是真实可出现的：跨区块自动存档的两半不保证同时落盘、{@code /setblock}、
+	 * 备份还原、别的模组直写，任何一条都能造出来。</p>
+	 *
+	 * <p><b>豁免面严格等于"本模组这一个方块"</b>：不按 {@code isAir}、不按标签、
+	 * 不按"可替换"去泛化——那会把别的方块也一起放行，正是这条守则要防的走样。</p>
+	 */
 	private static boolean isCoverBlocked(Level level, BlockPos coverPos) {
 		BlockState front = level.getBlockState(coverPos);
+		if (isCoverPlaceholder(front)) {
+			return false;
+		}
 		return !front.isAir() && !front.canBeReplaced();
 	}
 
+	/** 这一格方块状态是不是本模组的角磨床盖侧占位方块（豁免判据的唯一出处）。 */
+	public static boolean isCoverPlaceholder(BlockState state) {
+		return state.is(CoeMachines.GRINDER_COVER_PLACEHOLDER.get());
+	}
+
 	/**
-	 * <b>盖侧放置保护判据</b>（COE 批 21）：{@code pos} 是不是某台<b>已开盖</b>角磨床的
-	 * 盖板那一格。
+	 * <b>盖侧判据</b>（COE 批 22 沿用批 21 的口径）：{@code pos} 是不是某台<b>已开盖</b>
+	 * 角磨床的盖板那一格。
 	 *
-	 * <p><b>为什么需要它</b>：盖不是独立方块，{@link #OPEN} 只换模型
-	 * （{@code power_angle_grinder_rotated}），方块本身只占自己那一格，碰撞形状
-	 * {@link #SHAPE} 也不伸到邻格 ⇒ 开盖后盖那一格是纯 AIR，玩家可以往里面放方块。
-	 * 定下的口径是：<b>开盖状态下盖那一侧不许放方块</b>（关盖时照常能放）。</p>
+	 * <p><b>为什么需要它</b>：占位方块（{@link GrinderCoverPlaceholderBlock}）自己要知道
+	 * "还有没有人认领我"，放置提示也要知道"这一格是不是被开盖规则占着"。</p>
 	 *
-	 * <p><b>为什么是"沿 4 个水平方向找邻机"</b>：判据从"即将被放置的那一格"反查——
-	 * 邻机若满足 {@code HORIZONTAL_FACING == 该方向}，则它朝 FACING 反方向的那一格
+	 * <p><b>为什么是"沿 4 个水平方向找邻机"</b>：邻机若满足
+	 * {@code HORIZONTAL_FACING == 该方向}，则它朝 FACING 反方向的那一格
 	 * （{@link #coverPos}）正是 {@code pos}。FACING 是水平的
 	 * （{@link HorizontalKineticBlock}），所以只看 {@link Direction.Plane#HORIZONTAL}：
 	 * 既不会把上下两格算进来，也不会扩大到"机器周围一圈 / 一个盒子"。</p>
 	 *
 	 * <p><b>关盖不算</b>：条件里 {@link #OPEN} 是<b>正向</b>要求（{@code getValue(OPEN)}
-	 * 为 true 才命中），所以 {@code OPEN == false} 的机器永远返回 false，关盖时那一格
-	 * 照常可放。</p>
+	 * 为 true 才命中），所以 {@code OPEN == false} 的机器永远返回 false。</p>
 	 *
-	 * <p><b>只读、不改世界</b>：只查方块状态，不放占位方块、不写 blockstate
-	 * （占位方块会动存档，还会反过来影响 {@link #isCoverBlocked} 自己的开盖判定）。</p>
+	 * <p><b>⚠ 邻格没载入时返回 true（按"被认领"处理）——这一条是必须的，不是保守</b>：
+	 * 本判据有两个调用方，其中一个是占位方块自己的方块实体 tick（每 tick 跑）。
+	 * {@code Level#getBlockState} 对未载入区块会<b>同步载入</b>它
+	 * （{@code Level#getBlockState} → {@code getChunkAt} → {@code ChunkStatus.FULL, true}），
+	 * 在方块实体的 tick 里做这件事会把邻区块永久钉住。所以先问 {@link Level#isLoaded}，
+	 * 只要有一个邻格没载入就直接返回 true（"判不了 ⇒ 当它是被认领的"）：
+	 * <b>宁可漏清一次孤儿，也绝不在机器所在区块此刻没载入时把它的占位方块删掉。</b>
+	 * 放走的那一次由"邻区块载入后本判据给出真答案"和"角磨床自己的 tick 会补回占位方块"
+	 * 两头收敛。提示那条调用方永远不会落到这一支：玩家点得到的那一格，邻格必然已载入。</p>
 	 *
-	 * @param level 世界（服务端放置事件里就是 {@code ServerLevel}）
-	 * @param pos   即将被放置方块的那一格
-	 * @return 是"已开盖机器的盖侧那一格"返回 true（调用方据此取消放置）
+	 * @param level 世界（必须是 {@link Level}：要读 {@link Level#isLoaded}）
+	 * @param pos   待判定的那一格
+	 * @return 是"已开盖机器的盖侧那一格"（或邻格未载入、判不了）返回 true
 	 */
-	public static boolean isOpenCoverCell(BlockGetter level, BlockPos pos) {
+	public static boolean isOpenCoverCell(Level level, BlockPos pos) {
 		for (Direction facing : Direction.Plane.HORIZONTAL) {
-			BlockState neighbour = level.getBlockState(pos.relative(facing));
+			BlockPos machinePos = pos.relative(facing);
+			if (!level.isLoaded(machinePos)) {
+				// 邻格没载入 ⇒ 判不了（也绝不能因此去载入它）⇒ 按被认领处理
+				return true;
+			}
+			BlockState neighbour = level.getBlockState(machinePos);
 			if (neighbour.getBlock() instanceof PowerAngleGrinderBlock
 				&& neighbour.getValue(OPEN)
 				&& neighbour.getValue(HORIZONTAL_FACING) == facing) {
@@ -177,6 +247,65 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 			}
 		}
 		return false;
+	}
+
+	// ========== 占位方块的放 / 清（生命周期唯一出处） ==========
+
+	/**
+	 * 把"盖那一格的占位方块"与盖的开合状态对齐（<b>幂等</b>；服务端才写世界）。
+	 *
+	 * <p>开盖 ⇒ {@link #placeCoverPlaceholder}；关盖 ⇒ {@link #clearCoverPlaceholder}。
+	 * 调用点：{@link #onWrenched}（扳手切换时）与
+	 * {@link PowerAngleGrinderBlockEntity#tick}（每 tick 复核，把被炸掉/被抹掉的补回来）。</p>
+	 *
+	 * <p>跨区块守卫：盖那一格所在区块没载入时一个字都不写（{@code Level#setBlock}
+	 * 对未载入区块会同步载入它）。没补上的那一次由"区块载入后角磨床自己的 tick"收敛。</p>
+	 */
+	public static void syncCoverPlaceholder(Level level, BlockPos pos, BlockState state) {
+		if (level.isClientSide) {
+			return;
+		}
+		BlockPos cover = coverPos(pos, state);
+		if (!level.isLoaded(cover)) {
+			return;
+		}
+		if (state.getValue(OPEN)) {
+			placeCoverPlaceholder(level, cover);
+		} else {
+			clearCoverPlaceholder(level, cover);
+		}
+	}
+
+	/**
+	 * 在盖那一格放占位方块（幂等）。
+	 *
+	 * <p><b>只在"空位或可替换"时占</b>（与 {@link #isCoverBlocked} 同一条判据的放宽形式）：
+	 * 那一格要是已经站着别的方块（玩家用 {@code /setblock} 塞的、外部工具改的），
+	 * <b>一个字都不动</b>——不抢、不毁玩家的东西。此后那台机器开盖会被正常拒绝，
+	 * 提示语就是既有的 {@code cannot_open_cover}。</p>
+	 */
+	public static void placeCoverPlaceholder(Level level, BlockPos cover) {
+		BlockState existing = level.getBlockState(cover);
+		if (isCoverPlaceholder(existing)) {
+			return;
+		}
+		if (!existing.isAir() && !existing.canBeReplaced()) {
+			return;
+		}
+		level.setBlock(cover, CoeMachines.GRINDER_COVER_PLACEHOLDER.getDefaultState(), Block.UPDATE_ALL);
+	}
+
+	/**
+	 * 清掉盖那一格的占位方块（幂等；只清"那一格确实是本模组占位方块"的情况，
+	 * 绝不动别的方块）。
+	 *
+	 * <p>用 {@code Level#removeBlock(pos, false)} 而不是 {@code destroyBlock} ⇒ 不产生任何掉落
+	 * （方块本身还有 {@code noLootTable()}，双保险）。</p>
+	 */
+	public static void clearCoverPlaceholder(Level level, BlockPos cover) {
+		if (isCoverPlaceholder(level.getBlockState(cover))) {
+			level.removeBlock(cover, false);
+		}
 	}
 
 	// ========== 角磨轮安装/取出 ==========

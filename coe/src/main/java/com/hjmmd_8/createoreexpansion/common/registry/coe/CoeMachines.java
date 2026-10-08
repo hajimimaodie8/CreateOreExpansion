@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 
 import com.hjmmd_8.createoreexpansion.common.*;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.field.StressInjectorBlock;
+import com.hjmmd_8.createoreexpansion.content.grinding.block.GrinderCoverPlaceholderBlock;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlock;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlock;
 import com.simibubi.create.api.stress.BlockStressValues;
@@ -17,8 +18,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Direction.Plane;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.material.PushReaction;
 
 import net.neoforged.neoforge.client.model.generators.ItemModelBuilder;
 import net.neoforged.neoforge.client.model.generators.ModelFile.ExistingModelFile;
@@ -129,6 +132,51 @@ public final class CoeMachines {
 		.model((ctx, prov) -> ((ItemModelBuilder) prov.getBuilder("power_angle_grinder"))
 			.parent(new UncheckedModelFile("createoreexpansion:block/power_angle_grinder/power_angle_grinder_item")))
 		.build()
+		.register();
+
+	// ===== 角磨床盖侧占位方块（grinder_cover_placeholder）—— ⚠ **不可获取的隐藏方块** =====
+	// 作者 2026-10-07 原话（COE 批 22 的判据）：「咱就不能在它开盖的时候，把盖身的那个部分判定成
+	// 一个方块吗？……这样还用考虑什么活塞推动流体流动的问题？……你把这个改成"活塞不能推动这个方块"」。
+	// 它就是"开盖时盖那一格真的有一个方块"这件事的载体：放置 / 活塞 / 流体三件事一次解决，
+	// 因此批 21 那条"放置事件取消"监听（GrinderCoverPlacementGuard）当场变成死代码并已删除。
+	//
+	// 与上面所有方块的四条关键区别（**缺任何一条这个修法就退化**，逐条都有负向断言守着）：
+	//   ① **没有 .item()** ⇒ 没有 BlockItem：不进背包、不进创造页任何分区、不进 JEI、搜不到
+	//      （Registrate 只把**物品**填进创造页：AbstractRegistrate#item(...) 里才读
+	//      defaultCreativeModeTab）；且**不调 .lang()** ⇒ 零新增语言键（八份 lang 拷贝一字不动）；
+	//   ② **.noLootTable()** ⇒ Block#getLootTable() = BuiltInLootTables.EMPTY ⇒ Registrate 的
+	//      战利品回调被跳过、BlockLootSubProvider 也跳过它 ⇒ **一个战利品表文件都不生成**，
+	//      被挖/被炸不掉任何东西；
+	//   ③ 方块状态指向**原版** minecraft:block/air（模型文件内容就是空的 {}，零贴图零引用）
+	//      ⇒ **不新增贴图、不新增模型文件**（美术红线"一张图都不要改、也不要自己画"零触碰）；
+	//      方块本身由 GrinderCoverPlaceholderBlock#getRenderShape = RenderShape.INVISIBLE
+	//      完全跳过渲染，getShape 返回空形状 ⇒ 连选中描边都没有、射线也打不到它；
+	//   ④ **.forceSolidOn() 是"挡住流体"的唯一关键**（见 GrinderCoverPlaceholderBlock 的类注释：
+	//      FlowingFluid#canHoldFluid 只看 !state.blocksMotion()，而 blocksMotion() ← isSolid()
+	//      ← calculateSolid() 在 collisionShape 为空时返回 false——noCollission + 空形状正好
+	//      落进那一支）。原版悬挂告示牌就是 forceSolidOn().noCollission() 这一对。
+	//      **不调 replaceable()** ⇒ 默认 false ⇒ 那一格不接受任何放置（这是"放置"那一半的全部）。
+	//      **pushReaction(BLOCK)** ⇒ 活塞推不动也拉不动。**instabreak 刻意不给 -1**，
+	//      否则 PushReaction 那条会失去可验证性（isPushable 会先在 destroySpeed == -1 处返回）。
+	// 命名空间仍是 createoreexpansion（红线）：注册走 CoeRegistrate；id 取内部风格。
+	public static final BlockEntry<GrinderCoverPlaceholderBlock> GRINDER_COVER_PLACEHOLDER = CoeRegistrate.REGISTRATE
+		.block("grinder_cover_placeholder", GrinderCoverPlaceholderBlock::new)
+		.properties(p -> p.mapColor(MapColor.NONE)
+			.noCollission()
+			.noOcclusion()
+			.noLootTable()
+			// ⚠ 这一条不能删：没有它，流体闸门 canHoldFluid 走 !blocksMotion() 会放行（见类注释）
+			.forceSolidOn()
+			.pushReaction(PushReaction.BLOCK)
+			.instabreak()
+			// ⚠ 方法名是 sound(SoundType)，不是 soundType(..)（1.21.1：Properties#sound）
+			.sound(SoundType.EMPTY))
+		// 无状态方块（没有 OPEN / FACING 之类的属性）⇒ 一条 "" 变体即可，指向原版空气模型。
+		.blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(), new UncheckedModelFile("minecraft:block/air")))
+		// 内部名字（英文侧由这里钉死，中文侧在 ChineseLangProvider 里补一条同名键 —— 中英键集必须对齐）。
+		// 与 STRESS_INJECTOR 同款；这个方块没有物品形态、又是"看不见 + 瞄不到"，所以这个名字
+		// 实际永远不会出现在任何界面上（创造页 / JEI / 搜索 / 悬浮提示都到不了它）。
+		.lang("Grinder Cover Placeholder (internal)")
 		.register();
 
 	// ===== 能量感应灯（EnergySensingLamp）：暂时下架 —— 待作者重做模型后恢复注册。

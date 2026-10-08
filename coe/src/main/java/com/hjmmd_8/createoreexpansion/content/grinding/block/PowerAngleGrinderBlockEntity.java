@@ -122,6 +122,16 @@ public class PowerAngleGrinderBlockEntity extends KineticBlockEntity implements 
 	public void tick() {
 		super.tick();
 
+		// 开盖 ⇒ 盖那一格必须<b>始终</b>被占位方块占着（COE 批 22）。
+		// 这里做的是"补回来"这一半：占位方块被爆炸清掉、被 /setblock 抹掉、被别的模组删掉，
+		// 只要这台机器还开着就下一 tick 复活（placeCoverPlaceholder 只在那一格是空位或可替换
+		// 时才动手 ⇒ 绝不会抢玩家塞进去的方块）。另一半"机器不存在了就自清"在
+		// GrinderCoverPlaceholderBlockEntity 里。
+		// 跨区块：盖那一格没载入时 syncCoverPlaceholder 一个字都不写（见它的注释）。
+		if (level != null && !level.isClientSide && getBlockState().getValue(PowerAngleGrinderBlock.OPEN)) {
+			PowerAngleGrinderBlock.syncCoverPlaceholder(level, worldPosition, getBlockState());
+		}
+
 		// 加工流程（合盖 / 装轮且转速够 / 转速非 0 三道门 + remainingTime 推进 + 两条收尾）
 		// 逐字搬到 GrinderProcessing#tick；本方法只剩基类记账与这次转交。
 		GrinderProcessing.tick(this);

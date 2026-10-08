@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.common.registry.coe;
 import com.hjmmd_8.createoreexpansion.client.renderer.GrinderRenderer;
 import com.hjmmd_8.createoreexpansion.content.crystal.CrystalBuddingBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.equipment.armor.field.StressInjectorBlockEntity;
+import com.hjmmd_8.createoreexpansion.content.grinding.block.GrinderCoverPlaceholderBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.grinding.block.PowerAngleGrinderBlockEntity;
 import com.hjmmd_8.createoreexpansion.content.lightning.block.ReinforcedLightningRodBlockEntity;
 import com.hjmmd_8.createoreexpansion.common.*;
@@ -34,6 +35,21 @@ public final class CoeBlockEntityTypes {
 	public static final BlockEntityEntry<StressInjectorBlockEntity> STRESS_INJECTOR = CoeRegistrate.REGISTRATE
 		.blockEntity("stress_injector", StressInjectorBlockEntity::new)
 		.validBlocks(CoeMachines.STRESS_INJECTOR)
+		.register();
+
+	/**
+	 * <b>角磨床盖侧占位方块的方块实体</b>（COE 批 22，开盖时盖那一格的真方块）。
+	 *
+	 * <p>唯一职责是<b>孤儿自清</b>：机器不存在了、占位方块却还在的形态由它自己发现并
+	 * {@code removeBlock(pos, false)} 删掉（详见 {@link GrinderCoverPlaceholderBlockEntity} 的类注释）。
+	 * 它不持久化任何字段，所以这里不需要任何数据修复/迁移。</p>
+	 *
+	 * <p>刻意<b>不</b>注册渲染器：方块走 {@code RenderShape.INVISIBLE}（一个像素都不画，
+	 * 也不需要任何贴图），与上面的 {@code STRESS_INJECTOR} 同款理由。</p>
+	 */
+	public static final BlockEntityEntry<GrinderCoverPlaceholderBlockEntity> GRINDER_COVER_PLACEHOLDER = CoeRegistrate.REGISTRATE
+		.blockEntity("grinder_cover_placeholder", GrinderCoverPlaceholderBlockEntity::new)
+		.validBlocks(CoeMachines.GRINDER_COVER_PLACEHOLDER)
 		.register();
 
 	/** 强化避雷针方块实体（γ 充能状态；渲染用原版避雷针模型，无需自定义渲染器） */

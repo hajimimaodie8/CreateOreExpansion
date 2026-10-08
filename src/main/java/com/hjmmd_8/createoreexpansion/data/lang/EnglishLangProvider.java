@@ -435,6 +435,11 @@ public class EnglishLangProvider extends LanguageProvider {
         // Stress Injector (the unobtainable internal block, spec section 4.2). Its name can only
         // ever be seen through goggles while it is energized; there is no item form at all.
         add(CoeMachines.STRESS_INJECTOR.get(), "Stress Injector (internal)");
+        // The grinder cover-side placeholder (COE batch 22: the real block that occupies the cover
+        // cell while the cover is open). Same shape as the injector above: unobtainable, invisible
+        // and un-targetable, so its name can never be rendered anywhere; the entry exists so the
+        // English key set stays aligned with the Chinese one.
+        add(CoeMachines.GRINDER_COVER_PLACEHOLDER.get(), "Grinder Cover Placeholder (internal)");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "Transmutation Fluid");

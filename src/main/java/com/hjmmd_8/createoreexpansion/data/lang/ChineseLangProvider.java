@@ -306,6 +306,10 @@ public class ChineseLangProvider extends LanguageProvider {
         // 应力注入器（不可获取的内部方块，规格 §4.2）：**只在被赋能时**可能被护目镜/调试看到名字。
         // 它没有物品形态，所以这个名字永远不会出现在创造页/JEI/搜索里。
         add(CoeMachines.STRESS_INJECTOR.get(), "应力注入器（内部）");
+        // 角磨床盖侧占位方块（COE 批 22：开盖时盖那一格的真方块，同样不可获取、看不见、瞄不到）。
+        // 它没有物品形态、也没有形状，所以这个名字永远不会出现在创造页 / JEI / 搜索 / 悬浮提示里；
+        // 补这一条只是为了与英文侧（CoeMachines 的 .lang）键集对齐。
+        add(CoeMachines.GRINDER_COVER_PLACEHOLDER.get(), "角磨床盖侧占位方块（内部）");
 
         // ========== 流体/配方 ==========
         add("fluid_type.createoreexpansion.transmutation_fluid", "嬗变液");
