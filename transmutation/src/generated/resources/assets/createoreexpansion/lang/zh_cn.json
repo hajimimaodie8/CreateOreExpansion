@@ -208,6 +208,7 @@
   "createoreexpansion.keyinfo.skill_settings": "技能设置",
   "createoreexpansion.mod_name": "机械动力：矿物拓展",
   "createoreexpansion.msg.cannot_open_cover": "由于空间不足，无法开盖",
+  "createoreexpansion.msg.cannot_place_on_open_cover": "已经开盖，无法在盖侧放置方块！",
   "createoreexpansion.msg.need_open_cover": "需要先开盖才能安装角磨轮",
   "createoreexpansion.recipe.advanced_grinding": "高级角磨",
   "createoreexpansion.recipe.assembly.cca_charging": "在特斯拉线圈中充能或雷击",

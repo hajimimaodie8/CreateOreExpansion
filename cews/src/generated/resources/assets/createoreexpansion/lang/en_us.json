@@ -204,6 +204,7 @@
   "createoreexpansion.keyinfo.skill_settings": "Skill Settings",
   "createoreexpansion.mod_name": "Create: Ore Expansion",
   "createoreexpansion.msg.cannot_open_cover": "Cannot open the cover: not enough space",
+  "createoreexpansion.msg.cannot_place_on_open_cover": "Cannot place a block on the cover side: the cover is open",
   "createoreexpansion.msg.need_open_cover": "Open the cover first to install a grinding wheel",
   "createoreexpansion.recipe.advanced_grinding": "Advanced Grinding",
   "createoreexpansion.recipe.assembly.cca_charging": "Charge in a Tesla Coil or Strike by Lightning",

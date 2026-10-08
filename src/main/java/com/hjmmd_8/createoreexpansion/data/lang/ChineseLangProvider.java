@@ -514,6 +514,8 @@ public class ChineseLangProvider extends LanguageProvider {
         add("createoreexpansion.tooltip.lightning_rod.ready", "引雷充能就绪！右键释放闪电");
         add("createoreexpansion.msg.cannot_open_cover", "由于空间不足，无法开盖");
         add("createoreexpansion.msg.need_open_cover", "需要先开盖才能安装角磨轮");
+        // COE 批 21：同一条盖板规则的反向那一半（开盖 ⇒ 盖侧那一格不许放方块）。文案按作者原话一字不改。
+        add("createoreexpansion.msg.cannot_place_on_open_cover", "已经开盖，无法在盖侧放置方块！");
         add(CoeItems.IRON_GRINDING_WHEEL.get(), "铁角磨轮");
         add(CoeItems.GOLD_GRINDING_WHEEL.get(), "金角磨轮");
         add(CoeItems.BRASS_GRINDING_WHEEL.get(), "黄铜角磨轮");

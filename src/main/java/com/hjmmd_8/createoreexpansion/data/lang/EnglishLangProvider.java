@@ -258,6 +258,9 @@ public class EnglishLangProvider extends LanguageProvider {
         add("createoreexpansion.tooltip.lightning_rod.ready", "Lightning ready! Right-click to release");
         add("createoreexpansion.msg.cannot_open_cover", "Cannot open the cover: not enough space");
         add("createoreexpansion.msg.need_open_cover", "Open the cover first to install a grinding wheel");
+        // COE batch 21: the reverse half of the same cover rule (open cover => that cell may not
+        // receive a block). Same wording shape as cannot_open_cover: "Cannot <do>: <reason>".
+        add("createoreexpansion.msg.cannot_place_on_open_cover", "Cannot place a block on the cover side: the cover is open");
         add(CoeItems.IRON_GRINDING_WHEEL.get(), "Iron Grinding Wheel");
         add(CoeItems.GOLD_GRINDING_WHEEL.get(), "Gold Grinding Wheel");
         add(CoeItems.BRASS_GRINDING_WHEEL.get(), "Brass Grinding Wheel");

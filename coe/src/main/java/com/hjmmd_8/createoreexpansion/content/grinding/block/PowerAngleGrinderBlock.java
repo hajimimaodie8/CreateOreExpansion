@@ -37,7 +37,14 @@ import net.neoforged.neoforge.items.ItemHandlerHelper;
  *
  * <p>水平朝向（{@link HorizontalKineticBlock}，FACING 仅水平 4 向，随玩家放置）；
  * 水平旋转轴沿 FACING 轴，传动轴从 FACING 前方（齿轮箱纹理背板侧）接入；
- * 盖板在 FACING 对面一侧，开盖时朝那一侧翻起（那一格被方块阻挡则提示无法开盖）。</p>
+ * 盖板在 FACING 对面一侧，开盖时朝那一侧翻起（那一格被方块阻挡则提示无法开盖，
+ * 见 {@link #onWrenched}）。</p>
+ *
+ * <p><b>盖那一格的双向保护</b>（{@link #coverPos} 是这一格的唯一出处）：
+ * ① 开盖前——那一格被不可替换方块挡住 ⇒ 拒绝开盖 + 提示；
+ * ② 开盖后——盖翻起后那一格是纯 AIR（盖是同一个方块的模型部件，不占邻格），
+ * 玩家本可往里放方块 ⇒ 由 {@link #isOpenCoverCell} 判据 + 服务端放置事件取消，
+ * 并提示"已经开盖，无法在盖侧放置方块！"。关盖时那一格照常可放。</p>
  */
 public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IBE<PowerAngleGrinderBlockEntity>, com.hjmmd_8.createoreexpansion.common.machine.MachineInteraction {
 
@@ -97,8 +104,7 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 		Player player = context.getPlayer();
 
 		boolean open = state.getValue(OPEN);
-		if (!open && isCoverBlocked(level, pos, state.getValue(HORIZONTAL_FACING)
-			.getOpposite())) {
+		if (!open && isCoverBlocked(level, coverPos(pos, state))) {
 			// 开盖方向（盖板在 FACING 对面一侧翻起）那一格有方块阻挡：不开盖，提示空间不足
 			if (player != null) {
 				player.displayClientMessage(
@@ -115,10 +121,62 @@ public class PowerAngleGrinderBlock extends HorizontalKineticBlock implements IB
 		return InteractionResult.SUCCESS;
 	}
 
-	/** 开盖方向（盖板在 FACING 对面一侧）那一格是否被不可替换方块阻挡 */
-	private static boolean isCoverBlocked(Level level, BlockPos pos, Direction facing) {
-		BlockState front = level.getBlockState(pos.relative(facing));
+	/**
+	 * <b>盖板那一格</b>（本仓唯一出处）：盖板在 FACING 对面一侧，所以它就是本机
+	 * 朝 FACING 反方向相邻的那一格。
+	 *
+	 * <p>开盖前的空间检查（{@link #isCoverBlocked}）与开盖后的放置保护
+	 * （{@link #isOpenCoverCell}）读的都是这一格，必须共用这一个定义——两处各写一遍
+	 * {@code getOpposite()} 迟早会分家，而分家的表现是静默的（开盖被拒却允许放置，
+	 * 或反过来）。</p>
+	 */
+	public static BlockPos coverPos(BlockPos pos, BlockState state) {
+		return pos.relative(state.getValue(HORIZONTAL_FACING)
+			.getOpposite());
+	}
+
+	/** 盖板那一格是否被不可替换方块阻挡（开盖前的空间检查；只读，不改世界） */
+	private static boolean isCoverBlocked(Level level, BlockPos coverPos) {
+		BlockState front = level.getBlockState(coverPos);
 		return !front.isAir() && !front.canBeReplaced();
+	}
+
+	/**
+	 * <b>盖侧放置保护判据</b>（COE 批 21）：{@code pos} 是不是某台<b>已开盖</b>角磨床的
+	 * 盖板那一格。
+	 *
+	 * <p><b>为什么需要它</b>：盖不是独立方块，{@link #OPEN} 只换模型
+	 * （{@code power_angle_grinder_rotated}），方块本身只占自己那一格，碰撞形状
+	 * {@link #SHAPE} 也不伸到邻格 ⇒ 开盖后盖那一格是纯 AIR，玩家可以往里面放方块。
+	 * 定下的口径是：<b>开盖状态下盖那一侧不许放方块</b>（关盖时照常能放）。</p>
+	 *
+	 * <p><b>为什么是"沿 4 个水平方向找邻机"</b>：判据从"即将被放置的那一格"反查——
+	 * 邻机若满足 {@code HORIZONTAL_FACING == 该方向}，则它朝 FACING 反方向的那一格
+	 * （{@link #coverPos}）正是 {@code pos}。FACING 是水平的
+	 * （{@link HorizontalKineticBlock}），所以只看 {@link Direction.Plane#HORIZONTAL}：
+	 * 既不会把上下两格算进来，也不会扩大到"机器周围一圈 / 一个盒子"。</p>
+	 *
+	 * <p><b>关盖不算</b>：条件里 {@link #OPEN} 是<b>正向</b>要求（{@code getValue(OPEN)}
+	 * 为 true 才命中），所以 {@code OPEN == false} 的机器永远返回 false，关盖时那一格
+	 * 照常可放。</p>
+	 *
+	 * <p><b>只读、不改世界</b>：只查方块状态，不放占位方块、不写 blockstate
+	 * （占位方块会动存档，还会反过来影响 {@link #isCoverBlocked} 自己的开盖判定）。</p>
+	 *
+	 * @param level 世界（服务端放置事件里就是 {@code ServerLevel}）
+	 * @param pos   即将被放置方块的那一格
+	 * @return 是"已开盖机器的盖侧那一格"返回 true（调用方据此取消放置）
+	 */
+	public static boolean isOpenCoverCell(BlockGetter level, BlockPos pos) {
+		for (Direction facing : Direction.Plane.HORIZONTAL) {
+			BlockState neighbour = level.getBlockState(pos.relative(facing));
+			if (neighbour.getBlock() instanceof PowerAngleGrinderBlock
+				&& neighbour.getValue(OPEN)
+				&& neighbour.getValue(HORIZONTAL_FACING) == facing) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	// ========== 角磨轮安装/取出 ==========
