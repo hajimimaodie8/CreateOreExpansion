@@ -629,5 +629,49 @@ public class ChineseLangProvider extends LanguageProvider {
         add("create.tooltip.holdForControls", "按住 [%1$s] 可查看控制方法");
         add("create.tooltip.keyShift", "Shift");
         add("create.tooltip.keyCtrl", "Ctrl");
+
+        // ========== Ponder 思索：动力角磨床 ==========
+        // 与英文侧逐键对齐（键名规则 = <命名空间>.ponder.<storyboard path>.<header|text_N>，
+        // 前缀是本模组命名空间、path 里的斜杠原样进键）。
+        // ⚠ 文案来源：Ponderer 的 run/config/ponderer/scripts/power_angle_grinder.json。
+        //   三条标题（索引页 + 两幕）+ 第一幕全部 9 条 text 的中文全部**逐字照抄作者 JSON 的 zh_cn**，
+        //   一字未改（作者裁定）；英文侧（EnglishLangProvider）是 Ponderer 占位符
+        //   "Edit this ponder scene!" 的意译。
+        // ⚠ text_N 的 N 由代码里 showText 的执行顺序决定（PonderScene.registerText）；
+        //   第一幕 9 条依次对应 JSON scene_1 的 steps[4]/[7]/[11]/[14]/[19]/[35]/[39]/[53]/[59]。
+        // ⚠ 本批（批 C）起两幕齐了：第一幕 9 条 + 第二幕 5 条。
+        //   第二幕 5 条依次对应 JSON s_6cb3b 的 steps[17]/[19]/[21]/[35]/[46]，
+        //   这 5 步在 JSON 里**全都**带 attachKeyFrame=true（也就是第二幕的 5 个关键帧）。
+        add("createoreexpansion.ponder.power_angle_grinder.header", "动力角磨床的使用");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.header", "安装动力角磨轮并使之运作");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_1",
+            "动力角磨床是一种可以处理多种配方的单方块动力装置");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_2",
+            "使用扳手右键即可使之开盖");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_3",
+            "动力角磨床必须安装角磨轮后才能执行配方处理工作");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_4",
+            "开盖后手持任意种类的角磨轮右键即可安装");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_5",
+            "再次使用扳手右键即可使之合盖，如果未合盖则无法执行加工任务");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_6",
+            "如果要使动力角磨床工作，除了需要安装角磨轮，还必须要达到相关的转速");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_7",
+            "你可以通过开盖后向角磨床中塞入物品，再合盖，从而完成加工");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_8",
+            "加工完毕之后，右键即可取出其中的物品");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_9",
+            "当然了，你也可以通过漏斗从角磨床的侧面和顶部输入物品，并从侧面或底端输出物品，但是不能从有盖的一侧输入或输出物品");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.header", "不同等级的角磨轮及其功能");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_1",
+            "角磨轮有三个等级。等级越高的角磨轮，解锁的配方种类越多，处理的速度越快，带来的额外提升也越多");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_2",
+            "但相应的，他所需要的应力要求也越高");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_3",
+            "一级角磨轮只支持普通角磨处理配方。可以用来处理粗矿或制造新角磨轮，最低需要64 RPM");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_4",
+            "二级角磨轮支持普通角磨处理和高级角磨配方，高级角磨可以替代所有的粉碎轮加工配方。最低需要64 RPM");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_5",
+            "三级角磨轮支持普通角磨处理、高级角磨配方，还可以处理拆磨配方。拆模配方可以拆卸具有一定耐久度的工具与装备，根据剩余耐久度折算返回材料。最低需要128 RPM");
     }
 }

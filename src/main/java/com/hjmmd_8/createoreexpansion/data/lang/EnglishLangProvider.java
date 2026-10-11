@@ -642,5 +642,52 @@ public class EnglishLangProvider extends LanguageProvider {
         // 击杀credit 存在时走 .player 那一条（两条都在，免得出现未替换的 %2$s）。
         add("death.attack.charge", "%1$s was killed by an electric charge");
         add("death.attack.charge.player", "%1$s was killed by %2$s with an electric charge");
+
+        // ========== Ponder 思索：动力角磨床 ==========
+        // 键名规则：<命名空间>.ponder.<storyboard path>.<header|text_N>
+        //   —— 前缀是本模组**命名空间**（createoreexpansion），不是 create.；
+        //      path 里的斜杠原样进键（与 Create 的 create.ponder.cog/speedup.header 同形）。
+        // 三条 header：'...power_angle_grinder.header' 是**场景索引页**（按物品 id 取键），
+        //   另两条是**每一幕自己的标题**（scene.title(sceneId, ...) 的 sceneId 段）。
+        // text_N 的编号由代码里 showText 的执行顺序决定（PonderScene.registerText），
+        //   落地时每处 showText 旁都标了它对应哪一条 JSON text 步。
+        // ⚠ 批 C 起两幕齐了：第一幕 9 条（依次对应 JSON scene_1 的
+        //   steps[4]/[7]/[11]/[14]/[19]/[35]/[39]/[53]/[59]）+ 第二幕 5 条（依次对应
+        //   s_6cb3b 的 steps[17]/[19]/[21]/[35]/[46]，这 5 步在 JSON 里**全都**带 attachKeyFrame）。
+        // ⚠ 英文侧全是**意译**：原 JSON 里除第一幕 text_1 外，17 条 en_us 都是 Ponderer 的占位符
+        //   "Edit this ponder scene!"，没有可照抄的英文；中文侧才是逐字照抄作者的 zh_cn。
+        add("createoreexpansion.ponder.power_angle_grinder.header", "Using the Power Angle Grinder");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.header",
+            "Installing the Grinding Wheel and Getting It Running");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_1",
+            "The Power Angle Grinder is a single-block machine that can process many kinds of recipes.");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_2",
+            "Right-click it with a Wrench to open the cover.");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_3",
+            "The Power Angle Grinder cannot process any recipe until a Grinding Wheel has been installed.");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_4",
+            "With the cover open, right-click it while holding any kind of Grinding Wheel to install it.");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_5",
+            "Right-click it with a Wrench again to close the cover. It cannot process anything while the cover is open.");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_6",
+            "A Grinding Wheel is not enough: the machine also has to reach a sufficient Rotational Speed before it works.");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_7",
+            "You can put items in through the opened cover and then close it again to have them processed.");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_8",
+            "Once processing has finished, right-click it to take the items back out.");
+        add("createoreexpansion.ponder.power_angle_grinder/install_and_run.text_9",
+            "You can also feed items in through Funnels on the sides and the top, and take them out on the sides or the bottom - but never through the covered side.");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.header",
+            "Grinding Wheel Tiers and What They Differ In");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_1",
+            "Grinding Wheels come in three tiers. The higher the tier, the more recipes it unlocks, the faster it grinds, and the better the bonus it gives.");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_2",
+            "But accordingly, a higher tier also demands more Stress to run.");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_3",
+            "A Tier I Grinding Wheel only supports basic grinding recipes. It can process raw ores or be used to make new Grinding Wheels, and it needs at least 64 RPM.");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_4",
+            "A Tier II Grinding Wheel supports basic grinding and advanced grinding recipes - advanced grinding can stand in for any pair of Crushing Wheels. It needs at least 64 RPM.");
+        add("createoreexpansion.ponder.power_angle_grinder/wheel_tiers.text_5",
+            "A Tier III Grinding Wheel supports basic grinding, advanced grinding and dismantling recipes. Dismantling takes apart tools and armour that still have durability and returns materials based on what is left. It needs at least 128 RPM.");
     }
 }
