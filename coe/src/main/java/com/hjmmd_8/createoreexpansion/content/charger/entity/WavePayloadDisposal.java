@@ -67,7 +67,7 @@ final class WavePayloadDisposal {
 			WavePayloadRelease.release(new WavePayloadRelease.Request(host.level(), AllConfig.wavePayloadRelease,
 				host.position(), host.payloadItems, host.payloadFluid, host.payloadEnergy, host.payloadSources,
 				host.lastProcessedBlock != null ? host.lastProcessedBlock : host.blockPosition(),
-				Math.max(1, host.carriedScanRadius)));
+				Math.max(1, host.getCarriedRadius())));
 		} catch (Throwable t) {
 			// 第三方容器/储能的能力实现抛异常：绝不把异常从实体移除流程抛到服务端 tick
 			// （2026-09 审计修复）。余料按"这次没放进去"处理。

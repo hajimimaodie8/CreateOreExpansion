@@ -1,8 +1,9 @@
 package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
 import com.hjmmd_8.createoreexpansion.common.registry.coe.charger.AllEntityTypes;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAttrKey;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAttrs;
 
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -30,18 +31,19 @@ import net.minecraft.world.phys.Vec3;
  *   <li>设了正值 ⇒ 该值就是本波的命中伤害（回旋镖的环绕波设成 {@code 2 × 等级}）；</li>
  *   <li>波级仍然决定观感（颜色 / 粒子 / 拖尾风格），<b>不</b>再决定伤害。</li>
  * </ul>
- * <p>要素只写在<b>本类</b>（不是基类）：基类的 {@code getDamage()} 保持原样，
- * 本类用覆写把"自定义值优先、否则回落波级表"放在一处；波实体类型是
- * {@code noSave()}（不进区块存档），但 NBT 读写照样补上，
- * 与环绕要素同样的"形状保底"口径（将来若去掉 noSave 不会静默丢要素）。</p>
+ *
+ * <p><b>2026-10-24 批 3（波属性收进 {@code WaveState}）</b>：本类不再声明字段、不再写 NBT ——
+ * 自定义伤害是 {@code WaveAttrs.CUSTOM_DAMAGE} 的一行，键名 / Float 类型 / "&gt; 0 才写" /
+ * "缺键读作 -1" 全部由表声明（作用域 {@link WaveAttrKey.Scope#CHARGER}）。读档/存档走基类的
+ * {@code WaveStateNbt} 表遍历，本类一个字都不用写。</p>
  */
 public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 
-	/**
-	 * <b>自定义伤害要素</b>（可选、默认关闭）：{@code -1} = 未设 ⇒ 走既有波级表
-	 * （{@code WaveLevels.damage(波级)}）。只有 {@link #setCustomDamage(float)} 会改它。
-	 */
-	private float customDamage = -1.0F;
+	/** 本实体种类追加的 NBT 键范围（{@code CustomDamage} 一行）。 */
+	@Override
+	protected WaveAttrKey.Scope waveScope() {
+		return WaveAttrKey.Scope.CHARGER;
+	}
 
 	public ChargerWaveEntity(EntityType<?> type, Level level) {
 		super(type, level);
@@ -58,12 +60,12 @@ public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 	 * 于是"忘了设"与"明确设成 0"不会变成"打不疼"这种静默差异。</p>
 	 */
 	public void setCustomDamage(float customDamage) {
-		this.customDamage = customDamage;
+		waveState().set(WaveAttrs.CUSTOM_DAMAGE, customDamage);
 	}
 
 	/** 自定义伤害（{@code <= 0} = 要素未设，伤害走波级表）。 */
 	public float getCustomDamage() {
-		return customDamage;
+		return waveState().get(WaveAttrs.CUSTOM_DAMAGE);
 	}
 
 	/**
@@ -74,7 +76,8 @@ public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 	 */
 	@Override
 	protected float getDamage() {
-		return this.customDamage > 0.0F ? this.customDamage : super.getDamage();
+		float customDamage = getCustomDamage();
+		return customDamage > 0.0F ? customDamage : super.getDamage();
 	}
 
 	/**
@@ -87,21 +90,5 @@ public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 	@Override
 	public AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
 		return new ChargerWaveEntity(level(), pos, dir, level);
-	}
-
-	@Override
-	protected void readAdditionalSaveData(CompoundTag tag) {
-		super.readAdditionalSaveData(tag);
-		// 形状保底（与基类的环绕要素同形）：没写过该键 ⇒ 保持字段默认 -1 = 走波级表。
-		this.customDamage = tag.contains("CustomDamage") ? tag.getFloat("CustomDamage") : -1.0F;
-	}
-
-	@Override
-	protected void addAdditionalSaveData(CompoundTag tag) {
-		super.addAdditionalSaveData(tag);
-		// 只在真的设了的时候才写键 ⇒ 没设要素的波，存档内容与改造前逐字相同。
-		if (this.customDamage > 0.0F) {
-			tag.putFloat("CustomDamage", this.customDamage);
-		}
 	}
 }

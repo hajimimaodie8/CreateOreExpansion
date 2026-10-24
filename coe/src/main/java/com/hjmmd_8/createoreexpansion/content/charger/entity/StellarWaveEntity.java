@@ -15,21 +15,20 @@ import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateEvaluat
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCandidateOrdering;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveCraftResults;
 import com.hjmmd_8.createoreexpansion.content.charger.craft.WaveEnvironmentChecks;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAttrKey;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAttrs;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveState;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.charger.payload.WavePayloadGather;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.BorrowedChargingSource;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.lightning.ReinforcedLightningRodEffects;
-import com.hjmmd_8.createoreexpansion.util.HeatLevelNames;
 import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -79,14 +78,20 @@ import net.neoforged.neoforge.items.IItemHandler;
  */
 public class StellarWaveEntity extends AbstractChargerWaveEntity implements WaveCraftConsumption.Host, WaveCraftExecutor.Host {
 
-	/** 变器赋予的加工机属性（方块 id 快照）；可为空 = 波未携带加工属性（退化为普通波）。 */
-	List<ResourceLocation> attributes = new ArrayList<>();
+	/**
+	 * 变器赋予的加工机属性（方块 id 快照）；可为空 = 波未携带加工属性（退化为普通波）。
+	 *
+	 * <p>2026-10-24 批 3：字段搬进 {@link WaveState}（键 {@code WaveAttributes}）；
+	 * 本类只留 {@link #setAttributes} / {@link #getAttributes()}。</p>
+	 */
 
 	/**
 	 * 变器按扫描时机器<b>实时状态</b>解析出的"当前应执行配方类型"快照
 	 * （状态相关机器如 Vintage 真空室按 mode 只带 PRESSURIZING 或 VACUUMIZING 一套）。
+	 *
+	 * <p>2026-10-24 批 3：字段搬进 {@link WaveState}（键 {@code WaveRecipeTypeIds}；
+	 * 存的是 id 列表，读档时按注册表反查、认不出的跳过 —— 与旧行为一致）。</p>
 	 */
-	List<IRecipeTypeInfo> recipeTypes = new ArrayList<>();
 
 	/**
 	 * 变器携带的<b>加热档位</b>快照（扫描半径内最高热档的烈焰燃烧室；NONE = 未携带加热）。
@@ -97,8 +102,9 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * {@code 加热环境不满足：…邻域 3×3×3 内均无达标烈焰人（此处最高热档 = NONE）}）。
 	 * 现在变器扫描到的热档随波携带，波自带加热能力：命中点邻域有热源仍然认，
 	 * 变器那边点着火同样认（与"波把周围机器的加工能力整合进自己"的设计一致）。</p>
+	 *
+	 * <p>2026-10-24 批 3：字段搬进 {@link WaveState}（键 {@code WaveCarriedHeat}）。</p>
 	 */
-	private BlazeBurnerBlock.HeatLevel carriedHeat = BlazeBurnerBlock.HeatLevel.NONE;
 
 	/**
 	 * 变器携带的<b>加工转速</b>（RPM，取变器自身转速的绝对值；0 = 未携带）。
@@ -111,8 +117,10 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * {@code speed_limits}（低/中/高），Vintage 自身是"档位匹配的先进优选桶，一条都不匹配才兜底"
 	 * （见 {@code compat.vintageimprovements.VintageRecipeSpeed}），本类排序时按同一口径
 	 * 让匹配波转速档的配方排前面。它是<b>优先级而非硬门槛</b>（与 Vintage 行为一致）。</p>
+	 *
+	 * <p>2026-10-24 批 3：字段搬进 {@link WaveState}（键 {@code WaveCarriedRpm}；读侧取绝对值
+	 * 的旧口径写在编解码器里）。</p>
 	 */
-	float carriedRpm;
 
 	/**
 	 * 变器当时的<b>读取半径</b>（1~3 格；穿波瞬间写入）。
@@ -120,8 +128,10 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * <p><b>用途（用户 2026-09 定义）</b>：波命中目标后会在命中点周围"就地补料"——
 	 * 扫描周围的容器/储罐/储能，把物品/流体/电量补进载荷，<b>补料范围与变器本身的读取范围一致</b>
 	 * （见 {@link #refillPayloadAround(BlockPos)}）。</p>
+	 *
+	 * <p>2026-10-24 批 3：字段搬进 {@link WaveState}（键 {@code WaveCarriedRadius}；缺键读作 1、
+	 * 读侧 {@code max(1, ·)} 的旧口径写在编解码器里）。</p>
 	 */
-	int carriedScanRadius = 1;
 
 	/** 上次"就地补料"的 tick（节流，避免掉落物链上每 tick 全扫一遍）。 */
 	private int lastRefillTick = -100;
@@ -129,8 +139,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	/** 就地补料的最小间隔（tick）。 */
 	private static final int REFILL_COOLDOWN_TICKS = 5;
 
-	/** 链式剩余次数（= 波等级；每次成功加工 −1）。 */
-	private int chainLeft;
+	/** 链式剩余次数（= 波等级；每次成功加工 −1）——键 {@code WaveChain}，住在 {@link WaveState}。 */
 
 	/** 携带辅料物品：总个数 ≤5、种类 ≤5（每种一个条目，count 可 >1 以便"64 铁锭取 5"）。 */
 	List<ItemStack> payloadItems = new ArrayList<>();
@@ -253,7 +262,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	public StellarWaveEntity(Level level, Vec3 pos, Vec3 movementDir, int waveLevel) {
 		super(AllEntityTypes.STELLAR_WAVE.get(), level, pos, movementDir, waveLevel);
-		this.waveOrigin = BlockPos.containing(pos);
+		waveState().set(WaveAttrs.WAVE_ORIGIN, BlockPos.containing(pos));
 		// 变体波即"变体态／全能态"：构造即定型（一生只变一次，此后不再受任何场/变器影响）
 		trySetWaveType(WaveTypes.OMNI);
 	}
@@ -265,47 +274,56 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * 而是<b>命中点或波源，二者任一满足即可</b>。理由：玩家的直觉是"给变器配好加热就能加工"，
 	 * 把烈焰人摆在变器旁边是最自然的摆法；只认目标方块邻域会让人明明点了火却被告知
 	 * "没有检测到加热条件"（用户 2026-09 实测反馈）。</p>
+	 *
+	 * <p>2026-10-24 批 3：字段搬进 {@link WaveState}（键 {@code WaveOrigin}，存
+	 * {@code BlockPos.asLong()}）。</p>
 	 */
-	BlockPos waveOrigin;
+
+	/** 本实体种类追加的 NBT 键范围（{@code stellar_wave} 那 7 个键）。 */
+	@Override
+	protected WaveAttrKey.Scope waveScope() {
+		return WaveAttrKey.Scope.STELLAR;
+	}
 
 	/** 设定加工机属性快照（变器转换时调用）。 */
 	public void setAttributes(List<ResourceLocation> machineIds) {
-		this.attributes = machineIds == null ? new ArrayList<>() : new ArrayList<>(machineIds);
+		waveState().set(WaveAttrs.ATTRIBUTES,
+			machineIds == null ? List.of() : List.copyOf(machineIds));
 	}
 
 	/** 设定按机器实时状态解析出的应执行配方类型（变器转换时调用；旧波无此字段则回退按机器 id 展开）。 */
 	public void setRecipeTypes(List<IRecipeTypeInfo> types) {
-		this.recipeTypes = types == null ? new ArrayList<>() : new ArrayList<>(types);
+		waveState().set(WaveAttrs.RECIPE_TYPE_IDS, types == null ? List.of() : List.copyOf(types));
 	}
 
 	/** 设定变器携带的加热档位（变器转换时调用；null 视为 NONE）。 */
 	public void setCarriedHeat(BlazeBurnerBlock.HeatLevel heat) {
-		this.carriedHeat = heat == null ? BlazeBurnerBlock.HeatLevel.NONE : heat;
+		waveState().set(WaveAttrs.CARRIED_HEAT, heat == null ? BlazeBurnerBlock.HeatLevel.NONE : heat);
 	}
 
 	/** 变器携带的加热档位（只读；NONE = 未携带加热）。 */
 	public BlazeBurnerBlock.HeatLevel getCarriedHeat() {
-		return carriedHeat;
+		return waveState().get(WaveAttrs.CARRIED_HEAT);
 	}
 
 	/** 设定变器携带的加工转速（RPM；取绝对值，null/负值按绝对值处理）。 */
 	public void setCarriedRpm(float rpm) {
-		this.carriedRpm = Math.abs(rpm);
+		waveState().set(WaveAttrs.CARRIED_RPM, Math.abs(rpm));
 	}
 
 	/** 变器携带的加工转速（RPM；0 = 未携带）。 */
 	public float getCarriedRpm() {
-		return carriedRpm;
+		return waveState().get(WaveAttrs.CARRIED_RPM);
 	}
 
 	/** 设定变器当时的读取半径（穿波瞬间由变器写入；供"命中后就地补料"用）。 */
 	public void setCarriedRadius(int radius) {
-		this.carriedScanRadius = Math.max(1, radius);
+		waveState().set(WaveAttrs.CARRIED_RADIUS, Math.max(1, radius));
 	}
 
 	/** 变器当时的读取半径（也即"就地补料"的生效半径）。 */
 	public int getCarriedRadius() {
-		return carriedScanRadius;
+		return waveState().get(WaveAttrs.CARRIED_RADIUS);
 	}
 
 	/**
@@ -331,6 +349,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	public void refillPayloadAround(BlockPos center) {
 		if (!com.hjmmd_8.createoreexpansion.common.AllConfig.waveRefillPayloadOnHit)
 			return; // 默认关闭：载荷只在变器穿波时取一次（见方法注释）
+		int carriedScanRadius = getCarriedRadius();
 		if (level().isClientSide || center == null || carriedScanRadius <= 0)
 			return;
 		if (tickCount - lastRefillTick < REFILL_COOLDOWN_TICKS)
@@ -370,7 +389,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	/** 设定链式剩余次数（默认 = 波等级）。 */
 	public void setChain(int chain) {
-		this.chainLeft = Math.max(0, chain);
+		waveState().set(WaveAttrs.CHAIN, Math.max(0, chain));
 	}
 
 	/** 设定携带载荷（变器转换时把扫描范围抽到的辅料/流体/电量附上）及其取料来源位置。 */
@@ -396,12 +415,22 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	/** 当前加工机属性（只读）。 */
 	public List<ResourceLocation> getAttributes() {
-		return List.copyOf(attributes);
+		return waveState().get(WaveAttrs.ATTRIBUTES);
+	}
+
+	/**
+	 * 当前配方类型快照（只读；同包助手 {@code WaveCarriedTypes} 与诊断用）。
+	 *
+	 * <p>2026-10-24 批 3：值住在 {@link WaveState}（键 {@code WaveRecipeTypeIds}）；读档时按
+	 * 注册表反查、认不出的 id 跳过，与旧行为一致。</p>
+	 */
+	List<IRecipeTypeInfo> getRecipeTypes() {
+		return waveState().get(WaveAttrs.RECIPE_TYPE_IDS);
 	}
 
 	/** 链式剩余次数。 */
 	public int getChainLeft() {
-		return chainLeft;
+		return waveState().get(WaveAttrs.CHAIN);
 	}
 
 	/**
@@ -450,16 +479,16 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 			refillPayloadAround(items.get(0)
 				.blockPosition());
 		// ① 自身携带的远程加工优先（属性集/配方类型集非空时；链已尽则释放载荷消散，与原有语义一致）
-		if (!(attributes.isEmpty() && recipeTypes.isEmpty())) {
+		if (!(getAttributes().isEmpty() && getRecipeTypes().isEmpty())) {
 			if (level().isClientSide)
 				return;
 			for (ItemEntity item : items) {
-				if (chainLeft <= 0) {
+				if (getChainLeft() <= 0) {
 					finishAndDiscard();
 					return;
 				}
 				if (tryCraft(item)) {
-					if (chainLeft <= 0)
+					if (getChainLeft() <= 0)
 						finishAndDiscard();
 					return; // 本 tick 只加工一个物品（链式在多 tick 内逐级推进）
 				}
@@ -525,7 +554,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * 两个诊断出口分别是变体的 {@code craftDebug}（加工诊断）与 {@code craftTrace}（轨迹），二者开关与前缀不同。
 	 */
 	public WaveCandidateEvaluator.Context candidateContext() {
-		return new WaveCandidateEvaluator.Context(level(), auxResolver(), carriedHeat, waveOrigin,
+		return new WaveCandidateEvaluator.Context(level(), auxResolver(), getCarriedHeat(), getWaveOrigin(),
 			(msg, args) -> craftDebug(msg, args), (msg, args) -> craftTrace(msg, args),
 			WaveCarriedTypes.allowedTypeIds(this),
 			payloadItems, payloadFluid, payloadEnergy);
@@ -661,12 +690,12 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	@Override
 	public int chainLeft() {
-		return chainLeft;
+		return getChainLeft();
 	}
 
 	@Override
 	public void setChainLeft(int chainLeft) {
-		this.chainLeft = chainLeft;
+		waveState().set(WaveAttrs.CHAIN, chainLeft);
 	}
 
 	@Override
@@ -686,17 +715,17 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	@Override
 	public boolean hasCraftingAbility() {
-		return !(attributes.isEmpty() && recipeTypes.isEmpty());
+		return !(getAttributes().isEmpty() && getRecipeTypes().isEmpty());
 	}
 
 	@Override
 	public int carriedMachineCount() {
-		return attributes.size();
+		return getAttributes().size();
 	}
 
 	@Override
 	public int carriedRecipeTypeCount() {
-		return recipeTypes.size();
+		return getRecipeTypes().size();
 	}
 
 	@Override
@@ -706,7 +735,12 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	@Override
 	public BlockPos waveOrigin() {
-		return waveOrigin;
+		return getWaveOrigin();
+	}
+
+	/** 波源方块位置（{@code null} = 未设；键 {@code WaveOrigin}）。 */
+	public BlockPos getWaveOrigin() {
+		return waveState().get(WaveAttrs.WAVE_ORIGIN);
 	}
 
 	@Override
@@ -797,7 +831,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	 * {@link WaveEnvironmentChecks}（纯静态；携带热档与波源位置由这里传入）。</p>
 	 */
 	private boolean environmentSatisfied(BlockPos around, Recipe<?> recipe) {
-		return WaveEnvironmentChecks.satisfied(level(), around, waveOrigin, recipe, carriedHeat,
+		return WaveEnvironmentChecks.satisfied(level(), around, getWaveOrigin(), recipe, getCarriedHeat(),
 			(msg, args) -> craftTrace(msg, args));
 	}
 
@@ -893,11 +927,12 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	@Override
 	public AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
 		StellarWaveEntity child = new StellarWaveEntity(level(), pos, dir, level);
-		child.attributes = new ArrayList<>(attributes);
-		child.recipeTypes = new ArrayList<>(recipeTypes);
-		child.carriedHeat = carriedHeat;
-		child.carriedRpm = carriedRpm;
-		child.carriedScanRadius = carriedScanRadius;
+		// 2026-10-24 批 3：能力整份继承 = 把母波状态里那 5 个键原样拷给子波（列表不可变、可共享）。
+		child.waveState().set(WaveAttrs.ATTRIBUTES, getAttributes());
+		child.waveState().set(WaveAttrs.RECIPE_TYPE_IDS, getRecipeTypes());
+		child.waveState().set(WaveAttrs.CARRIED_HEAT, getCarriedHeat());
+		child.waveState().set(WaveAttrs.CARRIED_RPM, getCarriedRpm());
+		child.waveState().set(WaveAttrs.CARRIED_RADIUS, getCarriedRadius());
 		int n = Math.max(1, total);
 		int i = Math.max(0, Math.min(index, n - 1));
 		child.payloadItems = WaveChildSplit.splitItems(payloadItems, i, n);
@@ -906,7 +941,7 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		child.payloadEnergy = WaveChildSplit.splitShare(payloadEnergy, i, n);
 		child.payloadSources = new ArrayList<>(payloadSources);
 		child.rodCharges = i == 0 ? rodCharges : 0; // 引雷次数不可分割
-		child.chainLeft = WaveChildSplit.splitShare(chainLeft, i, n);
+		child.waveState().set(WaveAttrs.CHAIN, WaveChildSplit.splitShare(getChainLeft(), i, n));
 		return child;
 	}
 
@@ -924,33 +959,12 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 
 	// ========== NBT（属性集随波实体保存/恢复；载荷为运行态，不落盘） ==========
 
-	@Override
-	protected void addAdditionalSaveData(CompoundTag tag) {
-		super.addAdditionalSaveData(tag);
-		ListTag list = new ListTag();
-		for (ResourceLocation id : attributes)
-			list.add(StringTag.valueOf(id.toString()));
-		tag.put("WaveAttributes", list);
-		// 变器携带的加热档位（序号；与 attributes 同为"能力快照"，随实体存读）
-		tag.putInt("WaveCarriedHeat", carriedHeat.ordinal());
-		// 变器携带的加工转速（RPM；转速档优先级的依据）
-		tag.putFloat("WaveCarriedRpm", carriedRpm);
-		// 变器当时的读取半径（= 命中后"就地补料"的生效半径）
-		tag.putInt("WaveCarriedRadius", carriedScanRadius);
-		// ===== 2026-09 审计修复：补全"半个波"问题所需的三个字段 =====
-		// 旧实现只存 attributes/heat/rpm/radius，读档后 chainLeft 落到默认 0 → 波在第一个容器前
-		// 无声自毁；recipeTypes 为空 → 类型门退回"按机器 id 展开静态档案"，状态选择器（真空室 mode、
-		// 杠杆锤锤下方块、角磨轮等级）全部丢失；waveOrigin 为 null → 环境判定的"波源"中心消失。
-		tag.putInt("WaveChain", chainLeft);
-		ListTag typeList = new ListTag();
-		for (IRecipeTypeInfo type : recipeTypes)
-			if (type != null && type.getId() != null)
-				typeList.add(StringTag.valueOf(type.getId()
-					.toString()));
-		tag.put("WaveRecipeTypeIds", typeList);
-		if (waveOrigin != null)
-			tag.putLong("WaveOrigin", waveOrigin.asLong());
-	}
+	/**
+	 * 2026-10-24 批 3：本类那 7 个键全部声明在 {@code WaveAttrs} 表里（作用域
+	 * {@link WaveAttrKey.Scope#STELLAR}），读写由基类的 {@code WaveStateNbt} 一次遍历完成
+	 * —— 本类<b>不再有手写键名，也不再覆写 addAdditionalSaveData</b>。
+	 * 唯一保留的旧口径是下面这一条"变体波永远是全能波"。
+	 */
 
 	@Override
 	protected void readAdditionalSaveData(CompoundTag tag) {
@@ -958,31 +972,6 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 		// 变体波永远是"全能波"：老存档没有 WaveType 键时兜住（新存档由基类按 id 还原）
 		if (getWaveType() == WaveTypes.NORMAL)
 			trySetWaveType(WaveTypes.OMNI);
-		attributes = new ArrayList<>();
-		ListTag list = tag.getList("WaveAttributes", Tag.TAG_STRING);
-		for (int i = 0; i < list.size(); i++) {
-			// 非法/空 id 一律跳过：旧实现直接 add(tryParse(...))，遇到被外部工具改过的存档会塞进 null，
-			// 而 getAttributes() 的 List.copyOf 拒绝 null 元素（NPE）（2026-09 审计修复）
-			ResourceLocation id = ResourceLocation.tryParse(list.getString(i));
-			if (id != null)
-				attributes.add(id);
-		}
-		carriedHeat = HeatLevelNames.byOrdinal(tag.getInt("WaveCarriedHeat"));
-		carriedRpm = Math.abs(tag.getFloat("WaveCarriedRpm"));
-		carriedScanRadius = Math.max(1, tag.getInt("WaveCarriedRadius"));
-		// ===== 2026-09 审计修复（与写入端成对）：链式次数 / 类型快照 / 波源位置 =====
-		chainLeft = Math.max(0, tag.getInt("WaveChain"));
-		recipeTypes = new ArrayList<>();
-		ListTag typeList = tag.getList("WaveRecipeTypeIds", Tag.TAG_STRING);
-		for (int i = 0; i < typeList.size(); i++) {
-			ResourceLocation tid = ResourceLocation.tryParse(typeList.getString(i));
-			if (tid == null)
-				continue;
-			IRecipeTypeInfo info = WaveCarriedTypes.recipeTypeById(tid);
-			if (info != null)
-				recipeTypes.add(info);
-		}
-		waveOrigin = tag.contains("WaveOrigin") ? BlockPos.of(tag.getLong("WaveOrigin")) : null;
 	}
 
 }

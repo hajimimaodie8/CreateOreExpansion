@@ -76,4 +76,25 @@ public enum WaveTrailStyle {
 	public Component displayName() {
 		return Component.translatableWithFallback(LANG + name().toLowerCase(Locale.ROOT), name());
 	}
+
+	/**
+	 * <b>容错的枚举名查找</b>（同步数据与 NBT 的唯一解析入口）：空串 / 未知名 ⇒ {@code null}
+	 * （= "没有魔素"），<b>不抛异常</b>。
+	 *
+	 * <p>2026-10-24 批 3：实现从 {@code AbstractChargerWaveEntity#essenceByName} 搬到这里 ——
+	 * 同步读（客户端 getter）与 NBT 读（{@code WaveAttrs} 的编解码器）都要用同一个口径，
+	 * 原来两处各有一份就会漂移。{@code WaveTrailStyle.valueOf} 遇到未知名字会抛
+	 * {@code IllegalArgumentException}，而这条路径跑在实体 tick / 读档里（一抛就是崩），
+	 * 所以必须走本方法。</p>
+	 */
+	public static WaveTrailStyle byName(String name) {
+		if (name == null || name.isEmpty())
+			return null;
+		for (WaveTrailStyle style : values()) {
+			if (style.name()
+				.equals(name))
+				return style;
+		}
+		return null;
+	}
 }

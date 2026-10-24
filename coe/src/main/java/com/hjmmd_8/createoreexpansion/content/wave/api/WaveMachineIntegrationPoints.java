@@ -168,6 +168,22 @@ public final class WaveMachineIntegrationPoints {
 		return s == null ? List.of() : s.allRecipeTypes();
 	}
 
+	/**
+	 * <b>按注册表 id 找回配方类型档案</b>（波 NBT 的 {@code WaveRecipeTypeIds} 读回用）。
+	 *
+	 * <p>与第二层 {@code WaveCarriedTypes#recipeTypeById} 同一份实现：这里查
+	 * {@link #allRecipeTypes()}（第二层登记进来的全集），认不出的 id 返回 {@code null}
+	 * （读档时跳过该条目，与旧行为一致）。未装第二层 ⇒ 全集为空 ⇒ 恒 {@code null}。</p>
+	 */
+	public static IRecipeTypeInfo recipeTypeById(ResourceLocation id) {
+		if (id == null)
+			return null;
+		for (IRecipeTypeInfo type : allRecipeTypes())
+			if (type != null && id.equals(type.getId()))
+				return type;
+		return null;
+	}
+
 	public static boolean isMachinery(Level level, BlockPos pos) {
 		Sink s = sink;
 		return s != null && s.isMachinery(level, pos);

@@ -1,5 +1,7 @@
 package com.hjmmd_8.createoreexpansion.content.charger.entity;
 
+import java.util.UUID;
+
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.energyfield.charge.ChargeConfigs;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
@@ -95,13 +97,14 @@ final class WaveOrbitElement {
 	 * @return {@code false} = 锚点已不存在，调用方必须 discard 自己
 	 */
 	static boolean applyOrbitElement(AbstractChargerWaveEntity host) {
-		if (host.orbitAnchorUuid == null) {
+		UUID orbitAnchorUuid = host.getOrbitAnchorUuid();
+		if (orbitAnchorUuid == null) {
 			return true;
 		}
 		if (!(host.level() instanceof ServerLevel server)) {
 			return true;
 		}
-		Entity anchor = server.getEntity(host.orbitAnchorUuid);
+		Entity anchor = server.getEntity(orbitAnchorUuid);
 		// ★ 批 4（作者裁定 D9 = A）：锚点判据从"必须是另一枚波"放宽成"是个活着的实体"——
 		// 回旋镖的环绕技能要拿**那枚镖**当锚点，而镖是 Projectile、不是波；旧判据会让环绕波
 		// 出生即死（第一 tick 就查不到"父波"）。既有调用方（星芒嬗震）传的仍是波 ⇒ 走的还是
@@ -113,7 +116,7 @@ final class WaveOrbitElement {
 		// 逐字同源）、镖 = getDeltaMovement()。非 OrbitAnchor 的实体回落到原版速度向量。
 		Vec3 dir = orbitDirectionOf(anchor);
 		if (dir.lengthSqr() < 1.0E-9D) {
-			dir = host.movement;
+			dir = host.getMovement();
 		}
 		if (dir.lengthSqr() < 1.0E-9D) {
 			dir = new Vec3(0.0D, 0.0D, 1.0D);
@@ -122,9 +125,10 @@ final class WaveOrbitElement {
 		Vec3[] axes = orbitPlaneAxes(dir);
 		Vec3 u = axes[0];
 		Vec3 v = axes[1];
-		double theta = host.orbitPhase + host.orbitAngularSpeed * (double) host.tickCount;
+		double theta = host.getOrbitPhase() + host.getOrbitAngularSpeed() * (double) host.tickCount;
 		Vec3 anchorPos = anchor.position();
-		Vec3 offset = u.scale(host.orbitRadius * Math.cos(theta)).add(v.scale(host.orbitRadius * Math.sin(theta)));
+		Vec3 offset = u.scale(host.getOrbitRadius() * Math.cos(theta))
+			.add(v.scale(host.getOrbitRadius() * Math.sin(theta)));
 		host.setPos(anchorPos.add(offset));
 		// 只记三个原始事实，供粒子/日志用（见三个字段的说明）；位置公式本身仍只有上面这一处。
 		host.orbitCurrentPhase = theta;
@@ -162,15 +166,16 @@ final class WaveOrbitElement {
 		if (host.tickCount == 1) {
 			WaveDiag.trace(
 				"环绕波出生：{} 级波（{}），父波 UUID {}，批次 {}（继承父波），半径 {} 格、角速度 {} 弧度/tick（{} 圈/秒）、起始相位 {}；位置 = 父波位置 + r×(u·cosθ + v·sinθ) 逐 tick 改写",
-				host.waveLevel, WaveLevels.glyph(host.waveLevel), host.orbitAnchorUuid, host.getFiringBatch(),
-				fmt2(host.orbitRadius), fmt2(host.orbitAngularSpeed),
-				fmt2(host.orbitAngularSpeed * (double) ChargeConfigs.TICKS_PER_SECOND / (Math.PI * 2.0D)),
-				fmt2(host.orbitPhase));
+				host.getWaveLevel(), WaveLevels.glyph(host.getWaveLevel()), host.getOrbitAnchorUuid(),
+				host.getFiringBatch(),
+				fmt2(host.getOrbitRadius()), fmt2(host.getOrbitAngularSpeed()),
+				fmt2(host.getOrbitAngularSpeed() * (double) ChargeConfigs.TICKS_PER_SECOND / (Math.PI * 2.0D)),
+				fmt2(host.getOrbitPhase()));
 		} else if (host.tickCount % ORBIT_HEARTBEAT_TICKS == 0) {
 			WaveDiag.trace(
 				"环绕波心跳：tick {}，自身 {}，父波 {}，距父波 {} 格（恒 = 半径 {} 格），批次 {}",
 				host.tickCount, host.position(), anchorPos, fmt2(host.position().distanceTo(anchorPos)),
-				fmt2(host.orbitRadius), host.getFiringBatch());
+				fmt2(host.getOrbitRadius()), host.getFiringBatch());
 		}
 	}
 
@@ -211,14 +216,15 @@ final class WaveOrbitElement {
 		}
 		// 环平面法向取"位置改写实际用的那个"（见 orbitRingNormal 的说明）：父波方向被能量场掰弯时，
 		// 粒子圈必须跟着同一套几何，才不会画出一个与真实轨道不平行的环。
-		Vec3 normal = host.orbitRingNormal != null ? host.orbitRingNormal : host.movement;
+		Vec3 normal = host.orbitRingNormal != null ? host.orbitRingNormal : host.getMovement();
 		Vec3[] axes = orbitPlaneAxes(normal);
 		// 出生簇：实体加入世界后的第一 tick（tickCount 在 super.tick() 里 +1，故首 tick 读作 1）
 		if (host.tickCount == 1) {
-			ChargerWaveFx.burstOrbitSpawn(server, anchorPos, host.renderColor, axes[0], axes[1], host.orbitRadius,
-				host.orbitCurrentPhase);
+			ChargerWaveFx.burstOrbitSpawn(server, anchorPos, host.renderColor, axes[0], axes[1],
+				host.getOrbitRadius(), host.orbitCurrentPhase);
 		}
 		ChargerWaveFx.sendOrbitMarks(server, host.position(), axes[0], axes[1],
-			host.orbitRadius, host.orbitCurrentPhase, host.tickCount % ChargerWaveFx.ORBIT_MARK_INTERVAL_TICKS == 0);
+			host.getOrbitRadius(), host.orbitCurrentPhase,
+			host.tickCount % ChargerWaveFx.ORBIT_MARK_INTERVAL_TICKS == 0);
 	}
 }

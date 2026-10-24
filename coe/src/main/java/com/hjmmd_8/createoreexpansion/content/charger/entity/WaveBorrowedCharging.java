@@ -41,8 +41,8 @@ final class WaveBorrowedCharging {
 	static BorrowedChargingSource borrowedChargingSource(StellarWaveEntity host) {
 		if (host.borrowedSourceTick != host.tickCount) {
 			host.borrowedSourceTick = host.tickCount;
-			host.borrowedSource = BorrowedChargingSource.resolve(host.level(), host.waveOrigin,
-				Math.max(1, host.carriedScanRadius));
+			host.borrowedSource = BorrowedChargingSource.resolve(host.level(), host.getWaveOrigin(),
+				Math.max(1, host.getCarriedRadius()));
 		}
 		return host.borrowedSource;
 	}
@@ -77,7 +77,7 @@ final class WaveBorrowedCharging {
 			.processItemEntity(item))
 			return false;
 		craftTrace("借用充能（掉落物）：波源 {} 半径 {} 内的充能器 [{}] 发射等级 {} → 命中 {} 完成充能加工",
-			host.waveOrigin, Math.max(1, host.carriedScanRadius), source.pos(), source.waveLevel(),
+			host.getWaveOrigin(), Math.max(1, host.getCarriedRadius()), source.pos(), source.waveLevel(),
 			item.getItem()
 				.getItem());
 		ChargerWaveFx.burst(host.level(), host.position(), host.trailStyle(), host.getRenderColor());
@@ -103,7 +103,7 @@ final class WaveBorrowedCharging {
 			.processBlockHandler(handler, pos))
 			return false;
 		craftTrace("借用充能（方块槽）：波源 {} 半径 {} 内的充能器 [{}] 发射等级 {} → 命中 {} 完成充能加工",
-			host.waveOrigin, Math.max(1, host.carriedScanRadius), source.pos(), source.waveLevel(), pos);
+			host.getWaveOrigin(), Math.max(1, host.getCarriedRadius()), source.pos(), source.waveLevel(), pos);
 		return true;
 	}
 }

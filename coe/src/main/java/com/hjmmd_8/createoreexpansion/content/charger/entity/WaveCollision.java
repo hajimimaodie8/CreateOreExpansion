@@ -65,13 +65,14 @@ final class WaveCollision {
 			// 节流：并排飞的多枚波彼此一直在命中盒里，若每 tick 打一行会把事件流日志刷爆。
 			if (host.tickCount % ChargeConfigs.TICKS_PER_SECOND == 0) {
 				WaveDiag.trace("波波碰撞豁免（同一次发射，批次 {}）：{} 级 × {} 级 相遇但互不爆炸、互不湮灭",
-					host.getFiringBatch(), WaveLevels.glyph(host.waveLevel), WaveLevels.glyph(other.waveLevel));
+					host.getFiringBatch(), WaveLevels.glyph(host.getWaveLevel()),
+					WaveLevels.glyph(other.getWaveLevel()));
 			}
 			return;
 		}
 		// =====================================================================================
 
-		int boomLevel = Math.min(host.waveLevel, other.waveLevel);
+		int boomLevel = Math.min(host.getWaveLevel(), other.getWaveLevel());
 		// 碰撞点取两波中心中点
 		Vec3 center = host.position().add(other.position()).scale(0.5);
 
@@ -84,7 +85,7 @@ final class WaveCollision {
 		// 粒子数走 ChargerWaveFx.boomParticleCount（唯一算式），日志里的数与真实发出的数必然一致。
 		WaveDiag.trace(
 			"波波碰撞：{} 级 × {} 级（波型 {} × {}）→ 爆炸等级 {}：半径 {} 格范围伤害 {}、范围内掉落物/置物台按该级加工、粒子 {} 颗、不破坏地形",
-			WaveLevels.glyph(host.waveLevel), WaveLevels.glyph(other.waveLevel), host.getWaveType()
+			WaveLevels.glyph(host.getWaveLevel()), WaveLevels.glyph(other.getWaveLevel()), host.getWaveType()
 				.id()
 				.getPath(),
 			other.getWaveType()

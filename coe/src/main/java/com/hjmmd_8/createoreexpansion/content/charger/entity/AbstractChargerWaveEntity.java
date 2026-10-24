@@ -20,17 +20,19 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveSpeed;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAttrKey;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAttrs;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveState;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveStateNbt;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveStateSync;
 
 import net.createmod.catnip.levelWrappers.SchematicLevel;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
@@ -109,28 +111,19 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/** 最大飞行距离（格）：超过即消散，与寿命上限互为兜底。 */
 	protected static final double MAX_TRAVEL_DISTANCE = 64.0;
 
-	int waveLevel;
-	Vec3 movement = Vec3.ZERO;
-
 	/**
-	 * 速度修正值（格/秒，可正可负）：由波速调节器按转速分档叠加施加。
-	 * <ul>
-	 *   <li><b>叠加语义</b>：每次过波速调节器在此值上 +/− 档位量（多次叠加累积）；</li>
-	 *   <li><b>继承</b>：差波器分裂出的子波、拐弯/反弹后的波均保持同一修正值
-	 *       （实际速度 = 等级基础速度 + 此值，受上下限约束）；</li>
-	 *   <li>与等级解耦：等级基础速度（2/4/6）不变，此值仅为额外叠加层。</li>
-	 * </ul>
+	 * <b>本波的全部属性值</b>（2026-10-24 波系统重构批 3，方案 §3.2 的"单一真源"）。
+	 *
+	 * <p>等级 / 方向 / 速度修正 / 电荷 / 出生点 / 波型 / 魔素 / 主人 / 环绕四件套 / 命中效果三件套 /
+	 * 重力，<b>全部</b>住在这里；本类只保留位置、寿命计时、tick 阶段、命中链以及必要的运行态缓存。
+	 * NBT 不再有手写键名，只有 {@link com.hjmmd_8.createoreexpansion.content.wave.api.WaveStateNbt}
+	 * 对 {@code WaveAttrs} 表的遍历。</p>
 	 */
-	private double speedOffset;
+	private final WaveState state = new WaveState();
 
-	/**
-	 * 电荷极性（能量着电器赋予）：null = 不带电（能量场不作用）。
-	 * 携带电荷的波在能量加速/偏转场中受洛伦兹式作用（见 FieldedEntity）。
-	 */
-	protected com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity charge;
-
-	/** 出生点：用于计算飞行距离上限。 */
-	private Vec3 spawnPos;
+	/** 7 个同步视图的句柄（accessor 的<b>声明</b>仍在下面，顺序/序列化器/缺省值一个字未动）。 */
+	private final WaveStateSync.Views syncedViews = new WaveStateSync.Views(WAVE_LEVEL, SPEED_OFFSET, CHARGE,
+		WAVE_TYPE, FIRING_BATCH, ESSENCE, OWNER);
 
 	/** 已与另一波碰撞（防同 tick 双方各触发一次爆炸）。 */
 	boolean collided;
@@ -168,8 +161,11 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/**
 	 * 调级器增强延迟（格）：穿过能量调级器（顺基准）后还需飞行 0.5 格
 	 * 才升级（0.5 格 ÷ 波速 v = 1/(2v) 秒）。0 = 无待升级。
+	 *
+	 * <p>2026-10-24 批 3：字段本体搬进 {@link WaveState}（键 {@code BoostRemaining}），本类只留
+	 * 读写口 {@link #getBoostRemaining()} / {@link #setBoostRemaining(float)} —— 读档/存档由
+	 * {@code WaveAttrs} 表统一驱动。</p>
 	 */
-	protected float boostRemaining;
 
 	/**
 	 * 调级器增强步数（本次延迟升级一次提升几级）：翡翠/蓝宝石恒为 1；
@@ -177,8 +173,11 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * {@link WaveLevels#MAX_LEVEL}）。由机器侧的调级器处置器（W6-a 起住第二层，
 	 * 经 {@link WaveMachineHandler} 契约回调）在授予延迟升级时从调级器 BE 机型参数
 	 * （{@code getBoostStepForSpeed()}）写入。
+	 *
+	 * <p>2026-10-24 批 3：字段本体搬进 {@link WaveState}（键 {@code BoostStep}），本类只留
+	 * {@link #getBoostStep()} / {@link #setBoostStep(int)}；缺键读作 1、读侧夹在
+	 * {@code 1..maxLevel()} 的旧口径写在 {@code WaveAttrs} 的编解码器里。</p>
 	 */
-	protected int boostStep = 1;
 
 	/**
 	 * 当前渲染颜色（RGB 0-1）：每 tick 向目标颜色插值靠近，实现升降级/遣返时的平滑渐变。
@@ -217,15 +216,15 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	protected AbstractChargerWaveEntity(EntityType<?> type, Level level, Vec3 pos, Vec3 movementDir, int waveLevel) {
 		this(type, level);
-		this.waveLevel = waveLevel;
+		this.state.set(WaveAttrs.LEVEL, waveLevel);
 		this.processor = new ChargerWaveProcessor(level, waveLevel);
-		this.movement = movementDir.normalize();
+		this.setMovement(movementDir.normalize());
 		this.renderColor = getWaveColor();
-		this.spawnPos = pos;
+		this.setSpawnPos(pos);
 		setPos(pos);
-		// 服务端/客户端实例都写入同步数据（Jade 等客户端读取需要）
-		this.entityData.set(WAVE_LEVEL, waveLevel);
-		this.entityData.set(SPEED_OFFSET, 0f);
+		// 服务端/客户端实例都写入同步数据（Jade 等客户端读取需要）。7 个视图由 WaveStateSync 一处推送，
+		// 值没变时 SynchedEntityData#set 是空操作 ⇒ 与改造前"只推等级与速度修正"可观察行为相同。
+		pushSyncedViews();
 	}
 
 	/** 等级同步 key（客户端 Jade 显示用） */
@@ -298,6 +297,27 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
+	 * 本实体种类的 NBT 键范围（基类 = {@link WaveAttrKey.Scope#BASE}；{@code charger_wave} /
+	 * {@code stellar_wave} 各自追加自己的键）。{@link WaveStateNbt} 按它筛选表里的行。
+	 */
+	protected WaveAttrKey.Scope waveScope() {
+		return WaveAttrKey.Scope.BASE;
+	}
+
+	/**
+	 * 本波的<b>属性值对象</b>（子类读写自己那一层的键用；它仍是唯一持有者 —— 子类
+	 * <b>不许</b>再声明属性字段）。同包助手类读属性一律走既有 getter，不要直接碰它。
+	 */
+	protected final WaveState waveState() {
+		return this.state;
+	}
+
+	/** 把 {@link #state} 里的 7 个值推送到同步视图（<b>唯一</b>推送口，见 {@link WaveStateSync}）。 */
+	private void pushSyncedViews() {
+		WaveStateSync.push(state, this.entityData, syncedViews);
+	}
+
+	/**
 	 * 这次波的发射批次号（0 = 不属于任何批次）。
 	 *
 	 * <p>服务端与客户端读的是同一个同步值（写入只有 {@link #setFiringBatch(int)} 一处）。</p>
@@ -357,12 +377,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * {@code anchor != null && anchor.isAlive()}，运动方向改走契约
 	 * {@link OrbitAnchor#orbitDirection()}（波与镖各实现一次）。既有调用方（星芒嬗震传父波）
 	 * 走的仍是同一条路径、同一行取值 ⇒ 行为逐字不变。</p>
+	 *
+	 * <p><b>2026-10-24 批 3</b>：字段本体搬进 {@link WaveState}（键 {@code OrbitAnchor}，
+	 * 环绕四件套的组长）；本类只留 {@link #getOrbitAnchorUuid()} / {@link #setOrbitAnchor}。</p>
 	 */
-	@Nullable
-	UUID orbitAnchorUuid;
-
-	/** 环绕波要素：环绕半径（格）；{@code 0} = 关闭（默认）。 */
-	double orbitRadius;
 
 	/**
 	 * <b>"父波已经没了"标记</b>（只有环绕波会被置位）：{@link #tick()} 里查出父波取不到/已消散后置位，
@@ -375,15 +393,15 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	private boolean orbitAnchorLost;
 
-	/** 环绕波要素：角速度（<b>弧度/tick</b>，1 圈/秒 = 2π/20）；{@code 0} = 关闭（默认）。 */
-	double orbitAngularSpeed;
+	/** 环绕波要素：角速度（<b>弧度/tick</b>，1 圈/秒 = 2π/20）——键 {@code OrbitAngularSpeed}。 */
 
 	/**
 	 * 环绕波要素：初始相位（弧度）。{@code 0} = 出生时位于基向量 u 的正方向一侧（默认）。
 	 * 刻意用 {@code tickCount} 当时间基（θ = 相位 + 角速度 × 已存活 tick）⇒ 不需要额外字段，
-	 * 也不受读档/重载影响。
+	 * 也不受读档/重载影响。</p>
+	 *
+	 * <p>2026-10-24 批 3：字段搬进 {@link WaveState}（键 {@code OrbitPhase}）。</p>
 	 */
-	double orbitPhase;
 
 	/**
 	 * 本 tick 的<b>当前相位</b>（弧度；只有环绕波有意义）——粒子侧拿它把"环面留痕桩"铺在
@@ -398,7 +416,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 本 tick 的<b>父波位置</b>（只有环绕波有意义；父波取不到时为 {@code null}）。
 	 *
 	 * <p>用途有二：粒子侧要拿它算圆周点（位置已改写，父波位置本身没存下来）；
-	 * 以及心跳日志的"距父波距离"——这个距离恒等于 {@link #orbitRadius}，正是"半径 0.8 的环绕
+	 * 以及心跳日志的"距父波距离"——这个距离恒等于 {@link WaveAttrs#ORBIT_RADIUS}，正是"半径 0.8 的环绕
 	 * 真的在绕"的机器可判证据。</p>
 	 */
 	@Nullable
@@ -424,15 +442,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * NeoForge 的 {@code MobEffectEvent.Applicable} 照常触发，于是既有的一切"效果免疫"
 	 * 拦截点（例如星辉石凝能佩免疫嬗乱：{@code MedallionEffectHandler#onEffectApplicable}）
 	 * <b>自动生效</b>，本类不写任何一套自己的免疫判据。</p>
+	 *
+	 * <p>2026-10-24 批 3：三件套搬进 {@link WaveState}（键 {@code HitEffect} 为组长，
+	 * {@code HitEffectDuration} / {@code HitEffectAmplifier} 随它成组）。</p>
 	 */
-	@Nullable
-	private Holder<MobEffect> hitEffect;
-
-	/** 命中附加效果要素：持续 tick 数；{@code <= 0} = 不做事（默认 0）。 */
-	private int hitEffectDuration;
-
-	/** 命中附加效果要素：效果等级（amplifier，0 = I 级）；默认 0。 */
-	private int hitEffectAmplifier;
 
 	// ==================================================================================
 	// ★ 2026-10-05 弓技能批 4（宝石弓「量波置换」）：第三个"通用、可选、默认关闭"的波要素
@@ -474,9 +487,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 *
 	 * <p>刻意是原始类型（默认 0.0）：{@link #setPos} 会被父类 {@code Entity} 的构造器调用，
 	 * 那一刻字段初始化器还没执行 —— 本字段只被 {@link #tick()} 读，构造期不可达，
-	 * 与 {@code pathBroken} 的约束同源。</p>
+	 * <p>2026-10-24 批 3：字段搬进 {@link WaveState}（键 {@code GravityAcceleration}；写侧仍是
+	 * "&gt; 0 才写"，读侧仍是"无条件读"，见 {@code WaveAttrs}）。</p>
 	 */
-	private double gravityAcceleration;
 
 	/**
 	 * 重力要素的<b>运行态</b>：已攒下的下落速度（格/秒，恒 ≥ 0；向下）。
@@ -499,16 +512,16 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * @param accelerationBlocksPerSecondSquared 向下加速度（格/秒²；{@code <= 0} 视为不做事）
 	 */
 	public void setGravity(double accelerationBlocksPerSecondSquared) {
-		this.gravityAcceleration = accelerationBlocksPerSecondSquared;
+		this.state.set(WaveAttrs.GRAVITY, accelerationBlocksPerSecondSquared);
 	}
 
 	/** 是否设了重力要素（诊断/关卡用；{@code false} = 飞行与改造前逐字相同）。 */
 	public boolean hasGravity() {
-		return gravityAcceleration > 0.0D;
+		return this.state.get(WaveAttrs.GRAVITY) > 0.0D;
 	}
 
 	/**
-	 * 设置<b>环绕波要素</b>（一次设全；调用方还必须继承父波批次号，见 {@link #orbitAnchorUuid}）。
+	 * 设置<b>环绕波要素</b>（一次设全；调用方还必须继承父波批次号，见 {@link WaveAttrs#ORBIT_ANCHOR}）。
 	 *
 	 * @param anchorWaveUuid  父波 UUID（非 null）
 	 * @param radius          环绕半径（格）
@@ -516,36 +529,36 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * @param phaseRad        初始相位（弧度）
 	 */
 	public void setOrbitAnchor(UUID anchorWaveUuid, double radius, double angularSpeedRad, double phaseRad) {
-		this.orbitAnchorUuid = anchorWaveUuid;
-		this.orbitRadius = radius;
-		this.orbitAngularSpeed = angularSpeedRad;
-		this.orbitPhase = phaseRad;
+		this.state.set(WaveAttrs.ORBIT_ANCHOR, anchorWaveUuid);
+		this.state.set(WaveAttrs.ORBIT_RADIUS, radius);
+		this.state.set(WaveAttrs.ORBIT_ANGULAR_SPEED, angularSpeedRad);
+		this.state.set(WaveAttrs.ORBIT_PHASE, phaseRad);
 	}
 
 	/** 父波 UUID（{@code null} = 本波不环绕 ⇒ 要素关闭）。 */
 	@Nullable
 	public UUID getOrbitAnchorUuid() {
-		return orbitAnchorUuid;
+		return this.state.get(WaveAttrs.ORBIT_ANCHOR);
 	}
 
 	/** 是否设了环绕波要素（诊断/关卡用；{@code false} = 行为与改造前逐字相同）。 */
 	public boolean isOrbiting() {
-		return orbitAnchorUuid != null;
+		return this.state.get(WaveAttrs.ORBIT_ANCHOR) != null;
 	}
 
 	/** 环绕半径（格）。 */
 	public double getOrbitRadius() {
-		return orbitRadius;
+		return this.state.get(WaveAttrs.ORBIT_RADIUS);
 	}
 
 	/** 环绕角速度（弧度/tick）。 */
 	public double getOrbitAngularSpeed() {
-		return orbitAngularSpeed;
+		return this.state.get(WaveAttrs.ORBIT_ANGULAR_SPEED);
 	}
 
 	/** 环绕初始相位（弧度）。 */
 	public double getOrbitPhase() {
-		return orbitPhase;
+		return this.state.get(WaveAttrs.ORBIT_PHASE);
 	}
 
 	/**
@@ -556,33 +569,30 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * @param amplifier     效果等级（0 = I 级）
 	 */
 	public void setHitEffect(Holder<MobEffect> effect, int durationTicks, int amplifier) {
-		this.hitEffect = effect;
-		this.hitEffectDuration = durationTicks;
-		this.hitEffectAmplifier = amplifier;
+		this.state.set(WaveAttrs.HIT_EFFECT, effect);
+		this.state.set(WaveAttrs.HIT_EFFECT_DURATION, durationTicks);
+		this.state.set(WaveAttrs.HIT_EFFECT_AMPLIFIER, amplifier);
 	}
 
 	/** 命中附加效果（{@code null} = 要素关闭）。 */
 	@Nullable
 	public Holder<MobEffect> getHitEffect() {
-		return hitEffect;
+		return this.state.get(WaveAttrs.HIT_EFFECT);
 	}
 
 	/** 命中附加效果持续 tick 数（0 = 要素关闭）。 */
 	public int getHitEffectDuration() {
-		return hitEffectDuration;
+		return this.state.get(WaveAttrs.HIT_EFFECT_DURATION);
 	}
 
 	/** 命中附加效果等级（amplifier）。 */
 	public int getHitEffectAmplifier() {
-		return hitEffectAmplifier;
+		return this.state.get(WaveAttrs.HIT_EFFECT_AMPLIFIER);
 	}
 
-	/** 波型（服务端权威值；见 {@link #getWaveType()} 的客户端分支）。 */
-	private WaveType waveType = WaveTypes.NORMAL;
-
 	/**
-	 * 波当前所属<b>波型</b>：服务端读本字段，客户端按同步 id 现查注册表
-	 * （拖尾/绽放特效在客户端播，必须能拿到）。
+	 * 波当前所属<b>波型</b>：服务端读 {@link WaveState}（方案 §3.2 的唯一持有者），
+	 * 客户端按同步 id 现查注册表（拖尾/绽放特效在客户端播，必须能拿到）。
 	 *
 	 * <p>服务端与同步值同源——只有 {@link #trySetWaveType(WaveType)} 会改动它们，且两者一起写，
 	 * 故不存在"服务端与客户端看到不同波型"的窗口（构造与读档同理）。</p>
@@ -590,7 +600,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	public WaveType getWaveType() {
 		if (level() != null && level().isClientSide)
 			return WaveTypes.byIdString(this.entityData.get(WAVE_TYPE));
-		return waveType;
+		return this.state.get(WaveAttrs.WAVE_TYPE);
 	}
 
 	/**
@@ -604,9 +614,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	public boolean trySetWaveType(WaveType target) {
 		if (target == null || target == WaveTypes.NORMAL || getWaveType() != WaveTypes.NORMAL)
 			return false;
-		this.waveType = target;
-		this.entityData.set(WAVE_TYPE, target.id()
-			.toString());
+		this.state.set(WaveAttrs.WAVE_TYPE, target);
+		pushSyncedViews();
 		return true;
 	}
 
@@ -627,41 +636,19 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	//     非攻击波的身上不可能有非 null 的魔素。
 	// ==================================================================================
 
-	/** 魔素（服务端权威值；{@code null} = 未设 ⇒ 继承波型风格）。 */
-	@Nullable
-	private WaveTrailStyle essence;
+	// 2026-10-24 批 3：字段搬进 WaveState（键 Essence）；名字解析统一走
+	// WaveTrailStyle#byName(String)（同步与 NBT 共用同一处）。
 
 	/**
-	 * 本波的<b>魔素</b>（{@code null} = 未设）。服务端读本字段，客户端按同步名字现查枚举
+	 * 本波的<b>魔素</b>（{@code null} = 未设）。服务端读 {@link WaveState}，客户端按同步名字现查枚举
 	 * （与 {@link #getWaveType()} 同一形状：两者都由 {@link #trySetEssence} 一起写，
 	 * 故不存在"服务端与客户端看到不同魔素"的窗口）。
 	 */
 	@Nullable
 	public WaveTrailStyle getEssence() {
 		if (level() != null && level().isClientSide)
-			return essenceByName(this.entityData.get(ESSENCE));
-		return essence;
-	}
-
-	/**
-	 * 按<b>枚举名</b>查魔素（同步数据与 NBT 的容错入口，<b>认不出来就是"没有"</b>）。
-	 *
-	 * <p><b>为什么不用 {@code WaveTrailStyle.valueOf}</b>：同步值可能是空串、未知名字，
-	 * 老存档里也可能留着被改过的字符串 —— {@code valueOf} 会抛
-	 * {@code IllegalArgumentException}，而这条路径跑在实体的 tick / 读档里（一抛就是崩）。
-	 * 本方法与 {@code ChargerWaveFx#profile} 的"未登记值静默回落"同一口径：
-	 * 认不出来 ⇒ {@code null} ⇒ {@link #trailStyle()} 回落"继承波型风格"（不崩、不改玩法）。</p>
-	 */
-	@Nullable
-	private static WaveTrailStyle essenceByName(String name) {
-		if (name == null || name.isEmpty())
-			return null;
-		for (WaveTrailStyle style : WaveTrailStyle.values()) {
-			if (style.name()
-				.equals(name))
-				return style;
-		}
-		return null;
+			return WaveTrailStyle.byName(this.entityData.get(ESSENCE));
+		return this.state.get(WaveAttrs.ESSENCE);
 	}
 
 	/**
@@ -678,14 +665,14 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	public boolean trySetEssence(@Nullable WaveTrailStyle target) {
 		if (target == null) {
-			this.essence = null;
-			this.entityData.set(ESSENCE, "");
+			this.state.set(WaveAttrs.ESSENCE, null);
+			pushSyncedViews();
 			return true;
 		}
 		if (!getWaveType().dealsDamage())
 			return false;
-		this.essence = target;
-		this.entityData.set(ESSENCE, target.name());
+		this.state.set(WaveAttrs.ESSENCE, target);
+		pushSyncedViews();
 		return true;
 	}
 
@@ -737,9 +724,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	// ⚠ 唯一用途 = "不伤发射者"；<b>不许</b>拿它去做归属 / 阵营 / 只打敌人（作者 2026-10-03 明确禁止）。
 	// ==================================================================================
 
-	/** 主人 UUID（服务端权威值；{@code null} = 无主人 = 不排除任何人）。 */
-	@Nullable
-	private UUID ownerUuid;
+	// 2026-10-24 批 3：字段搬进 WaveState（键 Owner）；NBT 读写与"有没有设过"由表驱动。
 
 	/**
 	 * <b>本波是否已经给主人充过能</b>（2026-10-03 批 2，我加的一道"一次飞行只充一次"闸门）。
@@ -755,14 +740,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	private boolean ownerCharged;
 
 	/**
-	 * <b>唯一容错解析入口</b>（照 {@link #essenceByName} 的形状：认不出来就是"没有主人"）：
-	 * 把<b>同步值</b> {@code Optional<UUID>} 读成 {@code @Nullable UUID} ——
-	 * 空同步值（{@code Optional.empty()}）⇒ {@code null}。
+	 * <b>唯一容错解析入口</b>：把<b>同步值</b> {@code Optional<UUID>} 读成
+	 * {@code @Nullable UUID} —— 空同步值（{@code Optional.empty()}）⇒ {@code null}。
 	 *
 	 * <p><b>为什么这里刻意不解析字符串、全类零处 {@code UUID.fromString}</b>：
 	 * {@code UUID.fromString} 是"字符串 ⇒ UUID"的<b>裸解析</b>，遇到空串 / 被改过的值就抛
-	 * {@code IllegalArgumentException}；而这条路径跑在实体的 <b>tick 与读档</b>里，一抛就是崩
-	 * （与 {@code WaveTrailStyle.valueOf} 同一个坑，见 {@link #essenceByName}）。
+	 * {@code IllegalArgumentException}；而这条路径跑在实体的 <b>tick 与读档</b>里，一抛就是崩。
 	 * 本字段的两种原始表示本来就都是原版自带的容错读法：同步值用
 	 * {@code OPTIONAL_UUID}（空值有专门表示），存档用 {@link CompoundTag#hasUUID}。</p>
 	 */
@@ -772,15 +755,15 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
-	 * 本波的<b>主人 UUID</b>（{@code null} = 无主人）。服务端读字段，客户端读<b>同步值</b>
-	 * （与 {@link #getWaveType()} / {@link #getEssence()} 同一形状：两侧都拿得到同一个答案）。
+	 * 本波的<b>主人 UUID</b>（{@code null} = 无主人）。服务端读 {@link WaveState}，客户端读
+	 * <b>同步值</b>（与 {@link #getWaveType()} / {@link #getEssence()} 同一形状）。
 	 */
 	@Nullable
 	public UUID getOwnerUuid() {
 		if (level() != null && level().isClientSide) {
 			return ownerOf(this.entityData.get(OWNER));
 		}
-		return this.ownerUuid;
+		return this.state.get(WaveAttrs.OWNER);
 	}
 
 	/**
@@ -806,8 +789,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * {@code null}，命中行为与改造前逐字相同（关卡 {@code wave-owner-assignments} 把"恰好 3 处"钉死）。</p>
 	 */
 	public void setOwner(@Nullable Entity owner) {
-		this.ownerUuid = owner == null ? null : owner.getUUID();
-		this.entityData.set(OWNER, this.ownerUuid == null ? Optional.empty() : Optional.of(this.ownerUuid));
+		this.state.set(WaveAttrs.OWNER, owner == null ? null : owner.getUUID());
+		pushSyncedViews();
 	}
 
 	/**
@@ -904,7 +887,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
-	 * <b>命中附加效果要素</b>（可选、默认关闭，见 {@link #hitEffect}）：<b>既有命中链之后</b>
+	 * <b>命中附加效果要素</b>（可选、默认关闭，见 {@link WaveAttrs#HIT_EFFECT}）：<b>既有命中链之后</b>
 	 * 的追加动作。
 	 *
 	 * <p>既有链一个字不改：{@code 攻击态 ⇒ hurt(WaveLevels.damage(波级)) ⇒ 给穿戴护甲玩家充能
@@ -916,10 +899,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * （如星辉石凝能佩免疫嬗乱），本类不另写免疫逻辑。</p>
 	 */
 	private void applyHitEffect(LivingEntity target) {
-		if (this.hitEffect == null || this.hitEffectDuration <= 0) {
+		Holder<MobEffect> hitEffect = getHitEffect();
+		int hitEffectDuration = getHitEffectDuration();
+		if (hitEffect == null || hitEffectDuration <= 0) {
 			return;
 		}
-		target.addEffect(new MobEffectInstance(this.hitEffect, this.hitEffectDuration, this.hitEffectAmplifier));
+		target.addEffect(new MobEffectInstance(hitEffect, hitEffectDuration, getHitEffectAmplifier()));
 	}
 
 	@Override
@@ -936,7 +921,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// Ponder 场景另有 40 tick 上限（见下），此处只管真实世界。
 		if (!ponderScene
 			&& (tickCount > MAX_LIFETIME_TICKS
-				|| (spawnPos != null && position().distanceToSqr(spawnPos) > MAX_TRAVEL_DISTANCE * MAX_TRAVEL_DISTANCE))) {
+				|| (getSpawnPos() != null
+					&& position().distanceToSqr(getSpawnPos()) > MAX_TRAVEL_DISTANCE * MAX_TRAVEL_DISTANCE))) {
 			discard();
 			return;
 		}
@@ -949,7 +935,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 		// 移动（速度随等级）。带电荷且身处能量场时，把"名义速度向量"交给场修正：
 		// 加速场沿场向增减速、偏转场横向弯折路径（每 tick 微调 movement 方向/速率，呈弧线）。
-		Vec3 nominal = movement.scale(getSpeedBlocks()); // 格/秒（当前名义速度向量）
+		Vec3 nominal = getMovement().scale(getSpeedBlocks()); // 格/秒（当前名义速度向量）
 		Vec3 step = nominal.scale(1.0 / 20.0);
 		Vec3 corrected = com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields.applyFields(level(), this);
 		if (corrected != null && corrected != nominal && !corrected.equals(nominal)) {
@@ -985,12 +971,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 		// 诊断日志（仅服务端；控制器方块完成后移除）：带电波进出场状态翻转 + 场内每 10 tick 修正摘要
 		if (level() instanceof net.minecraft.server.level.ServerLevel server) {
-			boolean inside = charge != null
+			boolean inside = getChargePolarity() != null
 				&& com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields.isInAnyField(level(), position());
 			if (inside != wasInsideField) {
 				wasInsideField = inside;
 				CoeCore.LOGGER.info("[能量场] 波#{} {}场  pos={}  电荷={}  场内场数={}",
-					getId(), inside ? "进入" : "离开", position(), charge,
+					getId(), inside ? "进入" : "离开", position(), getChargePolarity(),
 					com.hjmmd_8.createoreexpansion.content.energyfield.EnergyFields.count(level()));
 			}
 			if (inside && tickCount % 10 == 0) {
@@ -1007,7 +993,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 		// CC&A 特斯拉线圈赋电荷：波不带电且贴近线圈（半径 1 格立方体）时，线圈耗电赋一次
 		// 随机极性电荷（放电闪光 + 1 秒冷却；CC&A 未安装时静默跳过）。每 tick 探测，防高速波漏检。
-		if (charge == null && level() instanceof net.minecraft.server.level.ServerLevel) {
+		if (getChargePolarity() == null && level() instanceof net.minecraft.server.level.ServerLevel) {
 			try {
 				WaveMachineIntegrationPoints.chargeNearbyCoil(this);
 			} catch (Throwable ignored) {
@@ -1018,13 +1004,15 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 调级器增强延迟：穿过顺基准调级器后累计飞行距离，满 0.5 格（= 1/(2v) 秒）后等级 +boostStep
 		// （翡翠/蓝宝石恒 +1；星辉石按授予时的转速可为 +2）。提升等级封顶于 WaveLevels.MAX_LEVEL（5），
 		// 星辉石 +2 从 4 级升到 6 时实际停在 5（ω），不会超上限。
+		float boostRemaining = getBoostRemaining();
 		if (boostRemaining > 0) {
 			boostRemaining -= (float) (getSpeedBlocks() / 20d);
 			if (boostRemaining <= 0) {
 				boostRemaining = 0;
-				setWaveLevel(Math.min(waveLevel + boostStep, WaveLevels.MAX_LEVEL));
-				boostStep = 1;
+				setWaveLevel(Math.min(getWaveLevel() + getBoostStep(), WaveLevels.MAX_LEVEL));
+				setBoostStep(1);
 			}
+			setBoostRemaining(boostRemaining);
 		}
 
 		// 平滑渐变：目标色 = 当前等级色；待升级（boostRemaining>0）时提前渐变到提升后的等级色
@@ -1033,8 +1021,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 于是"波体本身 / 拖尾 / 绽放 / 爆炸"四处用同一套颜色，加工波一眼就是钢青-黄铜的机械色，
 		// 不必等它爆开才认得出（此前只有拖尾粒子被染色，玩家实测反馈"色调看不出来"）。
 		// 普通波的风格是恒等变换，故其颜色与改造前逐字不变。
-		Vec3 levelColor = boostRemaining > 0
-			? getWaveColorForLevel(Math.min(waveLevel + boostStep, WaveLevels.MAX_LEVEL))
+		Vec3 levelColor = getBoostRemaining() > 0
+			? getWaveColorForLevel(Math.min(getWaveLevel() + getBoostStep(), WaveLevels.MAX_LEVEL))
 			: getWaveColor();
 		Vec3 targetColor = ChargerWaveFx.styleColor(trailStyle(), levelColor);
 		renderColor = renderColor.lerp(targetColor, 0.15d);
@@ -1076,6 +1064,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		// 把它的命中与收尾一起关掉——那是改机制，不是改观感（关卡
 		// wave-orbit-particles-exclusive 专门守着这条负向断言）。
 		// ==================================================================================
+		// 2026-10-24 批 3：本 tick 的飞行方向从 WaveState 取一次（此后的粒子与扫掠盒都用同一份；
+		// 旧代码读字段，字段在上一段能量场修正后已经定格，两者逐位相同）。
+		Vec3 movement = getMovement();
 		if (level() instanceof ServerLevel server) {
 			ChargerWaveFx.sendTrail(server, position(), trailStyle(), renderColor,
 				trailScale(), trailCount(), movement.scale(0.12), 0.03, isOrbiting());
@@ -1140,7 +1131,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 				p -> p.isAlive() && isOwner(p));
 			if (!ownersInBox.isEmpty()) {
 				ownerCharged = true;
-				ArmorEnergy.chargeWorn(ownersInBox.get(0), ChargingRecipe.energyForLevel(this.waveLevel));
+				ArmorEnergy.chargeWorn(ownersInBox.get(0), ChargingRecipe.energyForLevel(getWaveLevel()));
 			}
 		}
 		if (!entities.isEmpty()) {
@@ -1155,7 +1146,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			// 现在所有波型都会撞上实体，所以这条对所有波型都生效 —— 正是用户要的
 			// "让能量波去打你自己来充能"。刻意放在创造模式判定之外：创造玩家也照充。
 			if (target instanceof Player wearer) {
-				ArmorEnergy.chargeWorn(wearer, ChargingRecipe.energyForLevel(this.waveLevel));
+				ArmorEnergy.chargeWorn(wearer, ChargingRecipe.energyForLevel(getWaveLevel()));
 				// 魔素命中效果（2026-10-03 需求 coe-ess 批 6）：作者原话是"不同的魔素打中<b>玩家</b>"
 				// ⇒ <b>只在这一条"目标就是玩家"的分支里</b>施加，生物那条路一次都不调
 				// （生物照旧只吃波级伤害）。而且只有真的赋了魔素的波才有效果：
@@ -1301,13 +1292,14 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	public void onSolidBlockHit(BlockPos pos) {
 		// 环绕波要素未设 ⇒ 与改造前逐字相同（第一道闸；见 WaveOrbitElement.tick 的同形守卫）。
-		if (this.orbitAnchorUuid == null || pos == null) {
+		UUID orbitAnchorUuid = getOrbitAnchorUuid();
+		if (orbitAnchorUuid == null || pos == null) {
 			return;
 		}
 		if (!(level() instanceof ServerLevel server)) {
 			return;
 		}
-		Entity anchor = server.getEntity(this.orbitAnchorUuid);
+		Entity anchor = server.getEntity(orbitAnchorUuid);
 		if (anchor instanceof OrbitAnchor orbitAnchor) {
 			orbitAnchor.orbitMineBlock(pos);
 		}
@@ -1327,7 +1319,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			if (tickCount == 1) {
 				// 出生即收尾（第一 tick 就查不到父波）：这是最容易被误判成"根本没生成"的形态，
 				// 所以额外在收尾点炸一簇带环面留痕的出生簇，屏幕上也能看见"它冒了一下"。
-				ChargerWaveFx.burstOrbitSpawn(orbitServer, position(), renderColor, null, null, orbitRadius,
+				ChargerWaveFx.burstOrbitSpawn(orbitServer, position(), renderColor, null, null, getOrbitRadius(),
 					orbitCurrentPhase);
 			} else {
 				ChargerWaveFx.burst(orbitServer, position(), trailStyle(), renderColor);
@@ -1343,8 +1335,8 @@ public abstract class AbstractChargerWaveEntity extends Entity
 					? "出生即收尾（第一 tick 就取不到父波）"
 					: "自身消散（命中 / 寿命 / 行程上限）");
 			WaveDiag.trace("环绕波消散：{}；父波 UUID {}，批次 {}，波级 {}，半径 {} 格，已存活 {} tick",
-				why, orbitAnchorUuid, getFiringBatch(), WaveLevels.glyph(waveLevel),
-				WaveOrbitElement.fmt2(orbitRadius), tickCount);
+				why, getOrbitAnchorUuid(), getFiringBatch(), WaveLevels.glyph(getWaveLevel()),
+				WaveOrbitElement.fmt2(getOrbitRadius()), tickCount);
 		}
 		super.remove(reason);
 	}
@@ -1364,11 +1356,11 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * float 舍入；现在算术只有那一份，任何"波速"点位都不得再抄第二份。</p>
 	 */
 	protected double getSpeedBlocks() {
-		return WaveSpeed.perSecond(waveLevel, speedOffset);
+		return WaveSpeed.perSecond(getWaveLevel(), getSpeedOffset());
 	}
 
 	/**
-	 * <b>重力要素</b>（可选、默认关闭，见 {@link #gravityAcceleration}）：把本 tick 的位移
+	 * <b>重力要素</b>（可选、默认关闭，见 {@link WaveAttrs#GRAVITY}）：把本 tick 的位移
 	 * 追加一个向下的速度分量，并把下落速度按秒²加速度累积。
 	 *
 	 * <p>三条口径，逐条对应关卡：</p>
@@ -1400,27 +1392,31 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			gravityFallSpeed = 0.0D;
 			return step;
 		}
-		gravityFallSpeed += gravityAcceleration * ChargeConfigs.perTickFactor();
+		gravityFallSpeed += gravityAcceleration() * ChargeConfigs.perTickFactor();
 		return step.add(0.0D, -gravityFallSpeed * ChargeConfigs.perTickFactor(), 0.0D);
+	}
+
+	/** 重力要素的当前值（键 {@code GravityAcceleration}；本类唯一的读取点）。 */
+	private double gravityAcceleration() {
+		return this.state.get(WaveAttrs.GRAVITY);
 	}
 
 	/** 施加一次速度修正（叠加语义：在此值上增加 amount，可正可负）。 */
 	public void addSpeedOffset(double amount) {
-		this.speedOffset += amount;
+		this.state.set(WaveAttrs.SPEED_OFFSET, getSpeedOffset() + amount);
 		// 同步到客户端（Jade 速度显示）
-		this.entityData.set(SPEED_OFFSET, (float) this.speedOffset);
+		pushSyncedViews();
 	}
 
 	// ========== 能量场（FieldedEntity） ==========
 
 	/** 赋予/清除电荷（能量着电器调用；null 清除）。写入同步数据（Jade 客户端显示用）。 */
 	public void setCharge(com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity charge) {
-		this.charge = charge;
-		this.entityData.set(CHARGE, charge == null ? 0
-			: charge == com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE ? 1 : 2);
+		this.state.set(WaveAttrs.CHARGE, charge);
+		pushSyncedViews();
 	}
 
-	/** 当前电荷（可能为 null = 不带电）。优先读同步数据（客户端实例）；服务端兜底用字段。 */
+	/** 当前电荷（可能为 null = 不带电）。优先读同步数据（客户端实例）；服务端兜底用状态。 */
 	@Override
 	public com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity getChargePolarity() {
 		int code = this.entityData.get(CHARGE);
@@ -1428,7 +1424,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			return com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE;
 		if (code == 2)
 			return com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.NEGATIVE;
-		return charge; // 服务端尚未广播前兜底
+		return this.state.get(WaveAttrs.CHARGE); // 服务端尚未广播前兜底
 	}
 
 	/** 维度 key（供能量场注册表匹配）。 */
@@ -1448,7 +1444,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/** 当前运动速度向量（格/秒）= 名义主方向 × 速率。 */
 	@Override
 	public Vec3 fieldVelocity() {
-		return movement.scale(getSpeedBlocks());
+		return getMovement().scale(getSpeedBlocks());
 	}
 
 	/**
@@ -1462,15 +1458,15 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	public void setFieldVelocity(Vec3 velocity) {
 		double len = velocity.length();
 		if (len < 1.0E-4) {
-			movement = Vec3.ZERO;
+			setMovement(Vec3.ZERO);
 			return;
 		}
-		Vec3 old = movement.scale(getSpeedBlocks());
+		Vec3 old = getMovement().scale(getSpeedBlocks());
 		double oldLen = old.length();
 		// 速率差并入叠加修正（加速场正向累积、负电荷/反向减速）
 		if (Double.isFinite(len - oldLen) && Math.abs(len - oldLen) > 1.0E-6)
 			addSpeedOffset(len - oldLen);
-		movement = velocity.scale(1.0 / len);
+		setMovement(velocity.scale(1.0 / len));
 	}
 
 	// ========== 公开只读访问（供 Jade 等外部显示） ==========
@@ -1504,7 +1500,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * {@link WaveSpeed#perSecond}（关卡 {@code wave-speed-single-source} 守着）。</p>
 	 */
 	private double speedOffsetForRead() {
-		return level().isClientSide ? this.entityData.get(SPEED_OFFSET) : this.speedOffset;
+		return level().isClientSide ? this.entityData.get(SPEED_OFFSET) : getSpeedOffset();
 	}
 
 	/** 剩余寿命（tick）：距自动消散还剩多少 tick（负数/0 = 即将消散）。 */
@@ -1523,10 +1519,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 调级器升级/降级、以及增强延迟到期升级时调用。
 	 */
 	public void setWaveLevel(int level) {
-		this.waveLevel = level;
+		this.state.set(WaveAttrs.LEVEL, level);
 		this.processor = new ChargerWaveProcessor(level(), level);
 		// 同步到客户端（Jade 等级显示）
-		this.entityData.set(WAVE_LEVEL, level);
+		pushSyncedViews();
 	}
 
 	// ========== 受控访问：主运动方向 / 出生点 / 渲染色 / 速度修正 ==========
@@ -1541,22 +1537,42 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 	/** 主运动方向（单位向量）。速率另由 {@link #getSpeedBlocks()} 与速度修正决定。 */
 	public Vec3 getMovement() {
-		return movement;
+		return new Vec3(this.state.get(WaveAttrs.MOVE_X), this.state.get(WaveAttrs.MOVE_Y),
+			this.state.get(WaveAttrs.MOVE_Z));
 	}
 
 	/** 覆写主运动方向（只改方向，不动速度修正）。 */
 	public void setMovement(Vec3 movement) {
-		this.movement = movement;
+		if (movement == null) {
+			this.state.clear(WaveAttrs.MOVE_X);
+			this.state.clear(WaveAttrs.MOVE_Y);
+			this.state.clear(WaveAttrs.MOVE_Z);
+			return;
+		}
+		this.state.set(WaveAttrs.MOVE_X, movement.x);
+		this.state.set(WaveAttrs.MOVE_Y, movement.y);
+		this.state.set(WaveAttrs.MOVE_Z, movement.z);
 	}
 
 	/** 出生点（最大行程判定用；读档前为 null）。 */
 	public Vec3 getSpawnPos() {
-		return spawnPos;
+		if (!this.state.isSet(WaveAttrs.SPAWN_X))
+			return null;
+		return new Vec3(this.state.get(WaveAttrs.SPAWN_X), this.state.get(WaveAttrs.SPAWN_Y),
+			this.state.get(WaveAttrs.SPAWN_Z));
 	}
 
 	/** 设置出生点（子波按 contraption / sub-level 坐标换算后回写）。 */
 	public void setSpawnPos(Vec3 spawnPos) {
-		this.spawnPos = spawnPos;
+		if (spawnPos == null) {
+			this.state.clear(WaveAttrs.SPAWN_X);
+			this.state.clear(WaveAttrs.SPAWN_Y);
+			this.state.clear(WaveAttrs.SPAWN_Z);
+			return;
+		}
+		this.state.set(WaveAttrs.SPAWN_X, spawnPos.x);
+		this.state.set(WaveAttrs.SPAWN_Y, spawnPos.y);
+		this.state.set(WaveAttrs.SPAWN_Z, spawnPos.z);
 	}
 
 	/**
@@ -1579,36 +1595,36 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 它会同时同步客户端显示用的 {@code SPEED_OFFSET}。
 	 */
 	public double getSpeedOffset() {
-		return speedOffset;
+		return this.state.get(WaveAttrs.SPEED_OFFSET);
 	}
 
 	/** 加速场剩余作用距离（格；>0 表示本 tick 处于加速场中）。 */
 	public float getBoostRemaining() {
-		return boostRemaining;
+		return this.state.get(WaveAttrs.BOOST_REMAINING);
 	}
 
 	/** 覆写加速场剩余作用距离（波闸/能量场写入）。 */
 	public void setBoostRemaining(float boostRemaining) {
-		this.boostRemaining = boostRemaining;
+		this.state.set(WaveAttrs.BOOST_REMAINING, boostRemaining);
 	}
 
 	/** 加速场档位（每 tick 提速的等级）。 */
 	public int getBoostStep() {
-		return boostStep;
+		return this.state.get(WaveAttrs.BOOST_STEP);
 	}
 
 	/** 覆写加速场档位。 */
 	public void setBoostStep(int boostStep) {
-		this.boostStep = boostStep;
+		this.state.set(WaveAttrs.BOOST_STEP, boostStep);
 	}
 	/** 命中伤害：α 4、β 6、γ 8、ε 10、ω 12 —— 查 {@link WaveLevels#damage}。 */
 	protected float getDamage() {
-		return WaveLevels.damage(waveLevel);
+		return WaveLevels.damage(getWaveLevel());
 	}
 
 	/** 能量波颜色（RGB 0-1），随波等级统一：1 α=黄、2 β=绿、3 γ=蓝、4 ε=紫粉、5 ω=玫红 */
 	protected Vec3 getWaveColor() {
-		return getWaveColorForLevel(waveLevel);
+		return getWaveColorForLevel(getWaveLevel());
 	}
 
 	/** 指定等级的波颜色（供调级器渐变提前取下一等级色用）——颜色由等级决定，与机型无关 */
@@ -1631,7 +1647,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * （见 {@link WaveLevels#isGoldTrailLevel(int)}）。本方法签名不变（:cews 依赖它）。</p>
 	 */
 	public boolean isOmega() {
-		return WaveLevels.isGoldTrailLevel(waveLevel);
+		return WaveLevels.isGoldTrailLevel(getWaveLevel());
 	}
 
 	/** ω 拖尾金色（RGB 0-1）。 */
@@ -1678,122 +1694,20 @@ public abstract class AbstractChargerWaveEntity extends Entity
 
 	@Override
 	protected void readAdditionalSaveData(CompoundTag tag) {
-		waveLevel = tag.getInt("WaveLevel");
-		movement = new Vec3(tag.getDouble("MoveX"), tag.getDouble("MoveY"), tag.getDouble("MoveZ"));
-		boostRemaining = tag.getFloat("BoostRemaining");
-		// 2026-10-24 波等级注册化（批 1）：夹取上界改读"当前最高已注册等级"（= 旧 MAX_LEVEL 常量，
-		// 但注册第 6 级后自动跟着涨，不再是一处写死的 5）。
-		boostStep = Mth.clamp(tag.getInt("BoostStep"), 1, WaveLevels.maxLevel());
-		speedOffset = tag.getDouble("SpeedOffset");
-		if (tag.contains("SpawnX"))
-			spawnPos = new Vec3(tag.getDouble("SpawnX"), tag.getDouble("SpawnY"), tag.getDouble("SpawnZ"));
+		// 2026-10-24 批 3：117 行手写键名 → 一次表遍历（WaveAttrs 31 键 + WaveStateNbt）。
+		// 读侧语义逐字保留：缺键回落、成组守卫、四个"旧代码本来就夹取"的键都写在表的声明里；
+		// WaveLevel 刻意不夹取（方案 R-3：夹取会改玩法）。
+		WaveStateNbt.read(this.state, tag, waveScope());
 		// 服务端从 NBT 恢复等级后，同步核心加工逻辑的等级（决定可匹配配方上限）
-		processor = new ChargerWaveProcessor(level(), waveLevel);
-		// 电荷（0=无 1=正 2=负）恢复并写回同步数据
-		int chargeCode = tag.getInt("Charge");
-		charge = chargeCode == 1
-			? com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE
-			: chargeCode == 2
-				? com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.NEGATIVE
-				: null;
-		// 同步数据写回（供客户端 Jade 显示）
-		this.entityData.set(WAVE_LEVEL, waveLevel);
-		this.entityData.set(SPEED_OFFSET, (float) speedOffset);
-		this.entityData.set(CHARGE, chargeCode);
-		// 波状态：老存档没有该键 → 保持构造时的状态（变体波的构造/覆写会保证它是变体态）
-		if (tag.contains("WaveType"))
-			waveType = WaveTypes.byIdString(tag.getString("WaveType"));
-		this.entityData.set(WAVE_TYPE, waveType.id().toString());
-		// 魔素（攻击波专有、纯视觉；2026-10-03 需求 coe-ess 批 3）：<b>可缺省</b>——
-		// 老存档没有该键 ⇒ 保持 null（= 未设）⇒ trailStyle() 回落"继承波型风格"，
-		// 观感与改造前逐字相同。名字认不出（被改过 / 未来删过的值）同样当作"没有"，
-		// 不抛异常（见 essenceByName）。同步值一起写回，客户端渲染立刻拿到同一个魔素。
-		this.essence = tag.contains("Essence") ? essenceByName(tag.getString("Essence")) : null;
-		this.entityData.set(ESSENCE, this.essence == null ? "" : this.essence.name());
-		// 主人（2026-10-03 需求 coe-boom2 批 1）：<b>可缺省</b>——老存档（没有该键）/ 一切未赋主人的波
-		// ⇒ 保持 null（= 无主人 = 不排除任何人），命中行为与改造前逐字相同。
-		// 读侧走 CompoundTag#hasUUID（原版自带的容错读法，缺键 / 非 UUID 都不抛异常）；
-		// 全类零处 UUID.fromString（裸解析会在读档里抛异常，见 ownerOf）。同步值一起写回，
-		// 客户端拿得到同一个主人（缺省时写回 Optional.empty()）。
-		this.ownerUuid = tag.hasUUID("Owner") ? tag.getUUID("Owner") : null;
-		this.entityData.set(OWNER, this.ownerUuid == null ? Optional.empty() : Optional.of(this.ownerUuid));
-		// 发射批次（0 = 无批次）：老存档没有该键 ⇒ 0，行为与改造前逐字一致（任何波都能与它湮灭）
-		this.entityData.set(FIRING_BATCH, tag.getInt("FiringBatch"));
-		// 通用可选要素（默认关闭）：老存档 / 未设要素的波没有这些键 ⇒ 保持字段默认值
-		// （null / 0 ⇒ 两条分支都不进，行为与改造前逐字相同）。
-		// ⚠ 波实体类型是 EntityType.Builder#noSave() ⇒ 实际不会被写进区块存档；这段与
-		// FIRING_BATCH 一样是"形状保底"，将来若去掉 noSave 也不会静默丢要素。
-		if (tag.hasUUID("OrbitAnchor")) {
-			orbitAnchorUuid = tag.getUUID("OrbitAnchor");
-			orbitRadius = tag.getDouble("OrbitRadius");
-			orbitAngularSpeed = tag.getDouble("OrbitAngularSpeed");
-			orbitPhase = tag.getDouble("OrbitPhase");
-		}
-		if (tag.contains("HitEffect")) {
-			ResourceLocation effectId = ResourceLocation.tryParse(tag.getString("HitEffect"));
-			hitEffect = effectId == null
-				? null
-				: BuiltInRegistries.MOB_EFFECT.getHolder(effectId).orElse(null);
-			hitEffectDuration = tag.getInt("HitEffectDuration");
-			hitEffectAmplifier = tag.getInt("HitEffectAmplifier");
-		}
-		// 重力要素（可选、默认关闭；弓技能批 4）：<b>可缺省</b>——老存档 / 未设要素的波没有该键
-		// ⇒ getDouble 读作 0（= 不受重力），飞行与改造前逐字相同。
-		// 运行态（gravityFallSpeed，本 tick 已攒下的下落速度）刻意不落盘：它是过程量，
-		// 读档后从 0 重新累积，与"这次飞行从头开始受重力"同形。
-		gravityAcceleration = tag.getDouble("GravityAcceleration");
+		this.processor = new ChargerWaveProcessor(level(), getWaveLevel());
+		// 7 个同步视图（Jade 等客户端读取）由唯一推送口写回。
+		pushSyncedViews();
 	}
 
 	@Override
 	protected void addAdditionalSaveData(CompoundTag tag) {
-		tag.putInt("WaveLevel", waveLevel);
-		tag.putDouble("MoveX", movement.x);
-		tag.putDouble("MoveY", movement.y);
-		tag.putDouble("MoveZ", movement.z);
-		tag.putFloat("BoostRemaining", boostRemaining);
-		tag.putInt("BoostStep", boostStep);
-		tag.putDouble("SpeedOffset", speedOffset);
-		tag.putString("WaveType", waveType.id().toString());
-		tag.putInt("FiringBatch", getFiringBatch());
-		// 魔素（攻击波专有、纯视觉；2026-10-03 需求 coe-ess 批 3）：<b>只在真的设了的时候才写键</b>
-		// ⇒ 没设魔素的波（= 一切既有波），存档内容与改造前逐字相同（"默认行为一个字不变"
-		// 包括 NBT 形状）；读到没有该键 ⇒ null ⇒ 回落波型风格。
-		if (essence != null) {
-			tag.putString("Essence", essence.name());
-		}
-		// 主人（2026-10-03 需求 coe-boom2 批 1）：<b>只在真的设过主人的时候才写键</b>（{@code != null} 守卫）
-		// ⇒ 没设主人的波（= 一切既有波），存档内容与改造前逐字相同（"默认行为一个字不变"包括 NBT 形状）；
-		// 读到没有该键 ⇒ null ⇒ 无主人 ⇒ 不排除任何人。
-		if (ownerUuid != null) {
-			tag.putUUID("Owner", ownerUuid);
-		}
-		// 通用可选要素（默认关闭）：<b>只在真的设了的时候才写键</b> ⇒ 没设要素的波，
-		// 存档内容与改造前逐字相同（"默认行为一个字不变"包括 NBT 形状）。
-		if (orbitAnchorUuid != null) {
-			tag.putUUID("OrbitAnchor", orbitAnchorUuid);
-			tag.putDouble("OrbitRadius", orbitRadius);
-			tag.putDouble("OrbitAngularSpeed", orbitAngularSpeed);
-			tag.putDouble("OrbitPhase", orbitPhase);
-		}
-		if (hitEffect != null) {
-			ResourceLocation hitEffectId = BuiltInRegistries.MOB_EFFECT.getKey(hitEffect.value());
-			if (hitEffectId != null) {
-				tag.putString("HitEffect", hitEffectId.toString());
-				tag.putInt("HitEffectDuration", hitEffectDuration);
-				tag.putInt("HitEffectAmplifier", hitEffectAmplifier);
-			}
-		}
-		// 重力要素（可选、默认关闭；弓技能批 4）：<b>只在真的设了的时候才写键</b> ⇒ 没设要素的波
-		// （= 一切既有波），存档内容与改造前逐字相同（"默认行为一个字不变"包括 NBT 形状）。
-		if (gravityAcceleration > 0.0D) {
-			tag.putDouble("GravityAcceleration", gravityAcceleration);
-		}
-		tag.putInt("Charge", charge == null ? 0
-			: charge == com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity.POSITIVE ? 1 : 2);
-		if (spawnPos != null) {
-			tag.putDouble("SpawnX", spawnPos.x);
-			tag.putDouble("SpawnY", spawnPos.y);
-			tag.putDouble("SpawnZ", spawnPos.z);
-		}
+		// 2026-10-24 批 3：写不写由 WaveAttrs 的 Persist / 成组关系决定，与改造前逐键相同；
+		// 表外键由 WaveStateNbt 原样补回（未知键保留袋，方案 R-5）。
+		WaveStateNbt.write(this.state, tag, waveScope());
 	}
 }

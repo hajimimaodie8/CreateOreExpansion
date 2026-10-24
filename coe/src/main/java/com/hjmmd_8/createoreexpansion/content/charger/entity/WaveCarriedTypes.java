@@ -37,10 +37,11 @@ final class WaveCarriedTypes {
 	 */
 	static List<IRecipeTypeInfo> activeRecipeTypes(StellarWaveEntity host) {
 		List<IRecipeTypeInfo> types = new ArrayList<>();
-		if (!host.recipeTypes.isEmpty()) {
-			types.addAll(host.recipeTypes);
+		if (!host.getRecipeTypes()
+			.isEmpty()) {
+			types.addAll(host.getRecipeTypes());
 		} else {
-			for (ResourceLocation machineId : host.attributes)
+			for (ResourceLocation machineId : host.getAttributes())
 				for (IRecipeTypeInfo t : WaveMachineIntegrationPoints.typesFor(machineId))
 					if (!types.contains(t))
 						types.add(t);
@@ -88,14 +89,13 @@ final class WaveCarriedTypes {
 
 	/** 按注册表 id 找回配方类型档案（读档恢复用；找不到的类型跳过，不影响其它字段）。 */
 	static IRecipeTypeInfo recipeTypeById(ResourceLocation id) {
-		for (IRecipeTypeInfo type : WaveMachineIntegrationPoints.allRecipeTypes())
-			if (type != null && id.equals(type.getId()))
-				return type;
-		return null;
+		// 2026-10-24 批 3：实现搬到 WaveMachineIntegrationPoints（波 NBT 表驱动读档也要用同一份），
+		// 这里只保留调用点，行为与实现位置搬动前逐字相同。
+		return WaveMachineIntegrationPoints.recipeTypeById(id);
 	}
 
 	/** 波当前转速档（Vintage 口径：0 停转 / 1 低 / 2 中 / 3 高；未装 Vintage 返回 0 = 无档位概念）。 */
 	static int waveSpeedMode(StellarWaveEntity host) {
-		return WaveMachineIntegrationPoints.speedModeFor(host.carriedRpm);
+		return WaveMachineIntegrationPoints.speedModeFor(host.getCarriedRpm());
 	}
 }
