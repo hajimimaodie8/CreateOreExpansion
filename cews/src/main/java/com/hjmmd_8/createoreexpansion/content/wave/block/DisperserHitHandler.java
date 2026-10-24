@@ -26,6 +26,14 @@ import net.minecraft.world.phys.Vec3;
  * 物理结构那三条原住 {@code WaveSubLevelCollisions}。<b>判定判定与副作用逐项不变</b>，
  * 只是把"谁持有 wave"从字段改成参数、把 burst/discard/推出方块外按原样收进本类
  * （结构场景需要位姿矩阵转换，只能在本类做）。</p>
+ *
+ * <p><b>2026-10-24 批 5（作者裁定 D5）：五处"造子波"块都只调一处
+ * {@code wave.createChildWave(pos, dir, level, index, total)}</b>，子波出生后<b>不再被后写任何属性</b>
+ * （旧形状：造完之后手抄 {@code setPos / setSpawnPos / setMovement / addSpeedOffset}，共 5 份）。
+ * 结构 / contraption 场景的坐标换算改为<b>先换算出生点与方向、再调造子波入口</b> —— 数学上等价
+ * （位姿变换是仿射的：{@code T(c + d) = T(c) + R·d}），但子波从出生那一刻起就已经在世界坐标系里，
+ * 于是"属性继承"只有父波实体那一处实现，本类一个字都不再枚举属性
+ * （关卡 {@code wave-child-inherit} 反向守着）。</p>
  */
 public final class DisperserHitHandler implements WaveMachineHandler {
 
@@ -122,24 +130,23 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 					// 出口方向：本地 → 世界（axis=Y 不变）
 					Vec3 worldOut = OctaEnergyWaveDifferencerBlock.toWorldVec(axis, localOut);
 					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
-					AbstractChargerWaveEntity child = wave.createChildWave(center.add(worldOut), worldOut, childLevel,
-						outIndex, octaOuts.size());
-					if (child != null) {
-						if (frame != null) {
-							// 结构本地出生 → 转回世界坐标/方向（波必须出生在真实世界）；
-							// spawnPos 同步修正，否则距离上限检查会把子波当"飞太远"立即消散
-							SubLevelBridge b = SableBridges.get();
-							if (b != null) {
-								child.setPos(b.toWorld(frame, child.position()));
-								child.setSpawnPos(b.toWorld(frame, child.getSpawnPos()));
-								child.setMovement(b.toWorldDir(frame, child.getMovement()));
-							}
+					Vec3 childPos = center.add(worldOut);
+					Vec3 childDir = worldOut;
+					if (frame != null) {
+						// 结构本地出生 → 先转回世界坐标/方向（波必须出生在真实世界）；
+						// 出生点同步换算，否则距离上限检查会把子波当"飞太远"立即消散
+						SubLevelBridge b = SableBridges.get();
+						if (b != null) {
+							childPos = b.toWorld(frame, childPos);
+							childDir = b.toWorldDir(frame, worldOut);
 						}
-						// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
-						child.addSpeedOffset(wave.getSpeedOffset());
+					}
+					// 唯一的造子波入口：属性（含母波的速度修正）由它整份继承，此处不再后写任何属性
+					AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel,
+						outIndex, octaOuts.size());
+					if (child != null)
 						wave.level()
 							.addFreshEntity(child);
-					}
 				}
 				// 母波静默消失（能量已均摊分发到子波；不触发撞墙湮灭特效，
 				// 调用方见 isAlive()==false 直接结束）
@@ -191,24 +198,23 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 					Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, disperserOuts.get(outIndex));
 					Vec3 outDir = Vec3.atLowerCornerOf(worldOut.getNormal());
 					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
-					AbstractChargerWaveEntity child = wave.createChildWave(center.add(outDir), outDir, childLevel,
-						outIndex, disperserOuts.size());
-					if (child != null) {
-						if (frame != null) {
-							// 结构本地出生 → 转回世界坐标/方向（波必须出生在真实世界）；
-							// spawnPos 同步修正，否则距离上限检查会把子波当"飞太远"立即消散
-							SubLevelBridge b = SableBridges.get();
-							if (b != null) {
-								child.setPos(b.toWorld(frame, child.position()));
-								child.setSpawnPos(b.toWorld(frame, child.getSpawnPos()));
-								child.setMovement(b.toWorldDir(frame, child.getMovement()));
-							}
+					Vec3 childPos = center.add(outDir);
+					Vec3 childDir = outDir;
+					if (frame != null) {
+						// 结构本地出生 → 先转回世界坐标/方向（波必须出生在真实世界）；
+						// 出生点同步换算，否则距离上限检查会把子波当"飞太远"立即消散
+						SubLevelBridge b = SableBridges.get();
+						if (b != null) {
+							childPos = b.toWorld(frame, childPos);
+							childDir = b.toWorldDir(frame, outDir);
 						}
-						// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
-						child.addSpeedOffset(wave.getSpeedOffset());
+					}
+					// 唯一的造子波入口：属性（含母波的速度修正）由它整份继承，此处不再后写任何属性
+					AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel,
+						outIndex, disperserOuts.size());
+					if (child != null)
 						wave.level()
 							.addFreshEntity(child);
-					}
 				}
 				// 母波静默消失（能量已均摊分发到子波；不触发撞墙湮灭特效，
 				// 调用方见 isAlive()==false 直接结束）
@@ -257,24 +263,23 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 					Vec3 outDir = Vec3.atLowerCornerOf(sixOuts.get(outIndex)
 						.getNormal());
 					// 在差器方块中心沿出口方向外推 1 格出生，确保碰撞盒离开差器
-					AbstractChargerWaveEntity child = wave.createChildWave(center.add(outDir), outDir, childLevel,
-						outIndex, sixOuts.size());
-					if (child != null) {
-						if (frame != null) {
-							// 结构本地出生 → 转回世界坐标/方向（波必须出生在真实世界）；
-							// spawnPos 同步修正，否则距离上限检查会把子波当"飞太远"立即消散
-							SubLevelBridge b = SableBridges.get();
-							if (b != null) {
-								child.setPos(b.toWorld(frame, child.position()));
-								child.setSpawnPos(b.toWorld(frame, child.getSpawnPos()));
-								child.setMovement(b.toWorldDir(frame, child.getMovement()));
-							}
+					Vec3 childPos = center.add(outDir);
+					Vec3 childDir = outDir;
+					if (frame != null) {
+						// 结构本地出生 → 先转回世界坐标/方向（波必须出生在真实世界）；
+						// 出生点同步换算，否则距离上限检查会把子波当"飞太远"立即消散
+						SubLevelBridge b = SableBridges.get();
+						if (b != null) {
+							childPos = b.toWorld(frame, childPos);
+							childDir = b.toWorldDir(frame, outDir);
 						}
-						// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
-						child.addSpeedOffset(wave.getSpeedOffset());
+					}
+					// 唯一的造子波入口：属性（含母波的速度修正）由它整份继承，此处不再后写任何属性
+					AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel,
+						outIndex, sixOuts.size());
+					if (child != null)
 						wave.level()
 							.addFreshEntity(child);
-					}
 				}
 				// 母波静默消失（能量已均摊分发到子波）
 				wave.discard();
@@ -347,16 +352,14 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 					// 出口方向：机器本地 → contraption 本地（斜口 45° 向量经 applyRotation 转世界）
 					Vec3 contraptionDir = OctaEnergyWaveDifferencerBlock.toWorldVec(axis,
 						octaOuts.get(outIndex));
-					AbstractChargerWaveEntity child = wave.createChildWave(center.add(contraptionDir),
-						contraptionDir, childLevel, outIndex, octaOuts.size());
-					if (child != null) {
-						child.setPos(entity.toGlobalVector(child.position(), 0));
-						child.setSpawnPos(entity.toGlobalVector(child.getSpawnPos(), 0));
-						child.setMovement(entity.applyRotation(child.getMovement(), 0));
-						child.addSpeedOffset(wave.getSpeedOffset());
+					// 出生点 / 方向先换算到世界（随 contraption 旋转），再交给唯一的造子波入口
+					Vec3 childPos = entity.toGlobalVector(center.add(contraptionDir), 0);
+					Vec3 childDir = entity.applyRotation(contraptionDir, 0);
+					AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel,
+						outIndex, octaOuts.size());
+					if (child != null)
 						wave.level()
 							.addFreshEntity(child);
-					}
 				}
 				wave.discard();
 				return Outcome.CONSUMED;
@@ -491,18 +494,14 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		for (int outIndex = 0; outIndex < exits.size(); outIndex++) {
 			Vec3 localDir = Vec3.atLowerCornerOf(exits.get(outIndex)
 				.getNormal());
-			AbstractChargerWaveEntity child = wave.createChildWave(center.add(localDir), localDir, childLevel,
-				outIndex, exits.size());
-			if (child != null) {
-				// 本地 → 世界（位置/方向，随 contraption 旋转）
-				child.setPos(entity.toGlobalVector(child.position(), 0));
-				child.setSpawnPos(entity.toGlobalVector(child.getSpawnPos(), 0));
-				child.setMovement(entity.applyRotation(child.getMovement(), 0));
-				// 子波继承母波的速度修正（波速调节器叠加值贯穿分裂传播链）
-				child.addSpeedOffset(wave.getSpeedOffset());
+			// 出生点 / 方向先换算到世界（随 contraption 旋转），再交给唯一的造子波入口
+			Vec3 childPos = entity.toGlobalVector(center.add(localDir), 0);
+			Vec3 childDir = entity.applyRotation(localDir, 0);
+			AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel, outIndex,
+				exits.size());
+			if (child != null)
 				wave.level()
 					.addFreshEntity(child);
-			}
 		}
 		// 母波静默消散（能量已均摊分发到子波）
 		wave.discard();

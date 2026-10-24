@@ -84,11 +84,17 @@ public class ChargerWaveEntity extends AbstractChargerWaveEntity {
 	 * 差器均摊分发：创建同类型的降级子波（出口方向为任意向量——斜口出口沿 45° 对角）。
 	 * 普通能量波不带载荷，故 index/total（载荷均摊份额）在这里用不上。
 	 *
-	 * <p>⚠ 自定义伤害要素<b>不继承</b>给子波（子波是差器分裂出来的机器波，
-	 * 伤害按子波自己的波级算）——刻意与"要素未设"同一种行为。</p>
+	 * <p><b>2026-10-24 批 5（作者裁定 D5）</b>：本类现在只回答"造哪种空壳"——属性继承一律由基类
+	 * {@link AbstractChargerWaveEntity#createChildWave} 的模板完成（整份 {@code WaveState} 拷贝，
+	 * 见 {@code inheritForChild}）。因此<b>自定义伤害要素现在会继承给子波</b>（旧注释写的是"刻意不继承"）：
+	 * 子波等级 = 父波 - 降级量，伤害取父波的自定义值。</p>
+	 *
+	 * <p>⚠ 对唯一会设自定义伤害的场景（回旋镖环绕波，值 = {@code 2 × 等级}）两者恰好相等：
+	 * 子波等级 {@code L-1} 的等级表伤害 = {@code 2(L-1)+2 = 2L} = 父波的自定义值 ⇒ 绝对值逐值不变。
+	 * 其余场景按"完整拷贝"口径走（这是 D5 的字面含义，已列入行为变化清单）。</p>
 	 */
 	@Override
-	public AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
+	protected AbstractChargerWaveEntity newChildWave(Vec3 pos, Vec3 dir, int level) {
 		return new ChargerWaveEntity(level(), pos, dir, level);
 	}
 }

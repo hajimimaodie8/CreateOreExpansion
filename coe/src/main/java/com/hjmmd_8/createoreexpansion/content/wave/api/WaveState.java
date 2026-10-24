@@ -77,10 +77,26 @@ public final class WaveState {
 	/** 深拷贝（未知键的 {@link Tag} 也复制，避免两个状态共享可变标签）。 */
 	public WaveState copy() {
 		WaveState copy = new WaveState();
-		copy.values.putAll(values);
-		for (Map.Entry<String, Tag> entry : unknown.entrySet())
-			copy.unknown.put(entry.getKey(), entry.getValue().copy());
+		copy.copyFrom(this);
 		return copy;
+	}
+
+	/**
+	 * <b>把另一份状态整份拷进来</b>（2026-10-24 批 5：差器分裂"子波继承父波"的唯一写入口）。
+	 *
+	 * <p>它是 {@link #copy()} 的<b>唯一实现</b>（copy 只是"新建一个再 copyFrom"）—— 于是
+	 * "分裂继承"与"深拷贝"不可能长出两套算术：属性值按身份键整份覆盖，未知键（第三方属性）
+	 * 也深拷贝进来，两枚波不会共享可变 {@link Tag}。</p>
+	 *
+	 * <p>⚠ 继承之后由实体重写"这枚子波自己的"四个值（等级 / 方向 / 出生点 / 起始渲染色），
+	 * 见 {@code AbstractChargerWaveEntity#inheritForChild} —— 那四个不是属性，是分裂参数。</p>
+	 */
+	public void copyFrom(WaveState other) {
+		values.clear();
+		values.putAll(other.values);
+		unknown.clear();
+		for (Map.Entry<String, Tag> entry : other.unknown.entrySet())
+			unknown.put(entry.getKey(), entry.getValue().copy());
 	}
 
 	/** 已设属性的个数（诊断 / 关卡用；不是 31 个键的总数）。 */

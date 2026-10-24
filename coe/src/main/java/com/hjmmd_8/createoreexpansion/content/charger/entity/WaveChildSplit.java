@@ -15,7 +15,8 @@ import net.minecraft.world.item.ItemStack;
  * <p>搬运口径：方法体逐字相同，差异只有 {@code private} → 包级私有。
  * <b>"余数优先给靠前的子波"与"摊平成逐件位置后按位置取模"两条规则、以及
  * {@code Math.max/min} 的边界夹取一个字未动</b>；调用点仍是
- * {@link StellarWaveEntity#createChildWave}（整份继承"能力"、按份均摊"物质"的语义不变）。</p>
+ * {@link StellarWaveEntity#distributePayloadToChild}（2026-10-24 批 5 起：能力整份继承由基类的
+ * {@code inheritForChild} 一处负责，本类只负责"物质按份均摊"）。</p>
  */
 final class WaveChildSplit {
 

@@ -1728,24 +1728,81 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
-	 * 创建降一级的"子波"（供差器均摊分发）。子类实现为各自能量波类型的新实例。
-	 * <b>方向为任意向量</b>（斜口出口沿 45° 对角飞行，轴向出口传轴向单位向量即可）。
+	 * 创建降一级的"子波"（供差器均摊分发）。
 	 *
-	 * @param pos   出生位置（已外推到差器外）
+	 * <p><b>2026-10-24 批 5（作者裁定 D5：「只要是分裂出来的子波，只改变等级，并加上一个颜色渐变的
+	 * 过渡，其他什么都不改」）："造子波"只有这一处实现</b> —— 本方法是<b>模板方法</b>，三步固定顺序：</p>
+	 * <ol>
+	 *   <li>{@link #newChildWave} —— 子类只回答"用哪种构造器造一个空壳"（唯一的类型差异）；</li>
+	 *   <li>{@link #inheritForChild} —— <b>整份拷贝父波的 {@link WaveState}</b>（31 键，唯一表），
+	 *       再重写"这枚子波自己的"四个分裂参数（等级 / 方向 / 出生点 / 起始渲染色）；</li>
+	 *   <li>{@link #distributePayloadToChild} —— 变体波把<b>物质</b>（载荷 / 链式次数）按份均摊，
+	 *       普通波空实现。</li>
+	 * </ol>
+	 *
+	 * <p>⚠ <b>以前这里是 {@code abstract}</b>：两个子类各写一遍（普通波只继承等级、变体波再抄 5 个
+	 * 能力键 + 载荷均摊），而 5 处差器分支又在调用点手抄 spawnPos / movement / speedOffset ——
+	 * 那正是方案 §1.4-A 的"隐形第四真源"：<b>新属性默认不会传给子波，而且没有任何报错</b>。
+	 * 现在"加一个属性"只要在 {@link WaveAttrs} 加一行，子波自动继承，调用点一个字都不用加。</p>
+	 *
+	 * @param pos   出生位置（已外推到差器外；结构 / contraption 场景由调用方<b>先换算到世界坐标</b>）
 	 * @param dir   发射方向（出口开口朝向，单位向量，可为任意方向）
 	 * @param level 子波等级（= 原波等级 - 降级量）
 	 * @param index 本子波在<b>本次分裂</b>中的序号（0 起）
 	 * @param total 本次分裂的子波总数（≥1）
 	 * @return 新波实体；null 则放弃发射
-	 *
-	 * <p><b>为什么要传 index/total（2026-09 修复载荷复制）</b>：分裂 = "母波 discard + 每个开口一个子波"，
-	 * 而母波携带的<b>载荷（物品/流体/电量）与链式次数属于物质</b>——若每个子波都整份继承，
-	 * 2~3 个开口就等于把同一批物品复制 2~3 份（消散时各自归还容器，净赚 ✗）。
-	 * 差器既有语义是"能量<b>均摊</b>分发到子波"，所以载荷也必须按份均摊
-	 * （见 {@code StellarWaveEntity#createChildWave}）。</p>
 	 */
-	public abstract AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index,
-		int total);
+	public final AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
+		AbstractChargerWaveEntity child = newChildWave(pos, dir, level);
+		if (child == null)
+			return null;
+		inheritForChild(child, pos, dir, level);
+		distributePayloadToChild(child, index, total);
+		return child;
+	}
+
+	/**
+	 * 子类的<b>唯一差异</b>：造一个空壳子波（等级 / 位置 / 方向由构造器先写进同步数据，
+	 * 随后 {@link #inheritForChild} 会把父波整份属性覆盖上去）。
+	 */
+	protected abstract AbstractChargerWaveEntity newChildWave(Vec3 pos, Vec3 dir, int level);
+
+	/**
+	 * <b>分裂继承的唯一出处</b>（作者 D5：子波 = 父波的完整拷贝，只改等级 + 颜色渐变过渡）。
+	 *
+	 * <p>本体只有一句 {@link WaveState#copyFrom}：31 个属性键整份覆盖（未知键也深拷贝）。
+	 * 所以这里<b>不许出现任何逐属性的写入</b> —— 不写 {@code WaveAttrs.XXX}、不写
+	 * {@code setOwner / setFiringBatch / trySetType / trySetEssence / setCustomDamage /
+	 * setHitEffect / setCharge / setOrbitAnchor / setGravity / addSpeedOffset}：
+	 * 加一个属性只要在 {@link WaveAttrs} 加一行，子波自动继承；任何"在这里补一个 setter"的写法
+	 * 都会把方案 §1.4-A 的第四真源重新长出来（关卡 {@code wave-child-inherit} 判红）。</p>
+	 *
+	 * <p>拷贝之后只重写四个"这枚子波自己的"值：</p>
+	 * <ul>
+	 *   <li><b>等级</b> —— 分裂逻辑给的（差器按开口数降 1 / 2 / 3 级）；</li>
+	 *   <li><b>方向 / 出生点</b> —— 出口几何给的（子波从哪个口出、从哪一点出生）；</li>
+	 *   <li><b>起始渲染色</b> —— = 父波<b>当前</b>色。之后每 tick 的
+	 *       {@code renderColor.lerp(target, 0.15)} 自动把它渐变到子波自己的目标色
+	 *       （等级基色 / 魔素色 / 波型色，由 {@link WaveColorRule} 决定）—— 观感上就是
+	 *       "出生那一刻还是父波的颜色，约一秒内过渡成自己的"。</li>
+	 * </ul>
+	 */
+	protected final void inheritForChild(AbstractChargerWaveEntity child, Vec3 pos, Vec3 dir, int level) {
+		child.state.copyFrom(this.state);
+		child.setWaveLevel(level);
+		child.setMovement(dir.normalize());
+		child.setSpawnPos(pos);
+		child.setRenderColor(this.renderColor);
+	}
+
+	/**
+	 * 分裂时的<b>物质</b>处置（默认空实现：普通能量波不带载荷）。
+	 *
+	 * <p>变体波覆写它，把载荷（物品 / 流体 / 电量）与链式次数<b>按份均摊</b>给第 {@code index} 个
+	 * 子波（算术全在 {@code WaveChildSplit}）。口径不变："能力"整份继承、"物质"按份均摊。</p>
+	 */
+	protected void distributePayloadToChild(AbstractChargerWaveEntity child, int index, int total) {
+	}
 
 	/**
 	 * <b>分裂前的"物质已分发"钩子</b>：所有差器分裂路径在 {@code discard()} 母波之前调用一次。

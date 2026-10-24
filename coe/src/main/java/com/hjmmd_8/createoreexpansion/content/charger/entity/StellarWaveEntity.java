@@ -908,41 +908,47 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	// ================= 分裂继承（能力继承、物质均摊） =================
 
 	/**
-	 * 差波器分裂：生成变体子波。<b>能力整份继承，物质（载荷/链式次数）按份均摊</b>。
+	 * 差波器分裂：本类只回答"造哪种空壳"。
 	 *
-	 * <p><b>2026-09 修复（载荷复制）</b>：分裂的语义是"母波 discard + 每个开口一个子波"，
-	 * 所以载荷必须<b>分成 total 份</b>发放——旧实现给每个子波整份拷贝，
-	 * 2~3 开口 = 同一批物品/流体/电量被复制 2~3 份（每个子波消散时又各自归还来源容器，净赚）。
-	 * 这与差器既有的"能量<b>均摊</b>分发"口径一致。</p>
+	 * <p><b>2026-10-24 批 5（作者裁定 D5）</b>：能力（属性集 / 配方类型 / 加热档 / 转速 / 读取半径 /
+	 * 波型 / 魔素 / 主人 / 批次 / 电荷 / 命中效果 / 重力 / 环绕 / 波源 …全部 31 键）现在由基类
+	 * {@link AbstractChargerWaveEntity#createChildWave} 的模板<b>整份拷贝</b>，本类不再逐键手抄
+	 * （旧实现抄了 5 个能力键，且 type / essence / owner / batch 四项一直丢失）。</p>
+	 *
+	 * <p><b>物质仍按份均摊</b>（{@link #distributePayloadToChild}）：分裂的语义是"母波 discard +
+	 * 每个开口一个子波"，若每个子波都整份继承载荷，2~3 个开口 = 同一批物品被复制 2~3 份
+	 * （每个子波消散时又各自归还来源容器，净赚 ✗）。差器既有语义是"能量<b>均摊</b>分发到子波"，
+	 * 所以载荷（物品 / 流体 / 电量）与链式次数也必须按份均摊，算术全在 {@link WaveChildSplit}。</p>
+	 */
+	@Override
+	protected AbstractChargerWaveEntity newChildWave(Vec3 pos, Vec3 dir, int level) {
+		return new StellarWaveEntity(level(), pos, dir, level);
+	}
+
+	/**
+	 * 分裂时的"物质"：<b>按份均摊</b>给第 {@code index} 个子波（能力已由基类整份继承）。
 	 *
 	 * <ul>
-	 *   <li><b>整份继承</b>（"能力"，不因分裂而缩水）：属性集、配方类型、加热档、转速、读取半径；</li>
-	 *   <li><b>按份均摊</b>（"物质"）：载荷物品（按每种的数量分份，余数给靠前的子波）、
-	 *       载荷流体、载荷电量、链式剩余次数（{@code chainLeft}）；</li>
+	 *   <li><b>按份均摊</b>：载荷物品（按每种的数量分份，余数给靠前的子波）、载荷流体、载荷电量、
+	 *       链式剩余次数（{@code chainLeft}）；</li>
 	 *   <li><b>不可分割</b>：避雷针引雷次数整份给第 0 个子波（其余子波为 0）——
 	 *       否则一次满充能避雷针会变成多次落雷；</li>
 	 *   <li><b>取料来源表</b>整份继承（只是"归还目标"，物资已按份分开，不会因此多出东西）。</li>
 	 * </ul>
 	 */
 	@Override
-	public AbstractChargerWaveEntity createChildWave(Vec3 pos, Vec3 dir, int level, int index, int total) {
-		StellarWaveEntity child = new StellarWaveEntity(level(), pos, dir, level);
-		// 2026-10-24 批 3：能力整份继承 = 把母波状态里那 5 个键原样拷给子波（列表不可变、可共享）。
-		child.waveState().set(WaveAttrs.ATTRIBUTES, getAttributes());
-		child.waveState().set(WaveAttrs.RECIPE_TYPE_IDS, getRecipeTypes());
-		child.waveState().set(WaveAttrs.CARRIED_HEAT, getCarriedHeat());
-		child.waveState().set(WaveAttrs.CARRIED_RPM, getCarriedRpm());
-		child.waveState().set(WaveAttrs.CARRIED_RADIUS, getCarriedRadius());
+	protected void distributePayloadToChild(AbstractChargerWaveEntity child, int index, int total) {
+		if (!(child instanceof StellarWaveEntity stellar))
+			return;
 		int n = Math.max(1, total);
 		int i = Math.max(0, Math.min(index, n - 1));
-		child.payloadItems = WaveChildSplit.splitItems(payloadItems, i, n);
+		stellar.payloadItems = WaveChildSplit.splitItems(payloadItems, i, n);
 		int fluidAmount = WaveChildSplit.splitShare(payloadFluid.isEmpty() ? 0 : payloadFluid.getAmount(), i, n);
-		child.payloadFluid = fluidAmount <= 0 ? FluidStack.EMPTY : payloadFluid.copyWithAmount(fluidAmount);
-		child.payloadEnergy = WaveChildSplit.splitShare(payloadEnergy, i, n);
-		child.payloadSources = new ArrayList<>(payloadSources);
-		child.rodCharges = i == 0 ? rodCharges : 0; // 引雷次数不可分割
-		child.waveState().set(WaveAttrs.CHAIN, WaveChildSplit.splitShare(getChainLeft(), i, n));
-		return child;
+		stellar.payloadFluid = fluidAmount <= 0 ? FluidStack.EMPTY : payloadFluid.copyWithAmount(fluidAmount);
+		stellar.payloadEnergy = WaveChildSplit.splitShare(payloadEnergy, i, n);
+		stellar.payloadSources = new ArrayList<>(payloadSources);
+		stellar.rodCharges = i == 0 ? rodCharges : 0; // 引雷次数不可分割
+		stellar.waveState().set(WaveAttrs.CHAIN, WaveChildSplit.splitShare(getChainLeft(), i, n));
 	}
 
 	/**
