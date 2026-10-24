@@ -331,8 +331,9 @@ public final class BowWaveShiftConfigs {
      * <p><b>为什么是 +4.0</b>（依据三条）：</p>
      * <ol>
      *   <li><b>它在每一个波级上都完整生效、不会被夹掉</b>：波实体的最终速度 =
-     *       {@code clamp(该波级基础速度 + 修正量, MIN_SPEED, }{@code WaveLevels#maxSpeed(波级))}
-     *       （唯一判据 {@code AbstractChargerWaveEntity#getSpeedBlocks()}）。五档基础速度
+     *       {@code clamp(该波级基础速度 + 修正量, WaveSpeed#MIN_SPEED, }{@code WaveLevels#maxSpeed(波级))}
+     *       （唯一算术 {@code WaveSpeed#perSecond}；实体入口
+     *       {@code AbstractChargerWaveEntity#getSpeedBlocks()}）。五档基础速度
      *       α2/β4/γ6/ε7/ω8 加上 4.0 分别是 <b>6 / 8 / 10 / 11 / 12</b>，而各自的上限是
      *       10（α~γ）/ 12（ε/ω）⇒ <b>没有一档被截断</b>（γ 与 ω 正好压在上限上）。</li>
      *   <li><b>"快一些"的幅度看得见但不改玩法结构</b>：最慢的 α 由 2 翻到 6 格/秒

@@ -21,7 +21,8 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
  *   <caption>五要素的既有取值点，以及本技能各填什么</caption>
  *   <tr><th>要素</th><th>既有取值点</th><th>星芒嬗震</th></tr>
  *   <tr><td>波速</td><td>{@code AbstractChargerWaveEntity#getSpeedBlocks()} =
- *       {@code WaveLevels#baseSpeed(波级)} + 速度修正（夹在 {@code WaveLevels#maxSpeed}）</td>
+ *       {@code WaveLevels#baseSpeed(波级)} + 速度修正（夹在 {@code WaveSpeed#MIN_SPEED} ~
+ *       {@code WaveLevels#maxSpeed}；唯一算术 {@code WaveSpeed#perSecond}）</td>
  *       <td>不单独设 —— 由波级带出（γ/ε/ω = 6/7/8 格/秒），修正值 0</td></tr>
  *   <tr><td>波级</td><td>{@code AbstractChargerWaveEntity#getWaveLevel()}（构造参数，1~5 = α/β/γ/ε/ω）</td>
  *       <td><b>{@link #waveLevelFor(int)}</b>：技能 1/2/3 级 ⇒ <b>γ / ε / ω</b>（理由见该方法）</td></tr>

@@ -18,6 +18,7 @@ import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveSpeed;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
 
 import net.createmod.catnip.levelWrappers.SchematicLevel;
@@ -1348,21 +1349,22 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		super.remove(reason);
 	}
 
-	/** 速度下限（格/秒）：减速不能低于此值。 */
-	protected static final double MIN_SPEED = 0.5d;
 	// 注意：这里**没有**速度上限常量——上限由等级速度表给（WaveLevels.maxSpeed：1~3 级 10、4/5 级 12）。
 	// 2026-09-14 删除了一处遗留的 `MAX_SPEED = 10.0d`：它全仓无人使用，而取值与速度表矛盾（表里 4/5 级是 12），
-	// 留着只会让读者以为加速被夹在 10。见 getSpeedBlocks() 的夹取表达式。
+	// 留着只会让读者以为加速被夹在 10。
+	// 2026-10-24 批 2：速度下限（原 `MIN_SPEED = 0.5d`）与整段夹取也搬进了唯一实现 WaveSpeed（见该类注释）。
 
 	/**
 	 * 移动速度（格/秒）：等级基础速度（查 {@link WaveLevels#baseSpeed}，α 2 / β 4 /
 	 * γ 6 / ε 7 / ω 8）+ 速度修正值（波速调节器叠加），
-	 * 夹在 {@link #MIN_SPEED} ~ {@link WaveLevels#maxSpeed}（4/5 级 12，1~3 级 10）之间。
-	 * 子类可覆写基础速度（按等级分档）。
+	 * 夹在 {@link WaveSpeed#MIN_SPEED} ~ {@link WaveLevels#maxSpeed}（4/5 级 12，1~3 级 10）之间。
+	 *
+	 * <p><b>唯一实现</b>：本方法只把本波的两个值交给 {@link WaveSpeed#perSecond}。改造前同一段
+	 * 夹取算式在本类里写了两遍（本方法与 {@link #getWaveSpeed()}），两处对同一枚波会差一个
+	 * float 舍入；现在算术只有那一份，任何"波速"点位都不得再抄第二份。</p>
 	 */
 	protected double getSpeedBlocks() {
-		double base = WaveLevels.baseSpeed(waveLevel);
-		return Math.max(MIN_SPEED, Math.min(WaveLevels.maxSpeed(waveLevel), base + speedOffset));
+		return WaveSpeed.perSecond(waveLevel, speedOffset);
 	}
 
 	/**
@@ -1449,7 +1451,13 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return movement.scale(getSpeedBlocks());
 	}
 
-	/** 写入修正后的速度向量（格/秒）：主方向跟随真实速度方向，速率变化并入 speedOffset（可被场加速/减速）。 */
+	/**
+	 * 写入修正后的速度向量（格/秒）：主方向跟随真实速度方向，速率变化并入 speedOffset（可被场加速/减速）。
+	 *
+	 * <p>速率差走唯一写入口 {@link #addSpeedOffset(double)}：它在同一个值上做加法，同时刷新客户端
+	 * 显示用的同步值 —— 否则 Jade 的波速行会停在场修正前的旧值（服务端现在是权威字段，
+	 * 客户端只有同步值，两者不能各说各话）。位移本身与改造前逐值相同。</p>
+	 */
 	@Override
 	public void setFieldVelocity(Vec3 velocity) {
 		double len = velocity.length();
@@ -1461,24 +1469,42 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		double oldLen = old.length();
 		// 速率差并入叠加修正（加速场正向累积、负电荷/反向减速）
 		if (Double.isFinite(len - oldLen) && Math.abs(len - oldLen) > 1.0E-6)
-			speedOffset += len - oldLen;
+			addSpeedOffset(len - oldLen);
 		movement = velocity.scale(1.0 / len);
 	}
 
 	// ========== 公开只读访问（供 Jade 等外部显示） ==========
 	// 注意：Jade 在客户端运行，读到的是客户端实体实例——普通字段（waveLevel/speedOffset）
-	// 不会同步，必须从 SynchedEntityData（WAVE_LEVEL/SPEED_OFFSET）读取。
+	// 不会同步，等级与速度修正必须从 SynchedEntityData（WAVE_LEVEL/SPEED_OFFSET）读取。
+	// 唯一例外是服务端：它同时持有权威 double 字段，故速度修正按 side 分流（speedOffsetForRead）。
 
 	/** 波等级（1=α、2=β、3=γ）。 */
 	public int getWaveLevel() {
 		return this.entityData.get(WAVE_LEVEL);
 	}
 
-	/** 实际运行速度（格/秒，含波速调节器修正）。 */
+	/**
+	 * 实际运行速度（格/秒，含波速调节器/能量场修正）。
+	 *
+	 * <p><b>与 {@link #getSpeedBlocks()} 是同一个算术</b>（{@link WaveSpeed#perSecond}），
+	 * 差别只在"速度修正从哪种介质读"：服务端读权威 {@code double} 字段，客户端只能读同步来的
+	 * {@code float}（{@link #SPEED_OFFSET}，{@code double} 没有序列化器）。改造前这里另写了一整遍
+	 * 夹取、且恒读 float，于是同一枚波在服务端会与位移用的速度差一个 float 舍入
+	 * （客户端本来也只有 float，读到的值与改造前逐位相同）。</p>
+	 */
 	public double getWaveSpeed() {
-		int level = getWaveLevel();
-		double base = WaveLevels.baseSpeed(level);
-		return Math.max(MIN_SPEED, Math.min(WaveLevels.maxSpeed(level), base + this.entityData.get(SPEED_OFFSET)));
+		return WaveSpeed.perSecond(getWaveLevel(), speedOffsetForRead());
+	}
+
+	/**
+	 * 速度修正的读法：服务端读权威字段（{@code double}，与位移/命中扫掠盒同一个值），
+	 * 客户端读同步值（{@code double} 没有序列化器，只能同步 {@code float}）。
+	 *
+	 * <p>这是全类唯一允许"直接读 {@link #SPEED_OFFSET} 求速度"的地方；其余一切速度算术都走
+	 * {@link WaveSpeed#perSecond}（关卡 {@code wave-speed-single-source} 守着）。</p>
+	 */
+	private double speedOffsetForRead() {
+		return level().isClientSide ? this.entityData.get(SPEED_OFFSET) : this.speedOffset;
 	}
 
 	/** 剩余寿命（tick）：距自动消散还剩多少 tick（负数/0 = 即将消散）。 */
