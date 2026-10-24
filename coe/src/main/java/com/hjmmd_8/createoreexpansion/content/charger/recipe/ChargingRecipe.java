@@ -95,15 +95,16 @@ public class ChargingRecipe extends ProcessingRecipe<RecipeWrapper, ChargingReci
 		return 4;
 	}
 
-	/** 按充能等级取充能点数：1=α 100，2=β 500，3=γ 1000，4=ε 1500，5=ω 2000 */
+	/**
+	 * 按充能等级取充能点数：1=α 100，2=β 500，3=γ 1000，4=ε 1500，5=ω 2000。
+	 *
+	 * <p>2026-10-24 波等级注册化（批 1）：数值已并入等级注册表（{@link WaveLevels#chargeEnergy(int)}），
+	 * 本方法只保留签名与"按等级取点数"的语义——抽取前这里是第 4 张"等级 → 数值"的外来表
+	 * （住在 {@code ChargingRecipe}、与 {@code WaveLevels} 分居两个包），加第 6 级必改。
+	 * 未注册等级的回落口径（= 最低等级 100）与改造前 {@code default -> 100} 逐值一致。</p>
+	 */
 	public static int energyForLevel(int level) {
-		return switch (level) {
-			case 2 -> 500;
-			case 3 -> 1000;
-			case 4 -> 1500;
-			case 5 -> 2000;
-			default -> 100;
-		};
+		return WaveLevels.chargeEnergy(level);
 	}
 
 	@FunctionalInterface

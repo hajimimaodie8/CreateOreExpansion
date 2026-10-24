@@ -1596,9 +1596,16 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		};
 	}
 
-	/** 是否 ω（5 级）波：粒子拖尾用金色。 */
+	/**
+	 * 是否 ω（5 级）波：粒子拖尾用金色。
+	 *
+	 * <p>2026-10-24 波等级注册化（批 1）：这里原来写死 {@code waveLevel >= 5}——那是"等级表之外的第 3
+	 * 个写死阈值"（加第 6 级会自动吃金色尾迹，而且没人能改）。现在标记由该等级的注册项声明
+	 * （{@code WaveLevelSpec#goldTrail}，内置仅 5 级为 true），越界等级的回落口径与改造前逐值一致
+	 * （见 {@link WaveLevels#isGoldTrailLevel(int)}）。本方法签名不变（:cews 依赖它）。</p>
+	 */
 	public boolean isOmega() {
-		return waveLevel >= 5;
+		return WaveLevels.isGoldTrailLevel(waveLevel);
 	}
 
 	/** ω 拖尾金色（RGB 0-1）。 */
@@ -1648,7 +1655,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		waveLevel = tag.getInt("WaveLevel");
 		movement = new Vec3(tag.getDouble("MoveX"), tag.getDouble("MoveY"), tag.getDouble("MoveZ"));
 		boostRemaining = tag.getFloat("BoostRemaining");
-		boostStep = Mth.clamp(tag.getInt("BoostStep"), 1, WaveLevels.MAX_LEVEL);
+		// 2026-10-24 波等级注册化（批 1）：夹取上界改读"当前最高已注册等级"（= 旧 MAX_LEVEL 常量，
+		// 但注册第 6 级后自动跟着涨，不再是一处写死的 5）。
+		boostStep = Mth.clamp(tag.getInt("BoostStep"), 1, WaveLevels.maxLevel());
 		speedOffset = tag.getDouble("SpeedOffset");
 		if (tag.contains("SpawnX"))
 			spawnPos = new Vec3(tag.getDouble("SpawnX"), tag.getDouble("SpawnY"), tag.getDouble("SpawnZ"));
