@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.charger.wave;
 import com.hjmmd_8.createoreexpansion.common.registry.transmutation.TransmutationEffects;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.energyfield.charge.LightningEssenceHitCharge;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveEssence;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 
 import net.minecraft.core.particles.BlockParticleOption;
@@ -220,6 +221,14 @@ public final class WaveEssenceEffects {
 		if (wave == null || player == null) {
 			return;
 		}
+		// 2026-10-24 批 4（D5 的保守解法）：魔素注册项自带行为 ⇒ 由它接管这一次命中。
+		// 内置 11 个都没有 behavior ⇒ 永远落到下面那张既有八支表，行为逐字不变。
+		WaveEssence spec = wave.essenceSpec();
+		if (spec != null && spec.behavior() != null && player.level() instanceof ServerLevel behaviorLevel) {
+			spec.behavior()
+				.onPlayerHit(wave, player, behaviorLevel);
+			return;
+		}
 		WaveTrailStyle essence = wave.getEssence();
 		if (essence == null) {
 			return;
@@ -397,6 +406,13 @@ public final class WaveEssenceEffects {
 	 */
 	public static void applyOnWaveCreatureHit(AbstractChargerWaveEntity wave, LivingEntity target) {
 		if (wave == null || target == null) {
+			return;
+		}
+		// 2026-10-24 批 4（D5 的保守解法）：注册项自带行为 ⇒ 由它接管这一次命中（内置 11 个都不带）。
+		WaveEssence spec = wave.essenceSpec();
+		if (spec != null && spec.behavior() != null && target.level() instanceof ServerLevel behaviorLevel) {
+			spec.behavior()
+				.onCreatureHit(wave, target, behaviorLevel);
 			return;
 		}
 		if (wave.getEssence() != WaveTrailStyle.LIGHTNING) {

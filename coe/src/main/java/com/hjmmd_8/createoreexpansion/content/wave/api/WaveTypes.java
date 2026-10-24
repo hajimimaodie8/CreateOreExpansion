@@ -21,6 +21,11 @@ import net.minecraft.resources.ResourceLocation;
  *     WaveTrailStyle.DAMAGE));
  * }</pre>
  *
+ * <p><b>颜色（2026-10-24 批 4）</b>：波型现在自己带颜色（{@link WaveType#color()}，作者 D2 的
+ * "没有魔素 ⇒ 用波型的颜色"）。不传第 6 个参数就用"由 {@link WaveTrailStyle} 推出的变换"
+ * （= 改造前的观感）；想给波型一个独立的色就传
+ * {@code new SimpleWaveType(id, false, false, true, WaveTrailStyle.DAMAGE, WaveColorRule.fixedRgb(0x9B5CFF))}。</p>
+ *
  * <p>三个内置波型（{@link #NORMAL} / {@link #OMNI} / {@link #ATTACK}）在类初始化时注册，
  * 语义与本模组的三态口径一一对应：普通波只会充能加工、全能波只会远程加工、攻击波只伤害。</p>
  *

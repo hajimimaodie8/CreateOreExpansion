@@ -73,17 +73,22 @@ public final class WaveAttrs {
 		}
 	};
 
-	/** 魔素：存<b>枚举名</b>（老存档 11 个字面量原样可读）；认不出的名字 ⇒ {@code null}（= 未设）。 */
-	private static final WaveAttrKey.Codec<WaveTrailStyle> ESSENCE_CODEC = new WaveAttrKey.Codec<>() {
+	/**
+	 * 魔素：存 <b>id</b>（内置 11 个 = 枚举名，老存档 11 个字面量原样可读；第三方 = {@code namespace:path}）；
+	 * 认不出的 id ⇒ {@code null}（= 未设）。解析规则与容错口径全在
+	 * {@link WaveEssenceRegistry#byIdString(String)} 一处（不抛异常）。
+	 */
+	private static final WaveAttrKey.Codec<WaveEssence> ESSENCE_CODEC = new WaveAttrKey.Codec<>() {
 		@Override
-		public WaveTrailStyle read(CompoundTag tag, String key) {
-			// 2026-10-24：查找实现从实体类搬到这里（行为逐字相同：空串/未知名 ⇒ null，不抛异常）。
-			return essenceByName(tag.getString(key));
+		public WaveEssence read(CompoundTag tag, String key) {
+			// 2026-10-24 批 4：查找实现从 WaveTrailStyle#byName 换成注册表（老存档的枚举名由注册表的
+			// 无冒号分支照旧解析；第三方 id 走冒号分支）。
+			return WaveEssenceRegistry.byIdString(tag.getString(key));
 		}
 
 		@Override
-		public void write(CompoundTag tag, String key, WaveTrailStyle value) {
-			tag.putString(key, value.name());
+		public void write(CompoundTag tag, String key, WaveEssence value) {
+			tag.putString(key, value.id());
 		}
 
 		@Override
@@ -316,8 +321,14 @@ public final class WaveAttrs {
 		always("Charge", CHARGE_CODEC, null);
 
 	// ---- 基类：条件写 13 个（没设过就一个字节都不写） ----
-	/** String（枚举名）；设过才写；标签里有才读。 */
-	public static final WaveAttrKey<WaveTrailStyle> ESSENCE = optional("Essence", ESSENCE_CODEC, null);
+	/**
+	 * String（魔素 id：内置 11 个 = <b>枚举名</b>，第三方 = {@code namespace:path}）；设过才写；标签里有才读。
+	 *
+	 * <p>2026-10-24 批 4：值类型从枚举换成注册项（{@link WaveEssence}），但 <b>NBT 类型/键名/字节没变</b>
+	 * —— 写侧写 {@code value.id()}，内置 11 个的 id 逐字等于枚举名，所以老存档
+	 * {@code Essence:"FIRE"} 读回来还是同一个魔素、写回去还是 {@code "FIRE"}。</p>
+	 */
+	public static final WaveAttrKey<WaveEssence> ESSENCE = optional("Essence", ESSENCE_CODEC, null);
 	/** UUID；设过才写；标签里有才读。 */
 	public static final WaveAttrKey<UUID> OWNER = optional("Owner", WaveAttrKey.UUID, null);
 	/** UUID；<b>环绕组的组长</b>（设了它才写/读另外三个键）。 */
@@ -462,21 +473,6 @@ public final class WaveAttrs {
 	}
 
 	// ---- 两个写侧守卫（旧代码里写键之前的 if 条件，逐字搬过来） ----
-
-	/**
-	 * 魔素的<b>容错名字查找</b>（旧 {@code AbstractChargerWaveEntity#essenceByName} 逐字搬来）：
-	 * 空串 / 未知名 ⇒ {@code null}（不抛异常；这条路径跑在读档里，{@code valueOf} 一抛就是崩）。
-	 */
-	static WaveTrailStyle essenceByName(String name) {
-		if (name == null || name.isEmpty())
-			return null;
-		for (WaveTrailStyle style : WaveTrailStyle.values()) {
-			if (style.name()
-				.equals(name))
-				return style;
-		}
-		return null;
-	}
 
 	/** 旧代码：{@code if (hitEffect != null) { key = registry.getKey(...); if (key != null) 写三个 }}。 */
 	private static boolean writableHitEffect(WaveState state) {

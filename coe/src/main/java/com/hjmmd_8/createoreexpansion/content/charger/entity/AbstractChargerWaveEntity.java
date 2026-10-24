@@ -17,6 +17,9 @@ import com.hjmmd_8.createoreexpansion.content.equipment.armor.energy.ArmorEnergy
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveEssence;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveEssenceRegistry;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveColorRule;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveSpeed;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveMachineIntegrationPoints;
@@ -639,34 +642,68 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	//     非攻击波的身上不可能有非 null 的魔素。
 	// ==================================================================================
 
-	// 2026-10-24 批 3：字段搬进 WaveState（键 Essence）；名字解析统一走
-	// WaveTrailStyle#byName(String)（同步与 NBT 共用同一处）。
+	// 2026-10-24 批 4：魔素 id 化。状态里存的是 WaveEssence（注册项），内置 11 个的 id 逐字等于
+	// 枚举名 ⇒ 存档键 Essence 与同步 STRING 的字节一个都没变；getEssence() 仍是枚举形态
+	// （既有 156 处调用零改动），essenceSpec() 才拿得到"完整注册项"（第三方魔素没有枚举值）。
 
 	/**
-	 * 本波的<b>魔素</b>（{@code null} = 未设）。服务端读 {@link WaveState}，客户端按同步名字现查枚举
+	 * 本波的<b>魔素注册项</b>（{@code null} = 未设）—— 魔素的<b>完整</b>读取口：id、颜色、可选拖尾档案、
+	 * 可选命中行为全在这里。
+	 *
+	 * <p>服务端读 {@link WaveState}，客户端按同步字符串现查 {@link WaveEssenceRegistry}
 	 * （与 {@link #getWaveType()} 同一形状：两者都由 {@link #trySetEssence} 一起写，
-	 * 故不存在"服务端与客户端看到不同魔素"的窗口）。
+	 * 故不存在"服务端与客户端看到不同魔素"的窗口）。</p>
+	 *
+	 * <p><b>为什么还要 getEssence()</b>：第三方魔素没有枚举值，{@code getEssence()} 对它只能回
+	 * {@code null}；所有"魔素是哪一种"的判断（显示行、命中八支表、环绕池）仍走枚举，第三方魔素的
+	 * 表现/行为走本方法 + {@link WaveColorRule} + 注册项自带的行为钩子。</p>
 	 */
 	@Nullable
-	public WaveTrailStyle getEssence() {
+	public WaveEssence essenceSpec() {
 		if (level() != null && level().isClientSide)
-			return WaveTrailStyle.byName(this.entityData.get(ESSENCE));
+			return WaveEssenceRegistry.byIdString(this.entityData.get(ESSENCE));
 		return this.state.get(WaveAttrs.ESSENCE);
 	}
 
 	/**
-	 * 设置<b>魔素</b>（<b>可随时改</b>——无"一生一次"约束）。
+	 * 本波的<b>魔素</b>（枚举形态；{@code null} = 未设，或这枚波带的是第三方魔素）。
+	 * 客户端读同步值、服务端读 {@link WaveState}（见 {@link #essenceSpec()}）。
+	 */
+	@Nullable
+	public WaveTrailStyle getEssence() {
+		WaveEssence essence = essenceSpec();
+		return essence == null ? null : essence.trailStyle();
+	}
+
+	/**
+	 * 设置<b>魔素</b>（枚举形态 = 内置 11 个之一，<b>可随时改</b>——无"一生一次"约束）。
 	 *
 	 * <p><b>非攻击波被显式设置时忽略</b>（作者裁定：魔素是攻击波专有；§3.2 的"忽略 + 不设"）：
 	 * 不写字段、不报错，返回 {@code false}。判据取波型自报的 {@link WaveType#dealsDamage()}
 	 * （攻击态 = 会伤害的波），<b>不</b>在这里写死某一个内置波型 —— 扩展模组注册的
 	 * "会伤害的波型"因此自动获得魔素能力。</p>
 	 *
-	 * <p>{@code null} = 清除魔素（回落波型风格；任何波型都允许清除）。</p>
+	 * <p>{@code null} = 清除魔素（回落波型风格/波型色；任何波型都允许清除）。</p>
+	 *
+	 * <p><b>2026-10-24 批 4</b>：本方法现在只是"枚举 → 注册项"的转发（{@link WaveEssenceRegistry#builtinFor}），
+	 * 与 {@link #trySetEssence(WaveEssence)} 共用<b>同一份</b>写入逻辑。</p>
 	 *
 	 * @return 是否真的写进去了
 	 */
 	public boolean trySetEssence(@Nullable WaveTrailStyle target) {
+		return trySetEssence(target == null ? null : WaveEssenceRegistry.builtinFor(target));
+	}
+
+	/**
+	 * 设置<b>魔素</b>（注册项形态 —— <b>第三方魔素走这里</b>）：{@code wave.trySetEssence(myEssence)}。
+	 *
+	 * <p>语义与枚举重载完全相同（可随时改 / 非攻击波忽略 / {@code null} 清除）。
+	 * ⚠ 字面量 {@code trySetEssence(null)} 会因为两个重载而歧义（编译期就报错，不会静默）；
+	 * 要清除请传一个 {@code (WaveTrailStyle) null}。</p>
+	 *
+	 * @return 是否真的写进去了
+	 */
+	public boolean trySetEssence(@Nullable WaveEssence target) {
 		if (target == null) {
 			this.state.set(WaveAttrs.ESSENCE, null);
 			pushSyncedViews();
@@ -709,11 +746,21 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * 的选择 —— 那由 {@link #trailStyle()} 唯一决定（这才是需求 §3.4"粒子由魔素决定"的含义）。</p>
 	 */
 	private float trailScale() {
+		// 2026-10-24 批 4：魔素注册项自带的"拖尾档案"可覆盖调用方基线（内置 11 个都不覆盖 ⇒ 走到最后一行）。
+		WaveEssence essence = essenceSpec();
+		Float override = essence == null ? null : essence.trailScaleOverride();
+		if (override != null)
+			return override;
 		return isOrbiting() ? ChargerWaveFx.ORBIT_TRAIL_SCALE : 0.45f;
 	}
 
 	/** 本波拖尾主粒子的<b>调用方基线颗数</b>（见 {@link #trailScale()} 的说明）。 */
 	private int trailCount() {
+		// 同上：魔素注册项可覆盖基线颗数；内置 11 个都不覆盖 ⇒ 走到最后一行。
+		WaveEssence essence = essenceSpec();
+		Integer override = essence == null ? null : essence.trailCountOverride();
+		if (override != null)
+			return override;
 		return isOrbiting() ? ChargerWaveFx.ORBIT_TRAIL_COUNT : 6;
 	}
 
@@ -1018,16 +1065,21 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			setBoostRemaining(boostRemaining);
 		}
 
-		// 平滑渐变：目标色 = 当前等级色；待升级（boostRemaining>0）时提前渐变到提升后的等级色
+		// 平滑渐变：目标色 = 当前等级基色；待升级（boostRemaining>0）时提前渐变到提升后的等级基色
 		// （按 boostStep 预览，封顶 MAX_LEVEL），使波穿出调级器后颜色即开始过渡，而非延迟结束瞬间跳变。
 		// 2026-09-14：目标色再过一遍**本波波型的拖尾风格变换**（ChargerWaveFx.styleColor）——
-		// 于是"波体本身 / 拖尾 / 绽放 / 爆炸"四处用同一套颜色，加工波一眼就是钢青-黄铜的机械色，
-		// 不必等它爆开才认得出（此前只有拖尾粒子被染色，玩家实测反馈"色调看不出来"）。
-		// 普通波的风格是恒等变换，故其颜色与改造前逐字不变。
+		// 于是"波体本身 / 拖尾 / 绽放 / 爆炸"四处用同一套颜色。
+		// 2026-10-24 批 4（作者 D2，裁定"B"）：这一步改成**唯一的颜色规则**
+		// WaveColorRule#colorOf ——
+		//   ① 有魔素 ⇒ 魔素色（WaveEssence 登记的颜色变换）；
+		//   ② 没魔素 ⇒ 波型色（WaveType#color，内置三个 = 原回退风格的变换）；
+		//   ③ 两者都没给 ⇒ 等级基色。
+		// 内置魔素/波型的颜色变换都拿等级基色当**明度输入** ⇒ 观感与改造前逐值相同
+		// （"纯平色"读法已被作者明确否决，理由 = 等级读不出来；见 WaveColorRule 类注释）。
 		Vec3 levelColor = getBoostRemaining() > 0
 			? getWaveColorForLevel(Math.min(getWaveLevel() + getBoostStep(), WaveLevels.MAX_LEVEL))
 			: getWaveColor();
-		Vec3 targetColor = ChargerWaveFx.styleColor(trailStyle(), levelColor);
+		Vec3 targetColor = WaveColorRule.colorOf(essenceSpec(), getWaveType(), levelColor);
 		renderColor = renderColor.lerp(targetColor, 0.15d);
 		// 距离足够近则直接贴合目标色，避免无限逼近
 		if (renderColor.distanceToSqr(targetColor) < 1.0E-5d)
@@ -1511,8 +1563,14 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return MAX_LIFETIME_TICKS - tickCount;
 	}
 
-	/** 当前渲染颜色（RGB 0-1，随波等级/种类）。
-	 * 客户端实例的 {@code renderColor} 字段不同步，这里按等级取静态色（Jade 显示用）。 */
+	/**
+	 * <b>等级基色</b>（RGB 0-1，Jade / 查询仪显示用）。
+	 *
+	 * <p>⚠ 这是"等级基色"，<b>不是</b>这枚波最终看到的颜色（最终颜色 = {@link WaveColorRule#colorOf}：
+	 * 有魔素 ⇒ 魔素色、没魔素 ⇒ 波型色）。客户端实例的 {@code renderColor} 字段不同步，所以显示层
+	 * 在客户端只能取到这个静态基底 —— 这也是 Jade 的"魔素"行单独用
+	 * {@code ChargerWaveFx.styleColorRgb(essence)} 上色的原因（两行各说各自的事实）。</p>
+	 */
 	public Vec3 getWaveRenderColor() {
 		return getWaveColorForLevel(getWaveLevel());
 	}
@@ -1625,20 +1683,26 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return WaveLevels.damage(getWaveLevel());
 	}
 
-	/** 能量波颜色（RGB 0-1），随波等级统一：1 α=黄、2 β=绿、3 γ=蓝、4 ε=紫粉、5 ω=玫红 */
+	/**
+	 * <b>等级基色</b>（RGB 0-1）：1 α=黄、2 β=绿、3 γ=蓝、4 ε=紫粉、5 ω=玫红 —— 数值住在
+	 * 等级注册项里（{@link WaveLevels#particleColor(int)}）。
+	 *
+	 * <p>⚠ 它<b>不是</b>最终颜色：最终颜色 = {@link WaveColorRule#colorOf}（有魔素 ⇒ 魔素色；
+	 * 没魔素 ⇒ 波型色；都没给 ⇒ 本方法）。</p>
+	 */
 	protected Vec3 getWaveColor() {
 		return getWaveColorForLevel(getWaveLevel());
 	}
 
-	/** 指定等级的波颜色（供调级器渐变提前取下一等级色用）——颜色由等级决定，与机型无关 */
+	/**
+	 * 指定等级的<b>等级基色</b>（供调级器渐变提前取下一等级色用）。
+	 *
+	 * <p>2026-10-24 批 4：原来这 5 臂 {@code switch (level)} 已搬进
+	 * {@link WaveLevelSpec#particleColor()}（字面量逐位不变），本方法只剩转发 —— 于是"加一档等级"
+	 * 仍然只是等级注册表里的一行，而不是在这里再补一个 {@code case}。</p>
+	 */
 	protected Vec3 getWaveColorForLevel(int level) {
-		return switch (level) {
-			case 2 -> new Vec3(0, 1, 0); // β：绿
-			case 3 -> new Vec3(0, 0.5f, 1); // γ：蓝
-			case 4 -> new Vec3(1f, 0.35f, 0.85f); // ε：紫粉
-			case 5 -> new Vec3(1f, 0.25f, 0.45f); // ω：玫红（主体红，偏粉紫）
-			default -> new Vec3(1, 1, 0); // α/其它：黄
-		};
+		return WaveLevels.particleColor(level);
 	}
 
 	/**

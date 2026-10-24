@@ -15,7 +15,8 @@ import net.minecraft.network.syncher.SynchedEntityData;
  * {@code SynchedEntityData.defineId} 仍原样声明在 {@code AbstractChargerWaveEntity} 里，
  * 序列化器、缺省值、{@code define} 顺序一个字都没动；本类只负责"把状态里的 7 个值按旧口径
  * 推送到那 7 个视图"——{@code Charge} 的 int 编码、{@code WaveType} 的 id 字符串、
- * {@code Essence} 的枚举名、{@code Owner} 的 {@code Optional<UUID>}，这四种编码就是改造前
+ * {@code Essence} 的<b>魔素 id</b>（内置 = 枚举名，批 4 起第三方 = {@code namespace:path}）、
+ * {@code Owner} 的 {@code Optional<UUID>}，这四种编码就是改造前
  * 散在各 setter 里的那段代码，现在只有这一份。</p>
  *
  * <p><b>为什么不做反向（同步值 → 状态）</b>：客户端本来就没有权威状态（波是 {@code noSave()}、
@@ -78,8 +79,10 @@ public final class WaveStateSync {
 			.id()
 			.toString());
 		data.set(views.firingBatch, state.get(WaveAttrs.FIRING_BATCH));
-		WaveTrailStyle essence = state.get(WaveAttrs.ESSENCE);
-		data.set(views.essence, essence == null ? "" : essence.name());
+		// 2026-10-24 批 4：写的是魔素的 id。内置 11 个的 id 逐字等于枚举名 ⇒ 同步字节与改造前相同；
+		// 第三方魔素写 namespace:path（客户端按同一个注册表解析回来）。
+		WaveEssence essence = state.get(WaveAttrs.ESSENCE);
+		data.set(views.essence, essence == null ? "" : essence.id());
 		UUID owner = state.get(WaveAttrs.OWNER);
 		data.set(views.owner, owner == null ? Optional.empty() : Optional.of(owner));
 	}

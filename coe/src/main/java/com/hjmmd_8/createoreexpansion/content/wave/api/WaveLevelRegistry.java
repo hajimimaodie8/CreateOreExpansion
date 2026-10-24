@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
+import net.minecraft.world.phys.Vec3;
+
 /**
  * <b>波等级注册表</b>：等级号 → {@link WaveLevelSpec} 的唯一清单，也是扩展模组的接入点。
  *
@@ -60,19 +62,29 @@ public final class WaveLevelRegistry {
 	 *
 	 * 行格式是机器读的：tools/check-armor-sets.ps1 的 star-wave-level-map 与 wave-level-table
 	 * 两个断言按 `register(WaveLevels.<符号>, new WaveLevelSpec("<符号>", <速度>d, <上限>d, <伤害>f,
-	 * 0x<ARGB>, <金色拖尾>, <充能量>))` 逐行解析。改这里的任何数值 = 改玩法，必须同批重瞄那两道关。
+	 * 0x<ARGB>, <金色拖尾>, <充能量>, new Vec3(<r>, <g>, <b>)))` 逐行解析。改这里的任何数值 =
+	 * 改玩法，必须同批重瞄那两道关。
+	 *
+	 * 最后一个参数是"等级基色"（2026-10-24 批 4 从 AbstractChargerWaveEntity#getWaveColorForLevel
+	 * 的 switch 收进来）：波体/拖尾/绽放/爆炸的颜色基底，也是 D2 的兜底色。字面量逐字沿用旧 switch
+	 * （含 0.5f / 0.35f 这类单精度写法），所以 Vec3 里的 double 值逐位相同。
 	 */
 	static {
-		// 等级 1：α —— 2 格/秒，上限 10，伤害 4，黄，充能 100
-		register(WaveLevels.LOW, new WaveLevelSpec("α", 2.0d, 10.0d, 4.0f, 0xFFFF55, false, 100));
-		// 等级 2：β —— 4 格/秒，上限 10，伤害 6，绿，充能 500
-		register(WaveLevels.HIGH, new WaveLevelSpec("β", 4.0d, 10.0d, 6.0f, 0x55FF55, false, 500));
-		// 等级 3：γ —— 6 格/秒，上限 10，伤害 8，蓝，充能 1000
-		register(WaveLevels.GAMMA, new WaveLevelSpec("γ", 6.0d, 10.0d, 8.0f, 0x5555FF, false, 1000));
-		// 等级 4：ε —— 7 格/秒，上限 12，伤害 10，紫粉，充能 1500（蓝宝石线专属）
-		register(WaveLevels.EPSILON, new WaveLevelSpec("ε", 7.0d, 12.0d, 10.0f, 0xFF66E0, false, 1500));
-		// 等级 5：ω —— 8 格/秒，上限 12，伤害 12，玫红，金色拖尾 + 充能 2000（仅蓝宝石 256 RPM）
-		register(WaveLevels.OMEGA, new WaveLevelSpec("ω", 8.0d, 12.0d, 12.0f, 0xFF4073, true, 2000));
+		// 等级 1：α —— 2 格/秒，上限 10，伤害 4，黄，充能 100，波色 (1,1,0)
+		register(WaveLevels.LOW, new WaveLevelSpec("α", 2.0d, 10.0d, 4.0f, 0xFFFF55, false, 100,
+			new Vec3(1, 1, 0)));
+		// 等级 2：β —— 4 格/秒，上限 10，伤害 6，绿，充能 500，波色 (0,1,0)
+		register(WaveLevels.HIGH, new WaveLevelSpec("β", 4.0d, 10.0d, 6.0f, 0x55FF55, false, 500,
+			new Vec3(0, 1, 0)));
+		// 等级 3：γ —— 6 格/秒，上限 10，伤害 8，蓝，充能 1000，波色 (0,0.5,1)
+		register(WaveLevels.GAMMA, new WaveLevelSpec("γ", 6.0d, 10.0d, 8.0f, 0x5555FF, false, 1000,
+			new Vec3(0, 0.5f, 1)));
+		// 等级 4：ε —— 7 格/秒，上限 12，伤害 10，紫粉，充能 1500（蓝宝石线专属），波色 (1,0.35,0.85)
+		register(WaveLevels.EPSILON, new WaveLevelSpec("ε", 7.0d, 12.0d, 10.0f, 0xFF66E0, false, 1500,
+			new Vec3(1f, 0.35f, 0.85f)));
+		// 等级 5：ω —— 8 格/秒，上限 12，伤害 12，玫红，金色拖尾 + 充能 2000（仅蓝宝石 256 RPM），波色 (1,0.25,0.45)
+		register(WaveLevels.OMEGA, new WaveLevelSpec("ω", 8.0d, 12.0d, 12.0f, 0xFF4073, true, 2000,
+			new Vec3(1f, 0.25f, 0.45f)));
 	}
 
 	private WaveLevelRegistry() {

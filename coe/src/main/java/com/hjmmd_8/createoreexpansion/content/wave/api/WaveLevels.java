@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.content.wave.api;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * <b>波等级门面</b>：等级 → 符号 / 速度 / 速度上限 / 伤害 / 指示灯色 / 金色拖尾 / 充能量的
@@ -35,12 +36,13 @@ import net.minecraft.network.chat.MutableComponent;
  *       {@code waveLevel >= 5} 的逐值行为）。</li>
  * </ul>
  *
- * <p><b>⚠ 颜色规则（作者 2026-10-24 定，D2；本批只记录、不改实现）</b>：最终颜色 = <b>魔素优先</b>
- * ——<b>有魔素 ⇒ 用魔素对应的颜色</b>；<b>没魔素 ⇒ 用波型对应的颜色</b>。这与
- * "颜色只由等级决定"的现状不同，因此本批<b>不动任何配色</b>：{@link #indicatorColor(int)} 仍是
- * 等级 → 指示色（充能器指示灯 / 护目镜能量条 / JEI 徽章共用），实体侧
- * {@code AbstractChargerWaveEntity#getWaveColorForLevel} 仍是等级 → 粒子色。规则落地留待后续批次
- * （B4 魔素注册表）。</p>
+ * <p><b>⚠ 颜色规则（作者 2026-10-24 定，D2；批 4 已落地）</b>：最终颜色 = <b>魔素优先</b>
+ * ——<b>有魔素 ⇒ 用魔素对应的颜色</b>；<b>没魔素 ⇒ 用波型对应的颜色</b>；<b>两者都没给 ⇒ 回落等级色</b>。
+ * 唯一实现是 {@link WaveColorRule#colorOf(WaveEssence, WaveType, Vec3)}。
+ * 作者裁定（逐字："B"）：<b>色相来自魔素 / 波型，明度仍按等级</b>；"纯平色"读法被明确否决
+ * （理由 = 等级读不出来）。因此 {@link #particleColor(int)} 是<b>等级基色</b>（D2 的兜底 + 内置
+ * 颜色变换的明度输入），{@link #indicatorColor(int)} 仍是<b>指示色</b>（充能器指示灯 / 护目镜能量条 /
+ * JEI 徽章共用）——<b>两套色刻意分开，不许合并</b>（合并会改指示灯观感）。</p>
  *
  * <p><b>等级 → 符号</b>：对外一律只显示希腊字母（{@link #glyph(int)} / {@link #displayName(int)}），
  * 不显示任何非符号的等级文字（旧称与中文名一律不用）——符号现在来自注册项，映射实现仍只有一处，
@@ -51,10 +53,11 @@ import net.minecraft.network.chat.MutableComponent;
  * 它们刻意保持 {@code final}，不随注册表变动。</p>
  *
  * <p><b>与粒子/渲染色是两个家族</b>：能量波的渲染色/粒子色是另一套更饱和的 RGB 0-1 配色
- * （{@code AbstractChargerWaveEntity#getWaveColorForLevel}）：1 级 (1,1,0)、2 级 (0,1,0)、
- * 3 级 (0,0.5,1)、4 级 (1,0.35,0.85)、5 级 (1,0.25,0.45)——与本表色相口径相同
+ * （{@link #particleColor(int)}，数值住在注册项里）：1 级 (1,1,0)、2 级 (0,1,0)、
+ * 3 级 (0,0.5,1)、4 级 (1,0.35,0.85)、5 级 (1,0.25,0.45)——与本表指示色色相口径相同
  * （α 黄 / β 绿 / γ 蓝 / ε 紫粉 / ω 玫红）但数值只有 5 级重合；合并会改变粒子观感，
- * 故刻意保留为两套（本表 = 指示灯 / 能量条 / 徽章；实体那套 = 粒子）。</p>
+ * 故刻意保留为两套（本表指示色 = 指示灯 / 能量条 / 徽章；{@link #particleColor(int)} = 粒子基底）。
+ * 批 4 只是把粒子色从实体里的 switch <b>搬进</b>注册项（值逐位不变），两套的边界没有合并。</p>
  */
 public final class WaveLevels {
 
@@ -145,6 +148,22 @@ public final class WaveLevels {
 	 */
 	public static int indicatorColor(int level) {
 		return specOrLowest(level).indicatorColor();
+	}
+
+	/**
+	 * <b>等级基色</b>（RGB 0-1；波体 / 拖尾 / 绽放 / 爆炸的颜色基底，也是 D2 的兜底色）：
+	 * 1（α）= (1,1,0) 黄、2（β）= (0,1,0) 绿、3（γ）= (0,0.5,1) 蓝、4（ε）= (1,0.35,0.85) 紫粉、
+	 * 5（ω）= (1,0.25,0.45) 玫红（数值在注册项里，逐位等于改造前实体里的 switch）。
+	 *
+	 * <p><b>它不是最终颜色</b>：最终颜色由 {@link WaveColorRule#colorOf} 决定（有魔素 ⇒ 魔素色；
+	 * 没魔素 ⇒ 波型色；两者都没给 ⇒ 本方法的值）。内置魔素 / 波型的颜色变换都拿它当明度输入，
+	 * 所以等级仍可读（作者 2026-10-24 裁定 "B"）。</p>
+	 *
+	 * <p><b>容错</b>：未注册等级回落最低等级（α）的值——与改造前 {@code default -> new Vec3(1, 1, 0)}
+	 * 逐值一致。</p>
+	 */
+	public static Vec3 particleColor(int level) {
+		return specOrLowest(level).particleColor();
 	}
 
 	/**

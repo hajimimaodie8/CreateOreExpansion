@@ -1,7 +1,12 @@
 package com.hjmmd_8.createoreexpansion.content.wave.api;
 
+import java.util.function.UnaryOperator;
+
+import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * <b>波型</b>：一个能量波"是什么波"的完整定义（波情四属性之一）。
@@ -40,6 +45,32 @@ public interface WaveType {
 
 	/** 拖尾与绽放的视觉风格。 */
 	WaveTrailStyle trailStyle();
+
+	/**
+	 * <b>波型自身的颜色</b>（2026-10-24 批 4 新增的语义，D2 的第二优先）。
+	 *
+	 * <p>作者 D2："没有魔素 ⇒ 用波的类型所对应的颜色"。改造前波型<b>没有颜色</b>——它只有一个
+	 * {@link #trailStyle()} 指针，颜色是由"等级基色 × 该风格的变换"在实体 tick 里算出来的。
+	 * 现在波型自己回答颜色，取色规则收口在 {@link WaveColorRule#colorOf}。</p>
+	 *
+	 * <p><b>默认实现 = 由 {@link #trailStyle()} 推出的那个变换</b>（{@code ChargerWaveFx#styleColor}）——
+	 * 于是本模组的三个内置波型与<b>今天已经注册过的第三方波型</b>观感逐值不变；想给波型一个
+	 * 与风格无关的颜色，就在注册项里传一个显式变换（例如
+	 * {@code new SimpleWaveType(id, false, false, true, WaveTrailStyle.DAMAGE, WaveColorRule.fixedRgb(0x9B5CFF))}）。</p>
+	 *
+	 * <p><b>入参是等级基色</b>：内置的三个变换都拿它当明度输入（所以等级仍可读）；返回
+	 * {@code null} 视为"这个波型没给颜色"，回落等级基色（见 {@link #colorOf(Vec3)}）。</p>
+	 */
+	default UnaryOperator<Vec3> color() {
+		return base -> ChargerWaveFx.styleColor(trailStyle(), base);
+	}
+
+	/** 本波型的颜色（{@code null} 安全；"没给颜色"⇒ 原样返回基色）。 */
+	default Vec3 colorOf(Vec3 base) {
+		Vec3 safe = base == null ? Vec3.ZERO : base;
+		UnaryOperator<Vec3> tint = color();
+		return tint == null ? safe : tint.apply(safe);
+	}
 
 	/**
 	 * <b>波型显示名</b>（Jade"波型"行等一切对外读数；波情四属性之一的取名字口）。
