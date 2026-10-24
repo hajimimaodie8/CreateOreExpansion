@@ -333,7 +333,10 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 * （清除后该波回到"任何波都能与它湮灭"的默认口径）。</p>
 	 */
 	public void setFiringBatch(int batch) {
-		this.entityData.set(FIRING_BATCH, batch);
+		// 2026-10-24 批 3：批次数也住在 WaveState（NBT 键 FiringBatch 由表读写），所以这里必须
+		// 先写状态再推同步视图 —— 只写 entityData 会让"运行期设过批次"的波存档时写回 0。
+		this.state.set(WaveAttrs.FIRING_BATCH, batch);
+		pushSyncedViews();
 	}
 
 	/**
