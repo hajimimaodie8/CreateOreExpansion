@@ -976,8 +976,11 @@ public class StellarWaveEntity extends AbstractChargerWaveEntity implements Wave
 	protected void readAdditionalSaveData(CompoundTag tag) {
 		super.readAdditionalSaveData(tag);
 		// 变体波永远是"全能波"：老存档没有 WaveType 键时兜住（新存档由基类按 id 还原）
-		if (getWaveType() == WaveTypes.NORMAL)
-			trySetWaveType(WaveTypes.OMNI);
+		// 2026-10-25 批 7：这道兜底在**读档之后**改了波型 ⇒ 基类那次"出生色贴合"算的是 NORMAL
+		// 的色。这里按新波型重算一次（幂等：若 trySetWaveType 已在未入世时贴过，再贴还是同色；
+		// 显式写出来是为了不依赖"读档时一定还没入世"这条隐含前提）。
+		if (getWaveType() == WaveTypes.NORMAL && trySetWaveType(WaveTypes.OMNI))
+			snapRenderColorToTarget();
 	}
 
 }

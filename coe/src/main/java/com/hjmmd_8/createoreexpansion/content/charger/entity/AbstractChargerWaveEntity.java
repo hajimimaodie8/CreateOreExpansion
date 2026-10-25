@@ -237,12 +237,15 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		this.state.set(WaveAttrs.LEVEL, waveLevel);
 		this.processor = new ChargerWaveProcessor(level, waveLevel);
 		this.setMovement(movementDir.normalize());
-		this.renderColor = getWaveColor();
 		this.setSpawnPos(pos);
 		setPos(pos);
 		// 服务端/客户端实例都写入同步数据（Jade 等客户端读取需要）。7 个视图由 WaveStateSync 一处推送，
 		// 值没变时 SynchedEntityData#set 是空操作 ⇒ 与改造前"只推等级与速度修正"可观察行为相同。
 		pushSyncedViews();
+		// 2026-10-25 批 7（作者："所有波一召唤的颜色就是固定的"）：**出生色必须在这之后取**。
+		// {@link #getWaveLevel()} 读的是 SynchedEntityData，而等级在上面那次 push 之前还没写进
+		// entityData（缺省 0 = α 黄）—— 放在 push 之前，机器发射的 3/4/5 级波会先黄再渐变。
+		snapRenderColorToTarget();
 	}
 
 	/** 等级同步 key（客户端 Jade 显示用） */
@@ -637,6 +640,12 @@ public abstract class AbstractChargerWaveEntity extends Entity
 			return false;
 		this.state.set(WaveAttrs.WAVE_TYPE, target);
 		pushSyncedViews();
+		// 2026-10-25 批 7：**发射前的装配期**（技能发射器都是"设波型 → 设魔素 → addFreshEntity"）
+		// ⇒ 此时还没有任何人看到过这枚波，出生色直接贴合目标色（否则会先黄再渐变到波型色）。
+		// ⚠ 已入世之后（变器"攻击波变态"的场点燃改波型）**不许**贴合 —— 那是运行期改属性，
+		// 必须继续走 tick 的 lerp，观感才是"吸收能量变色"。
+		if (!isAddedToLevel())
+			snapRenderColorToTarget();
 		return true;
 	}
 
@@ -722,12 +731,19 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (target == null) {
 			this.state.set(WaveAttrs.ESSENCE, null);
 			pushSyncedViews();
+			// 2026-10-25 批 7：同 {@link #trySetWaveType} —— 只贴合"发射前的装配期"。
+			if (!isAddedToLevel())
+				snapRenderColorToTarget();
 			return true;
 		}
 		if (!getWaveType().dealsDamage())
 			return false;
 		this.state.set(WaveAttrs.ESSENCE, target);
 		pushSyncedViews();
+		// 2026-10-25 批 7：技能波"先设魔素、再 addFreshEntity" ⇒ 出生色就是这枚魔素的颜色。
+		// ⚠ 已入世（变器每 tick 按框里的魔素改写飞行中的波）⇒ 不贴合，仍由 tick 渐变过去。
+		if (!isAddedToLevel())
+			snapRenderColorToTarget();
 		return true;
 	}
 
@@ -1091,10 +1107,9 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		//   ③ 两者都没给 ⇒ 等级基色。
 		// 内置魔素/波型的颜色变换都拿等级基色当**明度输入** ⇒ 观感与改造前逐值相同
 		// （"纯平色"读法已被作者明确否决，理由 = 等级读不出来；见 WaveColorRule 类注释）。
-		Vec3 levelColor = getBoostRemaining() > 0
-			? getWaveColorForLevel(Math.min(getWaveLevel() + getBoostStep(), WaveLevels.MAX_LEVEL))
-			: getWaveColor();
-		Vec3 targetColor = WaveColorRule.colorOf(essenceSpec(), getWaveType(), levelColor);
+		// 2026-10-25 批 7：目标色的算式收进 {@link #targetRenderColor()}（唯一实现，出生/读档共用）；
+		// 本行<b>只</b>保留"每 tick 往目标色靠 15%"这一个动作 —— 它同时是"改等级仍渐变"的唯一实现。
+		Vec3 targetColor = targetRenderColor();
 		renderColor = renderColor.lerp(targetColor, 0.15d);
 		// 距离足够近则直接贴合目标色，避免无限逼近
 		if (renderColor.distanceToSqr(targetColor) < 1.0E-5d)
@@ -1853,6 +1868,51 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
+	 * <b>本波当前的目标色</b>（RGB 0-1）—— 2026-10-25 批 7 起的<b>唯一算式</b>：
+	 * 出生（构造器）/ 读档（{@code readAdditionalSaveData}）/ 每 tick 渐变 三处共用。
+	 *
+	 * <p>2026-10-24 批 4 的 D2 规则（{@link WaveColorRule#colorOf}：有魔素 ⇒ 魔素色；没魔素 ⇒
+	 * 波型色；都没给 ⇒ 等级基色）仍然<b>只在这里</b>被调用一次。本方法只多做一件事：算"等级基色"
+	 * 时把调级器的待升级预览算进去（{@code boostRemaining > 0} ⇒ 提前取提升后的等级色，封顶
+	 * {@link WaveLevels#MAX_LEVEL}）—— 这段口径逐字来自批 4 的 tick，本批只是挪进来复用。</p>
+	 *
+	 * <p>⚠ <b>不要把它改成"读 {@code renderColor}"</b>：它是目标，{@code renderColor} 是当前值，
+	 * 两者的差正是 tick 里那个 lerp 要吃掉的东西。也<b>不要</b>在别处再写一遍
+	 * {@code WaveColorRule.colorOf} —— 关卡 {@code wave-color-rule} 钉着"全仓恰好一处调用"。</p>
+	 */
+	private Vec3 targetRenderColor() {
+		Vec3 levelColor = getBoostRemaining() > 0
+			? getWaveColorForLevel(Math.min(getWaveLevel() + getBoostStep(), WaveLevels.MAX_LEVEL))
+			: getWaveColor();
+		return WaveColorRule.colorOf(essenceSpec(), getWaveType(), levelColor);
+	}
+
+	/**
+	 * 把当前渲染色<b>直接</b>贴到目标色（<b>不做</b>渐变）。
+	 *
+	 * <p>2026-10-25 批 7（作者裁定逐字："所有波一召唤的颜色就是固定的，不应该发生这样的情况"；
+	 * 唯一例外 = 经过改变等级的工具）：<b>出生</b>与<b>读档</b>这两个"波还没被看到"的时刻直接贴合，
+	 * 于是第一帧就是正确颜色。允许调用本方法的只有三处，全部是"还没入世 / 刚读完档"的装配期：</p>
+	 * <ol>
+	 *   <li>构造器（等级是构造参数，push 之后取）；</li>
+	 *   <li>{@code readAdditionalSaveData}（NBT 的等级/波型/魔素刚写进状态与同步视图之后）；</li>
+	 *   <li>{@link #trySetWaveType} / {@link #trySetEssence} <b>且</b> {@code !isAddedToLevel()}
+	 *       （技能发射器先设波型/魔素、再 addFreshEntity）。</li>
+	 * </ol>
+	 *
+	 * <p>⚠ <b>已入世之后的改属性/改等级一律不调本方法</b>：变器点燃改波型/魔素、调级器与
+	 * 波变器改等级，都必须继续走 tick 里那个 {@code lerp(.., 0.15)} —— 那是"吸收能量变色"的观感，
+	 * 也是作者明确要保留的唯一例外。关卡 {@code wave-spawn-color} 有反向断言钉住。</p>
+	 *
+	 * <p><b>为什么是包内可见（不是 protected）</b>：只有同包的 {@link StellarWaveEntity} 在读档
+	 * 兜底改波型后需要重贴一次。公共/受保护签名集合要留给"跨模块形状只增不减"的冻结门
+	 * （{@code bow4/bow5-public-shape}），本批不该为了一个内部动作去推那三道门的基线。</p>
+	 */
+	final void snapRenderColorToTarget() {
+		this.renderColor = targetRenderColor();
+	}
+
+	/**
 	 * 是否 ω（5 级）波：粒子拖尾用金色。
 	 *
 	 * <p>2026-10-24 波等级注册化（批 1）：这里原来写死 {@code waveLevel >= 5}——那是"等级表之外的第 3
@@ -2009,6 +2069,13 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		this.processor = new ChargerWaveProcessor(level(), getWaveLevel());
 		// 7 个同步视图（Jade 等客户端读取）由唯一推送口写回。
 		pushSyncedViews();
+		// 2026-10-25 批 7（作者："所有波一召唤的颜色就是固定的"）：**读档结束后直接贴合目标色**。
+		// 出生时的构造器还不知道这枚波将来是什么等级/波型/魔素（它们都在这份 NBT 里），所以
+		// 读档前 renderColor 是"缺省 0 级黄"；不在这里贴合，就是玩家看到的"先黄后蓝"。
+		// ⚠ 必须在 {@link WaveStateNbt#read} 与 {@code pushSyncedViews()} **之后**：
+		// {@link #targetRenderColor()} 经 {@link #getWaveLevel()} 读 SynchedEntityData，
+		// 等级只有 push 之后才在 entityData 里。⚠ 也**不许**挪进 setWaveLevel（改级必须仍渐变）。
+		snapRenderColorToTarget();
 	}
 
 	@Override
