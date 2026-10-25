@@ -3,6 +3,7 @@ package com.hjmmd_8.createoreexpansion.content.wave.block;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandler;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAccess;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.EnergyWaveRegulation;
@@ -72,7 +73,7 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 	private boolean handleRegulator(AbstractChargerWaveEntity wave, AbstractWaveGateBlockEntity regulator,
 		BlockPos pos, Vec3 wavePos) {
 		EnergyWaveRegulation.Result result = EnergyWaveRegulation.get()
-			.resolve(regulator, wavePos, wave.getMovement(), wave.getWaveLevel());
+			.resolve(regulator, wavePos, WaveAccess.movement(wave), WaveAccess.level(wave));
 		switch (result) {
 			case VANISH -> {
 				// 齿轮端/入口关闭：如撞墙消失，无爆炸
@@ -82,14 +83,14 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 				// 顺基准且已达机型承载上限（翡翠 3 = γ / 蓝宝石·星辉石 5 = ω）→ 过载爆炸后湮灭。
 				// 爆炸规模按波自身等级放大（用户 2026-09-14 定稿）：翡翠机 3 级（105 颗），
 				// 蓝宝石/星辉石机 5 级（155 颗）——与"波波碰撞取较低等级"同一套取值口径。
-				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.trailStyle(),
-					wave.getRenderColor(), null, boomLevel(wave));
+				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), WaveAccess.trailStyle(wave),
+					WaveAccess.renderColor(wave), null, boomLevel(wave));
 				return true;
 			}
 			case VANISH_FLOOR_BOOM -> {
 				// 1 级（α）波逆基准 / 单开口遣返：降级无路可降 → 爆炸后湮灭（等级恒为 1，即 α 级规模）
-				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), wave.trailStyle(),
-					wave.getRenderColor(), null, boomLevel(wave));
+				ChargerWaveFx.triggerBoom(wave.level(), wave, wave.position(), WaveAccess.trailStyle(wave),
+					WaveAccess.renderColor(wave), null, boomLevel(wave));
 				return true;
 			}
 			case PASS_UNCHANGED -> {
@@ -97,22 +98,23 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 			}
 			case BOUNCE -> {
 				// 无应力单开口：等级不变，原路遣返（折 180° 原路返回）
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 			}
 			case PASS_BOOST_LATER -> {
 				// 顺基准双开口：穿过，延迟升级（飞行 0.5 格 = 1/(2v) 秒后等级提升）。
-				// 提升级数按机型参数：翡翠/蓝宝石恒 1；星辉石按本机转速 1 或 2（波侧封顶 MAX_LEVEL=5）
-				wave.setBoostRemaining(BOOST_DISTANCE);
-				wave.setBoostStep(regulator.getBoostStepForSpeed());
+				// 提升级数按机型参数：翡翠/蓝宝石恒 1；星辉石按本机转速 1 或 2（波侧封顶 MAX_LEVEL=5）。
+				// 批 6：档位与剩余距离一次写完（WaveAccess.setSpeedBoost 的既有语义），
+				// 两个字段都是纯 state 写入、无副作用 ⇒ 先后顺序不影响结果。
+				WaveAccess.setSpeedBoost(wave, regulator.getBoostStepForSpeed(), BOOST_DISTANCE);
 			}
 			case PASS_DOWNGRADE -> {
 				// 逆基准双开口：穿过，立即降级
-				wave.setWaveLevel(wave.getWaveLevel() - 1);
+				WaveAccess.setLevel(wave, WaveAccess.level(wave) - 1);
 			}
 			case BOUNCE_DOWNGRADE -> {
 				// 有应力单开口：降级并原路遣返（1 级波已在判定层走 VANISH_FLOOR_BOOM 爆炸，这里仅 ≥2 级）
-				wave.setWaveLevel(wave.getWaveLevel() - 1);
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setLevel(wave, WaveAccess.level(wave) - 1);
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 			}
 		}
 		return false;
@@ -136,14 +138,14 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 	private boolean handleWaveSpeedRegulator(AbstractChargerWaveEntity wave,
 		AbstractWaveGateBlockEntity speedRegulator, BlockPos pos, Vec3 wavePos) {
 		WaveSpeedRegulation.Result result = WaveSpeedRegulation.get()
-			.resolve(speedRegulator, wavePos, wave.getMovement(), wave.getWaveLevel());
+			.resolve(speedRegulator, wavePos, WaveAccess.movement(wave), WaveAccess.level(wave));
 		switch (result) {
 			case VANISH -> {
 				return true; // 齿轮端/入口关闭：撞墙湮灭
 			}
 			case BOUNCE -> {
 				// 单开口：纯折返，速度不变
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				return false;
 			}
 			case PASS_UNCHANGED -> {
@@ -153,13 +155,13 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 			case PASS_SPEED_UP -> {
 				// 顺基准：加速（按机型分档叠加：翡翠 4 档 / 蓝宝石 6 档）
 				float amount = speedAmountFor(speedRegulator);
-				wave.addSpeedOffset(amount);
+				WaveAccess.addSpeedOffset(wave, amount);
 				return false;
 			}
 			case PASS_SPEED_DOWN -> {
 				// 逆基准：减速（按机型分档叠加）
 				float amount = speedAmountFor(speedRegulator);
-				wave.addSpeedOffset(-amount);
+				WaveAccess.addSpeedOffset(wave, -amount);
 				return false;
 			}
 		}
@@ -179,7 +181,7 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 	 * （见 {@code ChargerWaveFx#triggerBoom} 的 {@code 30 + boomLevel × 25}），越界值不得直接传下去。
 	 */
 	private static int boomLevel(AbstractChargerWaveEntity wave) {
-		return Mth.clamp(wave.getWaveLevel(), WaveLevels.LOW, WaveLevels.MAX_LEVEL);
+		return Mth.clamp(WaveAccess.level(wave), WaveLevels.LOW, WaveLevels.MAX_LEVEL);
 	}
 
 	// ================= Create contraption（结构本地坐标系） =================
@@ -192,11 +194,11 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 			return Outcome.NOT_MINE;
 		if (waveGate.modulatesWaveLevel()) {
 			EnergyWaveRegulation.Result r = EnergyWaveRegulation.get()
-				.resolve(state, pos, localCenter, wave.getMovement(), wave.getWaveLevel());
+				.resolve(state, pos, localCenter, WaveAccess.movement(wave), WaveAccess.level(wave));
 			return handleGateResult(wave, r, entity, pos) ? Outcome.CONSUMED : Outcome.SKIP;
 		} else {
 			WaveSpeedRegulation.Result r = WaveSpeedRegulation.get()
-				.resolve(state, pos, localCenter, wave.getMovement(), wave.getWaveLevel());
+				.resolve(state, pos, localCenter, WaveAccess.movement(wave), WaveAccess.level(wave));
 			return handleSpeedGateResult(wave, r, entity, pos) ? Outcome.CONSUMED : Outcome.SKIP;
 		}
 	}
@@ -206,25 +208,25 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 		AbstractContraptionEntity entity, BlockPos pos) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			case PASS_UNCHANGED -> {
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
 				// 调制结果（VANISH_OVERLOAD_BOOM/VANISH_FLOOR_BOOM/PASS_BOOST_LATER/PASS_DOWNGRADE/BOUNCE_DOWNGRADE）
 				// 依赖转速，纯 state 判定（speed=0）不会产生；防御性按撞墙
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return true;
 			}
@@ -236,24 +238,24 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 		AbstractContraptionEntity entity, BlockPos pos) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			case PASS_UNCHANGED -> {
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
 				// PASS_SPEED_UP/DOWN 依赖转速，纯 state 判定不会产生；防御性按撞墙
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return true;
 			}
@@ -277,12 +279,12 @@ public final class WaveGateHitHandler implements WaveMachineHandler {
 			? handleRegulator(wave, gateBe, pos, localWavePos)
 			: handleWaveSpeedRegulator(wave, gateBe, pos, localWavePos);
 		if (vanish) {
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 			wave.discard();
 			return Outcome.CONSUMED;
 		}
 		wave.setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos)
-			.add(wave.getMovement().scale(1.0d))));
+			.add(WaveAccess.movement(wave).scale(1.0d))));
 		return Outcome.CONSUMED;
 	}
 }

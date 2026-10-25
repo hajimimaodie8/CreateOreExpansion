@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
-import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAccess;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveType;
@@ -36,9 +36,11 @@ import net.minecraft.network.chat.MutableComponent;
  *
  * <p><b>职责边界</b>：本类不知道自己是被谁查的、也不去找波——找波 / 显示 / 冷却都在
  * {@link WaveQueryGaugeItem} 里；本类只回答"这只波的波情长什么样"。
- * 取值的唯一来源是波实体自己的公开访问器（波速 {@code getWaveSpeed}、
- * 波级 {@code getWaveLevel}、波型 {@code getWaveType}、寿命 {@code getRemainingLifetime}）与
- * {@link WaveLevels}（希腊字母与伤害的唯一实现点），不复制任何数值表。</p>
+ * 取值的唯一来源是 {@link WaveAccess} 门面（波速 / 波级 / 波型 / 寿命 / 可加工类型；2026-10-24 批 6
+ * 起改走门面，此前是本类直接调实体访问器）与 {@link WaveLevels}
+ * （希腊字母与伤害的唯一实现点），不复制任何数值表。唯一仍走实体的是
+ * {@code wave.getEssence()}：关卡 {@code wave-essence-display} 把它与 Jade 那一行钉成逐字两处，
+ * 迁移必须与那道断言同批改（本批刻意不动）。</p>
  *
  * <p><b>每次调用都现场取值</b>（不缓存）：查询仪在扫描动画期间每 tick 重建一次读数、
  * Jade 每帧重建一次，于是"动态"是天然的——寿命会一秒一秒往下掉，波速会随调节器与能量场变。</p>
@@ -59,21 +61,22 @@ public record WaveReadout(double speed, int level, WavePayloadReadout payload, W
 
 	/** 取一只能量波的波情读数（只读，不改动波的状态）。 */
 	public static WaveReadout of(AbstractChargerWaveEntity wave) {
-		return new WaveReadout(wave.getWaveSpeed(), wave.getWaveLevel(), WavePayloadReadout.of(wave),
-			wave.getWaveType(), processableRecipeTypes(wave), wave.getRemainingLifetime() / 20.0d,
+		return new WaveReadout(WaveAccess.speedPerSecond(wave), WaveAccess.level(wave), WavePayloadReadout.of(wave),
+			WaveAccess.type(wave), processableRecipeTypes(wave), WaveAccess.remainingLifetimeTicks(wave) / 20.0d,
 			wave.getEssence());
 	}
 
 	/**
 	 * 全能波"能加工几种配方" = 它携带的<b>应执行配方类型集合</b>的大小
-	 * （{@link StellarWaveEntity#getActiveRecipeTypes()}，已去重的类型数，<b>不是</b>配方条目数）。
+	 * （门面 {@link WaveAccess#activeRecipeTypes} 背后的 {@code getActiveRecipeTypes()}，已去重的类型数，
+	 * <b>不是</b>配方条目数）。
 	 *
-	 * <p>全能在本模组由变体波承载（波型只能由变体波自己转换），故非变体波给 0；
+	 * <p>全能在本模组由变体波承载（波型只能由变体波自己转换），故非变体波给 0（门面自己回答空表）；
 	 * 取不到也不抛异常，读数永远可用。</p>
 	 */
 	private static int processableRecipeTypes(AbstractChargerWaveEntity wave) {
-		return wave instanceof StellarWaveEntity stellar ? stellar.getActiveRecipeTypes()
-			.size() : 0;
+		return WaveAccess.activeRecipeTypes(wave)
+			.size();
 	}
 
 	/**

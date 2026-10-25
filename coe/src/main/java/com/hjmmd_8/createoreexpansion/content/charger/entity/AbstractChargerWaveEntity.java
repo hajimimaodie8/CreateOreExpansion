@@ -34,6 +34,7 @@ import net.createmod.catnip.levelWrappers.SchematicLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffect;
@@ -111,8 +112,22 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	 */
 	protected static final int MAX_LIFETIME_TICKS = 200;
 
-	/** 最大飞行距离（格）：超过即消散，与寿命上限互为兜底。 */
+	/**
+	 * 最大飞行距离（格）：超过即消散，与寿命上限互为兜底。
+	 *
+	 * <p>它现在只是<b>缺省值</b>（{@link #maxTravelDistance} 的初值）：2026-10-24 批 6 起每枚波可以
+	 * 有自己的行程上限（{@link #setMaxTravelDistance}），不设时逐字等于本常量 ⇒ 一切既有波的
+	 * 消散时机一个 tick 都不变。</p>
+	 */
 	protected static final double MAX_TRAVEL_DISTANCE = 64.0;
+
+	/**
+	 * <b>本波自己的最大飞行距离（格）</b>（2026-10-24 批 6）：默认 = {@link #MAX_TRAVEL_DISTANCE}。
+	 *
+	 * <p>缺省值的语义就是旧行为：{@code tick()} 里那一句判定读它，字段初值是 64.0 ⇒
+	 * "没设"与改造前逐字相同。刻意是原始类型（不依赖构造期初始化顺序，判定只在 tick 里跑）。</p>
+	 */
+	private double maxTravelDistance = MAX_TRAVEL_DISTANCE;
 
 	/**
 	 * <b>本波的全部属性值</b>（2026-10-24 波系统重构批 3，方案 §3.2 的"单一真源"）。
@@ -972,7 +987,7 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		if (!ponderScene
 			&& (tickCount > MAX_LIFETIME_TICKS
 				|| (getSpawnPos() != null
-					&& position().distanceToSqr(getSpawnPos()) > MAX_TRAVEL_DISTANCE * MAX_TRAVEL_DISTANCE))) {
+					&& position().distanceToSqr(getSpawnPos()) > maxTravelDistance() * maxTravelDistance()))) {
 			discard();
 			return;
 		}
@@ -1451,8 +1466,18 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		return step.add(0.0D, -gravityFallSpeed * ChargeConfigs.perTickFactor(), 0.0D);
 	}
 
-	/** 重力要素的当前值（键 {@code GravityAcceleration}；本类唯一的读取点）。 */
-	private double gravityAcceleration() {
+	/**
+	 * <b>重力要素的当前值</b>（键 {@code GravityAcceleration}；本类唯一的读取点）。
+	 *
+	 * <p>2026-10-24 批 6：由 {@code private} 放宽为公开访问器 —— 演示面/诊断面与 {@code WaveAccess}
+	 * 门面都要能"读回我设了多少"，而此前这个要素只有写入口（{@link #setGravity}）与布尔判据
+	 * （{@link #hasGravity}）。默认 {@code 0.0D} = 未设，与改造前逐字相同。</p>
+	 *
+	 * <p>⚠ <b>刻意不叫 {@code getGravity()}</b>：原版 {@link Entity#getGravity()} 是 {@code final}
+	 * 的（1.21.1 的实体重力属性读法），同名会直接编译失败。本方法读的是<b>本要素</b>的加速度，
+	 * 与那个原版字段无关。</p>
+	 */
+	public double gravityAcceleration() {
 		return this.state.get(WaveAttrs.GRAVITY);
 	}
 
@@ -1564,6 +1589,27 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
+	 * <b>改写剩余寿命（tick）</b>（2026-10-24 批 6：寿命从此可读<b>也可设</b>）。
+	 *
+	 * <p>写的是本类自己的时间基 {@code tickCount}（原版 {@code Entity} 字段，实体唯一的"活了多久"）：
+	 * {@code tickCount = MAX_LIFETIME_TICKS - ticks}。于是 {@link #getRemainingLifetime()} 与 tick 里
+	 * 那条 {@code tickCount > MAX_LIFETIME_TICKS} 的消散判定<b>同时</b>看到新值 —— 没有第二个计时器、
+	 * 也没有第二处判定（这正是"一处真源"的要求）。</p>
+	 *
+	 * <p><b>不设时逐字不变</b>：本方法没有任何调用点，既有波的 {@code tickCount} 仍由原版 tick 递增。
+	 * 传入值夹到 {@code [0, MAX_LIFETIME_TICKS]}：{@code 0} = 本 tick 之后再飞一 tick 就消散，
+	 * 负值不会让 {@link #getRemainingLifetime()} 读出"比上限还长"。</p>
+	 *
+	 * <p>⚠ 这是<b>时间</b>寿命；行程上限（{@link #setMaxTravelDistance}）是另一条独立的消散条件，
+	 * 本方法不会放宽它。</p>
+	 *
+	 * @param ticks 新的剩余寿命（tick；夹到 0..{@link #MAX_LIFETIME_TICKS}）
+	 */
+	public void setRemainingLifetime(int ticks) {
+		this.tickCount = MAX_LIFETIME_TICKS - net.minecraft.util.Mth.clamp(ticks, 0, MAX_LIFETIME_TICKS);
+	}
+
+	/**
 	 * <b>等级基色</b>（RGB 0-1，Jade / 查询仪显示用）。
 	 *
 	 * <p>⚠ 这是"等级基色"，<b>不是</b>这枚波最终看到的颜色（最终颜色 = {@link WaveColorRule#colorOf}：
@@ -1637,6 +1683,91 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	}
 
 	/**
+	 * <b>本波的行程上限（格）</b>（2026-10-24 批 6）：默认 = {@link #MAX_TRAVEL_DISTANCE} = 64.0。
+	 *
+	 * <p>读它的是 {@code tick()} 里那一句判定（越过即消散）。"读"此前<b>完全拿不到</b>
+	 * （常量是 {@code protected static final}，门面也没有转发），第三方无法回答"这枚波还能飞多远"。</p>
+	 */
+	public double maxTravelDistance() {
+		return this.maxTravelDistance;
+	}
+
+	/**
+	 * <b>已飞行距离（格）</b>：当前位置到出生点的直线距离；出生点未知（读档前 / 没设）⇒ {@code 0}。
+	 *
+	 * <p>它是"行程"的读数面（与 {@link #maxTravelDistance()} 配对）：第三方不必自己拼
+	 * {@code position().distanceTo(getSpawnPos())}，也不会漏掉"出生点为 null"那一支。</p>
+	 */
+	public double travelledDistance() {
+		Vec3 spawnPos = getSpawnPos();
+		return spawnPos == null ? 0.0D : position().distanceTo(spawnPos);
+	}
+
+	/**
+	 * <b>改写本波的行程上限（格）</b>（2026-10-24 批 6：行程从此可设）。
+	 *
+	 * <p>缺省值就是 {@link #MAX_TRAVEL_DISTANCE}；<b>不调用</b> ⇒ 判定与改造前逐字相同（同一个数、
+	 * 同一个比较、同一个 tick）。刻意接受任意正值：上限可以<b>放宽</b>也可以<b>收紧</b>，
+	 * 是否合理由调用方负责（与重力要素"强度由调用方传"同一分工）。</p>
+	 *
+	 * <p>⚠ 非正值一律<b>不做事</b>（保持当前上限）：{@code 0} 的语义会是"出生即消散"，
+	 * 与"没设"无法区分，容易把一次笔误变成"这枚波根本飞不出去"。</p>
+	 *
+	 * @param blocks 新的行程上限（格；{@code <= 0} 视为不做事）
+	 */
+	public void setMaxTravelDistance(double blocks) {
+		if (!Double.isFinite(blocks) || blocks <= 0.0D)
+			return;
+		this.maxTravelDistance = blocks;
+	}
+
+	/**
+	 * <b>读一个"表外" NBT 键</b>（第三方属性袋；2026-10-24 批 6）。
+	 *
+	 * <p>批 3 的未知键保留袋（{@code WaveState#unknown()}）保证第三方写在波 NBT 上的键
+	 * <b>读一遍再写一遍不会被抹掉</b>；但袋子的入口此前只在包内，第三方既写不进也读不出。
+	 * 本方法是那一对入口里的"读"。</p>
+	 *
+	 * @param key NBT 键名（本模组 31 个已声明键不属于这里）
+	 * @return 原样保存的标签；没有 / 键名为 {@code null} ⇒ {@code null}
+	 */
+	@Nullable
+	public Tag extraTag(String key) {
+		return key == null ? null : this.state.unknown()
+			.get(key);
+	}
+
+	/**
+	 * <b>写一个"表外" NBT 键</b>（第三方属性袋；2026-10-24 批 6）。
+	 *
+	 * <p>写进 {@code WaveState#unknown()}，由 {@link WaveStateNbt} 在存档时"只补不覆盖"地带出去
+	 * （父类字段名不会被顶掉）。<b>已声明的 31 个键拒绝</b>：那些键的值真源是 {@link WaveAttrs} 表，
+	 * 从侧门写会被下次读写按表覆盖 —— 静默失效比拒绝更糟。</p>
+	 *
+	 * @param key   NBT 键名（{@code null} / 空串 / 已声明键 ⇒ 返回 {@code false}）
+	 * @param value 标签（{@code null} ⇒ 返回 {@code false}；要删请用 {@link #removeExtraTag}）
+	 * @return 是否真的写进去了
+	 */
+	public boolean putExtraTag(String key, Tag value) {
+		if (key == null || key.isEmpty() || value == null || WaveAttrs.isDeclared(key))
+			return false;
+		this.state.unknown()
+			.put(key, value);
+		return true;
+	}
+
+	/**
+	 * <b>删一个"表外" NBT 键</b>（第三方属性袋；2026-10-24 批 6）。
+	 *
+	 * @param key NBT 键名（{@code null} ⇒ {@code false}）
+	 * @return 是否真的删掉了（原来就没有 ⇒ {@code false}）
+	 */
+	public boolean removeExtraTag(String key) {
+		return key != null && this.state.unknown()
+			.remove(key) != null;
+	}
+
+	/**
 	 * 当前渲染色（服务端实例上的<b>实时值</b>，随等级/种类并逐 tick 向目标色插值）。
 	 *
 	 * <p>注意与 {@link #getWaveRenderColor()} 的区别：后者按<b>等级取静态色</b>，
@@ -1681,6 +1812,22 @@ public abstract class AbstractChargerWaveEntity extends Entity
 	/** 命中伤害：α 4、β 6、γ 8、ε 10、ω 12 —— 查 {@link WaveLevels#damage}。 */
 	protected float getDamage() {
 		return WaveLevels.damage(getWaveLevel());
+	}
+
+	/**
+	 * <b>本波当前会造成的命中伤害（只读公开面）</b> —— 就是命中链真正用的那个值。
+	 *
+	 * <p>2026-10-24 批 6：门面此前<b>没有</b>任何伤害读数（{@code getDamage()} 是 {@code protected}），
+	 * 第三方只能自己按波级查表；而 {@code charger_wave} 还有"自定义伤害"覆盖，自己查表会算错。
+	 * 本方法只是转发 {@link #getDamage()}：**基类仍然是"纯等级表"那一行**（关卡
+	 * {@code wave-essence-values} / {@code star-orbit-element} 都钉着它），子类覆盖（
+	 * {@code ChargerWaveEntity#getDamage}）自然被看见。</p>
+	 *
+	 * <p>⚠ <b>它只回答"会打多少"，不提供覆写入口</b>：非 {@code charger_wave} 的伤害覆盖需要改基类
+	 * 那条被钉住的纯表算术 = 玩法面变更，本批按"纯加法"红线<b>不做</b>（见批 6 报告）。</p>
+	 */
+	public float damageValue() {
+		return getDamage();
 	}
 
 	/**
@@ -1793,6 +1940,42 @@ public abstract class AbstractChargerWaveEntity extends Entity
 		child.setMovement(dir.normalize());
 		child.setSpawnPos(pos);
 		child.setRenderColor(this.renderColor);
+	}
+
+	/**
+	 * <b>穿波转换的唯一继承实现</b>（2026-10-24 批 6）：变器把一枚旧波<b>换成一枚新波</b>
+	 * （{@code charger_wave} → 变体波），新波要承接"表现/飞行连续性"的那三项。
+	 *
+	 * <p><b>为什么不是 {@link #inheritForChild}</b>：那是<b>分裂</b>（一枚父波 → 多枚子波，
+	 * 作者 D5：整份拷贝、只改等级与出生色）。穿波是<b>旧波换新波</b>：新波不是子波，它带着变器
+	 * 刚扫描到的载荷/配方类型/加热/转速/读取半径，而且**旧波被 discard**。把 D5 的"全拷贝"套到
+	 * 这条路径会改玩法（新波会开始带主人 / 批次号 / 波型 / 魔素 / 重力 / 命中效果 / 环绕），
+	 * 所以它是<b>另一套模板</b>，而不是分裂模板的一个开关。</p>
+	 *
+	 * <h2>改前 vs 改后（逐项）</h2>
+	 * <p>改造前这三项由 {@code :cews} 的 {@code StellarWaveTransmuterPass} 手抄三行；现在只有这一处。
+	 * 继承集合<b>逐项相同</b>：</p>
+	 * <ul>
+	 *   <li><b>速度修正</b>（{@code addSpeedOffset}，叠加语义 ⇒ 与旧波同一个绝对速度）；</li>
+	 *   <li><b>电荷极性</b>（{@code setCharge}，能量场作用在穿波前后连续）；</li>
+	 *   <li><b>当前渲染色</b>（{@code setRenderColor}，观感连续）。</li>
+	 * </ul>
+	 * <p><b>刻意不继承</b>（= 改造前的实际行为，一个字节都没变）：等级与方向由新波的构造器给
+	 * （{@code new StellarWaveEntity(level, exit, movement, waveLevel)}）；<b>波型 / 魔素 / 主人 /
+	 * 批次号 / 环绕四件套 / 命中效果三件套 / 重力 / 寿命 / 行程 / 自定义伤害</b>都不带。
+	 * 其中"主人 / 批次号"最要紧：带上主人 ⇒ 穿出来的波不再伤发射者；带上批次号 ⇒ 同批波互相不湮灭，
+	 * 两者都是<b>玩法变化</b>，必须由作者单独裁定（批 6 报告已单列，等实机与裁定）。</p>
+	 *
+	 * <p>⚠ 本方法<b>不许</b>被改造出一条"顺手多继承一点"的路：新增一项就是改玩法，改之前先问。</p>
+	 *
+	 * @param replacement 变器新造的那枚变体波（{@code null} ⇒ 不做事）
+	 */
+	public final void inheritForTransmute(AbstractChargerWaveEntity replacement) {
+		if (replacement == null)
+			return;
+		replacement.addSpeedOffset(getSpeedOffset());
+		replacement.setCharge(getChargePolarity());
+		replacement.setRenderColor(getRenderColor());
 	}
 
 	/**

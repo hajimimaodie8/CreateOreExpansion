@@ -6,6 +6,7 @@ import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWave
 import com.hjmmd_8.createoreexpansion.content.charger.entity.WavePath;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveDiag;
 import com.hjmmd_8.createoreexpansion.content.machine.stellarwavetransmuter.display.TransmuterGoggles;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAccess;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveLevels;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTrailStyle;
 import com.hjmmd_8.createoreexpansion.content.wave.api.WaveTypes;
@@ -260,18 +261,20 @@ public enum TransmuterMode {
 			for (AbstractChargerWaveEntity wave : level.getEntitiesOfClass(AbstractChargerWaveEntity.class,
 				queryBox(field)))
 				// 只调用一次"点燃"：是不是普通波由 trySetWaveType 自己判定（一生只能变一次），
-				// 这里不重复判断波型——写两遍就是两处口径，迟早不一致
-				if (wave.pathCrosses(field) && wave.trySetWaveType(WaveTypes.ATTACK)) {
+				// 这里不重复判断波型——写两遍就是两处口径，迟早不一致。
+				// 2026-10-24 批 6：两个调用改走 WaveAccess 门面（顺序不变量原样保留，由
+				// tools/check-transmuter-essence.ps1 的 A1 按新形状继续钉住）。
+				if (WaveAccess.pathCrosses(wave, field) && WaveAccess.trySetType(wave, WaveTypes.ATTACK)) {
 					// 魔素**只在点燃成功之后**才赋：trySetEssence 对"不造成伤害的波型"是静默忽略的
 					// （见 AbstractChargerWaveEntity#trySetEssence），顺序反过来就什么都写不进去。
 					// 这条顺序是既有的不变量（关卡 wave-essence-star-shock 与 boomerang-orbit-skill
 					// 对另外两处来源钉着同一条），本处由 check-transmuter-essence.ps1 钉住。
-					wave.trySetEssence(essence);
+					WaveAccess.trySetEssence(wave, essence);
 					// 轨迹日志（事件流：被点燃的波各一行）：与穿波转换那条对称，用来判定
 					// "这发波走的是攻击场还是被加工波变态转换了"（trySetWaveType 返回 true 才写，
 					// 旁观飞过的波不会刷日志）。带上魔素名 ⇒ 实机验收可直接从日志读出这一发是什么魔素。
 					WaveDiag.trace("攻击场点燃（攻击波变态）：变器 [{}] 场内 {} 级波 → {} 魔素攻击波", pos,
-						WaveLevels.glyph(wave.getWaveLevel()), essence.displayName());
+						WaveLevels.glyph(WaveAccess.level(wave)), essence.displayName());
 				}
 		}
 

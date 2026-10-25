@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
-import com.hjmmd_8.createoreexpansion.content.charger.entity.StellarWaveEntity;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAccess;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -18,8 +18,9 @@ import net.neoforged.neoforge.fluids.FluidStack;
  * 它与"波速/波级/波型"那种单一取值不是一类事；把这段放进物品类会变成堆砌的巨型方法。
  * {@link WaveReadout} 只管五要素的成组与追加，本类只管载荷这一段。</p>
  *
- * <p><b>载荷只属于全能波（变体波）</b>：{@code getPayloadItems/Fluid/Energy} 定义在
- * {@link StellarWaveEntity} 上，普通波与攻击波恒为空载——"有没有载荷"的判定只在本类做一次。</p>
+ * <p><b>载荷只属于全能波（变体波）</b>：{@code getPayloadItems/Fluid/Energy} 定义在变体波子类上，
+ * 普通波与攻击波恒为空载——"有没有载荷"的判定只在本类做一次（判型走门面的
+ * {@link WaveAccess#isVariantWave}，三条读与默认值也由门面给）。</p>
  *
  * @param itemCount 携带物品的总件数（各条目 count 求和，空条目不计）
  * @param fluid     携带流体（无 = {@link FluidStack#EMPTY}；构造时深拷贝，不与他人共享实例）
@@ -41,15 +42,18 @@ public record WavePayloadReadout(int itemCount, FluidStack fluid, int energy) {
 	/**
 	 * 取一只能量波的载荷读数：变体波读它携带的载荷，其余波型一律 {@link #EMPTY}。
 	 *
-	 * <p>只读，不改动波的任何状态（本物品是"查询仪"，不是"搬运器"）。</p>
+	 * <p>只读，不改动波的任何状态（本物品是"查询仪"，不是"搬运器"）。
+	 * 2026-10-24 批 6：判型与三段载荷改走 {@link WaveAccess} 门面（{@code isVariantWave} 就是
+	 * 改造前那句 {@code instanceof StellarWaveEntity}；三条载荷读与"非变体波 ⇒ 空值"的默认值
+	 * 都由门面逐字给出），本类不再 import 变体波子类。</p>
 	 */
 	public static WavePayloadReadout of(AbstractChargerWaveEntity wave) {
-		if (!(wave instanceof StellarWaveEntity stellar))
+		if (!WaveAccess.isVariantWave(wave))
 			return EMPTY;
 		int count = 0;
-		for (ItemStack stack : stellar.getPayloadItems())
+		for (ItemStack stack : WaveAccess.payloadItems(wave))
 			count += stack.getCount();
-		return new WavePayloadReadout(count, stellar.getPayloadFluid(), stellar.getPayloadEnergy());
+		return new WavePayloadReadout(count, WaveAccess.payloadFluid(wave), WaveAccess.payloadEnergy(wave));
 	}
 
 	/** 是否空载（物品件数、流体、电量三者皆无）。 */

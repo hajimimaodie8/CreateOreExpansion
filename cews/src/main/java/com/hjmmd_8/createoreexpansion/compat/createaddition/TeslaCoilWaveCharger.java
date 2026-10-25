@@ -2,6 +2,7 @@ package com.hjmmd_8.createoreexpansion.compat.createaddition;
 
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.energyfield.ChargePolarity;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAccess;
 import com.mrh0.createaddition.blocks.tesla_coil.TeslaCoilBlock;
 import com.mrh0.createaddition.blocks.tesla_coil.TeslaCoilBlockEntity;
 import com.mrh0.createaddition.config.CommonConfig;
@@ -71,7 +72,7 @@ public final class TeslaCoilWaveCharger {
 	public static boolean chargeNearbyCoil(AbstractChargerWaveEntity wave) {
 		if (wave == null || wave.level().isClientSide)
 			return false;
-		if (wave.getChargePolarity() != null)
+		if (WaveAccess.charge(wave) != null)
 			return false; // 已带电：不再赋
 		if (!isCreateAdditionLoaded())
 			return false;
@@ -155,7 +156,7 @@ public final class TeslaCoilWaveCharger {
 		if (internal.internalConsumeEnergy(ENERGY_COST_FE) < ENERGY_COST_FE)
 			return false;
 
-		wave.setCharge(worldLevel.random.nextBoolean() ? ChargePolarity.POSITIVE : ChargePolarity.NEGATIVE);
+		WaveAccess.setCharge(wave, worldLevel.random.nextBoolean() ? ChargePolarity.POSITIVE : ChargePolarity.NEGATIVE);
 		coil.getPersistentData().putLong(TAG_CD_UNTIL, now + COOLDOWN_TICKS);
 
 		// 放电表现：结构上不做块态 POWERED（Sable 本地世界状态不可安全改写），在世界坐标播音效+火花
@@ -210,7 +211,7 @@ public final class TeslaCoilWaveCharger {
 			return false; // 兜底（理论上不会走这里）
 		}
 
-		wave.setCharge(level.random.nextBoolean() ? ChargePolarity.POSITIVE : ChargePolarity.NEGATIVE);
+		WaveAccess.setCharge(wave, level.random.nextBoolean() ? ChargePolarity.POSITIVE : ChargePolarity.NEGATIVE);
 		coil.getPersistentData().putLong(TAG_CD_UNTIL, now + COOLDOWN_TICKS);
 
 		// 放电动画：切 POWERED 模型并保持约半秒（CC&A 自身 tick 在 poweredTimer 归零后自动断电）

@@ -6,6 +6,7 @@ import java.util.List;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.AbstractChargerWaveEntity;
 import com.hjmmd_8.createoreexpansion.content.charger.entity.ChargerWaveFx;
 import com.hjmmd_8.createoreexpansion.content.charger.wave.WaveMachineHandler;
+import com.hjmmd_8.createoreexpansion.content.wave.api.WaveAccess;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SableBridges;
 import com.hjmmd_8.createoreexpansion.content.wave.bridge.SubLevelBridge;
 import com.hjmmd_8.createoreexpansion.content.wave.regulation.EnergyWaveDispersal;
@@ -28,7 +29,7 @@ import net.minecraft.world.phys.Vec3;
  * （结构场景需要位姿矩阵转换，只能在本类做）。</p>
  *
  * <p><b>2026-10-24 批 5（作者裁定 D5）：五处"造子波"块都只调一处
- * {@code wave.createChildWave(pos, dir, level, index, total)}</b>，子波出生后<b>不再被后写任何属性</b>
+ * {@code WaveAccess.createChildWave(wave, pos, dir, level, index, total)}</b>，子波出生后<b>不再被后写任何属性</b>
  * （旧形状：造完之后手抄 {@code setPos / setSpawnPos / setMovement / addSpeedOffset}，共 5 份）。
  * 结构 / contraption 场景的坐标换算改为<b>先换算出生点与方向、再调造子波入口</b> —— 数学上等价
  * （位姿变换是仿射的：{@code T(c + d) = T(c) + R·d}），但子波从出生那一刻起就已经在世界坐标系里，
@@ -97,17 +98,17 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		Vec3 wavePos, SubLevelBridge.Hit frame) {
 		Direction.Axis axis = state.getValue(OctaEnergyWaveDifferencerBlock.AXIS);
 		// 世界（或结构本地）→ 机器本地（站姿语义）：判定纯函数只认识本地方向/偏移
-		Vec3 localMove = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, wave.getMovement());
+		Vec3 localMove = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, WaveAccess.movement(wave));
 		Vec3 localRel = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, wavePos.subtract(Vec3.atCenterOf(pos)));
 
-		OctaEnergyWaveDispersal.Result result = OctaEnergyWaveDispersal.handle(state, localMove, localRel, wave.getWaveLevel());
+		OctaEnergyWaveDispersal.Result result = OctaEnergyWaveDispersal.handle(state, localMove, localRel, WaveAccess.level(wave));
 		switch (result) {
 			case VANISH -> {
 				return true; // 机壳 / 入口口关闭 / 波级不足分裂
 			}
 			case BOUNCE -> {
 				// 单开口：原路遣返（反弹），等级不变（世界方向直接取反）
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				return false;
 			}
 			case TURN -> {
@@ -116,12 +117,12 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 				if (outs.isEmpty())
 					return true;
 				// 出口方向（本地）→ 世界
-				wave.setMovement(OctaEnergyWaveDifferencerBlock.toWorldVec(axis, outs.get(0)));
+				WaveAccess.setMovement(wave, OctaEnergyWaveDifferencerBlock.toWorldVec(axis, outs.get(0)));
 				return false;
 			}
 			case SPLIT -> {
 				// ≥3 开口：其余每个开口均摊发射降级子波（出口斜口 = 45° 对角）
-				int childLevel = wave.getWaveLevel() - OctaEnergyWaveDispersal.decrementOf(state);
+				int childLevel = WaveAccess.level(wave) - OctaEnergyWaveDispersal.decrementOf(state);
 				Vec3 center = Vec3.atCenterOf(pos);
 				// 先取出口列表：载荷要按"子波总数"分份，故需要 index/total（见 createChildWave 注释）
 				List<Vec3> octaOuts = OctaEnergyWaveDispersal.otherOpenDirs(state, localMove, localRel);
@@ -142,7 +143,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 						}
 					}
 					// 唯一的造子波入口：属性（含母波的速度修正）由它整份继承，此处不再后写任何属性
-					AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel,
+					AbstractChargerWaveEntity child = WaveAccess.createChildWave(wave, childPos, childDir, childLevel,
 						outIndex, octaOuts.size());
 					if (child != null)
 						wave.level()
@@ -169,7 +170,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 	 */
 	private static boolean handleDisperser(AbstractChargerWaveEntity wave, BlockState state, BlockPos pos,
 		Vec3 wavePos, SubLevelBridge.Hit frame) {
-		EnergyWaveDispersal.Result result = EnergyWaveDispersal.handle(state, wave.getMovement(), wavePos, pos, wave.getWaveLevel());
+		EnergyWaveDispersal.Result result = EnergyWaveDispersal.handle(state, WaveAccess.movement(wave), wavePos, pos, WaveAccess.level(wave));
 		Direction facing = state.getValue(EnergyWaveDisperserBlock.FACING);
 
 		switch (result) {
@@ -179,21 +180,21 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 			}
 			case BOUNCE -> {
 				// 单开口：原路遣返（反弹），等级不变
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				return false;
 			}
 			case TURN -> {
 				// 双开口：从入口进、从另一开口出（拐弯），等级不变
 				Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing,
-					EnergyWaveDispersal.exitsOf(state, wave.getMovement()).get(0));
-				wave.setMovement(Vec3.atLowerCornerOf(worldOut.getNormal()));
+					EnergyWaveDispersal.exitsOf(state, WaveAccess.movement(wave)).get(0));
+				WaveAccess.setMovement(wave, Vec3.atLowerCornerOf(worldOut.getNormal()));
 				return false;
 			}
 			case SPLIT -> {
 				// ≥3 开口：其余每个开口均摊发射降一级的波
-				int childLevel = wave.getWaveLevel() - 1;
+				int childLevel = WaveAccess.level(wave) - 1;
 				Vec3 center = Vec3.atCenterOf(pos);
-				List<Direction> disperserOuts = EnergyWaveDispersal.exitsOf(state, wave.getMovement());
+				List<Direction> disperserOuts = EnergyWaveDispersal.exitsOf(state, WaveAccess.movement(wave));
 				for (int outIndex = 0; outIndex < disperserOuts.size(); outIndex++) {
 					Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, disperserOuts.get(outIndex));
 					Vec3 outDir = Vec3.atLowerCornerOf(worldOut.getNormal());
@@ -210,7 +211,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 						}
 					}
 					// 唯一的造子波入口：属性（含母波的速度修正）由它整份继承，此处不再后写任何属性
-					AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel,
+					AbstractChargerWaveEntity child = WaveAccess.createChildWave(wave, childPos, childDir, childLevel,
 						outIndex, disperserOuts.size());
 					if (child != null)
 						wave.level()
@@ -238,27 +239,27 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 	 */
 	private static boolean handleSixFaceDisperser(AbstractChargerWaveEntity wave, BlockState state, BlockPos pos,
 		Vec3 wavePos, SubLevelBridge.Hit frame) {
-		SixFaceDispersal.Result result = SixFaceDispersal.handle(state, wave.getMovement(), wavePos, pos, wave.getWaveLevel());
+		SixFaceDispersal.Result result = SixFaceDispersal.handle(state, WaveAccess.movement(wave), wavePos, pos, WaveAccess.level(wave));
 		switch (result) {
 			case VANISH -> {
 				return true; // 入口关闭 / 波级不足分裂 → 撞墙湮灭
 			}
 			case BOUNCE -> {
 				// 单开口：原路遣返（反弹），等级不变
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				return false;
 			}
 			case TURN -> {
 				// 双开口：从入口进、从另一开口出（拐弯），等级不变
-				Direction worldOut = SixFaceDispersal.exitsOf(state, wave.getMovement()).get(0);
-				wave.setMovement(Vec3.atLowerCornerOf(worldOut.getNormal()));
+				Direction worldOut = SixFaceDispersal.exitsOf(state, WaveAccess.movement(wave)).get(0);
+				WaveAccess.setMovement(wave, Vec3.atLowerCornerOf(worldOut.getNormal()));
 				return false;
 			}
 			case SPLIT -> {
 				// 3-4 开口降一级、5-6 开口降二级：其余每个开口均摊发射子波
-				int childLevel = wave.getWaveLevel() - SixFaceDispersal.decrementOf(state);
+				int childLevel = WaveAccess.level(wave) - SixFaceDispersal.decrementOf(state);
 				Vec3 center = Vec3.atCenterOf(pos);
-				List<Direction> sixOuts = SixFaceDispersal.exitsOf(state, wave.getMovement());
+				List<Direction> sixOuts = SixFaceDispersal.exitsOf(state, WaveAccess.movement(wave));
 				for (int outIndex = 0; outIndex < sixOuts.size(); outIndex++) {
 					Vec3 outDir = Vec3.atLowerCornerOf(sixOuts.get(outIndex)
 						.getNormal());
@@ -275,7 +276,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 						}
 					}
 					// 唯一的造子波入口：属性（含母波的速度修正）由它整份继承，此处不再后写任何属性
-					AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel,
+					AbstractChargerWaveEntity child = WaveAccess.createChildWave(wave, childPos, childDir, childLevel,
 						outIndex, sixOuts.size());
 					if (child != null)
 						wave.level()
@@ -298,12 +299,12 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		// 出口为模型侧面（NORTH/EAST/SOUTH/WEST），须经 worldDirOf(FACING)
 		// 转成本地方向再发射（同主世界 WaveMachineActions 的映射）。
 		if (state.getBlock() instanceof EnergyWaveDisperserBlock) {
-			EnergyWaveDispersal.Result r = EnergyWaveDispersal.handle(state, wave.getMovement(), localCenter,
-				pos, wave.getWaveLevel());
+			EnergyWaveDispersal.Result r = EnergyWaveDispersal.handle(state, WaveAccess.movement(wave), localCenter,
+				pos, WaveAccess.level(wave));
 			if (r == EnergyWaveDispersal.Result.SPLIT) {
 				Direction facing = state.getValue(EnergyWaveDisperserBlock.FACING);
 				List<Direction> localExits = new ArrayList<>(3);
-				for (Direction modelSide : EnergyWaveDispersal.exitsOf(state, wave.getMovement())) {
+				for (Direction modelSide : EnergyWaveDispersal.exitsOf(state, WaveAccess.movement(wave))) {
 					Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, modelSide);
 					if (worldOut != null)
 						localExits.add(worldOut);
@@ -318,10 +319,10 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		}
 		// 六面能量波差器：反弹/拐弯/分裂（降级量 3-4 口 1 级、5-6 口 2 级）
 		if (state.getBlock() instanceof SixFaceDisperserBlock) {
-			SixFaceDispersal.Result r = SixFaceDispersal.handle(state, wave.getMovement(), localCenter, pos,
-				wave.getWaveLevel());
+			SixFaceDispersal.Result r = SixFaceDispersal.handle(state, WaveAccess.movement(wave), localCenter, pos,
+				WaveAccess.level(wave));
 			if (r == SixFaceDispersal.Result.SPLIT) {
-				if (splitContraptionChildren(wave, SixFaceDispersal.exitsOf(state, wave.getMovement()),
+				if (splitContraptionChildren(wave, SixFaceDispersal.exitsOf(state, WaveAccess.movement(wave)),
 					SixFaceDispersal.decrementOf(state), entity, pos))
 					return Outcome.CONSUMED;
 				return Outcome.SKIP;
@@ -330,19 +331,19 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 				return Outcome.CONSUMED;
 			return Outcome.SKIP;
 		}
-		// 八面能量波差器：8 口（4 正交 + 4 斜）。wave.getMovement() 此刻= contraption 本地方向，
+		// 八面能量波差器：8 口（4 正交 + 4 斜）。WaveAccess.movement(wave) 此刻= contraption 本地方向，
 		// 再按 blockstate AXIS 换算到机器本地（站姿语义）判定。
 		if (state.getBlock() instanceof OctaEnergyWaveDifferencerBlock) {
 			Direction.Axis axis = state.getValue(OctaEnergyWaveDifferencerBlock.AXIS);
-			Vec3 octaLocalMove = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, wave.getMovement());
+			Vec3 octaLocalMove = OctaEnergyWaveDifferencerBlock.toLocalVec(axis, WaveAccess.movement(wave));
 			Vec3 relCenter = OctaEnergyWaveDifferencerBlock.toLocalVec(axis,
 				localCenter.subtract(Vec3.atCenterOf(pos)));
 			OctaEnergyWaveDispersal.Result r = OctaEnergyWaveDispersal.handle(state, octaLocalMove, relCenter,
-				wave.getWaveLevel());
+				WaveAccess.level(wave));
 			if (r == OctaEnergyWaveDispersal.Result.SPLIT) {
-				int childLevel = wave.getWaveLevel() - OctaEnergyWaveDispersal.decrementOf(state);
+				int childLevel = WaveAccess.level(wave) - OctaEnergyWaveDispersal.decrementOf(state);
 				if (childLevel <= 0) {
-					ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+					ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 					wave.discard();
 					return Outcome.CONSUMED;
 				}
@@ -355,7 +356,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 					// 出生点 / 方向先换算到世界（随 contraption 旋转），再交给唯一的造子波入口
 					Vec3 childPos = entity.toGlobalVector(center.add(contraptionDir), 0);
 					Vec3 childDir = entity.applyRotation(contraptionDir, 0);
-					AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel,
+					AbstractChargerWaveEntity child = WaveAccess.createChildWave(wave, childPos, childDir, childLevel,
 						outIndex, octaOuts.size());
 					if (child != null)
 						wave.level()
@@ -377,14 +378,14 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		BlockPos pos, Direction.Axis axis, Vec3 localMove, Vec3 relCenter, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			case TURN -> {
@@ -392,10 +393,10 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 				List<Vec3> outs = OctaEnergyWaveDispersal.otherOpenDirs(state, localMove, relCenter);
 				if (!outs.isEmpty()) {
 					Vec3 contraptionOut = OctaEnergyWaveDifferencerBlock.toWorldVec(axis, outs.get(0));
-					wave.setMovement(contraptionOut);
+					WaveAccess.setMovement(wave, contraptionOut);
 				}
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
@@ -413,26 +414,26 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		AbstractContraptionEntity entity, BlockPos pos, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			case TURN -> {
 				// 拐弯：朝另一个开口的模型侧面方向发射（纯函数不写 movement，此处显式计算）
 				Direction facing = state.getValue(EnergyWaveDisperserBlock.FACING);
-				Direction modelSide = EnergyWaveDispersal.exitsOf(state, wave.getMovement())
+				Direction modelSide = EnergyWaveDispersal.exitsOf(state, WaveAccess.movement(wave))
 					.get(0);
 				Direction worldOut = EnergyWaveDisperserBlock.worldDirOf(facing, modelSide);
 				if (worldOut != null)
-					wave.setMovement(Vec3.atLowerCornerOf(worldOut.getNormal()));
+					WaveAccess.setMovement(wave, Vec3.atLowerCornerOf(worldOut.getNormal()));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
@@ -446,23 +447,23 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		AbstractContraptionEntity entity, BlockPos pos, BlockState state) {
 		switch (r) {
 			case VANISH -> {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return true;
 			}
 			case BOUNCE -> {
-				wave.setMovement(wave.getMovement().scale(-1));
+				WaveAccess.setMovement(wave, WaveAccess.movement(wave).scale(-1));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			case TURN -> {
 				// 拐弯：朝另一个开口方向发射（六面无 FACING，出口即世界方向）
-				Direction worldOut = SixFaceDispersal.exitsOf(state, wave.getMovement())
+				Direction worldOut = SixFaceDispersal.exitsOf(state, WaveAccess.movement(wave))
 					.get(0);
-				wave.setMovement(Vec3.atLowerCornerOf(worldOut.getNormal()));
+				WaveAccess.setMovement(wave, Vec3.atLowerCornerOf(worldOut.getNormal()));
 				wave.setPos(entity.toGlobalVector(Vec3.atCenterOf(pos)
-					.add(wave.getMovement().scale(1.0d)), 0));
+					.add(WaveAccess.movement(wave).scale(1.0d)), 0));
 				return true;
 			}
 			default -> {
@@ -483,10 +484,10 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 	 */
 	private static boolean splitContraptionChildren(AbstractChargerWaveEntity wave, List<Direction> exits,
 		int decrement, AbstractContraptionEntity entity, BlockPos pos) {
-		int childLevel = wave.getWaveLevel() - decrement;
+		int childLevel = WaveAccess.level(wave) - decrement;
 		if (childLevel <= 0) {
 			// 波级不足分裂：撞墙消散
-			ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+			ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 			wave.discard();
 			return true;
 		}
@@ -497,7 +498,7 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 			// 出生点 / 方向先换算到世界（随 contraption 旋转），再交给唯一的造子波入口
 			Vec3 childPos = entity.toGlobalVector(center.add(localDir), 0);
 			Vec3 childDir = entity.applyRotation(localDir, 0);
-			AbstractChargerWaveEntity child = wave.createChildWave(childPos, childDir, childLevel, outIndex,
+			AbstractChargerWaveEntity child = WaveAccess.createChildWave(wave, childPos, childDir, childLevel, outIndex,
 				exits.size());
 			if (child != null)
 				wave.level()
@@ -519,42 +520,42 @@ public final class DisperserHitHandler implements WaveMachineHandler {
 		if (state.getBlock() instanceof EnergyWaveDisperserBlock) {
 			boolean vanish = handleDisperser(wave, state, pos, localWavePos, hit);
 			if (vanish) {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return Outcome.CONSUMED;
 			}
 			if (!wave.isAlive())
 				return Outcome.CONSUMED; // 分裂：母波静默消散
 			wave.setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos)
-				.add(wave.getMovement().scale(1.0d))));
+				.add(WaveAccess.movement(wave).scale(1.0d))));
 			return Outcome.CONSUMED;
 		}
 		// 六面能量波差器
 		if (state.getBlock() instanceof SixFaceDisperserBlock) {
 			boolean vanish = handleSixFaceDisperser(wave, state, pos, localWavePos, hit);
 			if (vanish) {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return Outcome.CONSUMED;
 			}
 			if (!wave.isAlive())
 				return Outcome.CONSUMED;
 			wave.setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos)
-				.add(wave.getMovement().scale(1.0d))));
+				.add(WaveAccess.movement(wave).scale(1.0d))));
 			return Outcome.CONSUMED;
 		}
 		// 八面能量波差器（8 口：4 正交 + 4 斜；姿态换算在 actions 内完成）
 		if (state.getBlock() instanceof OctaEnergyWaveDifferencerBlock) {
 			boolean vanish = handleOctaDisperser(wave, state, pos, localWavePos, hit);
 			if (vanish) {
-				ChargerWaveFx.burst(wave.level(), wave.position(), wave.trailStyle(), wave.getRenderColor());
+				ChargerWaveFx.burst(wave.level(), wave.position(), WaveAccess.trailStyle(wave), WaveAccess.renderColor(wave));
 				wave.discard();
 				return Outcome.CONSUMED;
 			}
 			if (!wave.isAlive())
 				return Outcome.CONSUMED; // 分裂：母波静默消散
 			wave.setPos(bridge.toWorld(hit, Vec3.atCenterOf(pos)
-				.add(wave.getMovement().scale(1.0d))));
+				.add(WaveAccess.movement(wave).scale(1.0d))));
 			return Outcome.CONSUMED;
 		}
 		return Outcome.NOT_MINE;

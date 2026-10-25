@@ -11,6 +11,8 @@ import com.simibubi.create.content.processing.burner.BlazeBurnerBlock;
 import com.simibubi.create.foundation.recipe.IRecipeTypeInfo;
 
 import net.minecraft.core.Holder;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.Entity;
@@ -64,6 +66,22 @@ import net.neoforged.neoforge.fluids.FluidStack;
  * {@code charge-api-anti-vacuum} 断言在注释里就把这个包称作 "the wave engine contract"，
  * 新开一个包等于把同一件事写成两处；③ 该包<b>已经被第二层 import 了 17 行</b>，
  * 发现路径已经存在，不需要新造。</p>
+ *
+ * <p><b>★ 批 6（2026-10-24）只做加法：36 → 54 个静态方法，旧 36 个签名一个字未改。</b>
+ * 新增的 18 个填的是方案 §2.4「卡住的能力」表里<b>能纯加法填的</b>那些：注册新等级 / 注册新魔素
+ * （{@link #registerLevel} / {@link #registerEssence}，各自一行）、魔素的注册项形态
+ * （{@link #essenceSpec} / {@link #trySetEssence(AbstractChargerWaveEntity, WaveEssence)}）、
+ * 重力读写（{@link #gravityAcceleration} / {@link #hasGravity} / {@link #setGravity}）、
+ * 寿命与行程读写（{@link #setRemainingLifetimeTicks} / {@link #maxTravelDistance} /
+ * {@link #travelledDistance} / {@link #setMaxTravelDistance}）、第三方属性进 NBT
+ * （{@link #putExtraTag} / {@link #extraTag} / {@link #removeExtraTag}）、造子波与穿波继承
+ * （{@link #createChildWave} / {@link #inheritForTransmute}）、伤害读数 {@link #damage} 与
+ * 变体波机器快照 {@link #carriedMachineIds}。
+ * 同批还把第二层（{@code :cews}）原先 150+ 处直调实体访问器全部改走本门面 —— 门面从此是
+ * <b>真正的调用面</b>，不再只有 Jade 一家（关卡 {@code cews-via-facade} 守着）。
+ * 仍然<b>不做</b>的两项（附理由）：非 {@code charger_wave} 的伤害覆写（要改基类"纯等级表"那条
+ * 被关卡钉住的算术 = 玩法面变更）、以及 {@code styleColorRgb} 的转发（{@code wave-essence-display-color}
+ * 把它钉在两个显示点，见下一段）。</p>
  *
  * <p><b>不碰的东西</b>：不搬包、不改包名、不改类名、不改任何既有签名（本批对 {@code public}
  * 形状只做加法）；不 import 任何可选模组（{@code createaddition} / {@code curios} / {@code jade}
@@ -129,6 +147,20 @@ public final class WaveAccess {
 	 */
 	public static WaveTrailStyle essence(AbstractChargerWaveEntity wave) {
 		return wave == null ? null : wave.getEssence();
+	}
+
+	/**
+	 * <b>魔素的完整注册项</b>（{@link WaveEssence}：id + 颜色 + 可选拖尾档案 + 可选命中行为）。
+	 *
+	 * <p><b>谁需要它</b>：① 第二层的波情查询仪与变器（要判断"这一枚波的魔素是不是第三方注册的
+	 * 那一个"）与任何"按 id 而不是按枚举"处理魔素的联动；② 想把魔素原样转给另一枚波的调用方
+	 * （{@link #trySetEssence(AbstractChargerWaveEntity, WaveEssence)} 收的就是它）。
+	 * 内置 11 个的 {@code id()} 逐字等于枚举名，第三方是 {@code namespace:path}。</p>
+	 *
+	 * @param wave 波句柄（{@code null} ⇒ 返回 {@code null}，与"没有魔素"同义）
+	 */
+	public static WaveEssence essenceSpec(AbstractChargerWaveEntity wave) {
+		return wave == null ? null : wave.essenceSpec();
 	}
 
 	/**
@@ -288,6 +320,20 @@ public final class WaveAccess {
 	}
 
 	/**
+	 * <b>变体波携带的"机器快照"</b>（变体波专有；不是变体波 ⇒ 空表）——穿波那一刻变器扫描到的
+	 * 机器方块 id 清单。
+	 *
+	 * <p><b>谁需要它</b>：① 第二层的变器穿波日志（"属性 N 个"那一项，改造前调
+	 * {@code variant.getAttributes()}）；② 任何"这枚波声称能加工哪些机器"的联动判定。
+	 * 它<b>不是</b>"这一枚波实际能执行哪些配方类型"——后者见 {@link #activeRecipeTypes}。</p>
+	 *
+	 * @param wave 波句柄（{@code null} 或非变体波 ⇒ {@link List#of()}）
+	 */
+	public static List<ResourceLocation> carriedMachineIds(AbstractChargerWaveEntity wave) {
+		return wave instanceof StellarWaveEntity stellar ? stellar.getAttributes() : List.of();
+	}
+
+	/**
 	 * <b>波携带的物品载荷</b>（变体波专有；不是变体波 ⇒ 空表）。
 	 *
 	 * <p><b>谁需要它</b>：① 本层 Jade（原来调 {@code stellar.getPayloadItems()}，
@@ -387,6 +433,81 @@ public final class WaveAccess {
 		return wave instanceof StellarWaveEntity stellar ? stellar.getActiveRecipeTypes() : List.of();
 	}
 
+	/**
+	 * <b>这一枚波当前会造成的命中伤害（点）</b>——命中链真正用的那个值。
+	 *
+	 * <p><b>谁需要它</b>：① 任何"我的机器/技能要知道这枚波打多疼"的联动（此前门面<b>没有</b>任何
+	 * 伤害读数，第三方只能自己按波级查表，而 {@code charger_wave} 还有自定义伤害覆盖 ⇒ 自己查会算错）；
+	 * ② 诊断/显示层（护目镜、日志）；③ 第二层的命中处置（判断"值不值得让这枚波过去"）。</p>
+	 *
+	 * <p>⚠ <b>它只读不写</b>：覆写伤害仍走 {@link #setCustomDamage}（只对 {@code charger_wave} 成立）。
+	 * 其它波型的伤害覆盖需要改基类"纯等级表"那条被关卡钉住的算术 = 玩法面变更，本批不做。</p>
+	 *
+	 * @param wave 波句柄（{@code null} ⇒ 返回 {@code 0})
+	 */
+	public static float damage(AbstractChargerWaveEntity wave) {
+		return wave == null ? 0.0F : wave.damageValue();
+	}
+
+	/**
+	 * <b>重力要素的当前值</b>（格/秒²；{@code 0} = 未设 ⇒ 本波走直线）。
+	 *
+	 * <p><b>谁需要它</b>：① 想"设完再确认"的调用方（此前实体只有 {@code hasGravity()} 的布尔面，
+	 * 门面连布尔都没有）；② 护目镜/诊断的"本波受重力"读数。默认 {@code 0.0D} = 与改造前逐字相同。</p>
+	 *
+	 * @param wave 波句柄（{@code null} ⇒ 返回 {@code 0})
+	 */
+	public static double gravityAcceleration(AbstractChargerWaveEntity wave) {
+		return wave == null ? 0.0D : wave.gravityAcceleration();
+	}
+
+	/**
+	 * <b>本波是否设了重力要素</b>（{@code false} = 飞行与改造前逐字相同）。
+	 *
+	 * @param wave 波句柄（{@code null} ⇒ 返回 {@code false}）
+	 */
+	public static boolean hasGravity(AbstractChargerWaveEntity wave) {
+		return wave != null && wave.hasGravity();
+	}
+
+	/**
+	 * <b>本波的行程上限（格）</b>——越过它波就消散，与时间寿命互为兜底。
+	 *
+	 * <p><b>谁需要它</b>：① 任何"这枚波还能飞多远"的联动/显示；② 要收紧射程的发射方
+	 * （先读缺省值 64.0，再决定写多少）。不设 ⇒ 逐字等于旧常量 {@code MAX_TRAVEL_DISTANCE}。</p>
+	 *
+	 * @param wave 波句柄（{@code null} ⇒ 返回 {@code 0})
+	 */
+	public static double maxTravelDistance(AbstractChargerWaveEntity wave) {
+		return wave == null ? 0.0D : wave.maxTravelDistance();
+	}
+
+	/**
+	 * <b>已飞行距离（格）</b>：当前位置到出生点的直线距离（出生点未知 ⇒ {@code 0}）。
+	 *
+	 * <p><b>谁需要它</b>：显示层（"还剩多少射程"= {@link #maxTravelDistance} − 本值）与
+	 * "这枚波是不是快到头了"的机器判定。第三方不必自己拼 {@code distanceTo(getSpawnPos())}
+	 * 那两句（漏掉出生点为 null 的分支会 NPE）。</p>
+	 *
+	 * @param wave 波句柄（{@code null} ⇒ 返回 {@code 0})
+	 */
+	public static double travelledDistance(AbstractChargerWaveEntity wave) {
+		return wave == null ? 0.0D : wave.travelledDistance();
+	}
+
+	/**
+	 * <b>读一个"表外" NBT 键</b>（第三方属性袋；见 {@link #putExtraTag}）。
+	 *
+	 * <p><b>谁需要它</b>：把自定义状态写在波 NBT 上的联动模组（批 3 的未知键保留袋保证它
+	 * 读一遍再写一遍不会被抹掉；本方法让第三方真的能读写那个袋子）。</p>
+	 *
+	 * @param wave 波句柄（{@code null} ⇒ 返回 {@code null}）
+	 * @param key  NBT 键名
+	 */
+	public static Tag extraTag(AbstractChargerWaveEntity wave, String key) {
+		return wave == null ? null : wave.extraTag(key);
+	}
+
 	// ==================================================================================
 	// 二、施加：把「波要素」写到一枚既有波上
 	// 这一节的每个方法在句柄为 null 时都是「什么都不做 / 返回 false」——与「写不进去」
@@ -444,6 +565,26 @@ public final class WaveAccess {
 	 * @return 是否真的写进去了
 	 */
 	public static boolean trySetEssence(AbstractChargerWaveEntity wave, WaveTrailStyle target) {
+		return wave != null && wave.trySetEssence(target);
+	}
+
+	/**
+	 * <b>尝试设置魔素（注册项形态 —— 第三方魔素走这里）</b>。
+	 *
+	 * <p><b>谁需要它</b>：① 注册了自定义魔素的扩展模组（{@link #registerEssence} 之后，用
+	 * {@code WaveEssence.of("yourmod:thunder")} 造出来的那一个）；② 本层/第二层任何"按 id 转交魔素"
+	 * 的调用方（从 {@link #essenceSpec} 读到什么就原样转给下一枚波）。
+	 * 改造前本门面只收 {@link WaveTrailStyle} 枚举 ⇒ 第三方<b>造不出第 12 个值</b>，这条能力是封死的。</p>
+	 *
+	 * <p>⚠ 与枚举重载同一个前提：<b>必须先</b> {@link #trySetType} 打成攻击波；对不造成伤害的波型
+	 * 直接返回 {@code false} 且什么都不写。⚠ 字面量 {@code trySetEssence(wave, null)} 会因两个重载
+	 * 而歧义（编译期就报错，不会静默）——要清空请用 {@code (WaveTrailStyle) null}。</p>
+	 *
+	 * @param wave   波句柄（{@code null} ⇒ 返回 {@code false}）
+	 * @param target 魔素注册项（{@code null} = 清除）
+	 * @return 是否真的写进去了
+	 */
+	public static boolean trySetEssence(AbstractChargerWaveEntity wave, WaveEssence target) {
 		return wave != null && wave.trySetEssence(target);
 	}
 
@@ -638,6 +779,89 @@ public final class WaveAccess {
 		return false;
 	}
 
+	/**
+	 * <b>设置重力要素</b>（可选、默认关闭；{@code <= 0} 视为不做事 ⇒ 本波走直线）。
+	 *
+	 * <p><b>谁需要它</b>：① 需要抛物线飞行的发射方（宝石弓的星芒弹幕是今天唯一实例，它直接调
+	 * {@code setGravity}；本门面把同一条路开放给第三方）；② 任何"我的机器打出的波要下坠"的联动。
+	 * 单位是 <b>格/秒²</b>，强度由调用方传（实体只解释、不存数值）。</p>
+	 *
+	 * <p>⚠ 不设 = 默认 {@code 0} ⇒ 飞行与改造前逐字相同（关卡 {@code bow4-gravity-gated} 守着）。</p>
+	 *
+	 * @param wave         波句柄（{@code null} ⇒ 不做事）
+	 * @param acceleration 向下加速度（格/秒²）
+	 */
+	public static void setGravity(AbstractChargerWaveEntity wave, double acceleration) {
+		if (wave != null) {
+			wave.setGravity(acceleration);
+		}
+	}
+
+	/**
+	 * <b>改写剩余寿命（tick）</b>（时间寿命；夹到 {@code 0..MAX_LIFETIME_TICKS}）。
+	 *
+	 * <p><b>谁需要它</b>：① "这一枚波只许活 5 秒"的技能/机器（把 200 tick 改小，而不是另造实体）；
+	 * ② 延长寿命的联动（例如把穿波后的变体波多留一会儿）。读它请用
+	 * {@link #remainingLifetimeTicks}（同一取值点，不另开第二条寿命口径）。</p>
+	 *
+	 * <p>⚠ 它只改<b>时间</b>寿命：行程上限是另一条独立的消散条件（见 {@link #setMaxTravelDistance}）。</p>
+	 *
+	 * @param wave  波句柄（{@code null} ⇒ 不做事）
+	 * @param ticks 新的剩余寿命（tick）
+	 */
+	public static void setRemainingLifetimeTicks(AbstractChargerWaveEntity wave, int ticks) {
+		if (wave != null) {
+			wave.setRemainingLifetime(ticks);
+		}
+	}
+
+	/**
+	 * <b>改写行程上限（格）</b>（{@code <= 0} / 非有限值视为不做事，保持当前上限）。
+	 *
+	 * <p><b>谁需要它</b>：① 收紧射程的发射方（"我的波只该飞 16 格"）；② 放宽射程的联动
+	 * （长程炮台）。不设 ⇒ 逐字等于旧常量 64.0（同一个数、同一个比较、同一个 tick）。</p>
+	 *
+	 * @param wave  波句柄（{@code null} ⇒ 不做事）
+	 * @param blocks 新的行程上限（格）
+	 */
+	public static void setMaxTravelDistance(AbstractChargerWaveEntity wave, double blocks) {
+		if (wave != null) {
+			wave.setMaxTravelDistance(blocks);
+		}
+	}
+
+	/**
+	 * <b>写一个"表外" NBT 键</b>（第三方属性袋）——把自定义状态挂在波的存档标签上。
+	 *
+	 * <p><b>为什么需要它</b>：批 3 的未知键保留袋只保证"本模组读一遍再写一遍不会抹掉别人的键"，
+	 * 但第三方自己<b>没有入口</b>（袋子只在包内）。本方法与 {@link #extraTag} /
+	 * {@link #removeExtraTag} 就是那对入口，写进去的键由 {@code WaveStateNbt} 在存档时原样带出
+	 * （<b>只补不覆盖</b>，父类字段名不会被顶掉）。</p>
+	 *
+	 * <p>⚠ 本模组已声明的 31 个键<b>拒绝</b>（那些键的真源是 {@code WaveAttrs} 表，从侧门写会被下次
+	 * 读写按表覆盖 ⇒ 静默失效）。⚠ 键名请带自己的命名空间（例如 {@code "yourmod:my_state"}），
+	 * 本模组不替你做冲突裁决。</p>
+	 *
+	 * @param wave  波句柄（{@code null} ⇒ 返回 {@code false}）
+	 * @param key   NBT 键名（{@code null} / 空串 / 已声明键 ⇒ {@code false}）
+	 * @param value 标签（{@code null} ⇒ {@code false}；要删请用 {@link #removeExtraTag}）
+	 * @return 是否真的写进去了
+	 */
+	public static boolean putExtraTag(AbstractChargerWaveEntity wave, String key, Tag value) {
+		return wave != null && wave.putExtraTag(key, value);
+	}
+
+	/**
+	 * <b>删一个"表外" NBT 键</b>（第三方属性袋）。
+	 *
+	 * @param wave 波句柄（{@code null} ⇒ 返回 {@code false}）
+	 * @param key  NBT 键名
+	 * @return 是否真的删掉了（原来就没有 ⇒ {@code false}）
+	 */
+	public static boolean removeExtraTag(AbstractChargerWaveEntity wave, String key) {
+		return wave != null && wave.removeExtraTag(key);
+	}
+
 	// ==================================================================================
 	// 三、生成：造一枚全新的波
 	// ==================================================================================
@@ -670,5 +894,101 @@ public final class WaveAccess {
 			return null;
 		}
 		return new ChargerWaveEntity(level, pos, direction, waveLevel);
+	}
+
+	/**
+	 * <b>按父波造一枚分裂子波</b>（差波器均摊分发的那条路；属性整份继承，见
+	 * {@code AbstractChargerWaveEntity#createChildWave}）。
+	 *
+	 * <p><b>谁需要它</b>：① 第二层的差波器家族（四面 / 六面 / 八面 / contraption / 物理结构
+	 * 共五处出口），改造前它们调 {@code wave.createChildWave(...)}；② 任何"把一枚波拆成几枚"的联动
+	 * （拆出来的子波自动继承父波的全部属性：等级只由 {@code level} 改，其余整份拷贝）。</p>
+	 *
+	 * <p>⚠ 子波<b>尚未入世界</b>，调用方自己 {@code addFreshEntity}。⚠ 这是<b>分裂</b>语义；
+	 * "旧波换新波"请用 {@link #inheritForTransmute}（两者刻意不是同一个方法，见那里）。</p>
+	 *
+	 * @param wave  父波句柄（{@code null} ⇒ 返回 {@code null}）
+	 * @param pos   子波出生点（已换算到世界坐标）
+	 * @param dir   子波方向（单位向量）
+	 * @param level 子波等级（= 父波等级 − 降级量）
+	 * @param index 本子波在本次分裂中的序号（0 起；载荷按份均摊用）
+	 * @param total 本次分裂的子波总数（≥1）
+	 * @return 新子波（<b>尚未入世界</b>）；{@code null} = 放弃发射
+	 */
+	public static AbstractChargerWaveEntity createChildWave(AbstractChargerWaveEntity wave, Vec3 pos, Vec3 dir,
+			int level, int index, int total) {
+		return wave == null ? null : wave.createChildWave(pos, dir, level, index, total);
+	}
+
+	/**
+	 * <b>穿波转换的继承模板</b>：把"旧波换新波"时要承接的三项一次写全
+	 * （速度修正 / 电荷极性 / 当前渲染色）。
+	 *
+	 * <p><b>谁需要它</b>：① 第二层的星辉波变器（{@code StellarWaveTransmuterPass} 改造前手抄这三行，
+	 * 现在只调本方法）；② 任何"把一枚波替换成另一枚"的联动（例如自己把波升级成别的实体）。</p>
+	 *
+	 * <p><b>为什么与 {@link #createChildWave} 分开</b>：{@code createChildWave} 是<b>分裂</b>
+	 * （整份拷贝父波属性，只改等级/方向/出生点/出生色）；穿波是<b>旧波换新波</b>，新波带着机器刚扫到的
+	 * 载荷，而旧波被丢弃 ⇒ 继承集合只能是"表现/飞行连续性"那三项，否则<b>改玩法</b>
+	 * （新波会开始带主人 ⇒ 不再伤发射者；带批次号 ⇒ 同批波互相不湮灭）。
+	 * 逐项清单写在 {@code AbstractChargerWaveEntity#inheritForTransmute} 的 javadoc 上。</p>
+	 *
+	 * @param from 旧波句柄（{@code null} ⇒ 不做事）
+	 * @param to   新波句柄（{@code null} ⇒ 不做事）
+	 */
+	public static void inheritForTransmute(AbstractChargerWaveEntity from, AbstractChargerWaveEntity to) {
+		if (from != null && to != null) {
+			from.inheritForTransmute(to);
+		}
+	}
+
+	// ==================================================================================
+	// 四、注册：把"新的等级 / 新的魔素"接进注册表（批 6 新增的两个一句话入口）
+	// 本层<b>不</b>持有数据：真源仍是 WaveLevelRegistry / WaveEssenceRegistry，这里只做逐字转发，
+	// 所以第三方不必记两个类名，也不会出现第二份表。
+	// ==================================================================================
+
+	/**
+	 * <b>注册一个新的波等级</b>（一行）——转给 {@link WaveLevelRegistry#register}。
+	 *
+	 * <p><b>谁需要它</b>：想加第 6 级（或任意等级）的扩展模组。此前这条路<b>在门面上完全不存在</b>
+	 * （注册表本身早在批 1 就有，但第三方要先知道 {@code WaveLevelRegistry} 这个名字）。</p>
+	 *
+	 * <p>示例：</p>
+	 * <pre>{@code
+	 * WaveAccess.registerLevel(6, WaveLevelSpec.builder("ζ")
+	 *     .baseSpeed(9.0d).maxSpeed(14.0d).damage(14.0f).indicatorColor(0xFFB020).build());
+	 * }</pre>
+	 *
+	 * <p>时机：自己的 {@code @Mod} 构造器里（{@code RegisterEvent} 之前、任何波被生成/读取之前）。
+	 * 唯一性/越界/非法数值的裁决全在注册表（同等级同内容 = 幂等，同名不同值 = 当场报错）。</p>
+	 *
+	 * @param level 等级号（≥ {@link WaveLevels#LOW}）
+	 * @param spec  该等级的完整数值声明
+	 * @return 生效的声明（重复注册时返回先注册的那一份）
+	 */
+	public static WaveLevelSpec registerLevel(int level, WaveLevelSpec spec) {
+		return WaveLevelRegistry.register(level, spec);
+	}
+
+	/**
+	 * <b>注册一种新的魔素</b>（一行）——转给 {@link WaveEssenceRegistry#register}。
+	 *
+	 * <p><b>谁需要它</b>：想加第 12 种（或任意种）魔素的扩展模组。改造前魔素是枚举，
+	 * 第三方<b>造不出新值</b>；批 4 把注册表建好了，本方法是它的门面入口。</p>
+	 *
+	 * <p>示例：</p>
+	 * <pre>{@code
+	 * WaveAccess.registerEssence(WaveEssence.of("yourmod:thunder").color(0x9B5CFF).build());
+	 * }</pre>
+	 *
+	 * <p>⚠ id 规则：内置 11 个的 id 逐字等于枚举名（老存档兼容）；第三方必须是
+	 * {@code namespace:path}（不含冒号会被注册表拒绝 —— 那种名字永远读不回来）。</p>
+	 *
+	 * @param essence 魔素声明
+	 * @return 生效的魔素（id 已被占用时返回先注册的那一个）
+	 */
+	public static WaveEssence registerEssence(WaveEssence essence) {
+		return WaveEssenceRegistry.register(essence);
 	}
 }
